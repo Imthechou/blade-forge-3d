@@ -40,27 +40,34 @@ class Viewer {
     if(!root.userData.__viewerBaseTransform)root.userData.__viewerBaseTransform={position:root.position.clone(),quaternion:root.quaternion.clone(),scale:root.scale.clone()};
     const base=root.userData.__viewerBaseTransform;root.position.copy(base.position);root.quaternion.copy(base.quaternion);root.scale.copy(base.scale);
     const rawBox=new THREE.Box3().setFromObject(root),rawSize=rawBox.getSize(new THREE.Vector3());
-    const axis=rawSize.x>=rawSize.y&&rawSize.x>=rawSize.z?'x':rawSize.y>=rawSize.z?'y':'z';
+    const isStage=knifeId==='stage';
     this.pivot.position.set(0,0,0);this.pivot.rotation.set(0,0,0);this.pivot.scale.setScalar(1);
-    if(axis==='x')this.pivot.rotation.z=Math.PI/2;else if(axis==='z')this.pivot.rotation.x=-Math.PI/2;
-    this.pivot.rotation.y+=Math.PI;const viewAngleY=KNIFE_VIEW_ANGLE_Y[knifeId]??DEFAULT_VIEW_ANGLE_Y;
-    if(viewAngleY!==0){const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),viewAngleY);this.pivot.quaternion.multiply(q);}
+    if(!isStage)this.pivot.rotation.z=Math.PI/2;
+    else if(rawSize.x>rawSize.y*1.25&&rawSize.x>=rawSize.z)this.pivot.rotation.z=Math.PI/2;
     this.pivot.add(root);this.pivot.updateMatrixWorld(true);
-    const orientedBox=new THREE.Box3().setFromObject(this.pivot),orientedCenter=orientedBox.getCenter(new THREE.Vector3());
-    this.pivot.position.sub(orientedCenter);this.pivot.updateMatrixWorld(true);
-    const centeredBox=new THREE.Box3().setFromObject(this.pivot);
-    this.fitSize=centeredBox.getSize(new THREE.Vector3());this.modelSize=rawSize;
-    if(knifeId==='stage'){this.pivot.scale.setScalar(.68);this.fitSize.multiplyScalar(.68);}
-    this._computeFit();this.baseRotation=this.pivot.rotation.clone();this.baseViewAngleY=viewAngleY;this.root=root;this.resetView();this.needsRender=true;
+    let box=new THREE.Box3().setFromObject(this.pivot),center=box.getCenter(new THREE.Vector3());
+    this.pivot.position.sub(center);this.pivot.updateMatrixWorld(true);
+    box=new THREE.Box3().setFromObject(this.pivot);
+    const orientedSize=box.getSize(new THREE.Vector3()),currentHeight=Math.max(orientedSize.y,.0001);
+    const targetHeight=1.62,uniformScale=targetHeight/currentHeight;
+    this.pivot.scale.setScalar(uniformScale);this.pivot.updateMatrixWorld(true);
+    box=new THREE.Box3().setFromObject(this.pivot);center=box.getCenter(new THREE.Vector3());
+    this.pivot.position.sub(center);this.pivot.updateMatrixWorld(true);
+    box=new THREE.Box3().setFromObject(this.pivot);
+    this.fitSize=box.getSize(new THREE.Vector3());this.modelSize=rawSize;this.displayScale=uniformScale;
+    this._computeFit();this.baseRotation=this.pivot.rotation.clone();this.baseViewAngleY=0;this.root=root;this.resetView();this.needsRender=true;
   }
+
   _computeFit(){
-    const fitSize=this.fitSize||this.modelSize,halfVFov=THREE.MathUtils.degToRad(this.camera.fov/2),aspect=Math.max(.2,this.camera.aspect);
+    const fitSize=this.fitSize||this.modelSize||new THREE.Vector3(1,1,1),halfVFov=THREE.MathUtils.degToRad(this.camera.fov/2),aspect=Math.max(.2,this.camera.aspect);
     const halfHFov=Math.atan(Math.tan(halfVFov)*aspect),distV=(fitSize.y/2)/Math.tan(halfVFov),distH=(fitSize.x/2)/Math.tan(halfHFov);
-    this.fitDistance=Math.max(distV,distH)*1.18;const depth=Math.max(fitSize.x,fitSize.y,fitSize.z);
-    this.camera.near=Math.max(depth*.005,.001);this.camera.far=depth*80;this.camera.updateProjectionMatrix();
-    this.controls.minDistance=this.fitDistance*.32;this.controls.maxDistance=this.fitDistance*3.2;
+    this.fitDistance=Math.max(distV,distH)*1.16;const depth=Math.max(fitSize.x,fitSize.y,fitSize.z,.05);
+    this.camera.near=Math.max(depth*.01,.001);this.camera.far=Math.max(depth*40,10);this.camera.updateProjectionMatrix();
+    this.controls.minDistance=this.fitDistance*.35;this.controls.maxDistance=this.fitDistance*3;
   }
-  resetView(){if(!this.fitDistance)return;if(this.baseRotation)this.pivot.rotation.copy(this.baseRotation);else this.pivot.rotation.set(0,this.pivot.rotation.y,0);const camZ=this.baseViewAngleY>Math.PI*.5?1:-1;this.camera.position.set(0,0,this.fitDistance*camZ);this.controls.target.set(0,0,0);this.controls.update();this.invalidate();}
+
+  resetView(){if(!this.fitDistance)return;if(this.baseRotation)this.pivot.rotation.copy(this.baseRotation);else this.pivot.rotation.set(0,this.pivot.rotation.y,0);this.camera.position.set(0,0,-this.fitDistance);this.controls.target.set(0,0,0);this.controls.update();this.invalidate();}
+
   setAutoRotate(on){this.controls.autoRotate=!!on;this.invalidate();}
   setExposure(v){this.renderer.toneMappingExposure=Math.min(2.5,Math.max(.3,v));this.invalidate();}
   snapshot(w=160,h=120){const oldSize=new THREE.Vector2();this.renderer.getSize(oldSize);const oldPR=this.renderer.getPixelRatio();this.renderer.setPixelRatio(1);this.renderer.setSize(w,h,false);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.renderer.render(this.scene,this.camera);const url=this.renderer.domElement.toDataURL('image/webp',.8);this.renderer.setPixelRatio(oldPR);this.renderer.setSize(oldSize.x,oldSize.y,false);this.camera.aspect=oldSize.x/Math.max(1,oldSize.y);this.camera.updateProjectionMatrix();this.needsRender=true;return url;}
