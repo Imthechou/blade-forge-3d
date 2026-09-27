@@ -31,6 +31,7 @@ jobs:
           unzip -q "锻刀大赛_3D版_v9.zip" -d /tmp/bladeforge
           cp -a /tmp/bladeforge/锻刀大赛_3D版/. dist/
           cp -f js/hotfix.js dist/js/hotfix.js
+          cp -f js/viewer-mobile-fix.js dist/js/viewer.js
           sed -i 's#</body>#<script src="js/hotfix.js"></script></body>#' dist/index.html
           sed -i 's#height:min(46vh,430px);#height:auto;aspect-ratio:4 / 5;max-height:430px;min-height:300px;#' dist/css/app.css
           sed -i 's#\.stage-shell{height:42vh}#\.stage-shell{aspect-ratio:4 / 5;height:auto;max-height:none}#' dist/css/app.css
