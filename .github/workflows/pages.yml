@@ -30,6 +30,8 @@ jobs:
           mkdir -p dist
           unzip -q "锻刀大赛_3D版_v9.zip" -d /tmp/bladeforge
           cp -a /tmp/bladeforge/锻刀大赛_3D版/. dist/
+          cp -f js/hotfix.js dist/js/hotfix.js
+          sed -i 's#</body>#<script src="js/hotfix.js"></script></body>#' dist/index.html
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
