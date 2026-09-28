@@ -49,7 +49,7 @@ class Viewer {
     this.pivot.position.sub(center);this.pivot.updateMatrixWorld(true);
     box=new THREE.Box3().setFromObject(this.pivot);
     const orientedSize=box.getSize(new THREE.Vector3()),currentHeight=Math.max(orientedSize.y,.0001);
-    const targetHeight=1.62,uniformScale=targetHeight/currentHeight;
+    const targetHeight=isStage?1.15:1.62,uniformScale=targetHeight/currentHeight;
     this.pivot.scale.setScalar(uniformScale);this.pivot.updateMatrixWorld(true);
     box=new THREE.Box3().setFromObject(this.pivot);center=box.getCenter(new THREE.Vector3());
     this.pivot.position.sub(center);this.pivot.updateMatrixWorld(true);
@@ -59,11 +59,24 @@ class Viewer {
   }
 
   _computeFit(){
-    const fitSize=this.fitSize||this.modelSize||new THREE.Vector3(1,1,1),halfVFov=THREE.MathUtils.degToRad(this.camera.fov/2),aspect=Math.max(.2,this.camera.aspect);
-    const halfHFov=Math.atan(Math.tan(halfVFov)*aspect),distV=(fitSize.y/2)/Math.tan(halfVFov),distH=(fitSize.x/2)/Math.tan(halfHFov);
-    this.fitDistance=Math.max(distV,distH)*1.16;const depth=Math.max(fitSize.x,fitSize.y,fitSize.z,.05);
-    this.camera.near=Math.max(depth*.01,.001);this.camera.far=Math.max(depth*40,10);this.camera.updateProjectionMatrix();
-    this.controls.minDistance=this.fitDistance*.35;this.controls.maxDistance=this.fitDistance*3;
+    const fitSize=this.fitSize||this.modelSize||new THREE.Vector3(1,1,1);
+    const halfVFov=THREE.MathUtils.degToRad(this.camera.fov/2);
+    const aspect=Math.max(.2,this.camera.aspect);
+    const halfHFov=Math.atan(Math.tan(halfVFov)*aspect);
+    const distV=(fitSize.y/2)/Math.tan(halfVFov);
+    const distH=(fitSize.x/2)/Math.tan(halfHFov);
+    // Mobile stage models can be deep (ore/ingot shapes). Fit against the
+    // bounding sphere as well, otherwise the front/back can be clipped even
+    // when X/Y appear to fit.
+    const radius=fitSize.length()/2;
+    const distDepth=radius/Math.sin(Math.min(halfVFov,halfHFov));
+    this.fitDistance=Math.max(distV,distH,distDepth)*1.12;
+    const depth=Math.max(fitSize.x,fitSize.y,fitSize.z,.05);
+    this.camera.near=Math.max(depth*.005,.001);
+    this.camera.far=Math.max(depth*60,10);
+    this.camera.updateProjectionMatrix();
+    this.controls.minDistance=this.fitDistance*.35;
+    this.controls.maxDistance=this.fitDistance*3;
   }
 
   resetView(){if(!this.fitDistance)return;if(this.baseRotation)this.pivot.rotation.copy(this.baseRotation);else this.pivot.rotation.set(0,this.pivot.rotation.y,0);this.camera.position.set(0,0,-this.fitDistance);this.controls.target.set(0,0,0);this.controls.update();this.invalidate();}
