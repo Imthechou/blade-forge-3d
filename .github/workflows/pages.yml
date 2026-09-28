@@ -28,7 +28,7 @@ jobs:
         run: |
           rm -rf dist
           mkdir -p dist
-          unzip -q "锻刀大赛_3D版_v9.zip" -d /tmp/bladeforge
+          unzip -q "锻刀大赛_3D版_v15_真实12模型清理版.zip" -d /tmp/bladeforge
           cp -a /tmp/bladeforge/锻刀大赛_3D版/. dist/
           cp -f js/hotfix.js dist/js/hotfix.js
           cp -f js/viewer-mobile-fix.js dist/js/viewer.js
