@@ -8,3 +8,5 @@
 .forge-decision-cards{flex:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:4px 0 6px;overflow:visible}.forge-decision-cards .card{min-height:126px;height:126px;overflow:hidden}.forge-decision-cards .card p{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.forge-decision-cards .mini-stats{max-height:35px;overflow:hidden}.forge-actions{flex:none;padding-top:2px}
 .skin-panel{display:none!important}
 @media(max-width:390px){.forge-dashboard{min-height:174px;gap:6px}.forge-decision-cards{gap:5px}.forge-decision-cards .card{height:118px;min-height:118px;padding:7px}.forge-decision-cards .card .icon{font-size:21px;margin:6px 0 3px}.forge-decision-cards .card strong{font-size:10px}.forge-decision-cards .card p{font-size:8px}.forge-radar-svg text{font-size:8px}}
+
+#forgeScreen{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}#forgeScreen::-webkit-scrollbar{display:none}.stage-shell{max-height:none;min-height:0}
