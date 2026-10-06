@@ -29,7 +29,9 @@ jobs:
           rm -rf dist /tmp/bladeforge
           mkdir -p dist /tmp/bladeforge
           unzip -q "锻刀大赛V3_发布包_2026-10-06.zip" -d /tmp/bladeforge
-          cp -a /tmp/bladeforge/锻刀大赛V3/. dist/
+          RELEASE_DIR="$(find /tmp/bladeforge -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          test -n "$RELEASE_DIR"
+          cp -a "$RELEASE_DIR"/. dist/
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
