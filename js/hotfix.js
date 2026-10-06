@@ -1,1 +1,0 @@
-/* Blade Forge mobile 3D hotfix v12. Model framing is handled by Viewer.setModel().\n * Do not force GLSL1: Three.js r169 + WebGL2 must negotiate shader version itself.\n */\n(function(global){'use strict';if(!global.THREE||!global.K3D)return;})(window);\n

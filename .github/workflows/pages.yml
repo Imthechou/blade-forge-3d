@@ -24,25 +24,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract game package
+      - name: Extract release package
         run: |
-          rm -rf dist
-          mkdir -p dist
-          unzip -q "锻刀大赛_3D版_v15_真实12模型清理版.zip" -d /tmp/bladeforge
-          cp -a /tmp/bladeforge/锻刀大赛_3D版/. dist/
-          cp -f js/hotfix.js dist/js/hotfix.js
-          cp -f js/viewer-mobile-fix.js dist/js/viewer.js
-          cp -f js/v15-asset-cleanup.js dist/js/v15-asset-cleanup.js
-          cp -f js/v15-ui.js dist/js/v15-ui.js
-          cp -f css/v15-ui.css dist/css/v15-ui.css
-          cp -f css/v15-stage-flow.css dist/css/v15-stage-flow.css
-          cp -f js/v15-stage-flow.js dist/js/v15-stage-flow.js
-          sed -i 's#</head>#<link rel="stylesheet" href="css/v15-ui.css"><link rel="stylesheet" href="css/v15-stage-flow.css"></head>#' dist/index.html
-          sed -i 's#</body>#<script src="js/v15-asset-cleanup.js"></script><script src="js/hotfix.js"></script><script src="js/v15-ui.js"></script><script src="js/v15-stage-flow.js"></script></body>#' dist/index.html
-          sed -i 's#if(TEST_MODE)window.__FORGE_API__=#window.__FORGE_UI__={appState,renderForge,renderForgeBody};if(TEST_MODE)window.__FORGE_API__=#' dist/js/game.js
-          sed -i 's#const p = mat.toPhysicalMaterial(m);#const p = mat.toPhysicalMaterial(m); p.side = THREE.DoubleSide;#' dist/js/engine.js
-          sed -i 's#height:min(46vh,430px);#height:auto;aspect-ratio:4 / 5;max-height:430px;min-height:300px;#' dist/css/app.css
-          sed -i 's#\.stage-shell{height:42vh}#\.stage-shell{aspect-ratio:4 / 5;height:auto;max-height:none}#' dist/css/app.css
+          rm -rf dist /tmp/bladeforge
+          mkdir -p dist /tmp/bladeforge
+          unzip -q "锻刀大赛V3_发布包_2026-10-06.zip" -d /tmp/bladeforge
+          cp -a /tmp/bladeforge/锻刀大赛V3/. dist/
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
