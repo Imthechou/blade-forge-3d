@@ -35,12 +35,16 @@ function play(config,seed=1) {
 }
 test('所有赛事难度按顺序增加投放数量，不改变六种靶子固有强度',()=>{
   const before=JSON.stringify(MATERIALS);
-  let lastTotal=0,lastRank=-1;
+  let lastTotal=0,lastRank=-1,lastCaps=[0,0,0,0],lastMin=0;
   for(const spec of tournament) {
     const config=createEncounter(spec);
     assert.ok(config.rank>lastRank);
     const quota=PHASES.reduce((n,phase)=>n+config.stages[phase].quota,0);
     assert.ok(quota>=lastTotal,JSON.stringify(spec)+' quota '+quota);
+    const caps=PHASES.map(p=>config.stages[p].poolCap);
+    assert.ok(caps.every((v,i)=>v>=lastCaps[i]),JSON.stringify(spec)+' 硬靶解锁阶段倒退');
+    assert.ok(config.minIndex>=lastMin,JSON.stringify(spec)+' 软靶下限回退');
+    lastCaps=caps;lastMin=config.minIndex;
     lastTotal=quota;lastRank=config.rank;
     const {run}=play(spec,178);
     const counted=PHASES.reduce((n,phase)=>n+run.encounterHistory[phase].spawned,0);
@@ -79,7 +83,8 @@ test('正式赛选择软/硬路线只改变靶具名单，不改变硬度；重�
   const a=createEncounter(encounter);
   const soft=phaseMaterialPool(a,'route','soft');
   const hard=phaseMaterialPool(a,'route','hard');
-  assert.ok(soft.includes('rope'));
+  assert.ok(soft.includes('wood'));
+  assert.ok(!soft.includes('foam'),'全国决赛即使选择稳健路线也不该刷低级泡棉');
   assert.ok(hard.includes('metal'));
   const created=createChallenge(blade,{mode:'formal',seconds:45,seed:36,encounter});
   assert.ok(created.ok);
