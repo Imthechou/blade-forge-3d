@@ -389,11 +389,31 @@ export const S5_EFFECTS = {
  */
 /* Fixed visual identity: the S5 card decides its family, while run seed
    only shifts the pattern and, for the gem card, the jewel subtype. */
-const S5_CARD_FAMILY = Object.freeze({
-  S5_14: 'marbleFade', S5_16: 'caseHardened',
-  S5_18: 'caseHardened', S5_19: 'fade',
-  S5_20: 'doppler', S5_21: 'gemDoppler', S5_23: 'fadeColdHot',
+/* Every one of the 25 S5 cards has exactly ONE meaningful family.
+   13 named families, each assigned to one or two cards, never a hashed
+   lottery. Gameplay/card IDs and numerical balance remain unchanged. */
+export const S5_CARD_FAMILY = Object.freeze({
+  S5_25:'steelMirror', S5_09:'steelMirror',
+  S5_01:'coolQuench', S5_02:'coolQuench',
+  S5_03:'matteSteel', S5_08:'matteSteel',
+  S5_04:'forgeFlow', S5_12:'forgeFlow',
+  S5_05:'saltBath', S5_11:'saltBath',
+  S5_06:'blackOxide', S5_17:'blackOxide',
+  S5_07:'silkTint', S5_13:'silkTint',
+  S5_10:'gunMetal',
+  S5_16:'caseHardened', S5_18:'caseHardened',
+  S5_19:'fade', S5_23:'fadeColdHot',
+  S5_14:'marbleFade', S5_15:'marbleFade',
+  S5_20:'doppler', S5_22:'doppler',
+  S5_21:'gemDoppler', S5_24:'gemDoppler',
 });
+/* The two Fade cards use different palettes but share one forge family;
+   same for the case-hardened and gemstone variants. */
+export const S5_VISUAL_FAMILY = Object.freeze(Object.fromEntries(
+  Object.entries(S5_CARD_FAMILY).map(([id,family]) =>
+    [id, family === 'fadeColdHot' ? 'fade' : family])
+));
+
 const GEM_PALETTES = Object.freeze([
   ['#661019','#a61733','#e53753','#ff7a83'], /* Ruby */
   ['#071b50','#123c99','#276be1','#85bbff'], /* Sapphire */
@@ -471,6 +491,9 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
    *   单一真源），未选则一律不接管。这样“没选就没有”的契约在效果库这一层也成立。 */
   if (extra.chosen !== true) return null;
   if (!(Number(tier) >= 2)) return null;
+  const stableCard = String(extra.cardId || '');
+  // Non-premium cards are handled by the baseline PBR recipe, never hash-rerolled.
+  if (stableCard && !S5_EFFECTS[S5_CARD_FAMILY[stableCard]]) return null;
   const s = Array.isArray(seeds) ? seeds : [0.5, 0.5, 0.5, 0.5];
   /* 逐卡选效果：用**多维逐卡签名**哈希，不能只看 finishId + paletteShift ——
      实测那两维太少（多数卡 paletteShift 为 0、finishId 也只有少数几种），
@@ -509,12 +532,46 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
   const rareRoll = mix01(s[1], s[3], (Number(finishId) || 1) / 12, 0.71);
   const rare = !!(r && rareRoll < r.chance);
   return {
-    key, eff, rare, gemVariant, cardPalette,
+    key, eff, rare, gemVariant, cardPalette, tier: Math.min(5, Math.max(0, Number(tier) || 0)),
     baseHex: extra.baseHex || null,
     phase: jPhase,
     cover: Math.max(0.08, Math.min(0.95, (rare ? r.cover : eff.cover) * jCover)),
     seedMix: mix01(s[0], s[2], 0.19),
   };
+}
+
+
+/* Non-premium S5 cards retain their owned texture/finish IDs, but their
+   surfaces now follow a predictable finish family. This never adds emission;
+   the same card preserves differences in substrate roughness and base color. */
+export function refineS5BaseFinish(out, cardId, tier = 0) {
+  const family = S5_CARD_FAMILY[String(cardId || '')];
+  if (!out?.chosen || !family || S5_EFFECTS[family]) return out;
+  const q = Math.max(0, Math.min(1, (Number(tier) || 0) / 5));
+  switch (family) {
+    case 'steelMirror': // neutral specular polish
+      out.a = [0.60 + 0.16 * q, 0.70 - 0.18 * q, 0, 0]; out.b[0] = 0;
+      out.b[2] = 0; out.c[1] = 0; break;
+    case 'coolQuench': // cool steel, not neon blue
+      out.a = [0.52 + 0.08 * q, 0.88 - 0.10 * q, 0.02, 0.02]; out.b[0] = Math.min(0.11, out.b[0]); break;
+    case 'matteSteel':
+      out.a = [0.66, 1.0, 0.27 - 0.06 * q, 0.04]; out.d[2] = 0; break;
+    case 'forgeFlow':
+      out.a = [0.58, 0.99 - 0.08 * q, 0.09, 0.01]; out.d[2] = Math.min(0.11,out.d[2]); break;
+    case 'saltBath':
+      out.a = [0.60, 0.82 - 0.12 * q, 0.04, 0]; out.b[0] = Math.min(0.09,out.b[0]); break;
+    case 'blackOxide':
+      out.a = [0.72, 1.0, 0.11, 0.37 - 0.06 * q]; out.d[2] = 0; break;
+    case 'silkTint':
+      out.a = [0.60, 0.85 - 0.12 * q, 0.03, 0]; out.b[0] = Math.min(0.22,out.b[0]);
+      out.b[2] = Math.min(0.11,out.b[2]); break;
+    case 'gunMetal':
+      out.a = [0.70, 0.91 - 0.12 * q, 0.04, 0.18]; out.b[0] = Math.min(0.09,out.b[0]); break;
+  }
+  // Global finish-energy budget: a low rarity card never produces glow to
+  // compensate for roughness and texture detail.
+  out.c[1] = Math.min(0.08, Math.max(0, Number(out.c[1]) || 0));
+  return out;
 }
 
 /**
@@ -525,6 +582,7 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
 export function applyS5Effect(out, picked, fp = {}) {
   if (!picked) return out;
   const { eff, rare, phase, cover } = picked;
+  const quality = Math.min(1, Math.max(0, (picked.tier - 1) / 4));
   /* fromBase：调色板由**这把刀的基色**现场派生（根深→本色→尖亮），不引入外来色相。
      稀有模板仍用固定调色板（模板的意义就是"换一套完全不同的"，与自渐变互斥）。 */
   /* fromBase 的效果**连稀有模板也基于基色**（strong 版：跨度更大、冷暖更分明），
@@ -537,7 +595,7 @@ export function applyS5Effect(out, picked, fp = {}) {
   out.mode = eff.mode;
   out.premiumLook = Number(eff.look) || 0;
   out.palette = (picked.cardPalette || pal).slice();
-  out.cover = cover;
+  out.cover = Math.min(0.95, cover * (0.96 + 0.04 * quality));
   /* D.x 原本空闲（旧值只是"是否渐变"的标志，shader 里没读），现在用来传**斑块尺度**：
      各效果一套、稀有模板另一套 —— 模板因此有形态差异，不只是换色。 */
   const blobTab = S5_BLOB_SCALE[picked.key] || [0.5, 0.5];
@@ -545,9 +603,10 @@ export function applyS5Effect(out, picked, fp = {}) {
     (Number(fp.paletteShift) || 0) + phase,
     /* 2026-10-23 用户口径：「所有卡的透明度都淡一点点，要看得出原版材质的影响」
        —— 色带权重整体 ×0.82，材质本身的金属感/纹理因此能透上来。 */
-    eff.ramp * (rare ? 1.0 : 0.95) * (eff.fullWeight ? 1.0 : 0.82),
+    eff.ramp * (rare ? 1.0 : 0.95) * (eff.fullWeight ? 1.0 : 0.82) * (0.91 + 0.09 * quality),
     Number(fp.coat) || 0];
-  out.a = [0.72, eff.gloss, 0, 0];
+  // Rarity improves polish consistency, not albedo / emission / white clipping.
+  out.a = [0.72, Math.max(0.18, eff.gloss * (1.04 - 0.11 * quality)), 0, 0];
   /* coverBias 必须给 0：shader 里 `cover = mix(1, smoothstep(...), B.y)` 会先削掉一截，
      再乘 zone(≈0.5) × peak(0.62) —— 四层相乘后色带权重只剩 0.2，看起来"几乎没效果"。
      给 0 后 cover=1，权重由 cover/zone 两处决定（实测明显变实）。 */
