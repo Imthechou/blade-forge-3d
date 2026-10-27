@@ -936,7 +936,11 @@ function drawComboBanner(ctx, run, w, h, reduced) {
 
 /** 得分贴命中点上方；未命中贴边、缩小、更快淡出 —— 两者不再互相压住。 */
 function drawLabels(ctx, labels, now, w, h, reduced) {
-  const scored = labels.filter((l) => l.quality !== 'MISS');
+  // 每个目标的连续补刀只显示最新一次，避免三排密集出场时数字叠成一大片。
+  const recent=new Map();
+  for(const label of labels)if(label.quality!=='MISS')
+    recent.set(`${Math.round(label.x*100)}:${Math.round(label.y*100)}`,label);
+  const scored=[...recent.values()];
   const missed = labels.filter((l) => l.quality === 'MISS');
   ctx.save();
   ctx.textAlign = 'center';
@@ -948,37 +952,38 @@ function drawLabels(ctx, labels, now, w, h, reduced) {
     const p = age / LABEL_LIFE;
     const lane = Number(hit.slot) || 0;
     const x = clamp(hit.x * w, Math.min(w * .18, 68), w - Math.min(w * .18, 68));
-    // 同一批击杀会同时出现，按顺序错开 22px，避免三个数字糊成一团
-    const stagger = (i % 3) * 22;
-    const y = hit.y * h - (reduced ? 54 : 54 + age * .028) - lane * 3 - stagger;
+    // 标签只在所属靶具正上方小范围浮动，避免跨列/跨排遮住材料细节。
+    const y = hit.y * h - (reduced ? 47 : 47 + age * .023) - lane * 2;
     const color = hit.quality === 'PERFECT' ? '#8C6D14' : hit.objective ? '#195B65' : '#17344B';
     ctx.globalAlpha = 1 - p * p;
-    ctx.font = `800 ${clamp(w * .052, 16, 22)}px system-ui, sans-serif`;
+    ctx.font = hit.complete
+      ? `800 ${clamp(w * .048, 16, 19)}px system-ui, sans-serif`
+      : `750 ${clamp(w * .034, 12, 14)}px system-ui, sans-serif`;
     /* ★ rework T07：按**接触结果类型**给不同主文案。
        改造前只有“切入/弹刃/补刀”三种词，无法区分
        “破甲成功”与“强度不足根本打不动”。 */
     const ev = hit.contactEvent;
     const mainText = hit.complete
       ? `+${Math.round(Number(hit.points) || 0)}`
-      : ev === 'armor' ? `破甲! ${Math.round((hit.progress || 0) * 100)}%`
-      : ev === 'blocked' ? `强度不足 ${Math.round((hit.progress || 0) * 100)}%`
-      : ev === 'deflect' ? `弹刀 ${Math.round((hit.progress || 0) * 100)}%`
+      : ev === 'armor' ? `破甲 ${Math.round((hit.progress || 0) * 100)}%`
+      : ev === 'blocked' ? `受阻 ${Math.round((hit.progress || 0) * 100)}%`
+      : ev === 'deflect' ? `弹刃 ${Math.round((hit.progress || 0) * 100)}%`
       : `${hit.followup ? '补刀' : '切入'} ${Math.round((hit.progress || 0) * 100)}%`;
     ctx.fillStyle = color;
-    ctx.fillText(mainText, x, y);
-    ctx.font = `650 ${clamp(w * .029, 10, 13)}px system-ui, sans-serif`;
+    ctx.fillText(mainText, x, y, w * .28);
+    ctx.font = `650 ${clamp(w * .026, 9, 11)}px system-ui, sans-serif`;
     let detail = QUALITY_NAMES[hit.quality] || '';
     if (hit.complete && hit.combo > 1) detail += `${detail ? ' · ' : ''}连斩 ×${hit.combo}`;
     if (hit.objective) detail += `${detail ? ' · ' : ''}目标 +${hit.objective}`;
     /* 未击破时：先按接触类型说清楚“为什么没切开”，再给方向提示 */
     else if (!hit.complete) {
-      if (ev === 'armor') detail = `护甲已破 · 继续切`;
-      else if (ev === 'blocked') detail = `护甲还在 · 换更硬的刀或加攻略`;
-      else if (ev === 'deflect') detail = `角度偏了 · 刀身反感伤`;
+      if (ev === 'armor') detail = `已破甲 · 补刀`;
+      else if (ev === 'blocked') detail = `未破甲 · 调整刀路`;
+      else if (ev === 'deflect') detail = `角度偏离 · 注意刀损`;
       else detail = `沿刀痕继续切`;
       detail += ` ${directionHint(hit.angle)}`;
     }
-    if (detail) { ctx.fillStyle = 'rgba(56,84,105,.92)'; ctx.fillText(detail, x, y + 18); }
+    if (detail) { ctx.fillStyle = 'rgba(56,84,105,.92)'; ctx.fillText(detail, x, y + 15, w * .31); }
   }
   ctx.globalAlpha = 1;
   for (let i = 0; i < missed.length; i++) {
