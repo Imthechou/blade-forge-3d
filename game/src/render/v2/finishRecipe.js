@@ -549,24 +549,30 @@ export function refineS5BaseFinish(out, cardId, tier = 0) {
   if (!out?.chosen || !family || S5_EFFECTS[family]) return out;
   const q = Math.max(0, Math.min(1, (Number(tier) || 0) / 5));
   switch (family) {
-    case 'steelMirror': // neutral specular polish
-      out.a = [0.60 + 0.16 * q, 0.70 - 0.18 * q, 0, 0]; out.b[0] = 0;
-      out.b[2] = 0; out.c[1] = 0; break;
-    case 'coolQuench': // cool steel, not neon blue
-      out.a = [0.52 + 0.08 * q, 0.88 - 0.10 * q, 0.02, 0.02]; out.b[0] = Math.min(0.11, out.b[0]); break;
-    case 'matteSteel':
-      out.a = [0.66, 1.0, 0.27 - 0.06 * q, 0.04]; out.d[2] = 0; break;
-    case 'forgeFlow':
-      out.a = [0.58, 0.99 - 0.08 * q, 0.09, 0.01]; out.d[2] = Math.min(0.11,out.d[2]); break;
-    case 'saltBath':
-      out.a = [0.60, 0.82 - 0.12 * q, 0.04, 0]; out.b[0] = Math.min(0.09,out.b[0]); break;
+    case 'steelMirror': // neutral silver: narrow but softly bounded highlights
+      out.a = [0.82 + 0.09 * q, 0.38 - 0.12 * q, 0, 0];
+      out.b[0] = 0; out.b[2] = 0; out.d[2] = 0; out.c[1] = 0; break;
+    case 'coolQuench': // blue-gray metal, not saturated blue enamel
+      out.a = [0.72 + 0.07 * q, 0.72 - 0.13 * q, 0.02, 0.025];
+      out.b[0] = 0.16; out.tint = '#8497a8'; out.d[2] = 0; out.b[2] = 0; break;
+    case 'matteSteel': // clear contrast to mirror while retaining steel color
+      out.a = [0.87, 1.0, 0.39 - 0.08 * q, 0.08];
+      out.b[0] = 0; out.b[2] = 0; out.d[2] = 0; break;
+    case 'forgeFlow': // roughness follows existing S3 forged grain
+      out.a = [0.70, 0.94 - 0.11 * q, 0.15, 0.04];
+      out.b[0] = 0.06; out.tint='#9ca4aa'; out.d[2] = 0; break;
+    case 'saltBath': // controlled, clean steel; never the unrelated purple F07 ramp
+      out.a = [0.73, 0.67 - 0.10 * q, 0.03, 0];
+      out.b[0] = 0.10; out.tint='#b8b6ad'; out.b[2] = 0;
+      out.d[2] = 0; out.mode = 0; out.palette = null; break;
     case 'blackOxide':
       out.a = [0.72, 1.0, 0.11, 0.37 - 0.06 * q]; out.d[2] = 0; break;
     case 'silkTint':
       out.a = [0.60, 0.85 - 0.12 * q, 0.03, 0]; out.b[0] = Math.min(0.22,out.b[0]);
       out.b[2] = Math.min(0.11,out.b[2]); break;
     case 'gunMetal':
-      out.a = [0.70, 0.91 - 0.12 * q, 0.04, 0.18]; out.b[0] = Math.min(0.09,out.b[0]); break;
+      out.a = [0.74, 0.80 - 0.10 * q, 0.06, 0.23];
+      out.b[0] = 0.11; out.tint='#808d99'; out.d[2] = 0; break;
   }
   // Global finish-energy budget: a low rarity card never produces glow to
   // compensate for roughness and texture detail.
