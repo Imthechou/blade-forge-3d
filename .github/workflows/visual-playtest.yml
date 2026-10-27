@@ -1,0 +1,36 @@
+name: Real Chrome visual playtest
+on:
+  push:
+    branches: [test/real-browser-screenshots-20261027]
+    paths: ['.github/workflows/visual-playtest.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  playtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Playwright automation
+        working-directory: game
+        run: npm install --no-save --package-lock=false playwright
+      - name: Launch local server as fallback
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > server.log 2>&1 &
+          sleep 2
+      - name: Real Google Chrome mobile and desktop playthrough
+        working-directory: game
+        run: node tools/visual-playtest.mjs
+      - name: Upload actual browser screenshots and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blade-forge-visual-playtest
+          path: |
+            game/visual-test-results/
+            server.log
+          retention-days: 7
