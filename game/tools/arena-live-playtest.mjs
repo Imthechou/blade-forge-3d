@@ -340,6 +340,7 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
       difficulty:1,armorLeft:core.MATERIALS[type].armor*.6,createdAt:r.elapsed,
     }));
     r.nextWaveAt=Number.MAX_SAFE_INTEGER;
+    r.nextSpawnAt=Number.MAX_SAFE_INTEGER;
     // 美术验收用隔离舞台：避免8秒时的路线选择删除测试摆放的靶具。
     r.phase='finale';r.finale={id:'safe',name:'美术验收',bonus:1};r.elapsed=30.1;r.total=120;r.remaining=89.9;r.targetLife=90;
     return {motion:(await import('/src/platform/motion.js')).mode(),
