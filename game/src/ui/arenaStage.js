@@ -9,7 +9,7 @@ const BURST_LIFE = 560;
 const DEBRIS_LIFE = 720;
 const MAX_COUNTS = { trail: 64, hitLabels: 14, bursts: 20, debris: 12 };
 const MATERIAL_NAMES = {
-  rope: '绳束', foam: '泡棉', wood: '木桩', plastic: '塑板', ice: '冰块', metal: '金属',
+  rope: '绳束', foam: '泡棉', wood: '木桩', plastic: '塑板', ice: '冰块', metal: '金属块',
 };
 const QUALITY_NAMES = { PERFECT: '完美', CLEAN: '利落', ANGLE: '弹刃', MISS: '未命中' };
 const backdropCaches = new WeakMap();
@@ -518,22 +518,42 @@ function drawMaterial(ctx, t, data, x, y, width, height, top, unit) {
     ctx.beginPath();ctx.moveTo(left+width*.08,top+height*.48);ctx.lineTo(left+width*.1,top+height*.08);
     ctx.lineTo(left+width*.51,top+height*.05);ctx.stroke();
   } else if(type==='metal') {
-    // 空心铝合金管：高光柱面 + 黑色空心管口 + 内壁厚度，必须一眼看出它是管不是钢板。
-    const g=ctx.createLinearGradient(left,0,left+width,0);
-    g.addColorStop(0,'#526673');g.addColorStop(.16,'#D1E0E8');g.addColorStop(.39,'#F4F8FA');
-    g.addColorStop(.60,'#A5BAC8');g.addColorStop(.84,'#DCE7EF');g.addColorStop(1,'#485D6B');
-    ctx.fillStyle=g;roundedRect(ctx,left+width*.07,top+height*.035,width*.86,height*.92,width*.39);ctx.fill();
-    ctx.save();roundedRect(ctx,left+width*.07,top+height*.035,width*.86,height*.92,width*.39);ctx.clip();
-    drawMetalLayers(ctx,x,y,width,height,unit,t.layer||0);
-    ctx.strokeStyle='rgba(255,255,255,.50)';ctx.lineWidth=Math.max(1,unit*.035);
-    ctx.beginPath();ctx.moveTo(left+width*.30,top+height*.17);ctx.lineTo(left+width*.3,top+height*.87);ctx.stroke();
+    // Downgrade-only Canvas backup matches the new SOLID steel block silhouette.
+    // Never draw a pipe opening or hollow wall if the WebP atlas is unavailable.
+    const front=[x-width*.18,top+height*.2,x+width*.48,top+height*.09,
+      x+width*.48,top+height*.87,x-width*.18,top+height];
+    const face=ctx.createLinearGradient(left,top,left+width,top+height);
+    face.addColorStop(0,'#8c9eae');face.addColorStop(.35,'#e3eff5');
+    face.addColorStop(.63,'#8b9da9');face.addColorStop(1,'#4e6577');
+    ctx.fillStyle='#53697c';
+    ctx.beginPath();ctx.moveTo(left,top+height*.15);
+    ctx.lineTo(x-width*.18,top+height*.2);ctx.lineTo(x-width*.18,top+height);
+    ctx.lineTo(left,top+height*.83);ctx.closePath();ctx.fill();
+    ctx.fillStyle=face;
+    ctx.beginPath();ctx.moveTo(x-width*.18,top+height*.2);
+    ctx.lineTo(x+width*.48,top+height*.09);
+    ctx.lineTo(x+width*.48,top+height*.87);
+    ctx.lineTo(x-width*.18,top+height);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#d5e2eb';
+    ctx.beginPath();ctx.moveTo(left,top+height*.15);
+    ctx.lineTo(x+width*.17,top+height*.03);
+    ctx.lineTo(x+width*.48,top+height*.09);
+    ctx.lineTo(x-width*.18,top+height*.2);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(248,253,255,.82)';ctx.lineWidth=Math.max(1.0,unit*.025);
+    ctx.beginPath();ctx.moveTo(x-width*.18,top+height*.2);
+    ctx.lineTo(x+width*.48,top+height*.09);
+    ctx.lineTo(x+width*.48,top+height*.87);ctx.stroke();
+    // Fine directional brushed steel grain with no hollow opening.
+    ctx.save();ctx.beginPath();ctx.moveTo(x-width*.18,top+height*.2);
+    ctx.lineTo(x+width*.48,top+height*.09);ctx.lineTo(x+width*.48,top+height*.87);
+    ctx.lineTo(x-width*.18,top+height);ctx.closePath();ctx.clip();
+    for(let n=0;n<18;n++){
+      const yy=top+height*(.17+n*.041);
+      ctx.strokeStyle=n%3?'rgba(25,44,66,.07)':'rgba(247,253,255,.28)';
+      ctx.lineWidth=.65;ctx.beginPath();ctx.moveTo(left,yy+height*.11);
+      ctx.lineTo(x+width*.54,yy);ctx.stroke();
+    }
     ctx.restore();
-    ctx.fillStyle='#647783';ctx.beginPath();ctx.ellipse(x,top+height*.067,width*.428,height*.085,0,0,TAU);ctx.fill();
-    ctx.fillStyle='#1A303D';ctx.beginPath();ctx.ellipse(x,top+height*.073,width*.295,height*.055,0,0,TAU);ctx.fill();
-    ctx.strokeStyle='#F0F8FC';ctx.lineWidth=Math.max(1,unit*.027);
-    ctx.beginPath();ctx.ellipse(x,top+height*.067,width*.42,height*.08,0,0,TAU);ctx.stroke();
-    ctx.strokeStyle='rgba(42,59,76,.58)';ctx.lineWidth=Math.max(1,unit*.018);
-    ctx.beginPath();ctx.ellipse(x,top+height*.916,width*.42,height*.062,0,0,TAU);ctx.stroke();
   }
   ctx.restore();
 }
