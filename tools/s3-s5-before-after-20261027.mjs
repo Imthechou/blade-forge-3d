@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import pngjs from 'pngjs';
+const { PNG } = pngjs;
 
 const out=path.resolve('s3-s5-review');
 await fs.mkdir(out,{recursive:true});
@@ -15,7 +17,7 @@ for(const [name,url] of [['before','https://imthechou.github.io/blade-forge-3d/'
   const run={name,url,preview:[],errors:[],snapshots:[],startupMs:null};
   report.runs.push(run);
   page.on('pageerror',e=>run.errors.push('pageerror '+String(e).slice(0,1000)));
-  page.on('console',m=>{if(m.type()==='error')run.errors.push('console '+m.text().slice(0,1000));});
+  page.on('console',m=>{if(m.type()==='error'||/Shader Error|VALIDATE_STATUS|undeclared identifier|glsl/i.test(m.text()))run.errors.push('console '+m.text().slice(0,1000));});
   page.on('response',r=>{if(r.status()>=400)run.errors.push('HTTP '+r.status()+' '+r.url());});
   const t0=Date.now();
   await page.goto(url,{waitUntil:'domcontentloaded',timeout:50000});
@@ -48,8 +50,20 @@ for(const [name,url] of [['before','https://imthechou.github.io/blade-forge-3d/'
   });
   const shot=async(tag)=>{
     const fn=name+'-'+tag+'.png';
-    await page.screenshot({path:path.join(out,fn),animations:'disabled',timeout:30000});
+    const pngBuffer=await page.screenshot({path:path.join(out,fn),animations:'disabled',timeout:30000});
+    // Hard visual gate: WebGL shaders can fail silently without any JS error.
+    // Screenshot geometry detection is intentionally independent of the DOM.
+    const pixels=PNG.sync.read(pngBuffer);
+    let modelPixels=0;
+    for(let y=145;y<Math.min(400,pixels.height);y++)
+      for(let x=120;x<Math.min(270,pixels.width);x++){
+        const k=(y*pixels.width+x)*4;
+        if(pixels.data[k]<175 && pixels.data[k+1]<175 && pixels.data[k+2]<175)
+          modelPixels++;
+      }
+    if(modelPixels<2400)throw new Error(name+' '+tag+' missing visible 3D model ('+modelPixels+' dark pixels)');
     const state=await get();
+    state.modelPixels=modelPixels;
     run.snapshots.push({filename:fn,...state});
     console.log('CAPTURE',name,tag,JSON.stringify(state).slice(0,600));
   };
