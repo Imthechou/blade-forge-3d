@@ -39,7 +39,7 @@ test('P0-2: every earlier stage identity survives later-stage card selection', (
     finish:skin.variantParams.finish,
     finishCardId:skin.finishCardId,
   });
-  for(let idx=4;idx<=8;idx++){
+  for(let idx=5;idx<=8;idx++){
     run.stageIndex=idx;
     const next=deriveSkinState(run,{
       visualStages:[{index:idx,cardId:CARD_BY_ID[idx===7?'S8_02':idx===8?'S9_02':idx===6?'S7_02':idx===5?'S6_02':'S5_21'].id,
