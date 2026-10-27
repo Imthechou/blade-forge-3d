@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: arena-browser-pr
+  group: arena-browser-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
