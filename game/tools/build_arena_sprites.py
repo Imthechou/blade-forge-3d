@@ -218,6 +218,20 @@ def split(im, side, mat):
         d= -1 if side=='top' else 1
         lip.line((x,y+d,x+3,sy(x+3)+d),fill=rgba(color(shade,.5 if mat!='metal' else .85),225),width=3)
         lip.line((x,y+d*4,x+3,sy(x+3)+d*4),fill=rgba(color(shade,-.35),80),width=2)
+        # Distinct cross section instead of a universal white slash line.
+        if mat=='metal':
+            lip.line((x,y+d*2,x+3,sy(x+3)+d*2),fill=(224,236,245,230),width=4)
+            lip.line((x,y+d*6,x+3,sy(x+3)+d*6),fill=(57,73,89,115),width=2)
+            if x%15<3:
+                lip.line((x,y+d,x+2,y+d*7),fill=(249,254,255,205),width=1)
+        elif mat=='wood' and x%12<3:
+            lip.line((x,y,x+2,y+d*9),fill=(210,162,112,210),width=2)
+        elif mat=='rope' and x%9<3:
+            lip.line((x,y,x+2,y+d*11),fill=(244,214,153,205),width=2)
+        elif mat=='ice' and x%15<3:
+            lip.line((x,y,x+4,y+d*8),fill=(235,255,255,215),width=2)
+        elif mat=='plastic' and x%18<3:
+            lip.line((x,y,x+5,y+d*4),fill=(227,249,252,210),width=2)
     return cut
 
 def chips(mat):
