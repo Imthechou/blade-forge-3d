@@ -467,9 +467,9 @@ class Viewer {
         const gl = this.renderer?.getContext?.();
         const gl2 = !!(global.WebGL2RenderingContext && gl instanceof global.WebGL2RenderingContext);
         const floatLinear = !!gl?.getExtension?.('OES_texture_float_linear');
-        el.textContent = 'Env: ' + mode + (nextEnv ? '  OK' : '  FAILED') + '\\n'
+        el.textContent = 'Env: ' + mode + (nextEnv ? '  OK' : '  FAILED') + '\n'
           + 'WebGL2: ' + gl2 + ' · float-linear: ' + floatLinear
-          + (cause ? '\\n' + cause.slice(0,100) : '');
+          + (cause ? '\n' + cause.slice(0,100) : '');
       }
     } catch (_) { /* diagnostics never break game rendering */ }
   }
