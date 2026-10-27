@@ -1,7 +1,7 @@
 name: iOS Studio Environment Compatibility
 on:
-  push:
-    branches: [fix/ios-studio-env-half-float-20261027]
+  pull_request:
+    branches: [main]
     paths:
       - 'game/src/render/legacy/viewer.js'
       - 'game/src/render/v2/studioEnv.js'
