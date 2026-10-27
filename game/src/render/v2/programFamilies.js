@@ -852,7 +852,7 @@ const MAP_FRAGMENT = `
        on the SAME S3 map and seed; no new texture or shader family. */
     if ( uS3On > 0.5 && uV2Preserve < 0.5 ) {
       float forgeEngrave = clamp( sig, -0.90, 0.90 ) * s3Surface * clamp( wB, 0.0, 1.0 );
-      col *= 1.0 + forgeEngrave * 0.12;
+      col *= 1.0 + forgeEngrave * 0.08;
     }
     /* ⑦ 身份预算：保留金属底色、避免涂层洗掉旧锻纹 */
     col = mix( col, identityCol, uV2Coat > 0.001 ? 0.12 : 0.24 );
