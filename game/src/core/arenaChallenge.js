@@ -81,7 +81,7 @@ function random(run) {
  * mode='quick'   ：45 秒、三靶一波、绝不掉刀（训练场，行为与改造前一致）
  * mode='formal'  ：35 秒、连续投放、可能断刀（赛事用；buff 与幽灵分由 arenaSlice 传入）
  */
-export function createChallenge(blade, { seed = null, daily = false, mode = 'quick', buffs = [], ghost = null, winStreak = 1, matchId = null } = {}) {
+export function createChallenge(blade, { seed = null, daily = false, mode = 'quick', buffs = [], ghost = null, winStreak = 1, matchId = null, seconds = null } = {}) {
   if (!blade || blade.fractured || blade.canEnterArena === false) return { ok: false, reason: '只能使用完整成刀参加挑战' };
   if (!['quick', 'formal'].includes(mode)) return { ok: false, reason: '未知测试模式' };
   /* ★ rework T01：不再 `clamp(blade.stats, 0, 100)`。
@@ -103,7 +103,8 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
   };
   // 训练场保持原口径：刀况 100、不吃 buff（避免"剩余刀况 129%"这种数）
   if (mode !== 'formal') { params.healthMax = 100; params.scoreMult = 1; params.intervalMult = 1; }
-  const total = mode === 'formal' ? 35 : CHALLENGE_SECONDS;
+  const total = seconds == null ? (mode === 'formal' ? 35 : CHALLENGE_SECONDS)
+    : clamp(Number(seconds) || CHALLENGE_SECONDS, 5, CHALLENGE_SECONDS);
   const run = {
     id: `C-${actualSeed.toString(36)}-${Date.now().toString(36)}`, seed: actualSeed, daily: !!daily, mode,
     blade: {
@@ -145,7 +146,7 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
 export function restartChallenge(run) {
   if (!run || run.done || run.fractured) return { ok: false, reason: '已结束的测试不能重开' };
   const created = createChallenge(run.blade, { seed: run.seed, daily: run.daily, mode: run.mode || 'quick',
-    buffs: run.buffs || [], ghost: run.ghost ?? null, winStreak: run.winStreak ?? 1, matchId: run.matchId ?? null });
+    buffs: run.buffs || [], ghost: run.ghost ?? null, winStreak: run.winStreak ?? 1, matchId: run.matchId ?? null, seconds: run.total });
   if (created.ok && run.mode === 'formal') {
     Object.assign(created.run, { health: run.health, damage: run.damage,
       fractureChecks: run.fractureChecks, risk: copy(run.risk),
@@ -285,7 +286,7 @@ export function tick(run, seconds) {
   if (!run || run.done || run.paused || run.phase.endsWith('-choice')) return run;
   const dt = clamp(Number(seconds) || 0, 0, .25);
   const total = run.total || CHALLENGE_SECONDS;
-  const beats = run.mode === 'formal' ? FORMAL_BEATS : QUICK_BEATS;
+  const beats = run.mode === 'formal' && total < CHALLENGE_SECONDS ? FORMAL_BEATS : QUICK_BEATS;
   const stream = run.spawnMode === 'stream';
   run.elapsed += dt; run.remaining = Math.max(0, total - run.elapsed);
 
