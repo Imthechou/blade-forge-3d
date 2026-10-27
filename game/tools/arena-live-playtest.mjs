@@ -421,7 +421,22 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
     cutProof.push({type:t.type,attempts,split:true});
   }
   console.log('SIX_MATERIAL_FULL_BREAKS',JSON.stringify(cutProof));
-  return {spriteState,before,snapshots,cutProof};
+  // Canvas regression: finished spawn quotas must not print the numerical
+  // MAX_SAFE_INTEGER sentinel as a giant 'next wave' countdown.
+  const badCountdown=await page.evaluate(async()=>{
+    const canvas=document.querySelector('.page.is-active .quick-canvas');
+    const ctx=canvas.getContext('2d'),original=ctx.fillText,bad=[];
+    ctx.fillText=function(content,...args){
+      if (/^\\d{7,}(?:\\.\\d+)?$/.test(String(content)))bad.push(String(content));
+      return original.call(this,content,...args);
+    };
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+    ctx.fillText=original;
+    return bad;
+  });
+  assert.deepEqual(badCountdown,[],'空靶阶段绘制了巨大哨兵计时数字');
+  return {spriteState,before,snapshots,cutProof,badCountdown};
 });
 // A previous design requirement: player may voluntarily end a quick challenge
 // and inspect partial stats without repeatedly farming CR or daily completion.
