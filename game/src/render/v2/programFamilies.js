@@ -663,7 +663,11 @@ const MAP_FRAGMENT = `
     vec3 pat = ( uS3On > 0.5 ) ? k3dS3Sample( vS3Local ) : vec3( 0.5, 0.0, 0.5 );
     float p = clamp( pat.x, 0.0, 1.0 );
     float texC = clamp( uTexParam1.y, 0.0, 1.0 );
-    float s3Surface = ( uS3On > 0.5 ) ? k3dS3SurfaceMask( wB ) : 1.0;
+    /* Forge steel owns Blade + Guard + Grip before S8. At S8 only Grip is
+       replaced; the previously forged Guard remains the same steel. */
+    float s3Surface = ( uS3On > 0.5 )
+       ? mix( k3dS3SurfaceMask( wB ), 0.54,
+              clamp( wG + wH * uSkinCoverAll, 0.0, 1.0 ) ) : 1.0;
     k3dPatX = p; k3dS3Surf = s3Surface;
     float sig = clamp( pat.y * 1.1111, -1.0, 1.0 );
     /* S3 is a forged surface, not a color overlay. On a formed knife,
@@ -695,7 +699,7 @@ const MAP_FRAGMENT = `
     float tAxisUse = ( uV2FadeMode > 0.5 || ( uV2Mode > 2.5 && uS5Tier > 1.5 ) )
                    ? L.x : vBladeT;
     k3dV2Finish( L, tAxisUse, pat, k3dFres,
-                 uV2FinA, uV2FinB, uV2FinC, uV2FinD, uV2FinTint, wB,
+                 uV2FinA, uV2FinB, uV2FinC, uV2FinD, uV2FinTint, wS,
                  col, rough, glow );
 
     /* ★★ 2026-10-23（对齐 10.12 / v1.0，用户要求）
@@ -986,7 +990,11 @@ const ROUGHNESS_FRAGMENT = `
   float wS = k3dSkinW( wB, wG, wH );
   if ( wS > 0.002 ) {
     vec3 pat = ( uS3On > 0.5 ) ? k3dS3Sample( vS3Local ) : vec3( 0.5, 0.0, 0.5 );
-    float s3Surface = ( uS3On > 0.5 ) ? k3dS3SurfaceMask( wB ) : 1.0;
+    /* Forge steel owns Blade + Guard + Grip before S8. At S8 only Grip is
+       replaced; the previously forged Guard remains the same steel. */
+    float s3Surface = ( uS3On > 0.5 )
+       ? mix( k3dS3SurfaceMask( wB ), 0.54,
+              clamp( wG + wH * uSkinCoverAll, 0.0, 1.0 ) ) : 1.0;
     float bladeRough = clamp( uBladeRoughness
       + clamp( pat.y * 0.32, -0.14, 0.14 ) * s3Surface * ( uS3On > 0.5 ? 1.0 : 0.0 )
       + uWearRough * 0.45, 0.02, 1.0 );
