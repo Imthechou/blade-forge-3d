@@ -1,0 +1,76 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { S5_CARD_FAMILY, S5_VISUAL_FAMILY, resolveS5Effect, applyS5Effect,
+  refineS5BaseFinish, finishOperators, adaptS5PaletteToSubstrate } from '../src/render/v2/finishRecipe.js';
+import { CARD_BY_ID } from '../src/data/cards.js';
+const tiers={common:0,fine:1,rare:2,epic:3,legend:4,mythic:5};
+const seeds=[0.21,0.58,0.37,0.88];
+test('S5 has 25 original gameplay cards and exactly 13 visual families of 1-2 cards',()=>{
+  const counts={};
+  for(let n=1;n<=25;n++){
+    const id='S5_'+String(n).padStart(2,'0');
+    assert.ok(CARD_BY_ID[id],id);
+    assert.ok(S5_CARD_FAMILY[id],id);
+    counts[S5_VISUAL_FAMILY[id]]=(counts[S5_VISUAL_FAMILY[id]]||0)+1;
+  }
+  assert.equal(Object.keys(S5_CARD_FAMILY).length,25);
+  assert.equal(Object.keys(counts).length,13);
+  assert.ok(Object.values(counts).every(n=>n>=1&&n<=2),JSON.stringify(counts));
+});
+test('all cards retain predictable families; low tiers never get arbitrary premium hash rolls',()=>{
+  for(let n=1;n<=25;n++){
+    const id='S5_'+String(n).padStart(2,'0');
+    const card=CARD_BY_ID[id],tier=tiers[card.rarity];
+    const args={chosen:true,cardId:id,baseHex:'#778b9d',amount:.78};
+    const a=resolveS5Effect(10,tier,.34,seeds,args);
+    const b=resolveS5Effect(10,tier,.34,seeds,args);
+    assert.deepEqual(a,b,id);
+    if(tier<2)assert.equal(a,null,id);
+    if(a)assert.equal(a.key,S5_CARD_FAMILY[id],id);
+  }
+});
+test('S1 substrate meaningfully changes same selected S5 signature, without changing family',()=>{
+  for(const id of ['S5_14','S5_16','S5_19','S5_20','S5_21','S5_24']){
+    const args={chosen:true,cardId:id,amount:.75};
+    const dark=resolveS5Effect(10,5,.38,seeds,{...args,baseHex:'#263746'});
+    const light=resolveS5Effect(10,5,.38,seeds,{...args,baseHex:'#c3b294'});
+    assert.equal(dark.key,light.key);
+    const d=applyS5Effect(finishOperators(10,{amount:.7},{finishId:10}),dark,{});
+    const l=applyS5Effect(finishOperators(10,{amount:.7},{finishId:10}),light,{});
+    assert.notDeepEqual(d.palette,l.palette,id);
+    assert.ok(d.palette.every(c=>/^#[0-9a-f]{6}$/i.test(c)));
+  }
+});
+test('more rare S5 cards improve smoothness, NOT emitted radiance',()=>{
+  for(const id of ['S5_20','S5_21','S5_23']){
+    const opts={chosen:true,cardId:id,baseHex:'#6781a6'};
+    const low=resolveS5Effect(10,2,.2,seeds,opts);
+    const high=resolveS5Effect(10,5,.2,seeds,opts);
+    const p=applyS5Effect(finishOperators(10,{amount:.7},{finishId:10}),low,{});
+    const q=applyS5Effect(finishOperators(10,{amount:.7},{finishId:10}),high,{});
+    assert.ok(q.a[1]<=p.a[1],id);
+    assert.ok(q.cover<=0.95 && p.cover<=0.95);
+    assert.equal(q.c[3],0,id);
+  }
+});
+test('neutral mirror, matte and oxidized steel cannot repaint to gem/Marble',()=>{
+  for(const id of ['S5_25','S5_08','S5_17']){
+    const out=finishOperators(1,{amount:.75},{finishId:1});
+    const next=refineS5BaseFinish(out,id,0);
+    assert.equal(next.premiumLook,undefined);
+    assert.equal(next.d[2],0);
+    assert.equal(next.c[1],0);
+  }
+  assert.deepEqual(adaptS5PaletteToSubstrate(['#446688'],'not-a-color'),['#446688']);
+});
+test('S1-S6 full steel coverage, S8 grip gate and no additive late-stage film',()=>{
+  const shader=readFileSync(new URL('../src/render/v2/programFamilies.js',import.meta.url),'utf8');
+  const game=readFileSync(new URL('../src/app/game.js',import.meta.url),'utf8');
+  assert.ok(shader.includes('uV2FinTint, wS,'));
+  assert.ok(shader.includes('col *= filmGain;'));
+  assert.ok(!shader.includes('col += ( film - 0.5 ) * tW * 3.10'));
+  assert.ok(!shader.includes('col = col * ( 1.0 + 0.30'));
+  assert.ok(game.includes('if (idx < 7) return false;'));
+  assert.ok(game.includes('coverAll: !hGate'));
+});
