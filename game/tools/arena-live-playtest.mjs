@@ -35,7 +35,8 @@ function watch(page, label) {
 }
 async function snap(page, name) {
   const file = path.join(out, name + '.png');
-  await page.screenshot({ path: file, fullPage: false, animations: 'allow', timeout: 17000 }).catch(e => report.errors.push({ label: 'screenshot', error: String(e) }));
+  await page.screenshot({ path: file, fullPage: false, animations: 'allow', timeout: 5500 })
+    .catch(e => report.issues.push({ kind:'SCREENSHOT_TIMEOUT', file:name, error:String(e).slice(0,240) }));
 }
 async function newGame(label) {
   const context = await browser.newContext({
@@ -117,7 +118,6 @@ await scenario('quick-free-45s-real-pointer', async page => {
   await snap(page, '02-quick-entry');
   await body.getByRole('button', { name: '开始自由快赛' }).click();
   await body.locator('.quick-canvas').waitFor({ timeout: 10000 });
-  await snap(page, '03-quick-live-before-swipe');
   const before = await page.evaluate(() => {
     const run = window.__FORGE_ARENA?.run;
     return run && { phase: run.phase, score: run.score, kills: run.kills, targets: run.targets.map(t => ({type:t.type,x:t.x,y:t.y,progress:t.progress})) };
@@ -135,7 +135,6 @@ await scenario('quick-free-45s-real-pointer', async page => {
       targets:r.targets.map(t=>({type:t.type,progress:t.progress,alive:t.alive})) };
   });
   console.log('QUICK_SWIPES', JSON.stringify({before,after}));
-  await snap(page, '04-quick-live-after-swipe');
   assert.ok(after && (after.kills > before.kills || after.score > before.score || after.targets.some(t=>t.progress > 0)),
     '画布接收到实际滑切但没有命中、伤害或得分');
   // 真实经过完整45秒，不调用 core.tick 不改时间；选择浮层也通过真实按钮。
@@ -159,7 +158,7 @@ await scenario('quick-free-45s-real-pointer', async page => {
     const state = await page.evaluate(() => window.__FORGE_ARENA?.run?.phase);
     if (state !== phase) throw Error('未进入 ' + phase + '，实际为 ' + state);
     await body.locator('.quick-choice-overlay .quick-choice-card').first().click({ timeout: 8000 });
-    await snap(page, phase + '-selected');
+
   }
   await page.waitForFunction(() => document.querySelector('.page.is-active .arena-view-quick-report'),
     null, { timeout: 30000 });
@@ -174,53 +173,63 @@ await scenario('quick-free-45s-real-pointer', async page => {
 });
 await scenario('formal-school-cutting-real-pointer', async page => {
   const body = page.locator('.page[data-page="arena"].is-active');
-  await snap(page, '06-formal-setup');
   const edge = body.locator('.hub-branch').filter({ hasText: '锋刃' });
   assert.ok(await edge.count(), '未出现锋刃流派');
   await edge.click();
   await body.getByRole('button', { name: '开始挑战' }).click();
-  await body.locator('.formal-sweep-canvas').waitFor({ timeout: 12000 });
-  await snap(page, '07-formal-sweep-before');
-  const initial = await page.evaluate(async () => {
+  await body.locator('.quick-canvas').waitFor({ timeout: 12000 });
+  const before = await page.evaluate(async () => {
     const Game=(await import('/src/app/game.js')).default;
-    return {sequence:Game.formalTask()?.sequence,rule:Game.formalTask()?.rule,
-      definitionRules:Game.formalMatch?.definition?.rules};
-  });
-  console.log('FORMAL_GENERATED_TASK',JSON.stringify(initial));
-  const before = await body.locator('.formal-sweep-hud .cut-count').innerText();
-  if (!initial.sequence?.length) {
-    report.issues.push({kind:'FORMAL_ZERO_TARGETS',initial});
-    throw Error('正式赛事切割任务序列为空：项目类型与操作类型 rule.kind 匹配失败，自动结算0分');
-  }
-  // 正式切割是另一套实现，只画固定线段；模拟多次实际鼠标滑切。
-  for (let row=0; row<2; row++) {
-    const y=.30+row*.22;
-    for (let col=0; col<3; col++) {
-      const x=.18+col*.32;
-      await swipe(page, '.page.is-active .formal-sweep-canvas', x-.12,y,x+.12,y);
-    }
-  }
-  await page.waitForTimeout(350);
-  await snap(page, '08-formal-sweep-after');
-  const state = await page.evaluate(async () => {
-    const Game = (await import('/src/app/game.js')).default;
-    return {
-      counter: document.querySelector('.page.is-active .formal-sweep-hud .cut-count')?.innerText || null,
-      match: Game.formalMatch && { done:Game.formalMatch.done,
-        tests:Game.formalMatch.definition?.tests, index:Game.formalMatch.session?.index,
-        results:Game.formalMatch.session?.entries?.map(e=>({name:e.name,status:e.status})) },
-      arenaText: document.querySelector('.page.is-active .arena-body')?.innerText.slice(0,500),
+    const r=window.__FORGE_ARENA?.run;
+    return { task:Game.formalTask() && {kind:Game.formalTask().kind,
+      rule:Game.formalTask().rule, sequence:Game.formalTask().sequence},
+      stage:r&&{phase:r.phase,mode:r.mode,total:r.total,targets:r.targets?.map(t=>({x:t.x,y:t.y,type:t.type}))},
     };
   });
-  assert.ok(parseCounter(state.counter) > parseCounter(before)
-    || state.match?.session?.index > 0
-    || state.match?.results?.some(x=>x.status === 'complete'),
-    '正式切割手势无法完成任何命中');
-  // 一局正式测试的整场结束至少必须有 UI 出口，不靠篡改状态。
-  const abandon = body.getByRole('button', { name: '放弃剩余测试' });
-  if (await abandon.count()) await abandon.click();
-  await snap(page, '09-formal-after-abandon');
-  return { before, state };
+  console.log('FORMAL_INITIAL',JSON.stringify(before));
+  assert.equal(before.task?.kind,'cutting');
+  assert.equal(before.task.rule.kind,'sweep');
+  assert.ok(before.task.sequence?.length>=6,'正式赛空靶生成');
+  assert.equal(before.stage?.total,45,'正式赛没有复用完整45秒切割');
+  assert.equal(before.stage?.mode,'formal');
+  assert.ok(before.stage.targets.length>=3);
+  for (const t of before.stage.targets) {
+    await swipe(page, '.page.is-active .quick-canvas',Math.max(.01,t.x-.16),t.y,Math.min(.99,t.x+.16),t.y);
+  }
+  const after = await page.evaluate(() => {
+    const r=window.__FORGE_ARENA.run;
+    return {score:r.score,kills:r.kills,progress:r.targets.map(t=>t.progress),
+      temporaryDamage:r.damage};
+  });
+  assert.ok(after.score>0||after.progress.some(x=>x>0),
+    '正式赛虽然进入画布，但真实操作没有触发切割');
+  console.log('FORMAL_REAL_POINTER',JSON.stringify(after));
+  for (const phase of ['route-choice','finale-choice']) {
+    await page.waitForFunction(p=>window.__FORGE_ARENA?.run?.phase===p,
+      phase,{timeout:65000});
+    await body.locator('.quick-choice-overlay .quick-choice-card').first().click({timeout:12000});
+  }
+  await page.waitForFunction(async () => {
+    const Game=(await import('/src/app/game.js')).default;
+    return Game.formalMatch?.session?.index>0 || Game.formalMatch?.done;
+  },null,{timeout:70000});
+  const result=await page.evaluate(async()=>{
+    const Game=(await import('/src/app/game.js')).default;
+    return {index:Game.formalMatch.session.index,
+      entries:Game.formalMatch.session.entries.map(e=>({kind:e.kind,status:e.status,result:e.result&&{
+        score:e.result.score,measure:e.result.raw.measure,detail:e.result.detail
+      }})),
+      text:document.querySelector('.page.is-active .arena-body')?.innerText.slice(0,500)};
+  });
+  assert.equal(result.entries[0].status,'complete','正式赛切割未推进至下项');
+  assert.ok(result.entries[0].result.measure>0,'真实切割后操作质量仍是0');
+  await snap(page,'09-formal-next-project');
+  // 真实点击放弃剩余项，检查完整赛后结算而非无意义的0/0自动结束。
+  const abandon=body.getByRole('button',{name:'放弃剩余测试'});
+  if(await abandon.count()) await abandon.click();
+  await body.locator('.arena-view-quick-report').waitFor({timeout:12000});
+  await snap(page,'10-formal-settlement');
+  return {before,after,result};
 });
 report.summary = {
   passed: report.cases.filter(x=>x.status==='PASS').length,
