@@ -338,7 +338,7 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
     }));
     r.nextWaveAt=Number.MAX_SAFE_INTEGER;
     // 美术验收用隔离舞台：避免8秒时的路线选择删除测试摆放的靶具。
-    r.phase='route';r.route={id:'soft',name:'美术验收',bonus:1};r.elapsed=9;r.remaining=36;
+    r.phase='finale';r.finale={id:'safe',name:'美术验收',bonus:1};r.elapsed=30.1;r.remaining=14.9;
     return {names:r.targets.map(t=>core.MATERIALS[t.type].name),
       types:r.targets.map(t=>t.type), targets:r.targets.map(t=>({x:t.x,y:t.y,type:t.type}))};
   });
@@ -347,8 +347,12 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
   const snapshots=[];
   for(const t of before.targets) {
       const {x,y}=t;
-      await swipe(page,'.page.is-active .quick-canvas',
-        Math.max(.01,x-.16),y,Math.min(.99,x+.16),y);
+      const bb=await page.locator('.page.is-active .quick-canvas').boundingBox();
+      assert.ok(bb);
+      await page.mouse.move(bb.x+bb.width*Math.max(.01,x-.16),bb.y+bb.height*y);
+      await page.mouse.down();
+      // 一帧完整横切，立即读取尚未被560ms清理器回收的实际冲击事件。
+      await page.mouse.move(bb.x+bb.width*Math.min(.99,x+.16),bb.y+bb.height*y,{steps:1});
       const outcome=await page.evaluate(type=>{
         const r=window.__FORGE_ARENA.run;
         const e=window.__FORGE_ARENA.effects;
@@ -359,7 +363,9 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
           }))};
       },t.type);
       snapshots.push(outcome);
+      await page.mouse.up();
   }
+  console.log('SIX_MATERIAL_IMPACTS',JSON.stringify(snapshots));
   await snap(page,'12-six-material-slicing-feedback');
   assert.equal(before.types.length,6);
   assert.ok(snapshots.every(x=>x.contacts.length>0),'部分材质没有命中特效');
