@@ -54,6 +54,18 @@ jobs:
       - name: Play all live arena entries and six-material visual gallery
         working-directory: game
         run: node tools/arena-live-playtest.mjs
+      - name: Package reviewable game with generated sprites
+        if: always()
+        run: |
+          zip -q -r arena-sprite-review-build.zip game \
+            -x 'game/node_modules/*' 'game/arena-playtest/*' 'game/.cache/*'
+          ls -lh arena-sprite-review-build.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blade-forge-arena-sprite-review-build
+          path: arena-sprite-review-build.zip
+          retention-days: 14
       - name: Upload screenshots, run report and server logs even if test fails
         if: always()
         uses: actions/upload-artifact@v4
