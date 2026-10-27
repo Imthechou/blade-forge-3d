@@ -19,9 +19,11 @@ async function capture(label,url,viewport,check) {
   page.on('response',resp=>{if(resp.status()>=400) report.failedRequests.push({label,status:resp.status(),url:resp.url()});});
   await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
   await page.waitForFunction(()=>window.__FORGE_PREP?.ready && document.querySelector('#boot.is-gone'),null,{timeout:100000});
+  // The guide is scheduled after first paint: wait for that async overlay before clicking.
+  await page.waitForTimeout(900);
   // Fresh profiles open an onboarding sheet; dismiss it through the real UI first.
   for(let i=0;i<3;i++) {
-    const close=page.getByRole('button',{name:'关闭',exact:true});
+    const close=page.locator('.sheet-mask .sheet-x');
     if(await close.count() && await close.first().isVisible()) {
       await close.first().click({timeout:5000});
       await page.waitForTimeout(250);
