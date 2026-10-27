@@ -7,7 +7,7 @@
 export const TYPES=Object.freeze(['foam','rope','wood','plastic','ice','metal']);
 export const STATES=Object.freeze(['whole','top','bottom','chips','flash']);
 export const CELL=256;
-const url=new URL('../assets/arena/targets.webp',import.meta.url).href;
+const url=new URL('../../assets/arena/targets.webp',import.meta.url).href;
 let image=null;
 let status='idle';
 let error=null;
