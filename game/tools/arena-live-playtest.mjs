@@ -337,17 +337,16 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
       difficulty:1,armorLeft:core.MATERIALS[type].armor*.6,createdAt:r.elapsed,
     }));
     r.nextWaveAt=Number.MAX_SAFE_INTEGER;
-    return {names:r.targets.map(t=>core.MATERIALS[t.type].name),types:r.targets.map(t=>t.type)};
+    // 美术验收用隔离舞台：避免8秒时的路线选择删除测试摆放的靶具。
+    r.phase='route';r.route={id:'soft',name:'美术验收',bonus:1};r.elapsed=9;r.remaining=36;
+    return {names:r.targets.map(t=>core.MATERIALS[t.type].name),
+      types:r.targets.map(t=>t.type), targets:r.targets.map(t=>({x:t.x,y:t.y,type:t.type}))};
   });
   await page.waitForTimeout(180);
   await snap(page,'11-six-material-design-gallery');
   const snapshots=[];
-  for(const y of [.34,.58]) {
-    for(const x of [.19,.50,.81]) {
-      const t=await page.evaluate(([x,y])=>{
-        const r=window.__FORGE_ARENA.run;
-        return r.targets.find(t=>Math.abs(t.x-x)<.001&&Math.abs(t.y-y)<.001);
-      },[x,y]);
+  for(const t of before.targets) {
+      const {x,y}=t;
       await swipe(page,'.page.is-active .quick-canvas',
         Math.max(.01,x-.16),y,Math.min(.99,x+.16),y);
       const outcome=await page.evaluate(type=>{
@@ -360,7 +359,6 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
           }))};
       },t.type);
       snapshots.push(outcome);
-    }
   }
   await snap(page,'12-six-material-slicing-feedback');
   assert.equal(before.types.length,6);
