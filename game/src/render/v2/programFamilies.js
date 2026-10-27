@@ -28,7 +28,7 @@
  *   柄   → 仍按 kind 特化（S8 一局只用一种柄；不在本次 P1 的换卡热路径上）
  */
 import { extractFunctions, extractFunction, specializeStageChain } from './glslSlices.js';
-import { finishOperators, resolveS5Effect, applyS5Effect, refineS5BaseFinish, S5_EFFECTS } from './finishRecipe.js';
+import { finishOperators, resolveS5Effect, applyS5Effect, refineS5BaseFinish, s5CardArt, S5_EFFECTS } from './finishRecipe.js';
 import { buildNormalFragment, surfaceParamsOf } from './surfaceDetail.js';
 import { getSurfaceAtlas, tileRectOf, STAGE_SURFACE_KIND } from './normalAtlas.js';
 
@@ -40,7 +40,7 @@ let sourceCache = null;
    版本号进 three 的 program cache key（customProgramCacheKey），源码变了必须跟着变，
    否则同会话里可能命中上一版的 program。 */
 /* v5：补回 temper / tune / edgeGlow 三个叠加层（见下方调用点注释），改源码必须 bump */
-export const FAMILY_VERSION = 'bladeV2:57';
+export const FAMILY_VERSION = 'bladeV2:58';
 
 /** 刀身上真正会用到阶段效果函数的阶段（S8 只作用于柄，不在其中）。 */
 export const STAGE_FX = [1, 2, 3, 4, 5, 6, 7, 9];
@@ -114,6 +114,7 @@ uniform vec4  uV2FinD;      // axialMix, rampBias, rampAmt, coat
 uniform vec3  uV2FinTint;
 uniform float uV2Mode;      // baseline operator family
 uniform float uV2Look;      // 0 baseline; 1 Doppler; 2 hardened; 3 Fade; 4 Marble; 5 Gem
+uniform vec4 uV2Art;        // x S5 card ID, y effect fidelity, z freq, w direction
 uniform float uV2Micro;     // 微粗糙度幅度（S5 品质轴，0 = 关闭）
 uniform float uV2Cover;
 uniform float uCardTier;   /* 仅当前 UI 卡：不允许回写已确认阶段 */
@@ -511,6 +512,112 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
                         + abs( pat.y ) * ( 0.040 - 0.021 * qFinish ),
                         0.07, 0.58 ),
                  clamp( amount * 0.76, 0.0, 0.86 ) );
+  }
+
+
+  /* Each S5 card owns a spatially meaningful detail signature.
+     Low-tier metals were almost identical in actual Chrome screenshots:
+     roughness-only variants have no recognizable directional structure.
+     All effects use the existing forge coordinates, PBR channels and S1
+     substrate. No new textures, emitted light or per-card GLSL programs.
+     Material roughness and color remain coupled to S1; S8 alone gates Grip. */
+  if ( uV2Art.x > 0.5 && (uV2Art.x < 13.5 ||
+       (uV2Art.x > 16.5 && uV2Art.x < 17.5) || uV2Art.x > 24.5) ) {
+    float card = uV2Art.x;
+    float fidelity = clamp( uV2Art.y, 0.0, 0.85 ) * clamp( amt, 0.0, 1.0 );
+    float steelLum = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
+    float sc = max( 0.04, steelLum );
+    vec2 xy = vec2( ( local.x - 0.40 ) / 0.58, local.y * 2.0 + 0.5 );
+    float grain = 0.5 + 0.5 * sin( (xy.x*cos(uV2Art.w) +
+                                     xy.y*sin(uV2Art.w))*uV2Art.z*6.2831853 );
+    float microGrain = grain*0.68 + pat0*0.32;
+    float edge = smoothstep( 0.28, 0.86, clamp( vBladeEdge, 0.0, 1.0 ) );
+    if ( card < 1.5 ) {
+      /* Cold-blue oxide veil: cool reflections, gray S1 steel still visible. */
+      float film = (0.3 + fres*0.50 + microGrain*0.20)*fidelity;
+      col = mix( col, col*vec3( 0.89, 0.98, 1.10 ), film*0.26 );
+      rough = mix( rough, 0.27 + 0.30*uBladeRoughness, fidelity*0.43 );
+    } else if ( card < 2.5 ) {
+      /* Rapid quench: hardened edge, coherent thin cold bevel. */
+      float strip = edge * (0.72 + 0.28*microGrain);
+      col = mix( col, col*vec3( 0.87, 0.98, 1.12 ), strip*fidelity*0.48 );
+      rough = mix( rough, 0.10 + uBladeRoughness*0.20,
+                   strip*fidelity*0.58 );
+    } else if ( card < 3.5 ) {
+      /* Cool gray flats: matte central panel, retained polished knife ridge. */
+      float flat = 1.0 - smoothstep( 0.34, 0.79, abs( xy.y - 0.5 ) * 2.0 );
+      col *= 1.0 - flat*fidelity*0.12;
+      rough = mix( rough, 0.55 + 0.19*uBladeRoughness,
+                   flat*fidelity*0.72 );
+    } else if ( card < 4.5 ) {
+      /* Diagonal quench engraving: directional steel hairlines,
+         reflected as roughness shifts rather than painted white lines. */
+      float brushed = (microGrain - 0.5)*0.18*fidelity;
+      col *= 1.0 + brushed*0.52;
+      rough = clamp( rough + brushed*0.72, 0.10, 0.89 );
+    } else if ( card < 5.5 ) {
+      /* Salt bath: fine, muted mineral clouds in the steel oxide. */
+      float salt = 0.5 + 0.5*sin( xy.x*12.4+xy.y*8.1+pat.y*4.7 );
+      float stain = smoothstep( 0.55, 0.86, salt )*fidelity;
+      col = mix( col, col*vec3( 1.04, 1.01, 0.91 ), stain*0.26 );
+      rough = clamp( rough + (salt-0.5)*fidelity*0.16, 0.10, 0.86 );
+    } else if ( card < 6.5 ) {
+      /* Light-absorbing charcoal: dark satin, not unlit black plastic. */
+      col *= 1.0 - fidelity*(0.29 + 0.10*(1.0 - pat0));
+      rough = mix( rough, 0.43 + 0.18*uBladeRoughness, fidelity*0.54 );
+    } else if ( card < 7.5 ) {
+      /* Dye-like heat-oxide veil: only low-coverage blue-violet interference. */
+      float oxide = smoothstep( 0.22, 0.86,
+          0.5 + 0.29*sin(xy.x*6.2+xy.y*2.8) + 0.12*pat0 );
+      vec3 film = mix(vec3(0.91,1.0,1.04),vec3(1.04,0.93,1.11),oxide);
+      col *= mix( vec3(1.0), film, fidelity*0.42 );
+      rough = mix(rough,0.24 + 0.22*uBladeRoughness,fidelity*0.37);
+    } else if ( card < 8.5 ) {
+      /* Micro bead blast: broad diffused high-light, never colored confetti. */
+      float sand = 0.5 + 0.5*sin( xy.x*150.0 + xy.y*97.0 + pat.y*6.0 );
+      rough = mix( rough, 0.56 + 0.16*uBladeRoughness
+                       + (sand-0.5)*0.055, fidelity*0.82 );
+    } else if ( card < 9.5 ) {
+      /* Vacuum mirror: clean and fine specular corridor, zero artificial glow. */
+      float stripe = pow( 0.5+0.5*cos( xy.y*3.5+0.4 ), 3.0 );
+      rough = mix( rough, 0.075 + 0.13*uBladeRoughness, fidelity*0.82 );
+      col *= 0.95 + stripe*fidelity*0.047;
+    } else if ( card < 10.5 ) {
+      /* Nitrided gunmetal: deep slate oxide with muted directional striation. */
+      col = mix( col, col*vec3(0.75,0.79,0.83),
+                 fidelity*(0.28 + 0.15*grain) );
+      rough = mix(rough,0.31 + 0.19*uBladeRoughness,fidelity*0.60);
+    } else if ( card < 11.5 ) {
+      /* Controlled heat window: one precise narrow golden oxidation line,
+         cold hard steel left exposed on both sides. */
+      float window = exp( -22.0*abs( xy.x - 0.55
+                          - 0.08*sin(xy.y*4.8+pat0)) );
+      vec3 bronze = vec3(1.15,0.83,0.46);
+      col *= mix( vec3(1.0),bronze,window*fidelity*0.55 );
+      rough = mix(rough,0.26+0.15*uBladeRoughness,window*fidelity*0.55);
+    } else if ( card < 12.5 ) {
+      /* Deep hardened grain: etched forged layers in the same S3 coordinates. */
+      float etched = smoothstep( 0.32,0.70,
+          mix(pat0,grain,0.38) );
+      col *= 1.0 - etched*fidelity*0.23;
+      rough = clamp(rough + etched*fidelity*0.12,0.09,0.92);
+    } else if ( card < 13.5 ) {
+      /* Interference exists on bevel/corners; avoid painting the whole blade. */
+      float tangentFilm = edge * pow(fres,0.62)*fidelity;
+      col *= mix(vec3(1.0),vec3(0.90,1.08,1.15),tangentFilm*0.39);
+      rough = mix(rough,0.16+0.16*uBladeRoughness,tangentFilm*0.30);
+    } else if ( card < 17.5 ) {
+      /* Carbon armor: dark quenched islands and shallow relief in steel. */
+      float armor = 0.5+0.5*sin(xy.x*30.0 + sin(xy.y*15.0)*1.4)
+                       *cos(xy.y*14.5+xy.x*2.1);
+      float boundary = smoothstep(0.43,0.76,armor);
+      col *= 1.0 - fidelity*(0.29 + boundary*0.15);
+      rough = mix(rough,0.30+boundary*0.20+uBladeRoughness*0.12,
+                   fidelity*0.70);
+    } else {
+      /* Raw steel master polish: strictly preserve material tone and grain. */
+      rough = mix(rough, 0.12+0.18*uBladeRoughness, fidelity*0.55);
+    }
   }
 
   /* ⑤ 薄膜：视角相关色散 + 一点点加光（克制上限 0.35） */
@@ -1214,6 +1321,7 @@ export function buildHook(pack, frame, opts = {}) {
     uS5Tier: { value: Number(u.uStageTiers?.[4]) || 0 },
     uV2FadeMode: { value: op.fadeMode ? 1 : 0 },
     uV2Look: { value: Number(op.premiumLook) || 0 },
+    uV2Art: { value: new THREE.Vector4(...s5CardArt(u.uS5CardId, op.chosen, Number(u.uStageTiers?.[4]) || 0)) },
     uRarityColor: { value: colorOf(u.uRarityColor, '#c5d7e8') },
     uCardFx: { value: u.uCardFx || new Float32Array(36) },
     uBakedAtlas: { value: u.uBakedAtlas || null },
