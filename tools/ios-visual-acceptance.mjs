@@ -19,6 +19,14 @@ async function capture(label,url,viewport,check) {
   page.on('response',resp=>{if(resp.status()>=400) report.failedRequests.push({label,status:resp.status(),url:resp.url()});});
   await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
   await page.waitForFunction(()=>window.__FORGE_PREP?.ready && document.querySelector('#boot.is-gone'),null,{timeout:100000});
+  // Fresh profiles open an onboarding sheet; dismiss it through the real UI first.
+  for(let i=0;i<3;i++) {
+    const close=page.getByRole('button',{name:'关闭',exact:true});
+    if(await close.count() && await close.first().isVisible()) {
+      await close.first().click({timeout:5000});
+      await page.waitForTimeout(250);
+    } else break;
+  }
   const start=page.getByRole('button',{name:/开始锻刀/}).first();
   await start.click({timeout:18000});
   await page.locator('.page[data-page="forge"].is-active .dcard').first().waitFor({timeout:30000});
