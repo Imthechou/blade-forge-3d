@@ -440,15 +440,20 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
     } else if ( uV2Look < 2.5 ) {
       /* Case hardening: irregular BLUE islands on steel with bronze/gold
          oxidation at the boundaries. Keep a recognizable raw steel base. */
-      float blue = smoothstep( 0.53, 0.67, field );
-      float gold = smoothstep( 0.39, 0.51, field )
-                 * (1.0 - smoothstep( 0.56, 0.67, field ));
-      vec3 cobalt = mix( uDopPal1, uDopPal0, clamp((field - 0.62) * 1.5,0.0,1.0));
-      vec3 bronze = uDopPal2;
-      enamel = mix( col, bronze, gold * 0.76 );
-      enamel = mix( enamel, cobalt, blue * 0.92 );
-      enamel = mix( enamel, uDopPal3, smoothstep( 0.72, 0.88, field ) * 0.32 );
-      polish = mix( 0.26, 0.15, blue );
+      /* Center the FBM distribution before color separation. Without
+         centering, FBM values cluster near 0.5 and produce almost all blue
+         with none of the expected bronze/gold oxidation boundary. */
+      float oxide = clamp( field * 2.0 - 0.46
+        + 0.11 * sin( uv.x * 12.0 + uv.y * 7.0 + D.y * 5.0 ), 0.0, 1.0 );
+      float blue = smoothstep( 0.58, 0.78, oxide );
+      float gold = smoothstep( 0.18, 0.34, oxide )
+                 * (1.0 - smoothstep( 0.58, 0.77, oxide ));
+      vec3 cobalt = mix( uDopPal1, uDopPal0,
+                         smoothstep( 0.72, 0.95, oxide ) * 0.35 );
+      vec3 bronze = mix( uDopPal2, uDopPal3, 0.22 );
+      enamel = mix( col, bronze, gold * 0.91 );
+      enamel = mix( enamel, cobalt, blue * 0.93 );
+      polish = mix( 0.28, 0.15, blue );
       amount *= 0.95;
     } else if ( uV2Look < 3.5 ) {
       /* Fade: one continuous root-to-tip sweep. No patches, no repetition. */
