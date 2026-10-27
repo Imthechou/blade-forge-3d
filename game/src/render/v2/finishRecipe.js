@@ -577,6 +577,9 @@ export function refineS5BaseFinish(out, cardId, tier = 0) {
   // Global finish-energy budget: a low rarity card never produces glow to
   // compensate for roughness and texture detail.
   out.c[1] = Math.min(0.08, Math.max(0, Number(out.c[1]) || 0));
+  // Any legacy shader specLift on a basic F preset must not add another
+  // whole-surface shine on top of previously forged reflection.
+  out.c[3] = 0;
   return out;
 }
 
