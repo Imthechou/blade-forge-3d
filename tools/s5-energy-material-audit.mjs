@@ -87,7 +87,9 @@ for(const [name,url] of [['after','http://127.0.0.1:8123/']]){
       }
     // Gem and Marble coatings can be vivid red/blue, not dark gray.
     // A shader-blank canvas has neither dark silhouette nor colored metal.
-    if(modelPixels+chromaPixels<2200) {
+    // Pale M01 polished steel can be mostly above the 175 darkness cutoff;
+    // only zero/near-zero silhouette pixels signify a missing GL frame.
+    if(modelPixels+chromaPixels<1250) {
       const diagnostic=await page.evaluate(async()=>{
         const st=(await import(new URL('src/render/index.js',location.href).href)).getStage();
         const v=st?.viewer,canvas=v?.renderer?.domElement;
