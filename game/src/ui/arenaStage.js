@@ -399,60 +399,119 @@ function drawEmptySlots(ctx, run, targets, now, w, h, reduced) {
   }
 }
 
+/**
+ * 六个「综艺靶具」不是统一贴图卡片：用独立轮廓和材质来建立可辨识度。
+ * 全部为 Canvas2D 程序绘制、无额外图片和贴图请求；碎块也复用同一个形状。
+ */
 function drawMaterial(ctx, t, data, x, y, width, height, top, unit) {
-  const r = width * .5;
-  const type = t.type;
-  if (type === 'rope') {
-    const colors = COLORS.rope;
-    const strandW = width * .205;   // 股与股贴紧，才像"一捆"而不是五根铅笔
-    for (let k = 0; k < 5; k++) {
-      const sx = x - width * .43 + k * width * .215;
-      const sh = height * (.88 - (k % 2) * .06);
-      const sy = y - sh * .5 + (k % 2) * height * .035;
-      ctx.save(); roundedRect(ctx, sx - strandW * .5, sy, strandW, sh, strandW * .48); ctx.clip();
-      const g = ctx.createLinearGradient(sx - strandW / 2, 0, sx + strandW / 2, 0);
-      g.addColorStop(0, shade(colors[k], -.27)); g.addColorStop(.42, colors[k]); g.addColorStop(.56, '#f0e5c6'); g.addColorStop(.68, colors[k]); g.addColorStop(1, shade(colors[k], -.4));
-      ctx.fillStyle = g; ctx.fillRect(sx - strandW, sy, strandW * 2, sh);
-      ctx.strokeStyle = 'rgba(26,43,52,.50)'; ctx.lineWidth = Math.max(.7, unit * .015);
-      for (let yy = sy - strandW; yy < sy + sh; yy += strandW * .78) {
-        ctx.beginPath(); ctx.moveTo(sx - strandW * .7, yy); ctx.lineTo(sx + strandW * .7, yy + strandW * .9); ctx.stroke();
+  const type=t.type, left=x-width*.5;
+  ctx.save();
+  if(type==='rope') {
+    // 5股编织绳组成一束，绳股略有扭转；绑带是一个实体环。
+    for(let k=0;k<5;k++){
+      const sw=width*.22, sx=x-width*.43+k*width*.214, sy=top+height*(k%2?.055:.035), sh=height*.92;
+      ctx.save();roundedRect(ctx,sx-sw*.5,sy,sw,sh,sw*.42);ctx.clip();
+      const g=ctx.createLinearGradient(sx-sw*.5,0,sx+sw*.5,0);
+      g.addColorStop(0,'#6F593D');g.addColorStop(.25,'#D1B681');g.addColorStop(.53,'#F5E0AF');g.addColorStop(.78,'#B99A65');g.addColorStop(1,'#776048');
+      ctx.fillStyle=g;ctx.fillRect(sx-sw,sy,sw*2,sh);
+      for(let line=-3;line<sh/sw+3;line++){
+        const yy=sy+line*sw*.53;
+        ctx.lineWidth=Math.max(.8,unit*.018);ctx.strokeStyle=line%2?'rgba(77,58,39,.45)':'rgba(255,246,207,.60)';
+        ctx.beginPath();ctx.moveTo(sx-sw*.62,yy);ctx.lineTo(sx+sw*.64,yy+sw*.79);ctx.stroke();
       }
       ctx.restore();
+      ctx.strokeStyle='rgba(69,50,30,.38)';ctx.lineWidth=Math.max(.6,unit*.012);
+      roundedRect(ctx,sx-sw*.5,sy,sw,sh,sw*.42);ctx.stroke();
     }
-  } else if (type === 'foam') {
-    const colors = COLORS.foam;
-    for (let k = 0; k < 4; k++) {
-      const tubeW = width * .205;
-      const sx = x - width * .31 + k * width * .205;
-      const sy = top + height * .11;
-      const sh = height * .79;
-      ctx.save(); roundedRect(ctx, sx - tubeW / 2, sy, tubeW, sh, tubeW / 2); ctx.clip();
-      const g = ctx.createLinearGradient(sx - tubeW / 2, 0, sx + tubeW / 2, 0);
-      g.addColorStop(0, shade(colors[k], -.30)); g.addColorStop(.32, colors[k]); g.addColorStop(.65, shade(colors[k], .15)); g.addColorStop(1, shade(colors[k], -.36));
-      ctx.fillStyle = g; ctx.fillRect(sx - tubeW, sy, tubeW * 2, sh);
-      ctx.strokeStyle = 'rgba(245,255,249,.34)'; ctx.lineWidth = Math.max(1, unit * .018);
-      ctx.beginPath(); ctx.moveTo(sx - tubeW * .17, sy + tubeW * .35); ctx.lineTo(sx - tubeW * .17, sy + sh - tubeW * .4); ctx.stroke();
+  } else if(type==='foam') {
+    // 四块蜂窝EVA安全泡棉：高饱和但克制的运动道具配色，端面有细孔。
+    const tones=['#4BD7B3','#6EE4D3','#48C4CB','#75D8E4'];
+    for(let k=0;k<4;k++){
+      const sw=width*.235,sx=x-width*.35+k*width*.232,sy=top+height*.085,sh=height*.83;
+      ctx.save();roundedRect(ctx,sx-sw*.5,sy,sw,sh,sw*.25);ctx.clip();
+      const g=ctx.createLinearGradient(sx-sw*.5,0,sx+sw*.5,0);
+      g.addColorStop(0,shade(tones[k],-.34));g.addColorStop(.24,tones[k]);g.addColorStop(.63,shade(tones[k],.26));g.addColorStop(1,shade(tones[k],-.3));
+      ctx.fillStyle=g;ctx.fillRect(sx-sw,sy,sw*2,sh);
+      ctx.fillStyle='rgba(240,255,255,.34)';
+      for(let row=0;row<6;row++)for(let col=0;col<2;col++){
+        ctx.beginPath();ctx.arc(sx+sw*(col? .20:-.18),sy+sh*(.13+row*.135),Math.max(.65,unit*.008),0,TAU);ctx.fill();
+      }
       ctx.restore();
+      ctx.strokeStyle='rgba(21,105,102,.24)';ctx.lineWidth=Math.max(.7,unit*.012);
+      roundedRect(ctx,sx-sw*.5,sy,sw,sh,sw*.25);ctx.stroke();
     }
-  } else {
-    const isWood = type === 'wood', isIce = type === 'ice', isMetal = type === 'metal', isPlastic = type === 'plastic';
-    ctx.save();
-    roundedRect(ctx, x - r, top, width, height, isMetal ? 2 : width * .08); ctx.clip();
-    const baseColor = isWood ? COLORS.wood : isIce ? COLORS.ice : isMetal ? COLORS.metal : COLORS.plastic;
-    const g = ctx.createLinearGradient(x - r, 0, x + r, 0);
-    g.addColorStop(0, shade(baseColor, -.40)); g.addColorStop(.22, baseColor); g.addColorStop(.52, shade(baseColor, .18)); g.addColorStop(.78, baseColor); g.addColorStop(1, shade(baseColor, -.38));
-    ctx.fillStyle = g; ctx.fillRect(x - r, top, width, height);
-    if (isWood) drawWoodGrain(ctx, x, y, width, height, unit);
-    else if (isPlastic) drawPlasticTexture(ctx, x, y, width, height, unit);
-    else if (isIce) drawIceFaces(ctx, x, y, width, height, unit);
-    else drawMetalLayers(ctx, x, y, width, height, unit, t.layer);
+  } else if(type==='wood') {
+    // 圆木柱：明显的上端年轮、侧面树皮与裂纹，不再是木纹方砖。
+    const g=ctx.createLinearGradient(left,0,left+width,0);
+    g.addColorStop(0,'#523728');g.addColorStop(.19,'#966541');g.addColorStop(.45,'#BC8654');g.addColorStop(.73,'#97633D');g.addColorStop(1,'#553B2B');
+    ctx.fillStyle=g;roundedRect(ctx,left,top+height*.045,width,height*.91,width*.16);ctx.fill();
+    ctx.save();roundedRect(ctx,left,top+height*.045,width,height*.91,width*.16);ctx.clip();
+    drawWoodGrain(ctx,x,y,width,height,unit);
     ctx.restore();
-    ctx.strokeStyle = isIce ? 'rgba(223,252,255,.76)' : 'rgba(237,248,250,.44)';
-    ctx.lineWidth = Math.max(1, unit * .018);
-    roundedRect(ctx, x - r, top, width, height, isMetal ? 2 : width * .08); ctx.stroke();
+    ctx.fillStyle='#D8A770';ctx.beginPath();ctx.ellipse(x,top+height*.09,width*.47,height*.075,0,0,TAU);ctx.fill();
+    ctx.strokeStyle='#95633B';ctx.lineWidth=Math.max(.8,unit*.014);
+    for(let ring=.23;ring<.9;ring+=.22){
+      ctx.beginPath();ctx.ellipse(x,top+height*.09,width*.47*ring,height*.075*ring,-.08,0,TAU);ctx.stroke();
+    }
+    ctx.strokeStyle='rgba(53,35,22,.45)';ctx.lineWidth=Math.max(1,unit*.024);
+    ctx.beginPath();ctx.moveTo(x+width*.16,top+height*.14);ctx.lineTo(x+width*.23,top+height*.88);ctx.stroke();
+  } else if(type==='plastic') {
+    // 工业工程塑料：厚边框+细密加强肋+四个紧固点，呈刚性板而非发灰方块。
+    const g=ctx.createLinearGradient(left,0,left+width,0);
+    g.addColorStop(0,'#567886');g.addColorStop(.15,'#B6D2DA');g.addColorStop(.48,'#EDF6F7');g.addColorStop(.82,'#A0C1CB');g.addColorStop(1,'#52717D');
+    ctx.fillStyle=g;roundedRect(ctx,left,top,width,height,unit*.065);ctx.fill();
+    ctx.fillStyle='rgba(38,85,102,.15)';roundedRect(ctx,left+width*.07,top+height*.065,width*.86,height*.87,unit*.035);ctx.fill();
+    ctx.save();roundedRect(ctx,left+width*.12,top+height*.08,width*.76,height*.83,unit*.025);ctx.clip();
+    drawPlasticTexture(ctx,x,y,width,height,unit);
+    for(let i=0;i<5;i++){
+      const xx=left+width*(.18+i*.16);
+      ctx.strokeStyle=i%2?'rgba(255,255,255,.44)':'rgba(44,85,107,.21)';
+      ctx.lineWidth=Math.max(1,unit*.026);
+      ctx.beginPath();ctx.moveTo(xx,top+height*.08);ctx.lineTo(xx,top+height*.92);ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle='#3B6271';ctx.strokeStyle='rgba(246,255,255,.72)';
+    for(const dx of [.14,.86])for(const dy of [.115,.885]){
+      ctx.beginPath();ctx.arc(left+width*dx,top+height*dy,Math.max(1.3,unit*.027),0,TAU);ctx.fill();ctx.stroke();
+    }
+  } else if(type==='ice') {
+    // 多面体透明冰块：深蓝折射边界、内部雪晶与白亮碎面，保持半透明。
+    ctx.beginPath();ctx.moveTo(left+width*.10,top+height*.035);ctx.lineTo(left+width*.85,top);
+    ctx.lineTo(left+width,top+height*.15);ctx.lineTo(left+width*.91,top+height*.9);
+    ctx.lineTo(left+width*.73,top+height);ctx.lineTo(left+width*.06,top+height*.9);
+    ctx.lineTo(left,top+height*.18);ctx.closePath();
+    const g=ctx.createLinearGradient(left,top,left+width,top+height);
+    g.addColorStop(0,'#CFFAFF');g.addColorStop(.25,'#80DDEC');g.addColorStop(.60,'#BEEBF8');g.addColorStop(1,'#3C9EBF');
+    ctx.fillStyle=g;ctx.fill();
+    ctx.save();ctx.clip();drawIceFaces(ctx,x,y,width,height,unit);
+    ctx.strokeStyle='rgba(255,255,255,.65)';ctx.lineWidth=Math.max(1.1,unit*.019);
+    ctx.beginPath();ctx.moveTo(left+width*.1,top+height*.1);ctx.lineTo(left+width*.48,top+height*.28);
+    ctx.lineTo(left+width*.94,top+height*.08);ctx.moveTo(left+width*.48,top+height*.28);
+    ctx.lineTo(left+width*.62,top+height*.95);ctx.stroke();ctx.restore();
+    ctx.lineWidth=Math.max(1.1,unit*.023);ctx.strokeStyle='#5EAFC4';ctx.stroke();
+    ctx.strokeStyle='rgba(252,255,255,.96)';ctx.lineWidth=Math.max(1,unit*.035);
+    ctx.beginPath();ctx.moveTo(left+width*.08,top+height*.48);ctx.lineTo(left+width*.1,top+height*.08);
+    ctx.lineTo(left+width*.51,top+height*.05);ctx.stroke();
+  } else if(type==='metal') {
+    // 空心铝合金管：高光柱面 + 黑色空心管口 + 内壁厚度，必须一眼看出它是管不是钢板。
+    const g=ctx.createLinearGradient(left,0,left+width,0);
+    g.addColorStop(0,'#526673');g.addColorStop(.16,'#D1E0E8');g.addColorStop(.39,'#F4F8FA');
+    g.addColorStop(.60,'#A5BAC8');g.addColorStop(.84,'#DCE7EF');g.addColorStop(1,'#485D6B');
+    ctx.fillStyle=g;roundedRect(ctx,left+width*.07,top+height*.035,width*.86,height*.92,width*.39);ctx.fill();
+    ctx.save();roundedRect(ctx,left+width*.07,top+height*.035,width*.86,height*.92,width*.39);ctx.clip();
+    drawMetalLayers(ctx,x,y,width,height,unit,t.layer||0);
+    ctx.strokeStyle='rgba(255,255,255,.50)';ctx.lineWidth=Math.max(1,unit*.035);
+    ctx.beginPath();ctx.moveTo(left+width*.30,top+height*.17);ctx.lineTo(left+width*.3,top+height*.87);ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle='#647783';ctx.beginPath();ctx.ellipse(x,top+height*.067,width*.428,height*.085,0,0,TAU);ctx.fill();
+    ctx.fillStyle='#1A303D';ctx.beginPath();ctx.ellipse(x,top+height*.073,width*.295,height*.055,0,0,TAU);ctx.fill();
+    ctx.strokeStyle='#F0F8FC';ctx.lineWidth=Math.max(1,unit*.027);
+    ctx.beginPath();ctx.ellipse(x,top+height*.067,width*.42,height*.08,0,0,TAU);ctx.stroke();
+    ctx.strokeStyle='rgba(42,59,76,.58)';ctx.lineWidth=Math.max(1,unit*.018);
+    ctx.beginPath();ctx.ellipse(x,top+height*.916,width*.42,height*.062,0,0,TAU);ctx.stroke();
   }
+  ctx.restore();
 }
-
 /** 捆扎带：两道深色绳 + 结。绳束/泡棉靠它读作"一捆"。 */
 function drawBundleTies(ctx, x, y, width, height, unit) {
   const bandW = Math.max(1.3, height * .030);
@@ -667,7 +726,7 @@ function directionHint(angle) {
  */
 function drawDebris(ctx, debris, now, w, h) {
   if (!debris.length) return;
-  const { unit, bodyW, bodyH } = targetMetrics(w, h);
+  const { unit, bodyW, bodyH } = targetMetrics(w, h, true);
   for (let i = 0; i < debris.length; i++) {
     const d = debris[i];
     const age = now - d.at;
@@ -720,39 +779,8 @@ function drawDebris(ctx, debris, now, w, h) {
 
 /** 断块本体（以自身中心为原点）：按材质保留最后的可辨识轮廓。 */
 function drawDebrisBody(ctx, type, width, height, unit) {
-  const halfH = height * .5;
-  if (type === 'rope' || type === 'foam') {
-    const n = type === 'rope' ? 5 : 4;
-    const colors = COLORS[type];
-    const barW = width * (type === 'rope' ? .135 : .17);
-    const span = type === 'rope' ? width * .86 : width * .62;
-    const step = n > 1 ? (span - barW) / (n - 1) : 0;
-    const inset = type === 'foam' ? height * .105 : 0;
-    for (let k = 0; k < n; k++) {
-      const bx = -span / 2 + barW * .5 + k * step;
-      const g = ctx.createLinearGradient(bx - barW * .5, 0, bx + barW * .5, 0);
-      g.addColorStop(0, shade(colors[k], -.32));
-      g.addColorStop(.42, colors[k]);
-      g.addColorStop(.62, shade(colors[k], .14));
-      g.addColorStop(1, shade(colors[k], -.38));
-      ctx.fillStyle = g;
-      roundedRect(ctx, bx - barW * .5, -halfH + inset, barW, height - inset * 2, barW * .45);
-      ctx.fill();
-    }
-    return;
-  }
-  const baseColor = type === 'wood' ? COLORS.wood : type === 'ice' ? COLORS.ice : type === 'metal' ? COLORS.metal : COLORS.plastic;
-  const g = ctx.createLinearGradient(-width * .5, 0, width * .5, 0);
-  g.addColorStop(0, shade(baseColor, -.36));
-  g.addColorStop(.5, shade(baseColor, .1));
-  g.addColorStop(1, shade(baseColor, -.3));
-  ctx.fillStyle = g;
-  roundedRect(ctx, -width * .5, -halfH, width, height, type === 'metal' ? 2 : width * .07);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(240,250,255,.22)';
-  ctx.lineWidth = Math.max(.8, unit * .012);
-  roundedRect(ctx, -width * .5, -halfH, width, height, type === 'metal' ? 2 : width * .07);
-  ctx.stroke();
+  drawMaterial(ctx, { type, layer:1 }, MATERIALS[type]||{}, 0,0,width,height,-height*.5,unit);
+  if(type==='rope'||type==='foam')drawBundleTies(ctx,0,0,width,height,unit);
 }
 
 /* ══ 刀光 / 火花 / 文字 ═════════════════════════════════ */
