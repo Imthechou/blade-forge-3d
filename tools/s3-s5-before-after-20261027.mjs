@@ -61,6 +61,17 @@ for(const [name,url] of [['before','https://imthechou.github.io/blade-forge-3d/'
     (await import(new URL('src/ui/router.js',location.href).href)).default.go('forge');
   });
   await page.locator('.page.is-active .dcard').first().waitFor({timeout:20000});
+  // The first-visit guide may appear *after* the boot gate or startForge.
+  // Close through the actual UI once it has had time to mount.
+  await page.waitForTimeout(1050);
+  for(let k=0;k<5;k++){
+    const active=await page.locator('.sheet-mask.is-in').count();
+    if(!active)break;
+    await page.evaluate(()=>document.querySelector('.sheet-mask.is-in .sheet-x')?.click());
+    await page.waitForTimeout(260);
+  }
+  if(await page.locator('.sheet-mask.is-in').count())
+    throw new Error(name+' could not dismiss onboarding sheet');
   for(let idx=1;idx<=5;idx++){
     const state=await get();
     if(state.stage!=='S'+idx)throw Error(name+' wrong stage '+JSON.stringify(state));
