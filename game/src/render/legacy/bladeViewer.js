@@ -803,9 +803,15 @@ const global = globalThis;
              从 S5 开始快速抬升，S9 到 1.72（× 0.818 ≈ 1.41）。
              这是“越做越像钢”的主线条，也是玩家能直接看出进度的线索。 */
           const g = Math.max(1, Math.min(9, reached));
-          return 0.90 + 0.1025 * (g - 1);
+          /* Studio reflections must not climb by ~90% from S3 to S9.
+             The old linear gain illuminated an entire broad blade face
+             before any S3 engraving could read. Use a bounded finishing
+             curve: forged billet stays satin, polished stages regain a
+             narrow specular band rather than blanket white reflections. */
+          const STAGE_ENV_GAIN = [0.88, 0.90, 0.80, 0.88, 1.00, 1.04, 1.08, 1.10, 1.12];
+          return STAGE_ENV_GAIN[g - 1];
         })();
-        m.envMapIntensity = Math.min(2.2, M.envIntensity * stageEnvGain);
+        m.envMapIntensity = Math.min(1.48, M.envIntensity * stageEnvGain);
         // ★ 宝石珠光系（M15 蓝晶 / M16 紫晶 / M17 翡翠 / M18 琥珀）的半透 + 折射率。
         //   与 clearcoat / iridescence 同一套路：走 three 材质属性。
         //   此前 uBladeTransmission / uBladeIOR 是**死 uniform**（shader 声明了但 0 次使用），
