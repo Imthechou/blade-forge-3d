@@ -24,7 +24,9 @@ jobs:
           sleep 2
       - name: Real Google Chrome mobile and desktop playthrough
         working-directory: game
-        run: node tools/visual-playtest.mjs
+        run: |
+          cp ../tools/visual-playtest.mjs tools/visual-playtest.mjs
+          node tools/visual-playtest.mjs
       - name: Upload actual browser screenshots and reports
         if: always()
         uses: actions/upload-artifact@v4
