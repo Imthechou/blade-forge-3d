@@ -1,0 +1,49 @@
+name: iPhone Forge Browser Acceptance
+on:
+  push:
+    branches: [fix/ios-forge-viewport-lighting-20261027]
+    paths:
+      - 'game/css/pages/forge.css'
+      - 'game/src/render/legacy/viewer.js'
+      - 'game/src/render/v2/studioEnv.js'
+      - 'tools/ios-visual-acceptance.mjs'
+      - '.github/workflows/ios-visual-acceptance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Chinese fonts and Playwright
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-noto-cjk
+          cd game
+          npm install --no-save --package-lock=false playwright
+      - name: Run core tests
+        working-directory: game
+        run: npm test
+      - name: Launch game over HTTP
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > server.log 2>&1 &
+          sleep 2
+      - name: Real Chrome screenshots and viewport assertions
+        working-directory: game
+        run: |
+          cp ../tools/ios-visual-acceptance.mjs tools/ios-visual-acceptance.mjs
+          node tools/ios-visual-acceptance.mjs
+      - name: Upload acceptance screenshots, JSON metrics and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-forge-visual-acceptance
+          path: |
+            game/visual-acceptance/
+            server.log
+          retention-days: 14
