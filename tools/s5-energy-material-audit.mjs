@@ -13,6 +13,25 @@ const S5=Array.from({length:25},(_,i)=>'S5_'+String(i+1).padStart(2,'0'));
 for(const [name,url] of [['after','http://127.0.0.1:8123/']]){
   const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true,
     locale:'zh-CN',reducedMotion:'reduce'});
+  // Capture WebGL compile/link diagnostics that Three.js can swallow when
+  // renderer.debug.checkShaderErrors is off in mobile performance mode.
+  await context.addInitScript(()=>{
+    const p=WebGL2RenderingContext?.prototype;
+    if(!p)return;
+    const origCompile=p.compileShader;
+    p.compileShader=function(shader){
+      origCompile.call(this,shader);
+      if(!this.getShaderParameter(shader,this.COMPILE_STATUS))
+        console.error('S5_SHADER_COMPILE',this.getShaderInfoLog(shader)?.slice(0,3500),
+          this.getShaderSource(shader)?.split('\\n').slice(-12).join('\\n'));
+    };
+    const origLink=p.linkProgram;
+    p.linkProgram=function(program){
+      origLink.call(this,program);
+      if(!this.getProgramParameter(program,this.LINK_STATUS))
+        console.error('S5_SHADER_LINK',this.getProgramInfoLog(program)?.slice(0,3500));
+    };
+  });
   const page=await context.newPage();
   const run={name,url,preview:[],errors:[],snapshots:[],knifeVariants:[],startupMs:null};
   report.runs.push(run);
