@@ -842,7 +842,7 @@ const MAP_FRAGMENT = `
          Only after S3 is actually selected, reveal the existing card-derived
          metal grain; preserve the original hot forging character otherwise. */
       if ( uV2Proc.x > 1.5 && uV2Proc.x < 2.5 && uS3On > 0.5 )
-        processBlend = max( processBlend, 0.82 );
+        processBlend = max( processBlend, 0.59 );
       col = mix( tinted, col, processBlend );
       col *= mix( 1.0, 0.72 + 0.56 * tl, 0.55 );
     }
