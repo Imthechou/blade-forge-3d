@@ -557,25 +557,25 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
     if ( card < 1.5 ) {
       /* Cold-blue oxide veil: cool reflections, gray S1 steel still visible. */
       float film = (0.3 + fres*0.50 + microGrain*0.20)*fidelity;
-      col = mix( col, col*vec3( 0.89, 0.98, 1.10 ), film*0.26 );
+      col = mix( col, col*vec3( 0.72, 0.98, 1.19 ), film*0.60 );
       rough = mix( rough, 0.27 + 0.30*uBladeRoughness, fidelity*0.43 );
     } else if ( card < 2.5 ) {
       /* Rapid quench: hardened edge, coherent thin cold bevel. */
       float strip = edge * (0.72 + 0.28*microGrain);
-      col = mix( col, col*vec3( 0.87, 0.98, 1.12 ), strip*fidelity*0.48 );
+      col = mix( col, col*vec3( 0.70, 0.99, 1.24 ), strip*fidelity*0.72 );
       rough = mix( rough, 0.10 + uBladeRoughness*0.20,
                    strip*fidelity*0.58 );
     } else if ( card < 3.5 ) {
       /* Cool gray flats: matte central panel, retained polished knife ridge. */
       float flatZone = 1.0 - smoothstep( 0.34, 0.79, abs( xy.y - 0.5 ) * 2.0 );
-      col *= 1.0 - flatZone*fidelity*0.12;
+      col *= 1.0 - flatZone*fidelity*0.22;
       rough = mix( rough, 0.55 + 0.19*uBladeRoughness,
                    flatZone*fidelity*0.72 );
     } else if ( card < 4.5 ) {
       /* Diagonal quench engraving: directional steel hairlines,
          reflected as roughness shifts rather than painted white lines. */
       float brushed = (microGrain - 0.5)*0.40*fidelity;
-      col *= 1.0 + brushed*0.67;
+      col *= 1.0 + brushed*0.91;
       rough = clamp( rough + brushed*0.76, 0.10, 0.89 );
     } else if ( card < 5.5 ) {
       /* Salt bath: fine, muted mineral clouds in the steel oxide. */
@@ -583,8 +583,8 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
       float stain = smoothstep( 0.37, 0.90, salt )*fidelity;
       /* Salt bath is a mostly uniform ivory/warm-gray protective surface;
          tiny local roughness changes, no striped red/blue heat window. */
-      col = mix( col, col*vec3( 1.10, 1.055, 0.91 ),
-                 (0.35 + 0.65*stain)*fidelity*0.32 );
+      col = mix( col, col*vec3( 1.22, 1.07, 0.78 ),
+                 (0.40 + 0.60*stain)*fidelity*0.53 );
       rough = clamp( rough + (salt-0.5)*fidelity*0.13, 0.10, 0.86 );
     } else if ( card < 6.5 ) {
       /* Light-absorbing charcoal: dark satin, not unlit black plastic. */
@@ -594,8 +594,8 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
       /* Dye-like heat-oxide veil: only low-coverage blue-violet interference. */
       float oxide = smoothstep( 0.22, 0.86,
           0.5 + 0.29*sin(xy.x*6.2+xy.y*2.8) + 0.12*pat0 );
-      vec3 film = mix(vec3(0.91,1.0,1.04),vec3(1.04,0.93,1.11),oxide);
-      col *= mix( vec3(1.0), film, fidelity*0.42 );
+      vec3 film = mix(vec3(0.78,1.02,1.16),vec3(1.12,0.80,1.20),oxide);
+      col *= mix( vec3(1.0), film, fidelity*0.75 );
       rough = mix(rough,0.24 + 0.22*uBladeRoughness,fidelity*0.37);
     } else if ( card < 8.5 ) {
       /* Micro bead blast: broad diffused high-light, never colored confetti. */
@@ -609,8 +609,8 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
       col *= 0.95 + stripe*fidelity*0.047;
     } else if ( card < 10.5 ) {
       /* Nitrided gunmetal: deep slate oxide with muted directional striation. */
-      col = mix( col, col*vec3(0.75,0.79,0.83),
-                 fidelity*(0.28 + 0.15*grain) );
+      col = mix( col, col*vec3(0.62,0.70,0.77),
+                 fidelity*(0.44 + 0.20*grain) );
       rough = mix(rough,0.31 + 0.19*uBladeRoughness,fidelity*0.60);
     } else if ( card < 11.5 ) {
       /* Controlled heat window: one precise narrow golden oxidation line,
@@ -619,7 +619,7 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
                           - 0.10*sin(xy.y*4.8+pat0)) );
       float coldBank = smoothstep(0.32,0.68,xy.x)*(1.0-window);
       vec3 bronze = vec3(1.18,0.80,0.42);
-      col *= mix( vec3(1.0),bronze,window*fidelity*0.85 );
+      col *= mix( vec3(1.0),bronze,window*fidelity*1.18 );
       col *= mix( vec3(1.0),vec3(0.89,0.98,1.11),
                   coldBank*fidelity*0.23 );
       rough = mix(rough,0.26+0.15*uBladeRoughness,window*fidelity*0.55);
@@ -629,12 +629,12 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
           mix(pat0,grain,0.44) );
       /* Deeply hardened folds should be broader and darker than the
          S5_04 narrow, diagonal high-frequency grinding lines. */
-      col *= 1.0 - etched*fidelity*0.42;
+      col *= 1.0 - etched*fidelity*0.55;
       rough = clamp(rough + etched*fidelity*0.17,0.09,0.92);
     } else if ( card < 13.5 ) {
       /* Interference exists on bevel/corners; avoid painting the whole blade. */
       float tangentFilm = edge * pow(fres,0.62)*fidelity;
-      col *= mix(vec3(1.0),vec3(0.90,1.08,1.15),tangentFilm*0.39);
+      col *= mix(vec3(1.0),vec3(0.79,1.12,1.26),tangentFilm*0.68);
       rough = mix(rough,0.16+0.16*uBladeRoughness,tangentFilm*0.30);
     } else if ( card < 17.5 ) {
       /* Carbon armor: dark quenched islands and shallow relief in steel. */
