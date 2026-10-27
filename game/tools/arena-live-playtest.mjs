@@ -35,7 +35,7 @@ function watch(page, label) {
 }
 async function snap(page, name) {
   const file = path.join(out, name + '.png');
-  await page.screenshot({ path: file, fullPage: true, animations: 'disabled', timeout: 12000 }).catch(e => report.errors.push({ label: 'screenshot', error: String(e) }));
+  await page.screenshot({ path: file, fullPage: false, animations: 'allow', timeout: 17000 }).catch(e => report.errors.push({ label: 'screenshot', error: String(e) }));
 }
 async function newGame(label) {
   const context = await browser.newContext({
@@ -134,13 +134,28 @@ await scenario('quick-free-45s-real-pointer', async page => {
       hits:r.log.filter(x=>x.type==='hit'||x.type==='contact').length,
       targets:r.targets.map(t=>({type:t.type,progress:t.progress,alive:t.alive})) };
   });
+  console.log('QUICK_SWIPES', JSON.stringify({before,after}));
   await snap(page, '04-quick-live-after-swipe');
   assert.ok(after && (after.kills > before.kills || after.score > before.score || after.targets.some(t=>t.progress > 0)),
     '画布接收到实际滑切但没有命中、伤害或得分');
   // 真实经过完整45秒，不调用 core.tick 不改时间；选择浮层也通过真实按钮。
   for (const phase of ['route-choice', 'finale-choice']) {
-    await page.waitForFunction(p => window.__FORGE_ARENA?.run?.phase === p
-      || window.__FORGE_ARENA?.run?.done, phase, { timeout: 42000 });
+    try {
+      await page.waitForFunction(p => window.__FORGE_ARENA?.run?.phase === p
+        || window.__FORGE_ARENA?.run?.done, phase, { timeout: 42000 });
+    } catch(e) {
+      const diagnostic = await page.evaluate(() => {
+        const r=window.__FORGE_ARENA?.run;const c=window.__FORGE_ARENA?.canvas;
+        return {run:r&&{phase:r.phase,elapsed:r.elapsed,remaining:r.remaining,score:r.score,
+          kills:r.kills,paused:r.paused,done:r.done,targets:r.targets?.length,log:r.log?.slice(-4)},
+          canvas:c&&{connected:c.isConnected,width:c.width,height:c.height},
+          title:document.querySelector('.page.is-active .arena-body')?.innerText.slice(0,350)};
+      });
+      console.log('QUICK_PHASE_TIMEOUT',phase,JSON.stringify(diagnostic));
+      report.issues.push({kind:'QUICK_PHASE_TIMEOUT',phase,diagnostic});
+      await snap(page,phase+'-timeout');
+      throw e;
+    }
     const state = await page.evaluate(() => window.__FORGE_ARENA?.run?.phase);
     if (state !== phase) throw Error('未进入 ' + phase + '，实际为 ' + state);
     await body.locator('.quick-choice-overlay .quick-choice-card').first().click({ timeout: 8000 });
@@ -166,7 +181,17 @@ await scenario('formal-school-cutting-real-pointer', async page => {
   await body.getByRole('button', { name: '开始挑战' }).click();
   await body.locator('.formal-sweep-canvas').waitFor({ timeout: 12000 });
   await snap(page, '07-formal-sweep-before');
+  const initial = await page.evaluate(async () => {
+    const Game=(await import('/src/app/game.js')).default;
+    return {sequence:Game.formalTask()?.sequence,rule:Game.formalTask()?.rule,
+      definitionRules:Game.formalMatch?.definition?.rules};
+  });
+  console.log('FORMAL_GENERATED_TASK',JSON.stringify(initial));
   const before = await body.locator('.formal-sweep-hud .cut-count').innerText();
+  if (!initial.sequence?.length) {
+    report.issues.push({kind:'FORMAL_ZERO_TARGETS',initial});
+    throw Error('正式赛事切割任务序列为空：项目类型与操作类型 rule.kind 匹配失败，自动结算0分');
+  }
   // 正式切割是另一套实现，只画固定线段；模拟多次实际鼠标滑切。
   for (let row=0; row<2; row++) {
     const y=.30+row*.22;
@@ -204,5 +229,7 @@ report.summary = {
 };
 fs.writeFileSync(path.join(out,'report.json'), JSON.stringify(report,null,2));
 console.log('ARENA_PLAYTEST_SUMMARY', JSON.stringify(report.summary));
+console.log('ARENA_PLAYTEST_ISSUES', JSON.stringify(report.issues));
+console.log('ARENA_PLAYTEST_ERRORS', JSON.stringify(report.errors));
 await browser.close();
 if (report.summary.failed || report.summary.jsErrors || report.summary.httpFailures) process.exitCode = 1;
