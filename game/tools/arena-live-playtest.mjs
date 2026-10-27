@@ -318,6 +318,57 @@ await scenario('apex-opening-real-cut', async page=>{
   const result=await assertUnifiedFirstCut(page,'巅峰赛');
   return {setup,result};
 });
+
+/** 美术实机验收：只在隔离测试上下文排列六个已有靶具，绝不更改玩家玩法或真实存档。 */
+await scenario('six-target-material-gallery-and-touch-response', async page => {
+  const body=page.locator('.page[data-page="arena"].is-active');
+  await body.getByRole('button',{name:'快速挑战'}).click();
+  await body.getByRole('button',{name:'开始自由快赛'}).click();
+  await body.locator('.quick-canvas').waitFor({timeout:10000});
+  const before=await page.evaluate(async()=>{
+    const core=await import('/src/core/arenaChallenge.js');
+    const r=window.__FORGE_ARENA.run;
+    const sample=r.targets[0];
+    const types=['foam','rope','wood','plastic','ice','metal'];
+    r.targets=types.map((type,i)=>({
+      ...sample,id:'material-gallery-'+i,type,slot:i%3,row:Math.floor(i/3),
+      x:[.19,.50,.81][i%3],y:[.34,.58][Math.floor(i/3)],layout:'stream',
+      progress:0,alive:true,cuts:[],lastAngle:null,layer:0,variation:0,
+      difficulty:1,armorLeft:core.MATERIALS[type].armor*.6,createdAt:r.elapsed,
+    }));
+    r.nextWaveAt=Number.MAX_SAFE_INTEGER;
+    return {names:r.targets.map(t=>core.MATERIALS[t.type].name),types:r.targets.map(t=>t.type)};
+  });
+  await page.waitForTimeout(180);
+  await snap(page,'11-six-material-design-gallery');
+  const snapshots=[];
+  for(const y of [.34,.58]) {
+    for(const x of [.19,.50,.81]) {
+      const t=await page.evaluate(([x,y])=>{
+        const r=window.__FORGE_ARENA.run;
+        return r.targets.find(t=>Math.abs(t.x-x)<.001&&Math.abs(t.y-y)<.001);
+      },[x,y]);
+      await swipe(page,'.page.is-active .quick-canvas',
+        Math.max(.01,x-.16),y,Math.min(.99,x+.16),y);
+      const outcome=await page.evaluate(type=>{
+        const r=window.__FORGE_ARENA.run;
+        const e=window.__FORGE_ARENA.effects;
+        return {type,score:r.score,kills:r.kills,
+          contacts:e.bursts.filter(b=>b.type===type).slice(-1).map(b=>({
+            flash:b.flashMs,hitstop:b.holdMs,shake:b.shakePx,
+            recoil:b.recoilPx,particles:b.particleCount,event:b.event,
+          }))};
+      },t.type);
+      snapshots.push(outcome);
+    }
+  }
+  await snap(page,'12-six-material-slicing-feedback');
+  assert.equal(before.types.length,6);
+  assert.ok(snapshots.every(x=>x.contacts.length>0),'部分材质没有命中特效');
+  assert.ok(snapshots.every(x=>x.contacts[0].flash>0),'闪白反馈丢失');
+  assert.ok(snapshots.every(x=>x.contacts[0].particles>0),'碎屑反馈丢失');
+  return {before,snapshots};
+});
 report.summary = {
   passed: report.cases.filter(x=>x.status==='PASS').length,
   failed: report.cases.filter(x=>x.status==='FAIL').length,
