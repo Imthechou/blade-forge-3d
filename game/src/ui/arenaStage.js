@@ -1,6 +1,6 @@
 import { MATERIALS } from '../core/arenaChallenge.js';
 import { impactMotion } from './arenaImpact.js';
-import { drawWholeSprite, drawSplitSprite, drawShardSprite, drawFlashSprite } from './arenaSprites.js';
+import { drawWholeSprite, drawSplitSprite, drawShardSprite, drawFlashSprite, spriteReady } from './arenaSprites.js';
 
 const TAU = Math.PI * 2;
 const TRAIL_LIFE = 260;
@@ -784,8 +784,11 @@ function drawDebris(ctx, debris, now, w, h) {
       }
       // Two purpose-built textured halves with material-specific exposed cut edges.
       // The sprite's baseline fracture is ~11.3 degrees; reorient to the player's actual slash.
-      if (drawSplitSprite(ctx,d.type,side,bodyW,bodyH)) {
-        // Piece carries its own baked cross-section. Motion/rotation remains driven by input.
+      if (spriteReady()) {
+        // Align the prebaked fracture line with the actual finger-slash direction.
+        // Offset is the original +0.2 slope baked in build_arena_sprites.py.
+        ctx.rotate(angle - Math.atan(0.2));
+        drawSplitSprite(ctx,d.type,side,bodyW,bodyH);
       } else {
         ctx.beginPath();
         ctx.moveTo(-dx * BIG, -dy * BIG);
