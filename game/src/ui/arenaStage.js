@@ -388,9 +388,19 @@ function drawEmptySlots(ctx, run, targets, now, w, h, reduced) {
   if (!dead.length) return;
   const allDead = dead.length === targets.length;
   const { unit, bodyH } = targetMetrics(w, h, targets.some((t) => t.layout === 'stream'));
-  const wait = Math.max(0, (Number(run.nextWaveAt) || 0) - (Number(run.elapsed) || 0));
-  const span = Math.max(.8, (Number(run.nextWaveAt) || 0) - (Number(run.lastKillAt) || 0));
-  const p = clamp(1 - wait / span, 0, 1);
+  // Stream stages use nextSpawnAt, never the old three-target nextWaveAt.
+  // End-of-quota uses Number.MAX_SAFE_INTEGER; it is a sentinel, not a countdown.
+  const streamMode = run.spawnMode==='stream';
+  const nextAt=Number(streamMode ? run.nextSpawnAt : run.nextWaveAt);
+  const nowElapsed=Number(run.elapsed)||0;
+  const futureWait=nextAt-nowElapsed;
+  const quotaExhausted=streamMode&&run.encounter
+    && run.stageSpawned >= (run.encounter.stages?.[run.spawnStage]?.quota ?? Infinity);
+  const hasNext=Number.isFinite(nextAt)&&nextAt<1e6&&!quotaExhausted
+    && futureWait>=0&&futureWait<30;
+  const wait=hasNext?futureWait:0;
+  const span=Math.max(.8,nextAt-(Number(run.lastKillAt)||0));
+  const p=hasNext?clamp(1-wait/span,0,1):0;
   for (const t of dead) {
     const x = t.x * w, y = t.y * h;
     drawEmptyHanger(ctx, x, y - bodyH * .5, unit);
@@ -405,7 +415,7 @@ function drawEmptySlots(ctx, run, targets, now, w, h, reduced) {
       ctx.lineWidth = 1;
       roundedRect(ctx, x - unit * .46, y - bodyH * .5, unit * .92, bodyH, unit * .1); ctx.stroke();
     }
-    if (focus && !reduced) {
+    if (focus && !reduced && hasNext) {
       const size = Math.max(11, unit * .22);
       const breathe = .5 + .5 * Math.sin(now * .006);
       ctx.setLineDash([]);
