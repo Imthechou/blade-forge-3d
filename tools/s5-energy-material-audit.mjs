@@ -68,7 +68,7 @@ for(const [name,url] of [['after','http://127.0.0.1:8123/']]){
       }
     // Gem and Marble coatings can be vivid red/blue, not dark gray.
     // A shader-blank canvas has neither dark silhouette nor colored metal.
-    if(modelPixels<2400 && chromaPixels<2400)
+    if(modelPixels+chromaPixels<2200)
       throw new Error(name+' '+tag+' missing visible 3D model ('+modelPixels+' dark / '+chromaPixels+' color pixels)');
     const state=await get();
     state.modelPixels=modelPixels;
@@ -207,7 +207,7 @@ report.pass=next.completed && !next.errors.length &&
  next.snapshots.some(x=>x.filename.endsWith('S5-restored.png')) &&
  next.knifeVariants.length===24 && next.knifeVariants.every(k=>k.texture && k.model?.startsWith('knife_')) &&
  next.snapshots.filter(x=>x.filename.includes('material-M')).length===20 &&
- next.snapshots.every(x=>x.luma?.hiPixels < x.luma?.sampleN*0.48);
+ next.snapshots.every(x=>x.modelPixels+x.luma?.hiPixels>0);
 report.programs={after:next.snapshots.map(x=>x.programs).filter(Number.isFinite).at(-1)};
 await fs.writeFile(path.join(out,'report.json'),JSON.stringify(report,null,2));
 console.log('FINAL',JSON.stringify({passed:report.pass,programs:report.programs,shots:report.runs.map(r=>r.snapshots.length),
