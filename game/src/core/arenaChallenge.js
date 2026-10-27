@@ -687,14 +687,14 @@ export function finish(run, reason='time') {
   const grade = ghost > 0
     ? (ratio >= 1.5 ? 'S' : ratio >= 1.15 ? 'A' : ratio >= 0.85 ? 'B' : 'C')
     : (run.score >= 1500 ? 'S' : run.score >= 990 ? 'A' : run.score >= 530 ? 'B' : 'C');
-  const reward=Math.max(2,Math.min(30,Math.floor(run.score/100)+(grade==='S'?5:grade==='A'?3:grade==='B'?1:0)));
+  const reward=reason==='manual'?0:Math.max(2,Math.min(30,Math.floor(run.score/100)+(grade==='S'?5:grade==='A'?3:grade==='B'?1:0)));
   run.result={grade,score:Math.floor(run.score),reward,kills:run.kills,maxCombo:run.maxCombo,maxStreak:run.maxStreak||0,bestSwipe:run.bestSwipe,
     health:Math.round(run.health),maxHealth:Math.round(run.maxHealth ?? 100),misses:run.misses||0,
     frenzy:run.frenzyCount||0,buffs:[...(run.buffs||[])],
     ghost: ghost || null, win: ghost > 0 ? run.score >= ghost : null,
     route:run.route?.name||'—',finale:run.finale?.name||'—',reason,riskStop:run.riskStop,fractured:!!run.fractured,
     mode:run.mode || 'quick',total:run.total,risk:copy(run.risk || {}),log:copy(run.log)};
-  if (run.mode !== 'formal') emit(EVENTS.QUICK_CHALLENGE_FINISHED, run);
+  if (run.mode !== 'formal' && reason !== 'manual') emit(EVENTS.QUICK_CHALLENGE_FINISHED, run);
   return run.result;
 }
 export function setPaused(run, paused) { if(!run||run.done)return false;run.paused=!!paused;return true; }
