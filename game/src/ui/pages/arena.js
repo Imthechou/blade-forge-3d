@@ -767,7 +767,7 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     text(vitals.querySelector('small'), isSlice
       ? (run.risk?.status === 'failed' ? '结构失效' : run.risk?.status === 'warning' ? '⚠ 高负荷' : '刀况')
       : run.mode === 'formal' ? (run.risk?.status === 'failed' ? '结构失效' : run.risk?.status === 'warning' ? '危险征兆 · 受损' : '正式测试刀况') : '安全挑战 · 模拟刀况');
-    phaseBar.style.transform=`scaleX(${run.remaining/Challenge.CHALLENGE_SECONDS})`;
+    phaseBar.style.transform=`scaleX(${Math.max(0,run.remaining)/(run.total || Challenge.CHALLENGE_SECONDS)})`;
     text(pauseNode,run.paused?'继续':'暂停');
     updateMission();
   };
@@ -805,9 +805,12 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
   let lastFrame = 0;
   const paint = (now) => {
     if (challengeCanvas !== canvas || (challengeRun !== run && fieldTestRun !== run && sliceRun !== run)) return;
-    const dt = lastFrame ? Math.min(.05, Math.max(0, (now - lastFrame) / 1000)) : 0;
+    // 实际经过时间 ≠ 帧时长。低 FPS 不能把 45 秒赛事拖成数分钟。
+    // 将 wall-clock delta 分片交给 core（tick 单次最多 .25s），
+    // 一旦进入暂停/路线选择/结算立即停止，避免穿过决策阶段。
+    const delta = lastFrame ? Math.max(0, (now - lastFrame) / 1000) : 0;
     lastFrame = now;
-    if (!run.paused) Challenge.tick(run, dt);
+    if (!run.paused) advanceArenaClock(run, delta, Challenge.tick);
     drawScene(now);
     if (run.phase === 'route-choice' || run.phase === 'finale-choice') {
       stopChallengeFrame(); showChallengeChoice(run); return;
