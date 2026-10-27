@@ -567,10 +567,10 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
                    strip*fidelity*0.58 );
     } else if ( card < 3.5 ) {
       /* Cool gray flats: matte central panel, retained polished knife ridge. */
-      float flat = 1.0 - smoothstep( 0.34, 0.79, abs( xy.y - 0.5 ) * 2.0 );
-      col *= 1.0 - flat*fidelity*0.12;
+      float flatZone = 1.0 - smoothstep( 0.34, 0.79, abs( xy.y - 0.5 ) * 2.0 );
+      col *= 1.0 - flatZone*fidelity*0.12;
       rough = mix( rough, 0.55 + 0.19*uBladeRoughness,
-                   flat*fidelity*0.72 );
+                   flatZone*fidelity*0.72 );
     } else if ( card < 4.5 ) {
       /* Diagonal quench engraving: directional steel hairlines,
          reflected as roughness shifts rather than painted white lines. */
