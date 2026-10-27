@@ -14,7 +14,7 @@ for(const [name,url] of [['before','https://imthechou.github.io/blade-forge-3d/'
   const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true,
     locale:'zh-CN',reducedMotion:'reduce'});
   const page=await context.newPage();
-  const run={name,url,preview:[],errors:[],snapshots:[],startupMs:null};
+  const run={name,url,preview:[],errors:[],snapshots:[],knifeVariants:[],startupMs:null};
   report.runs.push(run);
   page.on('pageerror',e=>run.errors.push('pageerror '+String(e).slice(0,1000)));
   page.on('console',m=>{if(m.type()==='error'||/Shader Error|VALIDATE_STATUS|undeclared identifier|glsl/i.test(m.text()))run.errors.push('console '+m.text().slice(0,1000));});
@@ -104,6 +104,29 @@ for(const [name,url] of [['before','https://imthechou.github.io/blade-forge-3d/'
       await page.locator('.page.is-active .dcard').first().click();
       await settle();
       await shot('S4-after-S3');
+      if(name==='after'){
+        run.knifeVariants=[];
+        // Check S3 inherited pattern on all 12 actual GLBs, normal + halo
+        // variants, without committing the injected cards to gameplay.
+        for(let k=1;k<=24;k++){
+          const id='K'+String(k).padStart(2,'0');
+          await page.evaluate(async(cardId)=>{
+            const g=(await import(new URL('src/app/game.js',location.href).href)).default;
+            const {getCard}=await import(new URL('src/data/cards.js',location.href).href);
+            const card=getCard(cardId);
+            g.applyResolvedVisual(g.previewVisual(card),{preview:true,cardId});
+          },id);
+          await settle();
+          await shot('S4-'+id);
+          run.knifeVariants.push({id,...await get()});
+        }
+        // Return to the actual player's selection before pressing confirm.
+        await page.evaluate(async()=>{
+          const g=(await import(new URL('src/app/game.js',location.href).href)).default;
+          g.applyResolvedVisual(g.previewVisual(g.preview),{preview:true,cardId:g.preview?.id});
+        });
+        await settle();
+      }
     }
     if(idx===5){
       await shot('S5-enter');
@@ -156,7 +179,7 @@ for(const [name,url] of [['before','https://imthechou.github.io/blade-forge-3d/'
 }
 await browser.close();
 const old=report.runs[0],next=report.runs[1];
-report.pass=report.runs.every(r=>r.completed && !r.errors.length && r.snapshots.some(x=>x.filename.endsWith('S5-restored.png')));
+report.pass=report.runs.every(r=>r.completed && !r.errors.length && r.snapshots.some(x=>x.filename.endsWith('S5-restored.png'))) && next.knifeVariants.length===24 && next.knifeVariants.every(k=>k.texture && k.model?.startsWith('knife_'));
 report.programs={before:old.snapshots.map(x=>x.programs).filter(Number.isFinite).at(-1),
   after:next.snapshots.map(x=>x.programs).filter(Number.isFinite).at(-1)};
 await fs.writeFile(path.join(out,'report.json'),JSON.stringify(report,null,2));
