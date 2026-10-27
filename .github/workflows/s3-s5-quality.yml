@@ -22,7 +22,7 @@ jobs:
           node-version: '24'
       - name: Install playwright and CJK fonts
         run: |
-          cd game && npm install --no-save --package-lock=false playwright
+          cd game && npm install --no-save --package-lock=false playwright pngjs
           sudo timeout 32s apt-get install -y fonts-noto-cjk || true
       - name: Core regression suite
         working-directory: game
