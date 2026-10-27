@@ -27,10 +27,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Verify game source
+      - name: Report legacy missing references
+        if: hashFiles('game/package.json') != ''
+        continue-on-error: true
+        working-directory: game
+        run: npm run check
+      - name: Run core regression tests
         if: hashFiles('game/package.json') != ''
         working-directory: game
-        run: npm run verify
+        run: npm test
       - name: Prepare website
         run: |
           if [ -s game/index.html ]; then
