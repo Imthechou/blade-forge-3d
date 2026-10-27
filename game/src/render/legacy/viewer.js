@@ -394,73 +394,84 @@ class Viewer {
    *   不阻塞、不报错（游戏本来就不依赖反射）。
    */
   async loadEnvironment(url = 'assets/environment.hdr') {
+    /* Prefer the procedural studio immediately: it is bundled and does not
+       depend on fetching or decoding environment.hdr. The former flow first
+       awaited RGBELoader, then created the studio, silently skipping BOTH on
+       Safari when the old HDR failed. Keep the HDR as a real fallback only. */
+    let mode = 'none';
+    let cause = '';
+    let nextEnv = null;
     try {
-      let src = url;
-      if (global.location.protocol === 'file:') {
-        // file:// 下 RGBELoader 走 XHR 会被拦 → 只能用 base64 data URL
-        if (global.K3D_INLINE && global.K3D_INLINE.hdr) {
-          // 单包模式（build.py --single）：HDR 在 core 里
-          src = 'data:application/octet-stream;base64,' + global.K3D_INLINE.hdr;
-        } else {
-          // 分层模式：注入 hdr 分包
-          await loadScriptOnce('js/bundle.hdr.js');
-          if (global.K3D_INLINE_HDR && global.K3D_INLINE_HDR.hdr) {
-            src = 'data:application/octet-stream;base64,' + global.K3D_INLINE_HDR.hdr;
+      nextEnv = getStudioEnv(this.renderer);
+      if (nextEnv) mode = 'studio-half-float';
+    } catch (e) {
+      cause = String(e?.message || e);
+      console.warn('[render] Studio reflection unavailable, trying legacy HDR:', cause);
+    }
+    if (!nextEnv && !this.disposed) {
+      let hdr = null;
+      let pmrem = null;
+      try {
+        let src = url;
+        if (global.location.protocol === 'file:') {
+          if (global.K3D_INLINE?.hdr) {
+            src = 'data:application/octet-stream;base64,' + global.K3D_INLINE.hdr;
           } else {
-            return;   // hdr 包缺失 → 无环境光降级（正常路径，不是错误）
+            await loadScriptOnce('js/bundle.hdr.js');
+            if (!global.K3D_INLINE_HDR?.hdr) throw new Error('legacy HDR bundle missing');
+            src = 'data:application/octet-stream;base64,' + global.K3D_INLINE_HDR.hdr;
           }
         }
-      }
-      const hdr = await new THREE.RGBELoader().loadAsync(src);
-      if (this.disposed) return;
-      hdr.mapping = THREE.EquirectangularReflectionMapping;
-      const pmrem = new THREE.PMREMGenerator(this.renderer);
-      this.envMap = pmrem.fromEquirectangular(hdr).texture;
-      this.scene.environment = this.envMap;
-      if ('environmentIntensity' in this.scene) this.scene.environmentIntensity = 0.55;
-      hdr.dispose(); pmrem.dispose();
-      /* ★★ 2026-10-24（P2 · 金属感的真正来源）
-
-         病象（实测链条）：
-           ① 镜面参数（rough 0.10 / metal 0.98 / env 1.55）下画面仍像“粉灰塑料”
-           ② 查 environment.hdr：亮度均值 0.1408，**91.4% 像素 < 0.19** → 暗棚
-           ③ 拉高 envMapIntensity 到 3.5：高光占比 6.1%→84.3%，
-              但**对比σ 从 0.1009 跌到 0.0787**；全开更跌到 0.0655 → 整体发白，不是金属
-
-         根因：金属的 diffuse ≈ 0，画面里几乎全是**环境反射**。
-           环境是均匀暗棚 → 反射均匀暗灰 → 只有色调映射把暗部抬成灰 → 塑料感。
-           拉强度只是把这片灰提亮，永远提不出“高光点”。
-
-         解法：换成**程序化产品摄影棚**（暗底 + 几个小面积高亮光源）。
-           实测对比（同一材质 metal0.95/rough0.22/env1.10/exp0.90）：
-             对比σ  0.1035 → 0.1719  (+66.1%)
-             暗区%  0.1   → 5.1      (金属的深邃感)
-             高光%  4.4   → 14.7     (不过曝，有形状)
-           生成成本 51.7ms（一次性，与 HDR 同时完成）。
-
-         降级纪律：棚环境生成失败（无 THREE / 无 PMREM）就用原 HDR，
-           不阻塞、不报错 —— 与原有“环境贴图缺失只影响反射质感”同一口径。 */
-      let envForScene = this.envMap;
-      try {
-        /* 直接用静态导入的 getStudioEnv —— 不走 globalThis，避免“模块没被加载”的坑 */
-        const studioTex = getStudioEnv(this.renderer);
-        if (studioTex) envForScene = studioTex;
+        hdr = await new THREE.RGBELoader().loadAsync(src);
+        if (this.disposed) return;
+        hdr.mapping = THREE.EquirectangularReflectionMapping;
+        pmrem = new THREE.PMREMGenerator(this.renderer);
+        nextEnv = pmrem.fromEquirectangular(hdr).texture;
+        if (nextEnv) mode = 'legacy-hdr';
       } catch (e) {
-        console.warn('[render] 棚环境不可用（回退 HDR）:', e && e.message);
+        cause = [cause, String(e?.message || e)].filter(Boolean).join(' / ');
+        console.warn('[render] All environment reflections unavailable:', cause);
+      } finally {
+        try { hdr?.dispose(); } catch (_) { /* ignore */ }
+        try { pmrem?.dispose(); } catch (_) { /* ignore */ }
       }
-      if (envForScene !== this.envMap) {
-        this.envMap = envForScene;
-        this.scene.environment = envForScene;
-      }
-      // ⚠ three r169：用 scene.environment 时着色器取 scene.environmentIntensity，
-      //   材质的 envMapIntensity 被忽略 → 必须把 envMap 显式挂到每个材质上，
-      //   材质级的「反射强度」才生效。通知外部（engine）挂载。
-      this._applyEnvMapToScene();
-      if (this.onEnvMapReady) this.onEnvMapReady(this.envMap);
-      this.needsRender = true;
-    } catch (e) {
-      // 环境贴图缺失只影响反射质感，不阻塞
     }
+    if (this.disposed) return;
+    if (nextEnv) {
+      this.envMap = nextEnv;
+      this.scene.environment = nextEnv;
+      if ('environmentIntensity' in this.scene) this.scene.environmentIntensity = 0.55;
+      this._applyEnvMapToScene();
+      if (this.onEnvMapReady) this.onEnvMapReady(nextEnv);
+      this.needsRender = true;
+    }
+    /* In-browser read-only diagnostics: the absence of JS errors does not
+       prove the metal reflection texture was really created on iOS. */
+    global.__FORGE_ENV_DIAG = {
+      mode, ready: !!nextEnv, reason: cause || null,
+      textureType: mode === 'studio-half-float' ? 'HalfFloatType' : (nextEnv?.type ?? null),
+    };
+    /* Opt-in, on-device reflection status. Allows Safari users to report the
+       actual environment path without connecting a desktop debugger.
+       It is absent during normal gameplay. */
+    try {
+      if (global.location && new URLSearchParams(global.location.search).get('envdebug') === '1') {
+        const d = global.document;
+        let el = d.getElementById('__forgeEnvDebug');
+        if (!el) {
+          el = d.createElement('div');
+          el.id = '__forgeEnvDebug';
+          el.style.cssText = 'position:fixed;left:8px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:99999;background:rgba(12,31,45,.92);color:#fff;border-radius:8px;padding:7px 10px;font:12px/1.5 ui-monospace,SFMono-Regular,monospace;white-space:pre;pointer-events:none;max-width:calc(100vw - 16px);';
+          d.body.appendChild(el);
+        }
+        const gl = this.renderer?.getContext?.();
+        const gl2 = !!(global.WebGL2RenderingContext && gl instanceof global.WebGL2RenderingContext);
+        const floatLinear = !!gl?.getExtension?.('OES_texture_float_linear');
+        el.textContent = 'Env: ' + mode + (nextEnv ? '  OK' : '  FAILED') + '\n'
+          + 'WebGL2: ' + gl2 + ' · float-linear: ' + floatLinear
+          + (cause ? '\n' + cause.slice(0,100) : '');
+      }
+    } catch (_) { /* diagnostics never break game rendering */ }
   }
 
   /**
