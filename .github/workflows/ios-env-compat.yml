@@ -1,0 +1,45 @@
+name: iOS Studio Environment Compatibility
+on:
+  push:
+    branches: [fix/ios-studio-env-half-float-20261027]
+    paths:
+      - 'game/src/render/legacy/viewer.js'
+      - 'game/src/render/v2/studioEnv.js'
+      - 'tools/ios-env-compat-acceptance.mjs'
+      - '.github/workflows/ios-env-compat.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install browser runner
+        working-directory: game
+        run: npm install --no-save --package-lock=false playwright
+      - name: Core regression tests
+        working-directory: game
+        run: npm test
+      - name: Run game server
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > server.log 2>&1 &
+          sleep 2
+      - name: Real Chrome HDR/environment scenarios
+        working-directory: game
+        run: |
+          cp ../tools/ios-env-compat-acceptance.mjs tools/ios-env-compat-acceptance.mjs
+          node tools/ios-env-compat-acceptance.mjs
+      - name: Save diagnostics and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-studio-env-diagnostics
+          path: |
+            game/ios-env-compat-results/
+            server.log
+          retention-days: 14
