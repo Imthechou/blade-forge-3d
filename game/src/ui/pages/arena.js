@@ -174,7 +174,8 @@ export function render() {
     if (Game.formalMatch.done) return renderFormalReport();
     const task = Game.formalTask();
     if (task?.kind === 'cutting') renderUnifiedFormalCut(Game.formalMatch, task,
-      payload => Game.submitFormalTest(payload), () => Game.abandonFormalMatch());
+      payload => Game.submitFormalTest(payload), () => Game.abandonFormalMatch(),
+      {tier:'school',gradient:Game.formalMatch.gradient});
     else FormalTest.renderFormalTest(Game.formalMatch, body, render);
     return;
   }
@@ -666,7 +667,7 @@ function renderFormalFieldTest(match) {
  * 三类正式赛仅在提交/放弃回调不同：判定、画面、路线、压轴和时钟一条链路。
  * 非切割项目保留原正式测试操作及各流派专长。
  */
-function renderUnifiedFormalCut(match, task, submit, abandon) {
+function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) {
   body.className = 'arena-body arena-view-formal-match arena-view-quick-match';
   stopChallengeFrame();
   if (task.invalid || !task.sequence?.length || task.rule?.kind !== 'sweep') {
@@ -682,7 +683,7 @@ function renderUnifiedFormalCut(match, task, submit, abandon) {
     const source = Core.progress.bladeById(match.blade.id) || match.blade;
     const created = Challenge.createChallenge(source, {
       seed: ((Number(match.seed) || 1) ^ Math.imul(task.index + 1, 2654435761)) >>> 0,
-      mode: 'formal', seconds: Challenge.CHALLENGE_SECONDS,
+      mode: 'formal', seconds: Challenge.CHALLENGE_SECONDS, encounter,
     });
     if (!created.ok) {
       mount(body, [el('p', { class: 'arena-note', text: created.reason || '无法创建切割测试' })]);
@@ -767,10 +768,10 @@ function renderUnifiedFormalCut(match, task, submit, abandon) {
   const updateMission = () => {
     const label = ({warmup:'热身连切',route:run.route?.name,speed:'节奏提速',
       finale:run.finale?.name})[run.phase] || '切割考验';
-    mission.querySelector('b').textContent = `${match.definition.branchName} · ${label}`;
+    mission.querySelector('b').textContent = `${run.encounter?.label || match.definition.branchName} · ${label}`;
     mission.querySelector('span').textContent = run.risk?.status === 'failed'
       ? '结构临时失效 · 本项结束'
-      : `第 ${task.index+1}/${task.total} 项 · 破甲 / 切断 / 连击 · 临时刀况 ${Math.round(run.health / Math.max(1,run.maxHealth) * 100)}%`;
+      : `第 ${task.index+1}/${task.total} 项 · 本段 ${run.stageSpawned}/${run.encounter?.stages?.[run.spawnStage]?.quota || '—'} 靶 · 刀况 ${Math.round(run.health / Math.max(1,run.maxHealth) * 100)}%`;
   };
   renderChallengeCanvas(canvas, run, {
     hud, mission, footer, updateMission,
@@ -1514,7 +1515,8 @@ function renderApexMatch() {
     const task = Core.arenaFormal.testTask(round.match);
     if (task?.kind === 'cutting') renderUnifiedFormalCut(round.match, task,
       payload => Game.apexSubmit(payload),
-      () => Game.apexSubmit({ measure: 0, failed: true }));
+      () => Game.apexSubmit({ measure: 0, failed: true }),
+      {tier:'apex',round:m.roundIndex});
     else FormalTest.renderFormalTest(round.match, body, render, {
       submit: (payload) => Game.apexSubmit(payload),
       taskOverride: task,
@@ -1602,7 +1604,8 @@ function renderNationalMatch() {
     const task = Core.arenaFormal.testTask(round.roundMatch);
     if (task?.kind === 'cutting') renderUnifiedFormalCut(round.roundMatch, task,
       payload => Game.nationalSubmitRound(payload),
-      () => Game.nationalAbandonRound());
+      () => Game.nationalAbandonRound(),
+      {tier:'national',round:m.roundIndex});
     else FormalTest.renderFormalTest(round.roundMatch, body, render, {
       submit: (payload) => Game.nationalSubmitRound(payload),
       taskOverride: task,
