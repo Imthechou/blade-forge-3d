@@ -574,7 +574,7 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
   })[cardId] || null;
   const gemVariant = key === 'gemDoppler'
     ? (cardId === 'S5_24' ? 1 /* Blue sky sapphire only */ :
-       Math.min(3, Math.floor(mix01(Number(s[0]), Number(s[2]), 0.71) * 4)))
+       Math.min(3, Math.floor(mix01(Number(s[1]), Number(s[3]), 0.71) * 4)))
     : -1;
   /* 逐局小差：同一个 key 在同一张卡上，每局相位/覆盖率都会轻微不同 */
   const jPhase = (mix01(s[0], s[1], Number(shift) || 0) - 0.5) * 2 * (eff.jitter?.phase || 0);

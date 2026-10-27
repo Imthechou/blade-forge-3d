@@ -1,0 +1,112 @@
+{
+  "cards": [
+    {
+      "id": "S5_01",
+      "visibleModelPixels": 52219
+    },
+    {
+      "id": "S5_02",
+      "visibleModelPixels": 51689
+    },
+    {
+      "id": "S5_03",
+      "visibleModelPixels": 51933
+    },
+    {
+      "id": "S5_04",
+      "visibleModelPixels": 52551
+    },
+    {
+      "id": "S5_05",
+      "visibleModelPixels": 51162
+    },
+    {
+      "id": "S5_06",
+      "visibleModelPixels": 52671
+    },
+    {
+      "id": "S5_07",
+      "visibleModelPixels": 52346
+    },
+    {
+      "id": "S5_08",
+      "visibleModelPixels": 52698
+    },
+    {
+      "id": "S5_09",
+      "visibleModelPixels": 49702
+    },
+    {
+      "id": "S5_10",
+      "visibleModelPixels": 51921
+    },
+    {
+      "id": "S5_11",
+      "visibleModelPixels": 52511
+    },
+    {
+      "id": "S5_12",
+      "visibleModelPixels": 52394
+    },
+    {
+      "id": "S5_13",
+      "visibleModelPixels": 49075
+    },
+    {
+      "id": "S5_14",
+      "visibleModelPixels": 47540
+    },
+    {
+      "id": "S5_15",
+      "visibleModelPixels": 50206
+    },
+    {
+      "id": "S5_16",
+      "visibleModelPixels": 51795
+    },
+    {
+      "id": "S5_17",
+      "visibleModelPixels": 52392
+    },
+    {
+      "id": "S5_18",
+      "visibleModelPixels": 51173
+    },
+    {
+      "id": "S5_19",
+      "visibleModelPixels": 51711
+    },
+    {
+      "id": "S5_20",
+      "visibleModelPixels": 45026
+    },
+    {
+      "id": "S5_21",
+      "visibleModelPixels": 50912
+    },
+    {
+      "id": "S5_22",
+      "visibleModelPixels": 52065
+    },
+    {
+      "id": "S5_23",
+      "visibleModelPixels": 52098
+    },
+    {
+      "id": "S5_24",
+      "visibleModelPixels": 50236
+    },
+    {
+      "id": "S5_25",
+      "visibleModelPixels": 51806
+    }
+  ],
+  "closestPair": {
+    "differenceRGB255": 6.595355281207134,
+    "cards": [
+      "S5_04",
+      "S5_08"
+    ]
+  },
+  "pairsCompared": 300
+}

@@ -95,7 +95,7 @@ test('S5 art identities distinguish all 25 cards inside unchanged families',()=>
   const shader=readFileSync(new URL('../src/render/v2/programFamilies.js',import.meta.url),'utf8');
   assert.ok(shader.includes('uniform vec4 uV2Art;'));
   assert.ok(shader.includes('s5CardArt(u.uS5CardId, op.chosen'));
-  assert.ok(shader.includes('uV2Art.x < 13.5'));
+  assert.ok(shader.includes('texture2D( uS5OpticalMap, uv )'));
 });
 test('a pair shares craft lineage but not its palette and spatial identity',()=>{
   const pairs=[['S5_01','S5_02'],['S5_03','S5_08'],['S5_04','S5_12'],

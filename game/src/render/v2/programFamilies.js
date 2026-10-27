@@ -29,6 +29,7 @@
  */
 import { extractFunctions, extractFunction, specializeStageChain } from './glslSlices.js';
 import { finishOperators, resolveS5Effect, applyS5Effect, refineS5BaseFinish, s5CardArt, S5_EFFECTS } from './finishRecipe.js';
+import { getS5OpticalTexture, S5_OPTICAL_PALETTES, s5Pattern } from './s5OpticalArt.js';
 import { buildNormalFragment, surfaceParamsOf } from './surfaceDetail.js';
 import { getSurfaceAtlas, tileRectOf, STAGE_SURFACE_KIND } from './normalAtlas.js';
 
@@ -40,7 +41,7 @@ let sourceCache = null;
    版本号进 three 的 program cache key（customProgramCacheKey），源码变了必须跟着变，
    否则同会话里可能命中上一版的 program。 */
 /* v5：补回 temper / tune / edgeGlow 三个叠加层（见下方调用点注释），改源码必须 bump */
-export const FAMILY_VERSION = 'bladeV2:58';
+export const FAMILY_VERSION = 'bladeV2:60';
 
 /** 刀身上真正会用到阶段效果函数的阶段（S8 只作用于柄，不在其中）。 */
 export const STAGE_FX = [1, 2, 3, 4, 5, 6, 7, 9];
@@ -114,6 +115,11 @@ uniform vec4  uV2FinD;      // axialMix, rampBias, rampAmt, coat
 uniform vec3  uV2FinTint;
 uniform float uV2Mode;      // baseline operator family
 uniform float uV2Look;      // 0 baseline; 1 Doppler; 2 hardened; 3 Fade; 4 Marble; 5 Gem
+uniform sampler2D uS5OpticalMap;
+uniform vec3 uS5Optical0;
+uniform vec3 uS5Optical1;
+uniform vec3 uS5Optical2;
+uniform vec3 uS5Optical3;
 uniform vec4 uV2Art;        // x S5 card ID, y effect fidelity, z freq, w direction
 uniform float uV2Micro;     // 微粗糙度幅度（S5 品质轴，0 = 关闭）
 uniform float uV2Cover;
@@ -176,6 +182,9 @@ float k3dS3Surf;      // S3 表面掩码（0..1）
    star glyphs in a GLSL comment have already broken this shader once:
    the declarations ended up inside an unterminated comment block and the
    physical stage reported undeclared identifier for all three names. */
+float k3dS5Coat = 0.0;
+float k3dS5CoatRough = 0.15;
+float k3dS5Metal = 0.0;
 float k3dS4RimAmt  = 0.0;
 float k3dS4SoftAmt = 0.0;
 float k3dS4W       = 0.0;
@@ -281,7 +290,7 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
         2 = 表面淬火：斑块，低段留底钢（不着色）
         3 = 沿刀轴渐变（渐变之色 / 回火带） */
   float rampW = clamp( D.z, 0.0, 1.0 );
-  if ( rampW > 0.002 && uV2Mode > 0.5 && uV2Look < 0.5 ) {
+  if ( rampW > 0.002 && uV2Mode > 0.5 && uV2Look < 0.5 && uV2Art.x < 0.5 ) {
     /* ★★ 2026-10-23（真斑块）：mode 2（表面淬火 / 翡翠 / 深渊 / 赤铜）的斑块场。
        ⚠ 必须声明在 field 之前 —— 第一次写的时候我把它放在 zone 之后，
        而 field 在 zone 之前使用它，GLSL 里属于"先用后声明" → 整支着色器编译失败、刀直接不渲染。
@@ -413,245 +422,48 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
                  wRamp * 0.65 );
   }
 
-  /* S5 premium PBR signatures, intentionally distinct spatial structures.
-     The selected card owns the recipe, while seeds shift placement only.
-     Use the already-linked 3-octave noise helper at most once per fragment.
-     No texture uploads, macros or per-card shader programs.
-     S3 grain and substrate remain below this colored metal surface. */
-  if ( uV2Look > 0.5 && rampW > 0.002 ) {
-    float bladeAxis = clamp( ( local.x - 0.40 ) / 0.58, 0.0, 1.0 );
-    vec2 uv = vec2( bladeAxis, local.y * 2.5 + 0.5 );
-    vec2 offset = vec2( D.y * 1.7 + uSeeds.x * 0.8,
-                        uSeeds.y * 1.3 + D.y * 0.5 );
-    float field = 0.5;
-    if ( uV2Look < 2.5 || uV2Look > 3.5 ) {
-      field = k3dFbm2( uv * vec2( 3.4, 1.55 ) + offset );
-    }
-    float pos = bladeAxis;
-    float coverage = clamp( wBlade * 1.45, 0.0, 1.0 );
-    coverage = max( coverage, smoothstep( 0.43, 0.70, local.x ) * 0.90 );
-    float amount = clamp( rampW * 1.26, 0.0, 1.0 ) * coverage;
-    vec3 enamel = col;
-    float polish = 0.20;
-    /* S1 base metal affects every selected S5 paint. The pattern family
-       stays recognizable; rougher/darker steel has deeper, less uniform
-       metallic reflections. Rarity gives cleaner flow, not white emission. */
-    float substrateRough = clamp( uBladeRoughness, 0.02, 0.95 );
-    float qFinish = clamp( uS5Tier / 5.0, 0.0, 1.0 );
-    float substrateValue = clamp(
-      dot( uBladeBaseColor, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.0, 1.0 );
-
-    if ( uV2Look < 1.5 ) {
-      /* Doppler: broad, connected liquid-metal waves and gemstone glints;
-         NO thresholded confetti spots. Flow field deforms continuous bands. */
-      float isAmethyst = step( 21.5, uV2Art.x );
-      float flow = mix( uv.x*0.80+uv.y*0.18, uv.x*0.52-uv.y*0.48,
-                        isAmethyst )
-                 + (field - 0.5) * mix(0.72,0.30,isAmethyst)
-                 + sin( uv.y * 7.1 + uv.x * 2.7 + D.y * 6.0 )
-                   * mix(0.11,0.055,isAmethyst);
-      float ribbon = 0.5 + 0.5 * sin( flow * 6.2831853
-                   * mix(1.0,1.5,isAmethyst) );
-      float phase = clamp( ribbon * 0.94 + fres * 0.08, 0.0, 1.0 );
-      enamel = k3dPalette4( uDopPal0, uDopPal1, uDopPal2, uDopPal3, phase );
-      /* Amethyst: deep dark boundary and narrow purple metal veins.
-         The ordinary Doppler keeps broad smooth blue/violet melt flow. */
-      enamel *= mix(1.0, 0.78 + 0.17*smoothstep(0.63,0.88,ribbon), isAmethyst);
-      polish = mix(0.115,0.17,isAmethyst) + 0.058 * abs( field - 0.5 );
-      amount *= 0.91;
-    } else if ( uV2Look < 2.5 ) {
-      /* Case hardening: irregular BLUE islands on steel with bronze/gold
-         oxidation at the boundaries. Keep a recognizable raw steel base. */
-      /* Center the FBM distribution before color separation. Without
-         centering, FBM values cluster near 0.5 and produce almost all blue
-         with none of the expected bronze/gold oxidation boundary. */
-      float oxide = clamp( field * 2.0 - 0.46
-        + 0.11 * sin( uv.x * 12.0 + uv.y * 7.0 + D.y * 5.0 ), 0.0, 1.0 );
-      float blue = smoothstep( 0.58, 0.78, oxide );
-      float gold = smoothstep( 0.18, 0.34, oxide )
-                 * (1.0 - smoothstep( 0.58, 0.77, oxide ));
-      vec3 cobalt = mix( uDopPal1, uDopPal0,
-                         smoothstep( 0.72, 0.95, oxide ) * 0.35 );
-      vec3 bronze = mix( uDopPal2, uDopPal3, 0.22 );
-      enamel = mix( col, bronze, gold * 0.91 );
-      enamel = mix( enamel, cobalt, blue * 0.93 );
-      /* A sparse oxidized coastline must survive even blue-heavy seeds.
-         Otherwise a case-hardened card becomes indistinguishable from
-         sapphire Doppler. It is broad and connected, not random spots. */
-      float coastline = smoothstep( 0.72, 0.90,
-        0.5 + 0.5 * sin( uv.x * 11.5 + uv.y * 4.1
-                      + (field - 0.5) * 5.0 + D.y * 3.7 ) );
-      enamel = mix( enamel, bronze, coastline * (0.48 - blue * 0.13) );
-      polish = mix( 0.28, 0.15, blue );
-      amount *= 0.95;
-    } else if ( uV2Look < 3.5 ) {
-      /* Fade: one continuous root-to-tip sweep. No patches, no repetition. */
-      float t = smoothstep( 0.02, 0.98,
-                   clamp( pos + ( uSeeds.x - 0.5 ) * 0.09, 0.0, 1.0 ) );
-      enamel = k3dPalette4( uDopPal0, uDopPal1, uDopPal2, uDopPal3, t );
-      polish = 0.125;
-      amount *= 0.95;
-    } else if ( uV2Look < 4.5 ) {
-      /* Marble Fade: wide red / gold / blue ribbons warped longitudinally.
-         The structural flow is connected; never a cloud of round freckles. */
-      /* Liquid nitrogen shows fractured ribbons, anodizing follows
-         ordered diagonal oxide layers rather than another rainbow spill. */
-      float anodized = step(14.5,uV2Art.x);
-      float flow = mix(uv.x*1.22+uv.y*0.43+(field-0.5)*0.34,
-                       uv.x*0.48+uv.y*0.89+(field-0.5)*0.10,
-                       anodized);
-      float stripes = 0.5 + 0.5 * sin( flow * 6.2831853
-                        * mix(1.0,1.6,anodized)+0.4 );
-      enamel = k3dPalette4( uDopPal0, uDopPal1, uDopPal2, uDopPal3,
-                             smoothstep( 0.05, 0.96, stripes ) );
-      polish = mix(0.14,0.19,anodized);
-      amount *= mix(0.94,0.81,anodized);
-    } else {
-      /* Ruby / Sapphire / Emerald / Black Pearl: one dominant hue family.
-         Subtle gem depth; different light reflections, not multicolor paint. */
-      float sky = step( 23.5, uV2Art.x );
-      float band = 0.5+0.5*sin(uv.x*12.0 + uv.y*4.0
-                              + (field-0.5)*2.3);
-      float depth = clamp( 0.46 + 0.33 * (field - 0.5) + fres * 0.10
-                         + sky * (band-0.5)*0.35, 0.05, 0.91 );
-      enamel = k3dPalette4( uDopPal0, uDopPal1, uDopPal2, uDopPal3, depth );
-      polish = mix( 0.095,0.14,sky );
-      amount *= 0.98;
-    }
-    float metalVariation = mix( 0.85, 0.95, substrateValue )
-                         * ( 0.94 + 0.06 * clamp( pat0, 0.0, 1.0 ) );
-    /* Bond color treatment to actual S1 metal and inherited S3 grain.
-       Pigment coverage retreats at etched/rough regions, preserving steel
-       identity even under ruby, Fade and case-hardened color. */
-    float substrateBond = 0.73 + 0.21 * pat0;
-    amount *= mix( 0.86, 1.0, qFinish ) * (1.0 - 0.13 * substrateRough)
-             * mix(0.98,1.08,substrateValue) * substrateBond;
-    /* Color the metal reflectance, preserve physical roughness grain. */
-    col = mix( col, enamel * metalVariation, clamp( amount, 0.0, 0.97 ) );
-    rough = mix( rough,
-                 clamp( polish * ( 1.07 - 0.15 * qFinish )
-                        + 0.23 * substrateRough
-                        + abs( pat.y ) * ( 0.040 - 0.021 * qFinish ),
-                        0.07, 0.58 ),
-                 clamp( amount * 0.76, 0.0, 0.86 ) );
-  }
-
-
-  /* Each S5 card owns a spatially meaningful detail signature.
-     Low-tier metals were almost identical in actual Chrome screenshots:
-     roughness-only variants have no recognizable directional structure.
-     All effects use the existing forge coordinates, PBR channels and S1
-     substrate. No new textures, emitted light or per-card GLSL programs.
-     Material roughness and color remain coupled to S1; S8 alone gates Grip. */
-  if ( uV2Art.x > 0.5 && (uV2Art.x < 13.5 ||
-       (uV2Art.x > 16.5 && uV2Art.x < 17.5) || uV2Art.x > 24.5) ) {
+  /* S5 is an optical finish over S1 metal and S3 forging. R/G/B/A
+     describe spectral position / treatment / polish / clearcoat. No S5
+     height or normal map: S3 alone retains its forged surface identity.
+     One filtered lookup replaces all premium FBM and per-card branches. */
+  if ( uV2Art.x > 0.5 ) {
+    vec2 uv = vec2( clamp((local.x-0.40)/0.58,0.0,1.0),
+                    clamp(local.y,0.0,1.0) );
+    vec4 optical = texture2D( uS5OpticalMap, uv );
     float card = uV2Art.x;
-    float fidelity = clamp( uV2Art.y, 0.0, 0.85 ) * clamp( amt, 0.0, 1.0 );
-    float steelLum = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
-    float sc = max( 0.04, steelLum );
-    vec2 xy = vec2( ( local.x - 0.40 ) / 0.58, local.y * 2.0 + 0.5 );
-    float grain = 0.5 + 0.5 * sin( (xy.x*cos(uV2Art.w) +
-                                     xy.y*sin(uV2Art.w))*uV2Art.z*6.2831853 );
-    float microGrain = grain*0.68 + pat0*0.32;
-    float edge = smoothstep( 0.28, 0.86, clamp( vBladeEdge, 0.0, 1.0 ) );
-    if ( card < 1.5 ) {
-      /* Cold-blue oxide veil: cool reflections, gray S1 steel still visible. */
-      float film = (0.3 + fres*0.50 + microGrain*0.20)*fidelity;
-      col = mix( col, col*vec3( 0.72, 0.98, 1.19 ), film*0.60 );
-      rough = mix( rough, 0.27 + 0.30*uBladeRoughness, fidelity*0.43 );
-    } else if ( card < 2.5 ) {
-      /* Rapid quench: hardened edge, coherent thin cold bevel. */
-      float strip = edge * (0.72 + 0.28*microGrain);
-      col = mix( col, col*vec3( 0.70, 0.99, 1.24 ), strip*fidelity*0.72 );
-      rough = mix( rough, 0.10 + uBladeRoughness*0.20,
-                   strip*fidelity*0.58 );
-    } else if ( card < 3.5 ) {
-      /* Cool gray flats: matte central panel, retained polished knife ridge. */
-      float flatZone = 1.0 - smoothstep( 0.34, 0.79, abs( xy.y - 0.5 ) * 2.0 );
-      col *= 1.0 - flatZone*fidelity*0.22;
-      rough = mix( rough, 0.55 + 0.19*uBladeRoughness,
-                   flatZone*fidelity*0.72 );
-    } else if ( card < 4.5 ) {
-      /* Diagonal quench engraving: directional steel hairlines,
-         reflected as roughness shifts rather than painted white lines. */
-      float brushed = (microGrain - 0.5)*0.40*fidelity;
-      col *= 1.0 + brushed*0.91;
-      rough = clamp( rough + brushed*0.76, 0.10, 0.89 );
-    } else if ( card < 5.5 ) {
-      /* Salt bath: fine, muted mineral clouds in the steel oxide. */
-      float salt = 0.5 + 0.5*sin( xy.x*12.4+xy.y*8.1+pat.y*4.7 );
-      float stain = smoothstep( 0.37, 0.90, salt )*fidelity;
-      /* Salt bath is a mostly uniform ivory/warm-gray protective surface;
-         tiny local roughness changes, no striped red/blue heat window. */
-      col = mix( col, col*vec3( 1.22, 1.07, 0.78 ),
-                 (0.40 + 0.60*stain)*fidelity*0.53 );
-      rough = clamp( rough + (salt-0.5)*fidelity*0.13, 0.10, 0.86 );
-    } else if ( card < 6.5 ) {
-      /* Light-absorbing charcoal: dark satin, not unlit black plastic. */
-      col *= 1.0 - fidelity*(0.29 + 0.10*(1.0 - pat0));
-      rough = mix( rough, 0.43 + 0.18*uBladeRoughness, fidelity*0.54 );
-    } else if ( card < 7.5 ) {
-      /* Dye-like heat-oxide veil: only low-coverage blue-violet interference. */
-      float oxide = smoothstep( 0.22, 0.86,
-          0.5 + 0.29*sin(xy.x*6.2+xy.y*2.8) + 0.12*pat0 );
-      vec3 film = mix(vec3(0.78,1.02,1.16),vec3(1.12,0.80,1.20),oxide);
-      col *= mix( vec3(1.0), film, fidelity*0.75 );
-      rough = mix(rough,0.24 + 0.22*uBladeRoughness,fidelity*0.37);
-    } else if ( card < 8.5 ) {
-      /* Micro bead blast: broad diffused high-light, never colored confetti. */
-      float sand = 0.5 + 0.5*sin( xy.x*150.0 + xy.y*97.0 + pat.y*6.0 );
-      rough = mix( rough, 0.56 + 0.16*uBladeRoughness
-                       + (sand-0.5)*0.055, fidelity*0.82 );
-    } else if ( card < 9.5 ) {
-      /* Vacuum mirror: clean and fine specular corridor, zero artificial glow. */
-      float stripe = pow( 0.5+0.5*cos( xy.y*3.5+0.4 ), 3.0 );
-      rough = mix( rough, 0.075 + 0.13*uBladeRoughness, fidelity*0.82 );
-      col *= 0.95 + stripe*fidelity*0.047;
-    } else if ( card < 10.5 ) {
-      /* Nitrided gunmetal: deep slate oxide with muted directional striation. */
-      col = mix( col, col*vec3(0.62,0.70,0.77),
-                 fidelity*(0.44 + 0.20*grain) );
-      rough = mix(rough,0.31 + 0.19*uBladeRoughness,fidelity*0.60);
-    } else if ( card < 11.5 ) {
-      /* Controlled heat window: one precise narrow golden oxidation line,
-         cold hard steel left exposed on both sides. */
-      float window = exp( -13.0*abs( xy.x - 0.51
-                          - 0.10*sin(xy.y*4.8+pat0)) );
-      float coldBank = smoothstep(0.32,0.68,xy.x)*(1.0-window);
-      vec3 bronze = vec3(1.18,0.80,0.42);
-      col *= mix( vec3(1.0),bronze,window*fidelity*1.18 );
-      col *= mix( vec3(1.0),vec3(0.89,0.98,1.11),
-                  coldBank*fidelity*0.23 );
-      rough = mix(rough,0.26+0.15*uBladeRoughness,window*fidelity*0.55);
-    } else if ( card < 12.5 ) {
-      /* Deep hardened grain: etched forged layers in the same S3 coordinates. */
-      float etched = smoothstep( 0.29,0.70,
-          mix(pat0,grain,0.44) );
-      /* Deeply hardened folds should be broader and darker than the
-         S5_04 narrow, diagonal high-frequency grinding lines. */
-      col *= 1.0 - etched*fidelity*0.55;
-      rough = clamp(rough + etched*fidelity*0.17,0.09,0.92);
-    } else if ( card < 13.5 ) {
-      /* Interference exists on bevel/corners; avoid painting the whole blade. */
-      float tangentFilm = edge * pow(fres,0.62)*fidelity;
-      col *= mix(vec3(1.0),vec3(0.79,1.12,1.26),tangentFilm*0.68);
-      rough = mix(rough,0.16+0.16*uBladeRoughness,tangentFilm*0.30);
-    } else if ( card < 17.5 ) {
-      /* Carbon armor: dark quenched islands and shallow relief in steel. */
-      float armor = 0.5+0.5*sin(xy.x*30.0 + sin(xy.y*15.0)*1.4)
-                       *cos(xy.y*14.5+xy.x*2.1);
-      float boundary = smoothstep(0.43,0.76,armor);
-      col *= 1.0 - fidelity*(0.29 + boundary*0.15);
-      rough = mix(rough,0.30+boundary*0.20+uBladeRoughness*0.12,
-                   fidelity*0.70);
-    } else {
-      /* Raw steel master polish: strictly preserve material tone and grain. */
-      rough = mix(rough, 0.12+0.18*uBladeRoughness, fidelity*0.55);
-    }
+    float isPremium = step(0.5,uV2Look);
+    float q = clamp(uS5Tier/5.0,0.0,1.0);
+    float structure = (pat0-0.5)*clamp(uS3On,0.0,1.0);
+    float spectral = clamp(optical.r + structure*0.075,0.0,1.0);
+    // Interference belongs to thin oxide films, not every metallic card.
+    float irid = (1.0-step(7.5,card))*step(6.5,card)
+               + (1.0-step(13.5,card))*step(12.5,card);
+    spectral = clamp(spectral + irid*fres*0.20,0.0,1.0);
+    vec3 filmCol = k3dPalette4(uS5Optical0,uS5Optical1,
+                              uS5Optical2,uS5Optical3,spectral);
+    // Exposed steel at etched valleys binds the treatment to the SAME S3.
+    float bond = clamp(0.88 + structure*0.22 - abs(pat.y)*0.10,0.65,1.0);
+    float filmAmt = optical.g*bond*mix(0.69,0.90,isPremium);
+    filmAmt *= mix(0.94,1.0,q);
+    // Neutral signatures alter metal reflectance; no opaque neutral paint.
+    vec3 neutralFilm = filmCol * (0.38 + 0.76*sqrt(max(0.0,
+      dot(uBladeBaseColor,vec3(0.2126,0.7152,0.0722)))));
+    filmCol = mix(neutralFilm,filmCol,isPremium);
+    // S3 grain modulates both color and real PBR roughness through the film.
+    filmCol *= 1.0 + structure*0.21 + clamp(pat.y,-0.8,0.8)*0.11;
+    col = mix(col,filmCol,clamp(filmAmt,0.0,0.93));
+    float polish = clamp(optical.b + uBladeRoughness*0.17
+                         + abs(pat.y)*0.045,0.075,0.78);
+    rough = mix(rough,polish,optical.g*0.84);
+    k3dS5Coat = optical.a*filmAmt*clamp(wBlade,0.0,1.0)*0.72;
+    k3dS5CoatRough = clamp(0.10 + optical.b*0.28
+                           + abs(structure)*0.08,0.10,0.32);
+    // Patterned oxide remains metallic, with a dielectric coat above it.
+    k3dS5Metal = filmAmt*0.06;
   }
 
   /* ⑤ 薄膜：视角相关色散 + 一点点加光（克制上限 0.35） */
-  if ( B.z > 0.002 ) {
+  if ( B.z > 0.002 && uV2Art.x < 0.5 ) {
     vec3 film = k3dV2Film( fres, B.w, C.z );
     col = mix( col, col * film * 1.45, clamp( B.z, 0.0, 1.0 ) * cover * 0.70 );
     glow += clamp( B.z, 0.0, 0.35 ) * pow( clamp( fres, 0.0, 1.0 ), max( 0.5, C.x ) ) * 0.12;
@@ -1115,7 +927,7 @@ const MAP_FRAGMENT = `
       col *= 1.0 + forgeEngrave * 0.08;
     }
     /* ⑦ 身份预算：保留金属底色、避免涂层洗掉旧锻纹 */
-    col = mix( col, identityCol, uV2Coat > 0.001 ? 0.12 : 0.24 );
+    col = mix( col, identityCol, uV2Art.x > 0.5 ? 0.10 : (uV2Coat > 0.001 ? 0.12 : 0.24) );
     diffuseColor.rgb = mix( diffuseColor.rgb, col, wS );
   }
 }
@@ -1147,6 +959,10 @@ const ROUGHNESS_FRAGMENT = `
     bladeRough = k3dV2StageRough( uCardFx[6], k3dPat[6], bladeRough, uV2StageRough[6] );
     bladeRough = k3dV2StageRough( uCardFx[8], k3dPat[8], bladeRough, uV2StageRough[8] );
 
+    if (uV2Art.x > 0.5) {
+      bladeRough = mix(bladeRough,
+        clamp(uBladeRoughness+k3dFinishRoughDelta+pat.y*0.085,0.075,0.88),0.65);
+    }
     /* 刃口抛光（S7 的真实 bevel） */
     float bevel = smoothstep( 0.16, 0.70, clamp( vBladeEdge, 0.0, 1.0 ) ) * uEdgeGlow.w * wB;
     bladeRough = mix( bladeRough, mix( 0.18, 0.045, clamp( uEdgeGlow.x, 0.0, 1.0 ) ), bevel * 0.70 );
@@ -1160,7 +976,7 @@ const METALNESS_FRAGMENT = `
   float wB, wG, wH; k3dRegionW( wB, wG, wH );
   float wS = k3dSkinW( wB, wG, wH );
   if ( wS > 0.002 ) {
-    float metal = clamp( uBladeMetalness + uBladeRoughVar * 0.05, 0.0, 1.0 );
+    float metal = clamp( uBladeMetalness + uBladeRoughVar * 0.05 + k3dS5Metal, 0.0, 1.0 );
     metalnessFactor = mix( metalnessFactor, metal, wS );
   }
 }
@@ -1185,8 +1001,8 @@ const METALNESS_FRAGMENT = `
       但 pageerror 为空 —— 是静默的 shader 链接失败）。
       刀身权重改由 MAP_FRAGMENT 存进 k3dS4W。 */
 const PHYSICAL_FRAGMENT = `#ifdef USE_CLEARCOAT
-material.clearcoat = clamp( material.clearcoat + uV2Coat, 0.0, 1.0 );
-material.clearcoatRoughness = mix( material.clearcoatRoughness, 0.12, clamp( uV2Coat, 0.0, 1.0 ) );
+material.clearcoat = clamp( material.clearcoat + max(uV2Coat,k3dS5Coat), 0.0, 0.92 );
+material.clearcoatRoughness = mix( material.clearcoatRoughness, k3dS5CoatRough, clamp(max(uV2Coat,k3dS5Coat),0.0,1.0) );
 #endif
 {
   /* 锋线当主光、大范围晕当底光；总量封顶避免过曝。
@@ -1285,6 +1101,8 @@ export function buildHook(pack, frame, opts = {}) {
     }
     return V3(c);
   };
+  const opticalPalette = S5_OPTICAL_PALETTES[Number(String(u.uS5CardId).slice(3))] || pal;
+  const opticalMeta = s5Pattern(u.uS5CardId, u.uSeeds);
   const tint = op.tint || u.uFinColor || '#ffffff';
 
   /* 微粗糙度幅度：抛光类给得多一点（S5 品质轴），其余克制。低档卡不额外加噪。 */
@@ -1351,6 +1169,11 @@ export function buildHook(pack, frame, opts = {}) {
     uS5Tier: { value: Number(u.uStageTiers?.[4]) || 0 },
     uV2FadeMode: { value: op.fadeMode ? 1 : 0 },
     uV2Look: { value: Number(op.premiumLook) || 0 },
+    uS5OpticalMap: { value: getS5OpticalTexture(THREE,u.uS5CardId,u.uSeeds,op.chosen,opts.material) },
+    uS5Optical0: { value: palVec(opticalPalette[0]) },
+    uS5Optical1: { value: palVec(opticalPalette[1]) },
+    uS5Optical2: { value: palVec(opticalPalette[2]) },
+    uS5Optical3: { value: palVec(opticalPalette[3]) },
     uV2Art: { value: new THREE.Vector4(...s5CardArt(u.uS5CardId, op.chosen, Number(u.uStageTiers?.[4]) || 0)) },
     uRarityColor: { value: colorOf(u.uRarityColor, '#c5d7e8') },
     uCardFx: { value: u.uCardFx || new Float32Array(36) },
@@ -1532,7 +1355,7 @@ export function buildHook(pack, frame, opts = {}) {
        直接改写 `normal`，因此后续 PBR 光照/环境反射全部吃到凹凸。 */
     normalFragment: NORMAL_FRAGMENT,
     /* 诊断：这一份配方的算子快照（不进 GLSL） */
-    v2: { finishId, op, micro, palette: !!op.palette },
+    v2: { finishId, op, micro, palette: !!op.palette, optical: opticalMeta },
   };
 }
 

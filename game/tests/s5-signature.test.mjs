@@ -29,7 +29,7 @@ test('S5 never activates unchosen or ordinary lower-tier premium recipes',()=>{
 test('four jewel palettes can all be deterministically generated',()=>{
  const keys=new Set();
  for(let i=1;i<=40;i++){
-   const x=resolveS5Effect(10,5,.2,[i/41,0.31,(i*7%41)/41,0.2],options('S5_21'));
+   const x=resolveS5Effect(10,5,.2,[0.31,i/41,0.2,(i*7%41)/41],options('S5_21'));
    keys.add(x.gemVariant);
  }
  assert.deepEqual([...keys].sort(),[0,1,2,3]);
