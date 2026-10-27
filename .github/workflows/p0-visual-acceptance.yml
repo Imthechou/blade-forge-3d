@@ -1,0 +1,47 @@
+name: P0 unified visual live-browser acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'game/src/**'
+      - 'game/tests/visual-ownership.test.mjs'
+      - 'tools/p0-visual-acceptance-20261027.mjs'
+      - '.github/workflows/p0-visual-acceptance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Chrome automation
+        working-directory: game
+        run: |
+          npm install --no-save --package-lock=false playwright
+          sudo timeout 30s apt-get install -y fonts-noto-cjk || true
+      - name: Regression tests
+        working-directory: game
+        run: npm test
+      - name: Start actual game server
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > server.log 2>&1 &
+          sleep 2
+      - name: Render and validate every stage/card preview
+        working-directory: game
+        run: |
+          cp ../tools/p0-visual-acceptance-20261027.mjs tools/p0-visual-acceptance-20261027.mjs
+          node tools/p0-visual-acceptance-20261027.mjs
+      - name: Upload real screenshots and snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-stage-card-acceptance
+          path: |
+            game/forge-visual-audit/
+            server.log
+          retention-days: 14
