@@ -344,7 +344,7 @@ export function tick(run, seconds) {
       }
       run.nextSpawnAt+=spawnInterval(run);
       if(run.encounter && run.stageSpawned>=phaseQuota(run.encounter,run.spawnStage)) {
-        run.nextSpawnAt=Infinity; break;
+        run.nextSpawnAt=Number.MAX_SAFE_INTEGER; break;
       }
     }
     return run;
