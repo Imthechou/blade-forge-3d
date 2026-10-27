@@ -2,10 +2,16 @@ name: Verify and deploy Blade Forge to GitHub Pages
 
 on:
   push:
-    branches: [main, chore/restore-v3-pages-20261027]
+    branches: [main]
     paths:
       - 'game/**'
       - '锻刀大赛_v3.0.zip'
+      - 'scripts/prepare_site.py'
+      - '.github/workflows/pages.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'game/**'
       - 'scripts/prepare_site.py'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
