@@ -1,0 +1,39 @@
+name: Forge visual card audit (analysis only)
+on:
+  push:
+    branches: [analysis/forge-card-visual-audit-20261027]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Prepare Chrome / Chinese fonts
+        working-directory: game
+        run: |
+          npm install --no-save --package-lock=false playwright
+          sudo timeout 35s apt-get install -y fonts-noto-cjk || true
+      - name: Serve exact source
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > server.log 2>&1 &
+          sleep 2
+      - name: Play through and compare all three cards
+        working-directory: game
+        run: |
+          cp ../tools/forge-visual-audit-20261027.mjs tools/forge-visual-audit-20261027.mjs
+          node tools/forge-visual-audit-20261027.mjs
+      - name: Save per-card screenshots & diagnostic JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-stage-visual-audit
+          path: |
+            game/forge-visual-audit/
+            server.log
+          retention-days: 14
