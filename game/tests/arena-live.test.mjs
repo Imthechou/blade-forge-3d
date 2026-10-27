@@ -28,7 +28,7 @@ test('六流派 × 五档：所有项目规则必须可按项目 ID 检索，切
       const task = Formal.testTask(match);
       assert.equal(task.kind,id);
       assert.ok(task.rule?.kind, id+' 缺规则');
-      if(id==='cutting') assert.ok(task.sequence?.length>=6, '切割题目不能为空');
+      if(id==='cutting') { assert.ok(task.sequence?.length>=6, '切割题目不能为空'); assert.equal(task.rule.seconds,45); }
       const submitted = Formal.submitTest(match,{measure:0.78});
       assert.ok(submitted.ok, id+' 分项结算失败');
     }
