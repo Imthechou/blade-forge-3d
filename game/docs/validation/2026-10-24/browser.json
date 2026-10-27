@@ -1,0 +1,61 @@
+{
+  "url": "http://127.0.0.1:8123/",
+  "testedAt": "2026-10-26T17:32:21.758Z",
+  "scenarios": [
+    {
+      "name": "桌面首页与 3D 首帧",
+      "ok": true,
+      "detail": {
+        "elapsedMs": 4691,
+        "readyStages": {
+          "assetsReady": true,
+          "programsReady": true,
+          "uploadSubmitted": true,
+          "firstDrawSubmitted": true
+        }
+      }
+    },
+    {
+      "name": "设置保存并刷新恢复",
+      "ok": true
+    },
+    {
+      "name": "真实点击开始、选卡与阶段推进",
+      "ok": true
+    },
+    {
+      "name": "鉴定保存失败提示、重试与重复归档保护",
+      "ok": true
+    },
+    {
+      "name": "赛事与工坊页面切换",
+      "ok": true
+    },
+    {
+      "name": "切割整场保存失败不锁定结算，恢复后只发一次奖励",
+      "ok": true,
+      "detail": {
+        "failed": "PERSIST_FAILED",
+        "locked": false,
+        "unchanged": true,
+        "retryReward": 30,
+        "settled": true,
+        "noDuplicate": true
+      }
+    },
+    {
+      "name": "手机尺寸和异常旧档启动",
+      "ok": true,
+      "detail": {
+        "collection": [],
+        "bestScore": 0,
+        "backup": true,
+        "viewport": 390,
+        "pageWidth": 390
+      }
+    }
+  ],
+  "errors": [],
+  "failedRequests": [],
+  "ok": true
+}

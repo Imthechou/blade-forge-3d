@@ -1,0 +1,71 @@
+/** App shell navigation: page title, currency balance, settings, and one back route. */
+import { el, mount, toast } from './dom.js';
+import * as Progress from '../core/progress.js';
+import router from './router.js';
+import { ICONS } from './components.js';
+import * as SettingsSheet from './settingsSheet.js';
+import { motion, bus, EVENTS, env } from '../platform/index.js';
+
+let lastSaveWarning = 0;
+bus.on(EVENTS.SAVE_FAILED, () => {
+  const now = Date.now();
+  if (now - lastSaveWarning < 2000) return;
+  lastSaveWarning = now;
+  toast('保存失败，本次操作未保存。请检查浏览器存储空间后重试。', 'warn', 6000);
+});
+
+const syncMotion = reduced => { document.documentElement.dataset.motion = reduced ? 'reduced' : 'full'; };
+syncMotion(motion.reduced());
+motion.subscribe(syncMotion);
+
+const TITLES = {
+  home: '锻刀大赛',
+  forge: '锻刀',
+  appraise: '鉴定',
+  arena: '赛事',
+  workshop: '工坊',
+  daily: '每日挑战',
+};
+
+let titleEl = null;
+let crEl = null;
+let backEl = null;
+
+export function create(host) {
+  if (!env.hasLocalStorage) toast('当前浏览器无法持久保存，进度仅在本次页面有效。请允许本地存储后重新打开。', 'warn', 8000);
+  backEl = el('button', {
+    class: 'topbar-back', text: '←',
+    title: '返回首页', 'aria-label': '返回首页',
+    onclick: () => router.go('home'),
+  });
+  backEl.hidden = true;
+
+  titleEl = el('div', { class: 'topbar-title', text: TITLES.home });
+  crEl = el('div', { class: 'topbar-cr', role: 'status', 'aria-label': '信用点余额' }, [
+    el('span', { class: 'muted', text: 'CR' }),
+    el('b', { text: '0' }),
+  ]);
+
+  mount(host, [
+    backEl,
+    el('div', { class: 'topbar-mid' }, [titleEl]),
+    crEl,
+    el('button', {
+      class: 'topbar-gear',
+      title: '设置', 'aria-label': '设置',
+      onclick: () => SettingsSheet.open(),
+    }, [ICONS.settings(false)]),
+  ]);
+}
+
+export function sync(pageKey) {
+  if (titleEl) titleEl.textContent = TITLES[pageKey] || TITLES.home;
+  if (backEl) backEl.hidden = pageKey === 'home';
+  const state = Progress.get();
+  if (crEl) {
+    const value = crEl.querySelector('b');
+    if (value) value.textContent = String(state.cr);
+  }
+}
+
+export default { create, sync };
