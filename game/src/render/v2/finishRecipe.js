@@ -258,6 +258,22 @@ export default { finishOperators, finishOperatorTable, CASE_HARDENED_PALETTE, TE
  * }
  * ════════════════════════════════════════════════════════════════ */
 export const S5_EFFECTS = {
+  /* Original PBR recipes: each family owns a spatial mask, not just a palette.
+     The numeric look is consumed by the SINGLE fixed-program S5 shader. */
+  marbleFade: {
+    name: '渐变大理石', look: 4, mode: 3,
+    palette: ['#b7142b','#e94737','#e9b53e','#1742b5'],
+    cover: 0.88, ramp: 0.91, gloss: 0.37, film: 0.025, filmThick: 0.40,
+    fresPow: 1.85, fresAdd: 0.08, jitter:{phase:0.06,cover:0.02},
+    rare:{chance:0.07,note:'冰火纹',palette:['#bd152a','#ed4042','#354ec8','#102b88'],cover:0.92,ramp:0.95},
+  },
+  gemDoppler: {
+    name: '宝石多普勒', look: 5, mode: 1,
+    palette:['#071f56','#123b9a','#1d69e2','#87b9ff'],
+    cover:0.92,ramp:0.94,gloss:0.25,film:0.025,filmThick:0.40,
+    fresPow:1.80,fresAdd:0.08,jitter:{phase:0.04,cover:0.01},
+    rare:{chance:0,note:'宝石',palette:['#071f56','#123b9a','#1d69e2','#87b9ff'],cover:0.94,ramp:0.95},
+  },
   /* ── 三张对标 CSGO 的经典牌 ───────────────────────────── */
   /* ★★ 2026-10-24（修「配色偏艳」的真正根因）
    *
@@ -272,14 +288,14 @@ export const S5_EFFECTS = {
    *   身份不丢：色相、明暗档、斑块尺度、稀有模板都照旧，只是不再满铺。
    */
   doppler: {
-    name: '多普勒',
+    name: '多普勒', look: 1,
     mode: 1, palette: ['#1b2a6b', '#4a2f9e', '#8b3fc0', '#2fa6c8'],
     cover: 0.38, ramp: 0.70, gloss: 0.72, film: 0.08, filmThick: 0.55,
     fresPow: 2.20, fresAdd: 0.16, jitter: { phase: 0.10, cover: 0.06 },
     rare: { chance: 0.10, note: '蓝宝石多普勒', palette: ['#0d1b4a', '#123a8c', '#1f6fd0', '#8fd4ff'], cover: 0.44, ramp: 0.76 },
   },
   caseHardened: {
-    name: '表面淬火',
+    name: '表面淬火', look: 2,
     mode: 2, palette: ['#6f7a86', '#2f6fb5', '#c8a049', '#7a3f8c'],
     cover: 0.40, ramp: 0.72, gloss: 0.86, film: 0.05, filmThick: 0.40,
     fresPow: 2.60, fresAdd: 0.10, jitter: { phase: 0.16, cover: 0.10 },
@@ -287,7 +303,7 @@ export const S5_EFFECTS = {
     rare: { chance: 0.07, note: '全蓝淬火', palette: ['#123a7a', '#1f6fd0', '#39a6f0', '#0f2f5f'], cover: 0.46, ramp: 0.78 },
   },
   fade: {
-    name: '渐变之色',
+    name: '渐变之色', look: 3,
     mode: 3, palette: ['#391d73', '#a51c80', '#e55618', '#f2c935'],
     /* mode 3 是沿轴渐变，本来就该较通铺 —— 但 1.0 等于把整刀染满，
        降到 0.58 后仍能读出一条完整色环，同时保住打磨质感。 */
@@ -306,7 +322,7 @@ export const S5_EFFECTS = {
     name: '冷热虹界',
     /* 四段锚点调深、中段加饱和：之前尾段 #f7d043 太浅，整条读成"紫→白"，
        看不出紫→品红→朱→金。 */
-    mode: 3, fromBase: true, fullWeight: true,   /* 2026-10-23 用户口径：用**材质本身**做渐变，不用外来色 */
+    look: 3, mode: 3, fromBase: true, fullWeight: true,   /* 2026-10-23 用户口径：用**材质本身**做渐变，不用外来色 */
     palette: ['#3a1470', '#8f1a6e', '#c9391a', '#e8a41c'],
     cover: 0.60, ramp: 0.74, gloss: 0.58, film: 0.05, filmThick: 0.45,
     fresPow: 1.90, fresAdd: 0.10, jitter: { phase: 0.05, cover: 0.0 },
@@ -371,6 +387,19 @@ export const S5_EFFECTS = {
  * `冷热虹界`（finishId 8 / amount 0.85 / hueShift 0.85）在 S5 里是唯一组合，
  * 实测其余 fin=8 的卡 amount 都是 0.7~0.8，不会误伤。
  */
+/* Fixed visual identity: the S5 card decides its family, while run seed
+   only shifts the pattern and, for the gem card, the jewel subtype. */
+const S5_CARD_FAMILY = Object.freeze({
+  S5_14: 'marbleFade', S5_16: 'caseHardened',
+  S5_18: 'caseHardened', S5_19: 'fade',
+  S5_20: 'doppler', S5_21: 'gemDoppler', S5_23: 'fadeColdHot',
+});
+const GEM_PALETTES = Object.freeze([
+  ['#661019','#a61733','#e53753','#ff7a83'], /* Ruby */
+  ['#071b50','#123c99','#276be1','#85bbff'], /* Sapphire */
+  ['#063e2c','#0b875e','#1fc88c','#a4f6cf'], /* Emerald */
+  ['#100e26','#312353','#58418a','#968bbd'], /* Black pearl */
+]);
 const S5_EFFECT_OVERRIDES = [
   {
     key: 'fadeColdHot',
@@ -461,11 +490,17 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
     coat: Number(extra.coat) || 0,
     shift: Number(shift) || 0,
   };
+  const cardId = String(extra.cardId || '');
   const forced = S5_EFFECT_OVERRIDES.find((o) => { try { return o.match(sig); } catch (_) { return false; } });
-  const key = forced
+  const key = S5_CARD_FAMILY[cardId] || (forced
     ? forced.key
-    : S5_EFFECT_SLOTS[Math.min(S5_EFFECT_SLOTS.length - 1, Math.floor(pick * S5_EFFECT_SLOTS.length))];
+    : S5_EFFECT_SLOTS[Math.min(S5_EFFECT_SLOTS.length - 1, Math.floor(pick * S5_EFFECT_SLOTS.length))]);
   const eff = S5_EFFECTS[key];
+  const cardPalette = cardId === 'S5_16'
+    ? ['#656d75','#2059a9','#e4b146','#a65529'] : null;
+  const gemVariant = key === 'gemDoppler'
+    ? Math.min(3, Math.floor(mix01(Number(s[0]), Number(s[2]), 0.71) * 4))
+    : -1;
   /* 逐局小差：同一个 key 在同一张卡上，每局相位/覆盖率都会轻微不同 */
   const jPhase = (mix01(s[0], s[1], Number(shift) || 0) - 0.5) * 2 * (eff.jitter?.phase || 0);
   const jCover = 1 + (mix01(s[2], s[3], Number(shift) || 0) - 0.5) * 2 * (eff.jitter?.cover || 0);
@@ -474,7 +509,7 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
   const rareRoll = mix01(s[1], s[3], (Number(finishId) || 1) / 12, 0.71);
   const rare = !!(r && rareRoll < r.chance);
   return {
-    key, eff, rare,
+    key, eff, rare, gemVariant, cardPalette,
     baseHex: extra.baseHex || null,
     phase: jPhase,
     cover: Math.max(0.08, Math.min(0.95, (rare ? r.cover : eff.cover) * jCover)),
@@ -494,11 +529,14 @@ export function applyS5Effect(out, picked, fp = {}) {
      稀有模板仍用固定调色板（模板的意义就是"换一套完全不同的"，与自渐变互斥）。 */
   /* fromBase 的效果**连稀有模板也基于基色**（strong 版：跨度更大、冷暖更分明），
      否则模板会换成一整套外来色（实测 23 命中模板后整刀变紫，与"原材质渐变"直接冲突）。 */
-  const pal = (eff.fromBase && picked.baseHex)
-    ? baseGradientPalette(picked.baseHex, rare)
-    : (rare && eff.rare ? eff.rare.palette : eff.palette);
+  const pal = picked.gemVariant >= 0
+    ? GEM_PALETTES[picked.gemVariant]
+    : ((eff.fromBase && picked.baseHex)
+      ? baseGradientPalette(picked.baseHex, rare)
+      : (rare && eff.rare ? eff.rare.palette : eff.palette));
   out.mode = eff.mode;
-  out.palette = pal.slice();
+  out.premiumLook = Number(eff.look) || 0;
+  out.palette = (picked.cardPalette || pal).slice();
   out.cover = cover;
   /* D.x 原本空闲（旧值只是"是否渐变"的标志，shader 里没读），现在用来传**斑块尺度**：
      各效果一套、稀有模板另一套 —— 模板因此有形态差异，不只是换色。 */

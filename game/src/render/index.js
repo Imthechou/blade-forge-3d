@@ -1238,6 +1238,9 @@ export class BladeStage {
             tiers[idx] = rarity[String(entry.rarity || '')] ?? 0;
         }
         pack.uniforms.uStageTiers = tiers;
+        // The S5 card ID is the stable owner of the finish family.
+        // Never use current UI stage or highest global rarity as a fallback.
+        pack.uniforms.uS5CardId = enriched.finishCardId || null;
       }
       return pack;
     }, null);

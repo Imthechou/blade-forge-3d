@@ -1,0 +1,47 @@
+name: S5 premium paint and soft studio visual acceptance
+on:
+  push:
+    branches: [feat/s5-signature-finishes-soft-studio-20261027]
+    paths:
+      - 'game/src/render/**'
+      - 'game/tests/s5-signature.test.mjs'
+      - 'tools/s5-premium-before-after.mjs'
+      - '.github/workflows/s5-premium-quality.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install real browser and PNG validation
+        working-directory: game
+        run: |
+          npm install --no-save --package-lock=false playwright pngjs
+          sudo timeout 25s apt-get install -y fonts-noto-cjk || true
+      - name: Existing and premium visual regression tests
+        working-directory: game
+        run: npm test
+      - name: Serve candidate game
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > server.log 2>&1 &
+          sleep 2
+      - name: Actual Chrome 390x844 A-B screenshots (S3 S4 and premium S5)
+        working-directory: game
+        run: |
+          cp ../tools/s5-premium-before-after.mjs tools/s5-premium-before-after.mjs
+          node tools/s5-premium-before-after.mjs
+      - name: Upload screenshot evidence and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s5-premium-visual-review
+          path: |
+            game/s5-premium-review/
+            server.log
+          retention-days: 14
