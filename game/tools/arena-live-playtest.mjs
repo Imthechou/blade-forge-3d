@@ -189,6 +189,7 @@ await scenario('formal-school-cutting-real-pointer', async page => {
   console.log('FORMAL_INITIAL',JSON.stringify(before));
   assert.equal(before.task?.kind,'cutting');
   assert.equal(before.task.rule.kind,'sweep');
+  assert.equal(before.task.rule.seconds,45,'正式赛规则与实际45秒计时必须一致');
   assert.ok(before.task.sequence?.length>=6,'正式赛空靶生成');
   assert.equal(before.stage?.total,45,'正式赛没有复用完整45秒切割');
   assert.equal(before.stage?.mode,'formal');
