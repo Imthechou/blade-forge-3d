@@ -39,17 +39,20 @@ async function snap(page, name) {
     .catch(e => report.issues.push({ kind:'SCREENSHOT_TIMEOUT', file:name, error:String(e).slice(0,240) }));
 }
 async function newGame(label) {
+  const fullMotion = label === 'six-target-material-gallery-and-touch-response';
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 }, deviceScaleFactor: 2,
-    isMobile: true, hasTouch: true, locale: 'zh-CN', reducedMotion: 'reduce',
+    isMobile: true, hasTouch: true, locale: 'zh-CN',
+    reducedMotion: fullMotion ? 'no-preference' : 'reduce',
   });
   // 测试存档只在隔离浏览器上下文；永远不写实际玩家存档。
-  await context.addInitScript((record) => {
+  await context.addInitScript(({record,fullMotion}) => {
     localStorage.setItem('bladeforge.save', JSON.stringify({
       version: 1, cr: 2000, collection: [record],
-      settings: { tutorialSeen: true, sound: false, motion: 'reduced', hintsSeen: {} },
+      settings: { tutorialSeen: true, sound: false,
+        motion: fullMotion ? 'full' : 'reduced', hintsSeen: {} },
     }));
-  }, blade);
+  }, {record:blade,fullMotion});
   const page = await context.newPage(); watch(page, label);
   await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
   // 赛事为 Canvas2D：允许 GPU 降级继续玩。旧条件 __FORGE_PREP.ready
@@ -339,7 +342,8 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
     r.nextWaveAt=Number.MAX_SAFE_INTEGER;
     // 美术验收用隔离舞台：避免8秒时的路线选择删除测试摆放的靶具。
     r.phase='finale';r.finale={id:'safe',name:'美术验收',bonus:1};r.elapsed=30.1;r.remaining=14.9;
-    return {names:r.targets.map(t=>core.MATERIALS[t.type].name),
+    return {motion:(await import('/src/platform/motion.js')).mode(),
+      names:r.targets.map(t=>core.MATERIALS[t.type].name),
       types:r.targets.map(t=>t.type), targets:r.targets.map(t=>({x:t.x,y:t.y,type:t.type}))};
   });
   await page.waitForTimeout(180);
@@ -368,6 +372,7 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
   console.log('SIX_MATERIAL_IMPACTS',JSON.stringify(snapshots));
   await snap(page,'12-six-material-slicing-feedback');
   assert.equal(before.types.length,6);
+  assert.equal(before.motion,'full','六材命中特效必须在完整动效模式下验收');
   assert.ok(snapshots.every(x=>x.contacts.length>0),'部分材质没有命中特效');
   assert.ok(snapshots.every(x=>x.contacts[0].flash>0),'闪白反馈丢失');
   assert.ok(snapshots.every(x=>x.contacts[0].particles>0),'碎屑反馈丢失');
