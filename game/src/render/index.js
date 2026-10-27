@@ -1157,7 +1157,8 @@ export class BladeStage {
        applySkin 是"可见材质"的唯一写入路径，所以它就是最合适的 owner 边界：
        换卡时先放旧的一（除非新卡还在用），再拿新的一，然后按预算淘汰无主项。 */
     this._leaseAtlases(pack.atlasLease);
-    if (!coverAll && pack.uniforms) pack.uniforms.uSkinCoverAll = 0;
+    if (pack.uniforms) pack.uniforms.uSkinCoverAll = coverAll ? 1 : 0;
+    // Compose cache entries are reused: NEVER leave the last Grip mask value sticky.
     /* ★★ 2026-10-16（用户：「默认纹理那层 S2 没选不应该是没有吗？没选就没有」）
      *
      *   花纹强度 `uSkinTexStrength` 是**纹理层的总闸**（shader 里
