@@ -50,7 +50,7 @@ export function buildNormalFragment() {
     hMain += k3dPat[1] * step( 0.001, uCardFx[1].y ); slotCount += step( 0.001, uCardFx[1].y );
     hMain += k3dPat[2] * step( 0.001, uCardFx[2].y ); slotCount += step( 0.001, uCardFx[2].y );
     hMain += k3dPat[3] * step( 0.001, uCardFx[3].y ); slotCount += step( 0.001, uCardFx[3].y );
-    hMain += k3dPat[4] * step( 0.001, uCardFx[4].y ); slotCount += step( 0.001, uCardFx[4].y );
+    // S5 is optical treatment; S3 continues to own forged height/normal.
     hMain += k3dPat[5] * step( 0.001, uCardFx[5].y ); slotCount += step( 0.001, uCardFx[5].y );
     hMain += k3dPat[6] * step( 0.001, uCardFx[6].y ); slotCount += step( 0.001, uCardFx[6].y );
     hMain += k3dPat[8] * step( 0.001, uCardFx[8].y ); slotCount += step( 0.001, uCardFx[8].y );

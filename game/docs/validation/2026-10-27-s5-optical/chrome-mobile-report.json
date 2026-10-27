@@ -1,0 +1,2941 @@
+{
+  "browser": "156.0.8078.48",
+  "viewport": "390x844 DPR2 mobile/touch",
+  "which": "after",
+  "shots": [
+    {
+      "tag": "flow-S1",
+      "stage": "S1",
+      "phase": "select",
+      "model": "ore_small",
+      "texture": "T01",
+      "s3On": 0,
+      "card": null,
+      "seeds": [
+        0.46853146853146854,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 2,
+        "textures": 41
+      },
+      "render": {
+        "frame": 28,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "flow-S2",
+      "stage": "S2",
+      "phase": "select",
+      "model": "molten_sphere_small",
+      "texture": "T01",
+      "s3On": 0,
+      "card": null,
+      "seeds": [
+        0.7582417582417582,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 3,
+        "textures": 53
+      },
+      "render": {
+        "frame": 35,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "flow-S3",
+      "stage": "S3",
+      "phase": "select",
+      "model": "blank_ingot_small",
+      "texture": "T17",
+      "s3On": 1,
+      "card": null,
+      "seeds": [
+        0.36163836163836166,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 4,
+        "textures": 54
+      },
+      "render": {
+        "frame": 44,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "flow-S4",
+      "stage": "S4",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T17",
+      "s3On": 1,
+      "card": null,
+      "seeds": [
+        0.36163836163836166,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 67
+      },
+      "render": {
+        "frame": 69,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5-unselected",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T17",
+      "s3On": 1,
+      "card": null,
+      "seeds": [
+        0.36163836163836166,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 67
+      },
+      "render": {
+        "frame": 84,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_01",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_01",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 103,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_02",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_02",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 123,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_03",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_03",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 143,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_04",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_04",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 163,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_05",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_05",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 184,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_06",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_06",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 204,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_07",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_07",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 225,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_08",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_08",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 245,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_09",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_09",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 266,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_10",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_10",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 287,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_11",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_11",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 307,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_12",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_12",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 328,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_13",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_13",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 348,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_14",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_14",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 368,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_15",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_15",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 388,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_16",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_16",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 408,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_17",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_17",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 428,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_18",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_18",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 449,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_19",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_19",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 469,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 489,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_21",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_21",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 509,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_22",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_22",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 529,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_23",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_23",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 549,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_24",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_24",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 569,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_25",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_25",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 589,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T01-S5_04",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T01",
+      "s3On": 1,
+      "card": "S5_04",
+      "seeds": [
+        0.3096903096903097,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 609,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T01-S5_14",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T01",
+      "s3On": 1,
+      "card": "S5_14",
+      "seeds": [
+        0.3096903096903097,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 629,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T01-S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T01",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3096903096903097,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 649,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T04-S5_04",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T04",
+      "s3On": 1,
+      "card": "S5_04",
+      "seeds": [
+        0.33266733266733267,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 669,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T04-S5_14",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T04",
+      "s3On": 1,
+      "card": "S5_14",
+      "seeds": [
+        0.33266733266733267,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 689,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T04-S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T04",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.33266733266733267,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 709,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T12-S5_04",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T12",
+      "s3On": 1,
+      "card": "S5_04",
+      "seeds": [
+        0.3246753246753247,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 729,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T12-S5_14",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T12",
+      "s3On": 1,
+      "card": "S5_14",
+      "seeds": [
+        0.3246753246753247,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 750,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T12-S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T12",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3246753246753247,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 771,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T18-S5_04",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T18",
+      "s3On": 1,
+      "card": "S5_04",
+      "seeds": [
+        0.3706293706293706,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 790,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T18-S5_14",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T18",
+      "s3On": 1,
+      "card": "S5_14",
+      "seeds": [
+        0.3706293706293706,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 811,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T18-S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T18",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3706293706293706,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 832,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T24-S5_04",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T24",
+      "s3On": 1,
+      "card": "S5_04",
+      "seeds": [
+        0.2957042957042957,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 852,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T24-S5_14",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T24",
+      "s3On": 1,
+      "card": "S5_14",
+      "seeds": [
+        0.2957042957042957,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 872,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-T24-S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T24",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.2957042957042957,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 892,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-01",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T01",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3096903096903097,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 911,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-02",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T02",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.2727272727272727,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 930,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-03",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T03",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3696303696303696,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 949,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-04",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T04",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.33266733266733267,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 968,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-05",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T05",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3026973026973027,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 988,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-06",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T06",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.26573426573426573,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1007,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-07",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1027,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-08",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T08",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.35364635364635366,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1046,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-09",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T09",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.32367632367632365,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1065,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-10",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T10",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.38461538461538464,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1084,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-11",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T11",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.28771228771228774,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1103,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-12",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T12",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3246753246753247,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1122,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-13",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T13",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3546453546453546,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1141,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-14",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T14",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.2647352647352647,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1160,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-15",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T15",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.2947052947052947,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1180,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-16",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T16",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.33166833166833165,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1199,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-17",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T17",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.36163836163836166,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1218,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-18",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T18",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3706293706293706,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1238,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-19",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T19",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.27372627372627373,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1257,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T20",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3026973026973027,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1276,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-21",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T21",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.2727272727272727,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1295,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-22",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T22",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3696303696303696,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1314,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-23",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T23",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.33966033966033965,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1333,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S3-all-24",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T24",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.2957042957042957,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1352,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "rare-S5_14",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_14",
+      "seeds": [
+        0.6603396603396603,
+        0.234458,
+        0.9371245566289872,
+        0.10636563086882234
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1372,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "rare-S5_16",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_16",
+      "seeds": [
+        0.8311688311688312,
+        0.6158,
+        0.8690205451566726,
+        0.7074643219821155
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1392,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "rare-S5_18",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_18",
+      "seeds": [
+        0.6463536463536463,
+        0.302902,
+        0.7841528174467385,
+        0.5106470908503979
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1412,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "rare-S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.46653346653346656,
+        0.536585,
+        0.09562236699275672,
+        0.9190989620983601
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1433,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "rare-S5_21",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_21",
+      "seeds": [
+        0.25674325674325676,
+        0.829867,
+        0.3391421614214778,
+        0.3313199153635651
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1453,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "rare-S5_24",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_24",
+      "seeds": [
+        0.12387612387612387,
+        0.719514,
+        0.6662499508820474,
+        0.43366544251330197
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1474,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "M01-S5_16",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_16",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1494,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "M01-S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1514,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "M01-S5_23",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_23",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1534,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "M14-S5_16",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_16",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1555,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "M14-S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1575,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "M14-S5_23",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_23",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1595,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "M24-S5_16",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_16",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1615,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "M24-S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1635,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "M24-S5_23",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_23",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1656,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "seed-20261025-S5_14",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_14",
+      "seeds": [
+        0.5044955044955045,
+        0.486501,
+        0.8984198209363967,
+        0.3221279422286898
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1676,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "seed-20261025-S5_16",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_16",
+      "seeds": [
+        0.5044955044955045,
+        0.486501,
+        0.8984198209363967,
+        0.3221279422286898
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1697,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "seed-20261025-S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.5044955044955045,
+        0.486501,
+        0.8984198209363967,
+        0.3221279422286898
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1717,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "seed-20261025-S5_21",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_21",
+      "seeds": [
+        0.5044955044955045,
+        0.486501,
+        0.8984198209363967,
+        0.3221279422286898
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1737,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "seed-20261026-S5_14",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_14",
+      "seeds": [
+        0.6463536463536463,
+        0.302902,
+        0.7841528174467385,
+        0.5106470908503979
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1757,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "seed-20261026-S5_16",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_16",
+      "seeds": [
+        0.6463536463536463,
+        0.302902,
+        0.7841528174467385,
+        0.5106470908503979
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1778,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "seed-20261026-S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.6463536463536463,
+        0.302902,
+        0.7841528174467385,
+        0.5106470908503979
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1798,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "seed-20261026-S5_21",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_21",
+      "seeds": [
+        0.6463536463536463,
+        0.302902,
+        0.7841528174467385,
+        0.5106470908503979
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1819,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "seed-20261027-S5_14",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_14",
+      "seeds": [
+        0.7882117882117882,
+        0.525039,
+        0.06814287882298231,
+        0.09234540536999702
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1839,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "seed-20261027-S5_16",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_16",
+      "seeds": [
+        0.7882117882117882,
+        0.525039,
+        0.06814287882298231,
+        0.09234540536999702
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1860,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "seed-20261027-S5_20",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.7882117882117882,
+        0.525039,
+        0.06814287882298231,
+        0.09234540536999702
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1880,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "seed-20261027-S5_21",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_21",
+      "seeds": [
+        0.7882117882117882,
+        0.525039,
+        0.06814287882298231,
+        0.09234540536999702
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 1900,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "flow-S6-enter",
+      "stage": "S6",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T17",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.36163836163836166,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 64
+      },
+      "render": {
+        "frame": 2021,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "flow-S6-selected",
+      "stage": "S6",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T17",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.36163836163836166,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 64
+      },
+      "render": {
+        "frame": 2039,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "flow-S8-enter",
+      "stage": "S8",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T17",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.36163836163836166,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 2053,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "flow-S8-grip",
+      "stage": "S8",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T17",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.36163836163836166,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 0,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 64
+      },
+      "render": {
+        "frame": 2072,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "flow-S9-enter",
+      "stage": "S9",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T17",
+      "s3On": 1,
+      "card": "S5_20",
+      "seeds": [
+        0.36163836163836166,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 0,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 67
+      },
+      "render": {
+        "frame": 2073,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    }
+  ],
+  "errors": [],
+  "perf": [
+    {
+      "median": 1,
+      "p95": 2.300000011920929,
+      "gpuMedian": 0.078816,
+      "gpuSamples": 30,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "draw": {
+        "frame": 1940,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      },
+      "canvas": [
+        585,
+        707
+      ],
+      "vendor": "WebKit WebGL"
+    },
+    {
+      "median": 1.199999988079071,
+      "p95": 2.300000011920929,
+      "gpuMedian": 0.073184,
+      "gpuSamples": 30,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "draw": {
+        "frame": 1977,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      },
+      "canvas": [
+        585,
+        707
+      ],
+      "vendor": "WebKit WebGL"
+    },
+    {
+      "median": 1.300000011920929,
+      "p95": 2.600000023841858,
+      "gpuMedian": 0.0744,
+      "gpuSamples": 30,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "draw": {
+        "frame": 2010,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      },
+      "canvas": [
+        585,
+        707
+      ],
+      "vendor": "WebKit WebGL"
+    }
+  ],
+  "bootMs": 3974,
+  "rares": [
+    {
+      "id": "S5_14",
+      "seed": 20261028,
+      "variant": "冰火断层"
+    },
+    {
+      "id": "S5_16",
+      "seed": 20261000,
+      "variant": "蓝宝石心"
+    },
+    {
+      "id": "S5_18",
+      "seed": 20261026,
+      "variant": "蓝域"
+    },
+    {
+      "id": "S5_20",
+      "seed": 20261017,
+      "variant": "双相流星"
+    },
+    {
+      "id": "S5_21",
+      "seed": 20261007,
+      "variant": "星核"
+    },
+    {
+      "id": "S5_24",
+      "seed": 20261035,
+      "variant": "极光天幕"
+    }
+  ],
+  "pass": true
+}

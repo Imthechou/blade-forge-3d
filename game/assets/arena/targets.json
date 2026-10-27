@@ -15,7 +15,7 @@
     "chips",
     "flash"
   ],
-  "version": 1,
+  "version": 2,
   "asset": "assets/arena/targets.webp",
   "sources": "deterministic generated raster sprites, no SVG and no remote downloads",
   "dimensions": [

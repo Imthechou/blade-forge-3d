@@ -43,3 +43,24 @@ export function impactMotion(event,now) {
     recoil:age<hold?0:Math.sin(settle*Math.PI)*Math.max(0,1-settle),
     age};
 }
+
+/** Pure visual pose. Never moves collision centers, consumes RNG or changes time. */
+export function targetPose(target, now, age = 1, reduced = false) {
+  if(reduced)return {angle:0,x:0,y:0,scaleX:1,scaleY:1};
+  let hash=2166136261;
+  for(const c of String(target?.id||target?.type||''))hash=Math.imul(hash^c.charCodeAt(0),16777619)>>>0;
+  const phase=hash/4294967296*Math.PI*2;
+  const weight=IMPACT_PRESETS[target?.type]?.weight??.5;
+  const soft=1-weight;
+  const t=(Number(now)||0)*.001;
+  const entry=Math.max(0,Math.min(1,Number(age)||0));
+  const spring=Math.sin(entry*22)*Math.exp(-entry*10)*(0.035+soft*.065);
+  return {
+    angle:(Math.sin(phase)*.012+Math.sin(t*(1+soft*.55)+phase)*(.006+soft*.022))
+      +Math.sin(entry*18+phase)*Math.exp(-entry*12)*soft*.03,
+    x:Math.sin(t*.93+phase)*(.15+soft*.55),
+    y:Math.sin(t*1.19+phase)*(.10+soft*.42),
+    scaleX:1+spring*.45,
+    scaleY:1-spring,
+  };
+}

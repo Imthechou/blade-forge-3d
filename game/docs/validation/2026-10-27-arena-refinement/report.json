@@ -1,0 +1,611 @@
+{
+  "url": "http://127.0.0.1:8143/",
+  "testedAt": "2026-10-27T15:04:49.905Z",
+  "cases": [
+    {
+      "name": "quick-free-45s-real-pointer",
+      "status": "PASS",
+      "detail": {
+        "before": {
+          "phase": "warmup",
+          "score": 0,
+          "kills": 0,
+          "targets": [
+            {
+              "type": "rope",
+              "x": 0.19,
+              "y": 0.52,
+              "progress": 0
+            },
+            {
+              "type": "foam",
+              "x": 0.5,
+              "y": 0.52,
+              "progress": 0
+            },
+            {
+              "type": "rope",
+              "x": 0.81,
+              "y": 0.52,
+              "progress": 0
+            }
+          ]
+        },
+        "after": {
+          "phase": "warmup",
+          "score": 360,
+          "kills": 3,
+          "combo": 2,
+          "hits": 0,
+          "targets": [
+            {
+              "type": "foam",
+              "progress": 0,
+              "alive": true
+            },
+            {
+              "type": "rope",
+              "progress": 1,
+              "alive": false
+            },
+            {
+              "type": "foam",
+              "progress": 0,
+              "alive": true
+            }
+          ]
+        },
+        "final": {
+          "cr": 2044,
+          "history": {
+            "version": 1,
+            "provisional": true,
+            "byChallenge": {
+              "quick:free": {
+                "bestScore": 480,
+                "last": {
+                  "runId": "C-yxia8m-mvqth5xy",
+                  "score": 480,
+                  "grade": "C"
+                }
+              }
+            }
+          },
+          "heading": "自由快赛\nC\n切割挑战完成\n\n赛事自动验收刀 · 连切路线 → 稳健收分\n\n赛事得分\n0480\n完成切断\n3\n最高连切\n2\n剩余刀况\n100%\n一划斩断\n2\n信用点结算\n+44 CR\n奖励已入账，收藏刀具完好保留。\n再来一场\n回快速挑战\n回锻刀\n进正式赛事"
+        }
+      }
+    },
+    {
+      "name": "formal-school-cutting-real-pointer",
+      "status": "PASS",
+      "detail": {
+        "before": {
+          "task": {
+            "kind": "cutting",
+            "rule": {
+              "projectId": "cutting",
+              "name": "切割",
+              "kind": "sweep",
+              "seconds": 45,
+              "materials": [
+                "rope",
+                "foam",
+                "wood",
+                "plastic"
+              ],
+              "label": "限定时间内沿目标连切，软靶可一刀断，硬靶保留损伤",
+              "measureLabel": "切断效率",
+              "weight": 0.6,
+              "stats": [
+                "sharpness",
+                "strength",
+                "craft"
+              ]
+            },
+            "sequence": [
+              "wood",
+              "foam",
+              "wood",
+              "rope",
+              "wood",
+              "wood",
+              "foam",
+              "plastic",
+              "plastic",
+              "wood",
+              "foam",
+              "wood",
+              "plastic",
+              "wood",
+              "rope"
+            ]
+          },
+          "stage": {
+            "phase": "warmup",
+            "mode": "formal",
+            "total": 45,
+            "encounter": {
+              "tier": "school",
+              "rank": 0,
+              "quota": 6,
+              "spawned": 3
+            },
+            "targets": [
+              {
+                "x": 0.19,
+                "y": 0.34,
+                "type": "foam",
+                "difficulty": 1
+              },
+              {
+                "x": 0.5,
+                "y": 0.34,
+                "type": "foam",
+                "difficulty": 1
+              },
+              {
+                "x": 0.81,
+                "y": 0.34,
+                "type": "foam",
+                "difficulty": 1
+              }
+            ]
+          }
+        },
+        "after": {
+          "score": 258,
+          "kills": 3,
+          "progress": [
+            1,
+            1,
+            1
+          ],
+          "temporaryDamage": 0.31351727316627187
+        },
+        "result": {
+          "index": 1,
+          "done": false,
+          "formId": "FM-yxjajy-mvqti69b",
+          "stage": {
+            "phase": "result",
+            "done": true,
+            "score": 378,
+            "reason": "time"
+          },
+          "entries": [
+            {
+              "kind": "cutting",
+              "status": "complete",
+              "result": {
+                "score": 22.1,
+                "measure": 0.201,
+                "detail": {
+                  "source": "arenaChallenge",
+                  "duration": 45,
+                  "score": 378,
+                  "kills": 3,
+                  "misses": 26,
+                  "bestSwipe": 1,
+                  "maxCombo": 1,
+                  "route": "连切路线",
+                  "finale": "稳健收分",
+                  "grade": "C",
+                  "pressed": false
+                }
+              }
+            },
+            {
+              "kind": "durability",
+              "status": "pending",
+              "result": null
+            }
+          ],
+          "text": "第 2/2 项 · 锋刃 · 学徒\n耐久\n\n切割 + 耐久：连续切断与性能保持\n\n持续测试中保持能力，越到后期越考验韧性\n\n1. 切割 ✓\n2. 耐久\n目标合成 84靶具硬度 ×1窗口 ×1\n\n按住保持节奏；能力保留率会随测试推进下降\n\n按住保持结束本项\n放弃剩余测试放弃按「未进行」记录，不用单项分顶替整场成绩。"
+        }
+      }
+    },
+    {
+      "name": "national-opening-real-cut",
+      "status": "PASS",
+      "detail": {
+        "setup": {
+          "tier": "national",
+          "round": 0
+        },
+        "result": {
+          "before": {
+            "unified": true,
+            "mode": "formal",
+            "total": 45,
+            "kills": 0,
+            "score": 0,
+            "encounter": {
+              "tier": "national",
+              "rank": 5,
+              "quota": 8,
+              "spawned": 3
+            },
+            "targets": [
+              {
+                "type": "wood",
+                "x": 0.19,
+                "y": 0.34,
+                "progress": 0,
+                "difficulty": 1
+              },
+              {
+                "type": "wood",
+                "x": 0.5,
+                "y": 0.34,
+                "progress": 0,
+                "difficulty": 1
+              },
+              {
+                "type": "plastic",
+                "x": 0.81,
+                "y": 0.34,
+                "progress": 0,
+                "difficulty": 1
+              }
+            ]
+          },
+          "after": {
+            "kills": 0,
+            "score": 0,
+            "progress": [
+              0.6732852866982383,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "apex-opening-real-cut",
+      "status": "PASS",
+      "detail": {
+        "setup": {
+          "tier": "apex",
+          "round": 0
+        },
+        "result": {
+          "before": {
+            "unified": true,
+            "mode": "formal",
+            "total": 45,
+            "kills": 0,
+            "score": 0,
+            "encounter": {
+              "tier": "apex",
+              "rank": 10,
+              "quota": 10,
+              "spawned": 3
+            },
+            "targets": [
+              {
+                "type": "wood",
+                "x": 0.19,
+                "y": 0.34,
+                "progress": 0,
+                "difficulty": 1
+              },
+              {
+                "type": "plastic",
+                "x": 0.5,
+                "y": 0.34,
+                "progress": 0,
+                "difficulty": 1
+              },
+              {
+                "type": "plastic",
+                "x": 0.81,
+                "y": 0.34,
+                "progress": 0,
+                "difficulty": 1
+              }
+            ]
+          },
+          "after": {
+            "kills": 0,
+            "score": 0,
+            "progress": [
+              0.6732852866982383,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "six-target-material-gallery-and-touch-response",
+      "status": "PASS",
+      "detail": {
+        "spriteState": {
+          "status": "ready",
+          "error": null,
+          "url": "http://127.0.0.1:8143/assets/arena/targets.webp?v=2",
+          "width": 1536,
+          "height": 1280,
+          "fractures": 0,
+          "fractureBuilds": 0,
+          "fractureLimit": 12
+        },
+        "before": {
+          "motion": "full",
+          "names": [
+            "塑料泡棉",
+            "编织绳束",
+            "纹理木桩",
+            "工程塑料板",
+            "透明冰块",
+            "金属块"
+          ],
+          "types": [
+            "foam",
+            "rope",
+            "wood",
+            "plastic",
+            "ice",
+            "metal"
+          ],
+          "targets": [
+            {
+              "x": 0.19,
+              "y": 0.34,
+              "type": "foam"
+            },
+            {
+              "x": 0.5,
+              "y": 0.34,
+              "type": "rope"
+            },
+            {
+              "x": 0.81,
+              "y": 0.34,
+              "type": "wood"
+            },
+            {
+              "x": 0.19,
+              "y": 0.58,
+              "type": "plastic"
+            },
+            {
+              "x": 0.5,
+              "y": 0.58,
+              "type": "ice"
+            },
+            {
+              "x": 0.81,
+              "y": 0.58,
+              "type": "metal"
+            }
+          ]
+        },
+        "snapshots": [
+          {
+            "type": "foam",
+            "score": 81,
+            "kills": 1,
+            "contacts": [
+              {
+                "flash": 89,
+                "hitstop": 21,
+                "shake": 0.87,
+                "recoil": 2.07,
+                "particles": 4,
+                "event": "kill"
+              }
+            ]
+          },
+          {
+            "type": "rope",
+            "score": 184,
+            "kills": 2,
+            "contacts": [
+              {
+                "flash": 94,
+                "hitstop": 29,
+                "shake": 1.38,
+                "recoil": 2.59,
+                "particles": 6,
+                "event": "kill"
+              }
+            ]
+          },
+          {
+            "type": "wood",
+            "score": 184,
+            "kills": 2,
+            "contacts": [
+              {
+                "flash": 107,
+                "hitstop": 31,
+                "shake": 1.58,
+                "recoil": 2.96,
+                "particles": 7,
+                "event": "armor"
+              }
+            ]
+          },
+          {
+            "type": "plastic",
+            "score": 184,
+            "kills": 2,
+            "contacts": [
+              {
+                "flash": 111,
+                "hitstop": 39,
+                "shake": 2.1,
+                "recoil": 3.76,
+                "particles": 8,
+                "event": "armor"
+              }
+            ]
+          },
+          {
+            "type": "ice",
+            "score": 184,
+            "kills": 2,
+            "contacts": [
+              {
+                "flash": 115,
+                "hitstop": 38,
+                "shake": 2.24,
+                "recoil": 4.18,
+                "particles": 10,
+                "event": "armor"
+              }
+            ]
+          },
+          {
+            "type": "metal",
+            "score": 184,
+            "kills": 2,
+            "contacts": [
+              {
+                "flash": 125,
+                "hitstop": 54,
+                "shake": 2.63,
+                "recoil": 5.45,
+                "particles": 12,
+                "event": "armor"
+              }
+            ]
+          }
+        ],
+        "cutProof": [
+          {
+            "type": "foam",
+            "attempts": 1,
+            "split": true
+          },
+          {
+            "type": "rope",
+            "attempts": 1,
+            "split": true
+          },
+          {
+            "type": "wood",
+            "attempts": 2,
+            "split": true
+          },
+          {
+            "type": "plastic",
+            "attempts": 2,
+            "split": true
+          },
+          {
+            "type": "ice",
+            "attempts": 2,
+            "split": true
+          },
+          {
+            "type": "metal",
+            "attempts": 2,
+            "split": true
+          }
+        ],
+        "badCountdown": []
+      }
+    },
+    {
+      "name": "quick-manual-end-safe-no-reward",
+      "status": "PASS",
+      "detail": {
+        "startCr": 2000,
+        "endCr": 2000,
+        "text": "自由快赛\nC\n提前收刀 · 本局成绩\n\n赛事自动验收刀 · — → —\n\n赛事得分\n0000\n完成切断\n0\n最高连切\n0\n剩余刀况\n100%\n一划斩断\n0\n主动结束 · 无奖励\n0 CR\n已主动收刀：成绩仅供查看，不发放CR或计入挑战纪录。\n再来一场\n回快速挑战\n回锻刀\n进正式赛事"
+      }
+    }
+  ],
+  "issues": [
+    {
+      "label": "quick-free-45s-real-pointer",
+      "kind": "GPU_PREP_DEGRADED",
+      "problems": [
+        "S4 glow shader preparation: no-knife-model"
+      ],
+      "readyStages": {
+        "assetsReady": true,
+        "programsReady": true,
+        "uploadSubmitted": true,
+        "firstDrawSubmitted": true
+      }
+    },
+    {
+      "label": "formal-school-cutting-real-pointer",
+      "kind": "GPU_PREP_DEGRADED",
+      "problems": [
+        "S4 glow shader preparation: no-knife-model"
+      ],
+      "readyStages": {
+        "assetsReady": true,
+        "programsReady": true,
+        "uploadSubmitted": true,
+        "firstDrawSubmitted": true
+      }
+    },
+    {
+      "label": "national-opening-real-cut",
+      "kind": "GPU_PREP_DEGRADED",
+      "problems": [
+        "S4 glow shader preparation: no-knife-model"
+      ],
+      "readyStages": {
+        "assetsReady": true,
+        "programsReady": true,
+        "uploadSubmitted": true,
+        "firstDrawSubmitted": true
+      }
+    },
+    {
+      "label": "apex-opening-real-cut",
+      "kind": "GPU_PREP_DEGRADED",
+      "problems": [
+        "S4 glow shader preparation: no-knife-model"
+      ],
+      "readyStages": {
+        "assetsReady": true,
+        "programsReady": true,
+        "uploadSubmitted": true,
+        "firstDrawSubmitted": true
+      }
+    },
+    {
+      "label": "six-target-material-gallery-and-touch-response",
+      "kind": "GPU_PREP_DEGRADED",
+      "problems": [
+        "S4 glow shader preparation: no-knife-model"
+      ],
+      "readyStages": {
+        "assetsReady": true,
+        "programsReady": true,
+        "uploadSubmitted": true,
+        "firstDrawSubmitted": true
+      }
+    },
+    {
+      "label": "quick-manual-end-safe-no-reward",
+      "kind": "GPU_PREP_DEGRADED",
+      "problems": [
+        "S4 glow shader preparation: no-knife-model"
+      ],
+      "readyStages": {
+        "assetsReady": true,
+        "programsReady": true,
+        "uploadSubmitted": true,
+        "firstDrawSubmitted": true
+      }
+    }
+  ],
+  "errors": [],
+  "httpFailures": [],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "jsErrors": 0,
+    "httpFailures": 0
+  }
+}

@@ -9,14 +9,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
+import {loadPlaywright,browserExecutable} from './lib/browser.mjs';
+const {chromium}=await loadPlaywright();
 
-const out = path.resolve('arena-playtest');
+const out = path.resolve(process.env.ARENA_QA_OUT||'arena-playtest');
 fs.mkdirSync(out, { recursive: true });
 const base = process.env.FORGE_URL || 'http://127.0.0.1:8123/';
 const browser = await chromium.launch({
   headless: true,
-  executablePath: process.env.CHROME_PATH || undefined,
+  executablePath: browserExecutable(),
   args: ['--enable-webgl', '--ignore-gpu-blocklist', '--use-gl=angle',
     '--use-angle=swiftshader', '--disable-dev-shm-usage', '--no-sandbox'],
 });

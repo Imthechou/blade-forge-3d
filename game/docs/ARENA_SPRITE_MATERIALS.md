@@ -4,7 +4,7 @@
 
 ## 素材源与实现
 
-- 源生成器：`game/tools/build_arena_sprites.py`（Pillow；确定性栅格生成）
+- 源生成器：`game/tools/build_arena_sprites.py`，原创造型源 `game/tools/arena_prop_art.py`（Pillow；3 倍超采样后缩小，确定性栅格生成）
 - 成品素材：`game/assets/arena/targets.webp`；索引 `targets.json`
 - 图集尺寸 **1536 × 1280**，30格，每格256 × 256，透明通道。
 - 列：`foam / rope / wood / plastic / ice / metal`
@@ -19,7 +19,7 @@
 
 1. `arenaSprites.js` 基于模块地址请求 `game/assets/arena/targets.webp`；解码前旧Canvas绘制临时兜底。
 2. `arenaStage.drawTarget` 绘制 `whole` 行，并用命中进度渲染切痕/受损。
-3. 切断后不再绘制整体靶，`drawDebris` 使用 `top/bottom` 两个透明断块，根据滑动角度重定向断口、重力与轻重调整落体。
+3. 切断后不再绘制整体靶；从 `whole` 按实际刀口方向裁出两个透明断块，保持物体原朝向。`source-atop` 将各材断面限制在原轮廓内，避免斜切时整件物体突然旋转。横切、斜切、竖切共用这一条路径；`top/bottom` 行继续保留兼容备用。
 4. `drawBursts` 从 `chips/flash` 行读取材质粒子与撞击亮片，使用已有方向震屏、短视觉顿帧、音效和触觉反馈。
 5. 图集加载失败时全部退回到原Canvas材质和碎片；游戏的判定、倒计时、结算不依赖素材加载。
 
@@ -27,10 +27,11 @@
 
 - `game/tools/arena-live-playtest.mjs` 新增强制确认 `__FORGE_SPRITES.status() = ready`、图集尺寸和六材实际滑切；测试截图保存完整、切割后两态。
 - 原五条真实浏览器用例：快赛完整45秒结算、流派赛入账、全国赛、巅峰赛真实滑切、六材素材展示与撞击反馈。
-- 生成图集通过PR内的 `Build generated arena sprite textures` workflow 生成并提交；遇到损坏可执行 `python game/tools/build_arena_sprites.py`。
+- `python game/tools/build_arena_sprites.py` 生成图集；`--verify` 校验已提交图与源一致。CI 只读验证并上传记录，不再自动改写已验收素材。
+- 断块缓存最多 12 对 256×256 Canvas，约 6 MiB 上限；相同材料/方向复用，按最近使用淘汰。细节见 [本轮验收](ARENA_REFINEMENT_QA_20261027.md)。
 
 ## 已知边界
 
-- 游戏玩法继续是基于预制切面图和二维动力学的假切割，不是按任意轨迹实时求布尔网格；方向通过变换断块贴图近似。
+- 游戏玩法仍为二维裁切与动力学，没有新增三维布尔网格或改变命中区域。断面角度按 2° 分桶，片块自身的下落和自旋保持原有材料重量差异。
 - 浏览器手机尺寸测试不是实体iPhone/Android设备触觉测量；触觉强度、声压和真实设备功耗仍应实机验收。
 - 正式赛之外原有锻造材质渲染和赛事非切割小游戏保持原样。

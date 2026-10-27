@@ -389,11 +389,74 @@ export const S5_EFFECTS = {
  */
 /* Fixed visual identity: the S5 card decides its family, while run seed
    only shifts the pattern and, for the gem card, the jewel subtype. */
-const S5_CARD_FAMILY = Object.freeze({
-  S5_14: 'marbleFade', S5_16: 'caseHardened',
-  S5_18: 'caseHardened', S5_19: 'fade',
-  S5_20: 'doppler', S5_21: 'gemDoppler', S5_23: 'fadeColdHot',
+/* Every one of the 25 S5 cards has exactly ONE meaningful family.
+   13 named families, each assigned to one or two cards, never a hashed
+   lottery. Gameplay/card IDs and numerical balance remain unchanged. */
+export const S5_CARD_FAMILY = Object.freeze({
+  S5_25:'steelMirror', S5_09:'steelMirror',
+  S5_01:'coolQuench', S5_02:'coolQuench',
+  S5_03:'matteSteel', S5_08:'matteSteel',
+  S5_04:'forgeFlow', S5_12:'forgeFlow',
+  S5_05:'saltBath', S5_11:'saltBath',
+  S5_06:'blackOxide', S5_17:'blackOxide',
+  S5_07:'silkTint', S5_13:'silkTint',
+  S5_10:'gunMetal',
+  S5_16:'caseHardened', S5_18:'caseHardened',
+  S5_19:'fade', S5_23:'fadeColdHot',
+  S5_14:'marbleFade', S5_15:'marbleFade',
+  S5_20:'doppler', S5_22:'doppler',
+  S5_21:'gemDoppler', S5_24:'gemDoppler',
 });
+/* The two Fade cards use different palettes but share one forge family;
+   same for the case-hardened and gemstone variants. */
+/* Card-level visual signatures. Family decides the main metallurgical finish;
+   this art-direction map provides DIFFERENT spatial response within a family.
+   x: stable card index; y: subtle effect strength; z: physical motif frequency;
+   w: motif direction (radians). Never changes gameplay/card probability.
+   Quality is selected-stage rarity, never the global maximum rarity.
+   These 25 signatures share ONE fixed GLSL program, not 25 shader variants. */
+export const S5_CARD_ART = Object.freeze({
+  S5_01: {name:'冷蓝幕层',      type:'cold-veil',          strength:0.36, freq:4.2, angle:0.18},
+  S5_02: {name:'急冷锁锋',      type:'quenched-edge',      strength:0.62, freq:3.1, angle:0.0},
+  S5_03: {name:'冷灰哑面',      type:'satin-flats',        strength:0.52, freq:3.0, angle:0.0},
+  S5_04: {name:'斜向冷纹',      type:'diagonal-grain',     strength:0.65, freq:16.0,angle:0.55},
+  S5_05: {name:'盐浴定色',      type:'salt-oxide',         strength:0.36, freq:5.5, angle:0.0},
+  S5_06: {name:'暗灰吸光',      type:'charcoal-absorb',    strength:0.72, freq:4.0, angle:0.0},
+  S5_07: {name:'渐染色层',      type:'light-oxide-film',   strength:0.48, freq:3.2, angle:0.13},
+  S5_08: {name:'细砂压光',      type:'bead-blasted',       strength:0.70, freq:34.0,angle:0.0},
+  S5_09: {name:'真空净镜',      type:'vacuum-mirror',      strength:0.72, freq:2.0, angle:0.0},
+  S5_10: {name:'氮化枪灰',      type:'nitrided-gunmetal',  strength:0.62, freq:5.0, angle:0.0},
+  S5_11: {name:'窄温控窗',      type:'heat-window',        strength:0.64, freq:5.0, angle:0.0},
+  S5_12: {name:'深硬暗纹',      type:'deep-etched-grain',  strength:0.75, freq:13.0,angle:0.28},
+  S5_13: {name:'转角虹膜',      type:'bevel-iridescence',  strength:0.62, freq:3.5, angle:0.0},
+  S5_14: {name:'液氮断彩',      type:'fractured-marble',   strength:0.72, freq:3.9, angle:0.24},
+  S5_15: {name:'阳极纹彩',      type:'anodized-strata',    strength:0.62, freq:8.0, angle:0.74},
+  S5_16: {name:'赤金临界',      type:'gold-case-islands',  strength:0.68, freq:3.3, angle:0.0},
+  S5_17: {name:'磷化暗甲',      type:'phosphate-armor',       strength:0.73, freq:9.0, angle:0.38},
+  S5_18: {name:'横贯热带',      type:'blue-case-ribbon',   strength:0.67, freq:3.4, angle:0.0},
+  S5_19: {name:'幻彩氧层',      type:'axial-fade',         strength:0.58, freq:2.1, angle:0.0},
+  S5_20: {name:'蓝紫流界',      type:'doppler-ribbons',    strength:0.75, freq:3.3, angle:0.0},
+  S5_21: {name:'神淬虹纹',      type:'gem-depth',          strength:0.65, freq:3.0, angle:0.0},
+  S5_22: {name:'玄蚀紫界',      type:'amethyst-boundary',  strength:0.80, freq:4.0, angle:0.0},
+  S5_23: {name:'冷热虹界',      type:'substrate-fade',     strength:0.60, freq:2.0, angle:0.0},
+  S5_24: {name:'冷蓝天幕',      type:'sapphire-bands',     strength:0.70, freq:5.0, angle:0.0},
+  S5_25: {name:'静镜留底',      type:'raw-steel-polish',   strength:0.25, freq:1.5, angle:0.0},
+});
+export function s5CardArt(cardId, chosen, tier=0) {
+  if (!chosen) return [0,0,0,0];
+  const c = S5_CARD_ART[String(cardId || '')];
+  if (!c) return [0,0,0,0];
+  const id = Number(String(cardId).slice(3));
+  const quality = Math.min(1, Math.max(0, Number(tier) / 5));
+  // More rare = clearer microstructure and uniform polish, not increased emission.
+  return [id, +(c.strength*(0.76+0.24*quality)).toFixed(5), c.freq, c.angle];
+}
+
+export const S5_VISUAL_FAMILY = Object.freeze(Object.fromEntries(
+  Object.entries(S5_CARD_FAMILY).map(([id,family]) =>
+    [id, family === 'fadeColdHot' ? 'fade' : family])
+));
+
 const GEM_PALETTES = Object.freeze([
   ['#661019','#a61733','#e53753','#ff7a83'], /* Ruby */
   ['#071b50','#123c99','#276be1','#85bbff'], /* Sapphire */
@@ -471,6 +534,9 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
    *   单一真源），未选则一律不接管。这样“没选就没有”的契约在效果库这一层也成立。 */
   if (extra.chosen !== true) return null;
   if (!(Number(tier) >= 2)) return null;
+  const stableCard = String(extra.cardId || '');
+  // Non-premium cards are handled by the baseline PBR recipe, never hash-rerolled.
+  if (stableCard && !S5_EFFECTS[S5_CARD_FAMILY[stableCard]]) return null;
   const s = Array.isArray(seeds) ? seeds : [0.5, 0.5, 0.5, 0.5];
   /* 逐卡选效果：用**多维逐卡签名**哈希，不能只看 finishId + paletteShift ——
      实测那两维太少（多数卡 paletteShift 为 0、finishId 也只有少数几种），
@@ -496,10 +562,19 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
     ? forced.key
     : S5_EFFECT_SLOTS[Math.min(S5_EFFECT_SLOTS.length - 1, Math.floor(pick * S5_EFFECT_SLOTS.length))]);
   const eff = S5_EFFECTS[key];
-  const cardPalette = cardId === 'S5_16'
-    ? ['#656d75','#2059a9','#e4b146','#a65529'] : null;
+  const cardPalette = ({
+    /* Every related pair shares a physical family, but NOT its visual pattern.
+       Anodized banding stays more restrained than liquid-nitrogen marble. */
+    S5_15: ['#332e63','#694886','#c578a0','#d6b15a'],
+    S5_16: ['#656d75','#2059a9','#e4b146','#a65529'],
+    /* Amethyst-black corrosion, not a copy of the vivid blue Doppler card. */
+    S5_22: ['#090e1a','#201b35','#483365','#786295'],
+    /* Sky sapphire belongs to one cool blue metal family. */
+    S5_24: ['#0b2e56','#18498c','#347ac0','#91c8e7'],
+  })[cardId] || null;
   const gemVariant = key === 'gemDoppler'
-    ? Math.min(3, Math.floor(mix01(Number(s[0]), Number(s[2]), 0.71) * 4))
+    ? (cardId === 'S5_24' ? 1 /* Blue sky sapphire only */ :
+       Math.min(3, Math.floor(mix01(Number(s[1]), Number(s[3]), 0.71) * 4)))
     : -1;
   /* 逐局小差：同一个 key 在同一张卡上，每局相位/覆盖率都会轻微不同 */
   const jPhase = (mix01(s[0], s[1], Number(shift) || 0) - 0.5) * 2 * (eff.jitter?.phase || 0);
@@ -509,12 +584,55 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
   const rareRoll = mix01(s[1], s[3], (Number(finishId) || 1) / 12, 0.71);
   const rare = !!(r && rareRoll < r.chance);
   return {
-    key, eff, rare, gemVariant, cardPalette,
+    key, eff, rare, gemVariant, cardPalette, tier: Math.min(5, Math.max(0, Number(tier) || 0)),
     baseHex: extra.baseHex || null,
     phase: jPhase,
     cover: Math.max(0.08, Math.min(0.95, (rare ? r.cover : eff.cover) * jCover)),
     seedMix: mix01(s[0], s[2], 0.19),
   };
+}
+
+
+/* Non-premium S5 cards retain their owned texture/finish IDs, but their
+   surfaces now follow a predictable finish family. This never adds emission;
+   the same card preserves differences in substrate roughness and base color. */
+export function refineS5BaseFinish(out, cardId, tier = 0) {
+  const family = S5_CARD_FAMILY[String(cardId || '')];
+  if (!out?.chosen || !family || S5_EFFECTS[family]) return out;
+  const q = Math.max(0, Math.min(1, (Number(tier) || 0) / 5));
+  switch (family) {
+    case 'steelMirror': // neutral silver: narrow but softly bounded highlights
+      out.a = [0.82 + 0.09 * q, 0.38 - 0.12 * q, 0, 0];
+      out.b[0] = 0; out.b[2] = 0; out.d[2] = 0; out.c[1] = 0; break;
+    case 'coolQuench': // blue-gray metal, not saturated blue enamel
+      out.a = [0.72 + 0.07 * q, 0.72 - 0.13 * q, 0.02, 0.025];
+      out.b[0] = 0.16; out.tint = '#8497a8'; out.d[2] = 0; out.b[2] = 0; break;
+    case 'matteSteel': // clear contrast to mirror while retaining steel color
+      out.a = [0.87, 1.0, 0.39 - 0.08 * q, 0.08];
+      out.b[0] = 0; out.b[2] = 0; out.d[2] = 0; break;
+    case 'forgeFlow': // roughness follows existing S3 forged grain
+      out.a = [0.70, 0.94 - 0.11 * q, 0.15, 0.04];
+      out.b[0] = 0.06; out.tint='#9ca4aa'; out.d[2] = 0; break;
+    case 'saltBath': // controlled, clean steel; never the unrelated purple F07 ramp
+      out.a = [0.73, 0.67 - 0.10 * q, 0.03, 0];
+      out.b[0] = 0.10; out.tint='#b8b6ad'; out.b[2] = 0;
+      out.d[2] = 0; out.mode = 0; out.palette = null; break;
+    case 'blackOxide':
+      out.a = [0.72, 1.0, 0.11, 0.37 - 0.06 * q]; out.d[2] = 0; break;
+    case 'silkTint':
+      out.a = [0.60, 0.85 - 0.12 * q, 0.03, 0]; out.b[0] = Math.min(0.22,out.b[0]);
+      out.b[2] = Math.min(0.11,out.b[2]); break;
+    case 'gunMetal':
+      out.a = [0.74, 0.80 - 0.10 * q, 0.06, 0.23];
+      out.b[0] = 0.11; out.tint='#808d99'; out.d[2] = 0; break;
+  }
+  // Global finish-energy budget: a low rarity card never produces glow to
+  // compensate for roughness and texture detail.
+  out.c[1] = Math.min(0.08, Math.max(0, Number(out.c[1]) || 0));
+  // Any legacy shader specLift on a basic F preset must not add another
+  // whole-surface shine on top of previously forged reflection.
+  out.c[3] = 0;
+  return out;
 }
 
 /**
@@ -525,6 +643,7 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
 export function applyS5Effect(out, picked, fp = {}) {
   if (!picked) return out;
   const { eff, rare, phase, cover } = picked;
+  const quality = Math.min(1, Math.max(0, (picked.tier - 1) / 4));
   /* fromBase：调色板由**这把刀的基色**现场派生（根深→本色→尖亮），不引入外来色相。
      稀有模板仍用固定调色板（模板的意义就是"换一套完全不同的"，与自渐变互斥）。 */
   /* fromBase 的效果**连稀有模板也基于基色**（strong 版：跨度更大、冷暖更分明），
@@ -536,8 +655,8 @@ export function applyS5Effect(out, picked, fp = {}) {
       : (rare && eff.rare ? eff.rare.palette : eff.palette));
   out.mode = eff.mode;
   out.premiumLook = Number(eff.look) || 0;
-  out.palette = (picked.cardPalette || pal).slice();
-  out.cover = cover;
+  out.palette = adaptS5PaletteToSubstrate(picked.cardPalette || pal, picked.baseHex, quality, eff.fromBase);
+  out.cover = Math.min(0.95, cover * (0.96 + 0.04 * quality));
   /* D.x 原本空闲（旧值只是"是否渐变"的标志，shader 里没读），现在用来传**斑块尺度**：
      各效果一套、稀有模板另一套 —— 模板因此有形态差异，不只是换色。 */
   const blobTab = S5_BLOB_SCALE[picked.key] || [0.5, 0.5];
@@ -545,9 +664,10 @@ export function applyS5Effect(out, picked, fp = {}) {
     (Number(fp.paletteShift) || 0) + phase,
     /* 2026-10-23 用户口径：「所有卡的透明度都淡一点点，要看得出原版材质的影响」
        —— 色带权重整体 ×0.82，材质本身的金属感/纹理因此能透上来。 */
-    eff.ramp * (rare ? 1.0 : 0.95) * (eff.fullWeight ? 1.0 : 0.82),
+    eff.ramp * (rare ? 1.0 : 0.95) * (eff.fullWeight ? 1.0 : 0.82) * (0.91 + 0.09 * quality),
     Number(fp.coat) || 0];
-  out.a = [0.72, eff.gloss, 0, 0];
+  // Rarity improves polish consistency, not albedo / emission / white clipping.
+  out.a = [0.72, Math.max(0.18, eff.gloss * (1.04 - 0.11 * quality)), 0, 0];
   /* coverBias 必须给 0：shader 里 `cover = mix(1, smoothstep(...), B.y)` 会先削掉一截，
      再乘 zone(≈0.5) × peak(0.62) —— 四层相乘后色带权重只剩 0.2，看起来"几乎没效果"。
      给 0 后 cover=1，权重由 cover/zone 两处决定（实测明显变实）。 */
@@ -568,6 +688,23 @@ export function applyS5Effect(out, picked, fp = {}) {
  *   ③ 刀尖：提亮 22%→52%、饱和缓降（像抛光/淬亮的高光区），并微微偏暖 +10°
  * 这样整把刀"还是这块钢"，但有明显的明暗与冷暖走向，不脏也不假。
  * 全部纯计算，不进 GLSL。 */
+/* Same card + different S1 substrate = same recognizable paint family,
+   but different depth, warmth and hue/value response. Use the S1 linear
+   metal base as influence, not a fresh random palette per card. */
+export function adaptS5PaletteToSubstrate(palette, baseHex, quality = 0, fromBase = false) {
+  if (fromBase || !baseHex || !/^#[0-9a-f]{6}$/i.test(String(baseHex)))
+    return palette.slice();
+  const [bh, bs, bl] = hslOfHex(baseHex);
+  const substrateDepth = Math.max(0.76, Math.min(1.10, 0.81 + bl * 0.48));
+  const materialHueOffset = ((bh + 0.5) % 1 - 0.5) * 0.046;
+  return palette.map(hex => {
+    const [h, sat, light] = hslOfHex(hex);
+    return hexOfHsl(h + materialHueOffset,
+      Math.min(1, sat * (0.91 + bs * 0.13)),
+      Math.max(0.025, Math.min(0.92, light * substrateDepth * (0.98 + 0.02 * quality))));
+  });
+}
+
 function hslOfHex(hex) {
   const n = parseInt(String(hex).replace('#', ''), 16);
   const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;

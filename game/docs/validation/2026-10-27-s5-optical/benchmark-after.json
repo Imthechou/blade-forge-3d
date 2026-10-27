@@ -1,0 +1,249 @@
+{
+  "browser": "156.0.8078.48",
+  "viewport": "390x844 DPR2 mobile/touch",
+  "which": "after",
+  "shots": [
+    {
+      "tag": "flow-S1",
+      "stage": "S1",
+      "phase": "select",
+      "model": "ore_small",
+      "texture": "T01",
+      "s3On": 0,
+      "card": null,
+      "seeds": [
+        0.46853146853146854,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 2,
+        "textures": 38
+      },
+      "render": {
+        "frame": 28,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "flow-S2",
+      "stage": "S2",
+      "phase": "select",
+      "model": "molten_sphere_small",
+      "texture": "T01",
+      "s3On": 0,
+      "card": null,
+      "seeds": [
+        0.7582417582417582,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 3,
+        "textures": 53
+      },
+      "render": {
+        "frame": 32,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "flow-S3",
+      "stage": "S3",
+      "phase": "select",
+      "model": "blank_ingot_small",
+      "texture": "T17",
+      "s3On": 1,
+      "card": null,
+      "seeds": [
+        0.36163836163836166,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 4,
+        "textures": 54
+      },
+      "render": {
+        "frame": 41,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "flow-S4",
+      "stage": "S4",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T17",
+      "s3On": 1,
+      "card": null,
+      "seeds": [
+        0.36163836163836166,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 67
+      },
+      "render": {
+        "frame": 65,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5-unselected",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T17",
+      "s3On": 1,
+      "card": null,
+      "seeds": [
+        0.36163836163836166,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 67
+      },
+      "render": {
+        "frame": 79,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    },
+    {
+      "tag": "S5_01",
+      "stage": "S5",
+      "phase": "select",
+      "model": "knife_machete",
+      "texture": "T07",
+      "s3On": 1,
+      "card": "S5_01",
+      "seeds": [
+        0.3626373626373626,
+        0.244634,
+        0.0888372459448874,
+        0.540551211219281
+      ],
+      "coverAll": 1,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "render": {
+        "frame": 99,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      }
+    }
+  ],
+  "errors": [],
+  "perf": [
+    {
+      "median": 1.300000011920929,
+      "p95": 3.600000023841858,
+      "gpuMedian": 0.079808,
+      "gpuSamples": 30,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "draw": {
+        "frame": 140,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      },
+      "canvas": [
+        585,
+        707
+      ],
+      "vendor": "WebKit WebGL"
+    },
+    {
+      "median": 1.7000000476837158,
+      "p95": 5,
+      "gpuMedian": 0.071136,
+      "gpuSamples": 30,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "draw": {
+        "frame": 178,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      },
+      "canvas": [
+        585,
+        707
+      ],
+      "vendor": "WebKit WebGL"
+    },
+    {
+      "median": 1.699999988079071,
+      "p95": 5.100000023841858,
+      "gpuMedian": 0.071808,
+      "gpuSamples": 30,
+      "programs": 10,
+      "memory": {
+        "geometries": 5,
+        "textures": 65
+      },
+      "draw": {
+        "frame": 210,
+        "calls": 1,
+        "triangles": 15000,
+        "points": 0,
+        "lines": 0
+      },
+      "canvas": [
+        585,
+        707
+      ],
+      "vendor": "WebKit WebGL"
+    }
+  ],
+  "bootMs": 2962,
+  "pass": true
+}

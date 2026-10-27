@@ -1,5 +1,5 @@
 import { MATERIALS } from '../core/arenaChallenge.js';
-import { impactMotion } from './arenaImpact.js';
+import { impactMotion, targetPose } from './arenaImpact.js';
 import { drawWholeSprite, drawSplitSprite, drawShardSprite, drawFlashSprite, spriteReady } from './arenaSprites.js';
 
 const TAU = Math.PI * 2;
@@ -65,7 +65,8 @@ export function drawArenaStage(ctx, run, w, h, effects = {}) {
     if (!t || !t.alive) continue;
     const d = MATERIALS[t.type];
     if (!d) continue;
-    drawTarget(ctx, t, d, i, t.x * w, t.y * h, w, h, isGuideTarget(run.guide, t), now, bursts, reduced);
+    drawTarget(ctx, t, d, i, t.x * w, t.y * h, w, h, isGuideTarget(run.guide, t), now, bursts, reduced,
+      Math.max(0,(Number(run.elapsed)||0)-(Number(t.createdAt)||0)));
   }
 
   drawDebris(ctx, debris, now, w, h);
@@ -258,7 +259,7 @@ function targetMetrics(w, h, stream = false) {
   return { unit, half: unit * .5, bodyW: unit * .94, bodyH: Math.min(unit * 1.55, h * (stream ? .145 : .21)) };
 }
 
-function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY, reduced = false) {
+function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY, reduced = false, age = 1) {
   const { unit, half, bodyW, bodyH } = targetMetrics(w, h, t.layout === 'stream');
   const bodyTop = y - bodyH * .49;
   const progress = clamp(Number(t.progress) || 0, 0, 1);
@@ -294,18 +295,21 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
     ctx.beginPath(); ctx.ellipse(x, y, half * 1.06, bodyH * .65, 0, 0, TAU); ctx.fill();
   }
 
+  // Sway the prop about the hanger; keep captions/progress perfectly legible.
+  const pose=targetPose(t,now,age,reduced);
+  ctx.save();
+  ctx.translate(x+pose.x,bodyTop-hangGap(unit)+pose.y);
+  ctx.rotate(pose.angle);ctx.scale(pose.scaleX,pose.scaleY);
+  ctx.translate(-x,-bodyTop+hangGap(unit));
   drawHanger(ctx, x, bodyTop, unit);
-
-  ctx.strokeStyle = 'rgba(144,190,204,.30)'; ctx.lineWidth = 1;
-  for (const side of [-1, 1]) {
-    ctx.beginPath(); ctx.moveTo(x + side * bodyW * .58, bodyTop + bodyH * .2);
-    ctx.lineTo(x + side * bodyW * .74, bodyTop + bodyH * .2);
-    ctx.stroke();
-  }
 
   // The target is now a genuine prebaked transparent WebP material sprite.
   // Retain existing Canvas illustration ONLY if the atlas is unavailable.
+  ctx.save();
+  ctx.shadowColor='rgba(24,49,66,.16)';ctx.shadowBlur=Math.max(2,unit*.045);
+  ctx.shadowOffsetX=unit*.025;ctx.shadowOffsetY=unit*.05;
   const textured=drawWholeSprite(ctx,t.type,x,y,bodyW,bodyH);
+  ctx.restore();
   if (!textured) {
     drawMaterial(ctx,t,data,x,y,bodyW,bodyH,bodyTop,unit);
     if(t.type==='rope'||t.type==='foam') drawBundleTies(ctx,x,y,bodyW,bodyH,unit);
@@ -313,9 +317,15 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
   drawKerf(ctx, t, x, y, bodyW, bodyH, bodyTop, unit, progress);
   if(impact && now-impact.at >= 0 && now-impact.at < (impact.flashMs||90)) {
     const flash=1-(now-impact.at)/(impact.flashMs||90);
-    ctx.fillStyle=`rgba(250,254,255,${.24*flash})`;
-    roundedRect(ctx,x-bodyW*.52,bodyTop,bodyW*1.04,bodyH,unit*.12);ctx.fill();
+    if(textured){
+      ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha*=.48*flash;
+      drawWholeSprite(ctx,t.type,x,y,bodyW,bodyH);ctx.restore();
+    }else{
+      ctx.fillStyle=`rgba(250,254,255,${.24*flash})`;
+      roundedRect(ctx,x-bodyW*.52,bodyTop,bodyW*1.04,bodyH,unit*.12);ctx.fill();
+    }
   }
+  ctx.restore();
 
   const railW = bodyW * .88, railY = bodyTop - Math.max(9, unit * .15), railH = Math.max(3, unit * .05);
   ctx.fillStyle = 'rgba(225,239,241,.16)'; roundedRect(ctx, x - railW / 2, railY, railW, railH, railH / 2); ctx.fill();
@@ -815,10 +825,9 @@ function drawDebris(ctx, debris, now, w, h) {
       // Two purpose-built textured halves with material-specific exposed cut edges.
       // The sprite's baseline fracture is ~11.3 degrees; reorient to the player's actual slash.
       if (spriteReady()) {
-        // Align the prebaked fracture line with the actual finger-slash direction.
-        // Offset is the original +0.2 slope baked in build_arena_sprites.py.
-        ctx.rotate(angle - Math.atan(0.2));
-        drawSplitSprite(ctx,d.type,side,bodyW,bodyH);
+        // Clip the actual material at the slash angle. The intact prop's
+        // orientation is preserved instead of rotating the entire log/plate.
+        drawSplitSprite(ctx,d.type,side,bodyW,bodyH,angle);
       } else {
         ctx.beginPath();
         ctx.moveTo(-dx * BIG, -dy * BIG);
