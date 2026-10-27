@@ -427,7 +427,7 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
     const canvas=document.querySelector('.page.is-active .quick-canvas');
     const ctx=canvas.getContext('2d'),original=ctx.fillText,bad=[];
     ctx.fillText=function(content,...args){
-      if (/^\\d{7,}(?:\\.\\d+)?$/.test(String(content)))bad.push(String(content));
+      if (/^\d{7,}(?:\.\d+)?$/.test(String(content)))bad.push(String(content));
       return original.call(this,content,...args);
     };
     await new Promise(resolve=>requestAnimationFrame(resolve));
