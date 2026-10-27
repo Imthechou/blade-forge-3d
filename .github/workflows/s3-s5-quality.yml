@@ -4,6 +4,8 @@ on:
     branches: [feat/s3-grain-s5-metal-finish-20261027]
     paths:
       - 'game/src/render/v2/programFamilies.js'
+      - 'game/src/render/v2/surfaceDetail.js'
+      - 'game/src/render/legacy/skin/shader/bladeSkinShader.js'
       - 'tools/s3-s5-before-after-20261027.mjs'
       - '.github/workflows/s3-s5-quality.yml'
   workflow_dispatch:
