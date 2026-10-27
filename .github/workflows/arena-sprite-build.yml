@@ -1,0 +1,43 @@
+name: Build generated arena sprite textures
+on:
+  pull_request:
+    paths:
+      - game/tools/build_arena_sprites.py
+      - .github/workflows/arena-sprite-build.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-art:
+    # This is a same-repository, limited-purpose asset generator.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate WebP atlas (whole / split / shards / flash)
+        run: |
+          python -m pip install --disable-pip-version-check pillow==11.3.0
+          python game/tools/build_arena_sprites.py
+          test -s game/assets/arena/targets.webp
+          file game/assets/arena/targets.webp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-arena-sprites
+          path: game/assets/arena/
+          retention-days: 14
+      - name: Commit the generated binary assets to this PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add game/assets/arena/targets.webp game/assets/arena/targets.json
+          if ! git diff --cached --quiet; then
+            git commit -m "assets(arena): commit reproducible six-material WebP sprites"
+            git push origin "HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}"
+          fi
