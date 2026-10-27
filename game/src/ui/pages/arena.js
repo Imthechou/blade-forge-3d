@@ -30,6 +30,7 @@ import * as Challenge from '../../core/arenaChallenge.js';
 import { advanceArenaClock, formalCutPayload } from '../../core/arenaCutBridge.js';
 import { bus, EVENTS, audio, haptics, motion, env } from '../../platform/index.js';
 import { drawArenaStage } from '../arenaStage.js';
+import { cutImpact } from '../arenaImpact.js';
 import * as Formal from '../formalPerformance.js';
 import * as FormalTest from '../formalTestStage.js';
 import * as FormalDef from '../../data/arena/formalTests.js';
@@ -782,6 +783,8 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
 /** Both 45-second modes share input, RAF, resize/DPR, rendering and pause semantics. */
 function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMission, onDone }) {
   challengeCanvas = canvas;
+  // 浏览器触控时不让页面滚动/缩放抢走滑切轨迹（尤其 iOS Safari）。
+  canvas.style.touchAction = 'none';
   challengePointer = null;
   /* 诊断出口（只读）：2D 舞台的当前 run / 画布。供 tools/probe-* 直接读靶具、阶段与特效队列，
      不参与任何玩法判定；与 __FORGE_PREP 同一约定。 */
@@ -824,7 +827,8 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
   challengeResizeHandler = resizeHandler;
   const point = (event) => {
     const rect = bounds;
-    return { x: (event.clientX - rect.left) / Math.max(1, rect.width), y: (event.clientY - rect.top) / Math.max(1, rect.height), time: performance.now() };
+    return { x: Math.max(-.05,Math.min(1.05,(event.clientX - rect.left) / Math.max(1, rect.width))),
+      y: Math.max(-.05,Math.min(1.05,(event.clientY - rect.top) / Math.max(1, rect.height))), time: performance.now() };
   };
   canvas.addEventListener('pointerdown', event => {
     if(run.done || run.paused || run.phase.endsWith('-choice') || challengePointer || event.isPrimary === false || (event.pointerType === 'mouse' && event.button !== 0))return;
@@ -847,11 +851,14 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
          让「弹刀 / 打不动 / 破甲 / 击破」在命中位置有不同表现，
          而不是全部变成同一句“切入 xx%”。 */
       const marker={x:hit.target.x,y:hit.target.y,points:hit.points,at:next.time,complete:hit.complete,quality:hit.quality,type:hit.target.type,progress:hit.target.progress,angle:hit.target.lastAngle,combo:hit.combo,objective:hit.objective,slot:hit.target.slot,followup:hit.target.cuts.length>1,contactEvent:hit.contactEvent||null,armorLeft:hit.armorLeft??null};
+      // 六层参数在一个地方绑定，不更改玩法刀损、强度或原生计分。
+      Object.assign(marker,cutImpact({...marker,target:hit.target},{reducedMotion:motion.reduced()}));
       hitLabels.push(marker);bursts.push({...marker});
       /* 斩断的一瞬间留一份"碎块"记录：arenaStage 据此把靶具画成两半飞开。
          只加视觉事件，不改 run —— 判定与计分仍全部由 core 完成。 */
-      if (hit.complete) debris.push({ x: hit.target.x, y: hit.target.y, type: hit.target.type, angle: hit.target.lastAngle, at: next.time });
-      if(next.time-lastSoundAt>70){audio.play(hit.complete?(hit.combo>1?'combo':'spark'):(hit.quality==='ANGLE'?'riskUp':'tap'));haptics.vibrate(hit.complete?12:5);lastSoundAt=next.time;}
+      if (hit.complete) debris.push({ x: hit.target.x, y: hit.target.y, type: hit.target.type,
+        layout: hit.target.layout, angle: hit.target.lastAngle, at: next.time });
+      if(next.time-lastSoundAt>60){audio.playCutImpact(marker);haptics.vibrate(marker.hapticMs);lastSoundAt=next.time;}
     }
     if(hitLabels.length>18)hitLabels.splice(0,hitLabels.length-18);if(bursts.length>18)bursts.splice(0,bursts.length-18);
     if(debris.length>12)debris.splice(0,debris.length-12);
@@ -867,6 +874,12 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
   });
   const endSwipe=event=>{
     const pointer=challengePointer;if(pointer?.id!==event.pointerId)return;
+    // pointerup 的终点可能没触发最后一次 pointermove：把末段纳入切割。
+    // cancel/lostcapture 不补切，防止系统手势离开页面时误击。
+    if(event.type==='pointerup'&&!run.done&&!run.paused&&canvas.isConnected) {
+      const end=point(event);
+      if(Math.hypot(end.x-pointer.x,end.y-pointer.y)>.009)movePointer(event);
+    }
     if (formalCutStroke) {
       const diagnosis = Formal.noteCutStroke(Game.match, formalCutStroke, event.type !== 'pointerup');
       if (diagnosis && cutFeedback) text(cutFeedback, `${diagnosis.message} 行程 ${(diagnosis.travel * 100).toFixed(1)}%；切口偏差 ${Number.isFinite(diagnosis.meanDeviation) ? (diagnosis.meanDeviation * 100).toFixed(1) + '%' : '—'}。`);
