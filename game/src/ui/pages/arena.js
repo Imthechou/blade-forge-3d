@@ -582,6 +582,7 @@ function renderChallenge() {
       onResume: () => { Challenge.setPaused(run, false); render(); },
       onRestart: () => startQuickChallenge(run.daily, run.seed),
       onAbandon: () => { challengeRun = null; render(); },
+      onFinish: () => { if(run.done)return; Challenge.finish(run,'manual'); settleQuickChallenge(); }, 
       label: run.daily ? '每日挑战不会因暂停而重置' : '重开或放弃都不会提前结算 CR',
     }));
   }
@@ -962,7 +963,7 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
   else challengeFrame = requestAnimationFrame(paint);
 }
 
-function challengePauseOverlay({ onResume, onRestart, onAbandon, label }) {
+function challengePauseOverlay({ onResume, onRestart, onAbandon, onFinish, label }) {
   const panel = el('div', { class: 'quick-choice-panel' }, [
     el('div', { class: 'quick-kicker', text: '计时已冻结' }),
     el('h2', { text: '挑战已暂停' }),
@@ -971,6 +972,7 @@ function challengePauseOverlay({ onResume, onRestart, onAbandon, label }) {
     el('div', { class: 'quick-choice-list', style: { gridTemplateColumns: '1fr' } }, [
       el('button', { class: 'quick-choice-card', type: 'button', onclick: onResume }, [el('b', { text: '继续挑战' }), el('span', { text: '回到当前进度' })]),
       el('button', { class: 'quick-choice-card', type: 'button', onclick: onRestart }, [el('b', { text: '重开本局' }), el('span', { text: '从 45 秒起重新开始' })]),
+      onFinish ? el('button', { class: 'quick-choice-card', type: 'button', onclick: onFinish }, [el('b', { text: '提前收刀 · 看本局成绩' }), el('span', { text: '立即结束，不发放CR，不计挑战完成' })]) : null,
       el('button', { class: 'quick-choice-card', type: 'button', onclick: onAbandon }, [el('b', { text: '放弃并退出' }), el('span', { text: '未完成本局不发 CR' })]),
     ]),
   ]);
@@ -1048,11 +1050,13 @@ function renderChallengeReport() {
   const run = challengeRun;
   if (!run?.result) return renderChallengeSetup();
   const r = run.result;
-  const settlement = quickChallengeSettlement(run);
+  const settlement = r.reason==='manual' ? { code:'MANUAL', ok:true, settled:false, settledReward:0 } : quickChallengeSettlement(run);
   // 只认本 UI 首次 OK 的成功回执；旧纪录 DUPLICATE 不能被当成到账凭据。
   const settled = settlement.code === 'OK' && settlement.ok === true && settlement.settled === true;
   const retryable = settlement.code === 'PERSIST_FAILED' && settlement.retryable === true;
-  const settlementNote = settled
+  const settlementNote = r.reason==='manual'
+    ? '已主动收刀：成绩仅供查看，不发放CR或计入挑战纪录。'
+    : settled
     ? '奖励已入账，收藏刀具完好保留。'
     : settlement.code === 'SETTLING'
       ? '正在保存本局，请稍候。'
@@ -1068,7 +1072,7 @@ function renderChallengeReport() {
     el('div', { class: 'quick-kicker', text: run.daily ? '每日挑战' : '自由快赛' }),
     el('div', { class: 'quick-result-heading' }, [el('div', { class: 'quick-grade', text: r.grade }), el('div', {}, [el('h2', { text: run.daily ? '每日挑战完成' : '切割挑战完成' }), el('p', { text: `${run.blade.name} · ${r.route} → ${r.finale}` })]), el('div', { class: 'quick-total' }, [el('small', { text: '赛事得分' }), el('b', { class: 'mono', text: String(r.score).padStart(4, '0') }), el('span', { text: 'PTS' })])]),
     stats,
-    el('div', { class: 'quick-reward' }, [el('span', { text: settled ? '信用点结算' : '信用点未确认到账' }), el('b', { text: settled ? `+${settlement.settledReward} CR` : `本局奖励 ${r.reward} CR（未确认到账）` })]),
+    el('div', { class: 'quick-reward' }, [el('span', { text: r.reason==='manual' ? '主动结束 · 无奖励' : settled ? '信用点结算' : '信用点未确认到账' }), el('b', { text: r.reason==='manual' ? '0 CR' : settled ? `+${settlement.settledReward} CR` : `本局奖励 ${r.reward} CR（未确认到账）` })]),
     el('div', { class: 'quick-settlement-note', role: 'status', text: settlementNote }),
     el('div', { class: 'quick-report-actions' }, [
       retryable ? el('button', { class: 'btn btn--primary', text: '重试结算', onclick: () => {
