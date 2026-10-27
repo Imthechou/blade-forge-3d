@@ -40,7 +40,7 @@ let sourceCache = null;
    版本号进 three 的 program cache key（customProgramCacheKey），源码变了必须跟着变，
    否则同会话里可能命中上一版的 program。 */
 /* v5：补回 temper / tune / edgeGlow 三个叠加层（见下方调用点注释），改源码必须 bump */
-export const FAMILY_VERSION = 'bladeV2:55';
+export const FAMILY_VERSION = 'bladeV2:56';
 
 /** 刀身上真正会用到阶段效果函数的阶段（S8 只作用于柄，不在其中）。 */
 export const STAGE_FX = [1, 2, 3, 4, 5, 6, 7, 9];
@@ -112,7 +112,8 @@ uniform vec4  uV2FinB;      // tintAmt, coverBias, filmAmt, filmThickness
 uniform vec4  uV2FinC;      // fresnelPow, fresnelAdd, hueShift, specLift
 uniform vec4  uV2FinD;      // axialMix, rampBias, rampAmt, coat
 uniform vec3  uV2FinTint;
-uniform float uV2Mode;      // 色带来源：0 无 / 1 多普勒场 / 2 淬火斑块 / 3 沿轴渐变
+uniform float uV2Mode;      // baseline operator family
+uniform float uV2Look;      // 0 baseline; 1 Doppler; 2 hardened; 3 Fade; 4 Marble; 5 Gem
 uniform float uV2Micro;     // 微粗糙度幅度（S5 品质轴，0 = 关闭）
 uniform float uV2Cover;
 uniform float uCardTier;   /* 仅当前 UI 卡：不允许回写已确认阶段 */
@@ -272,7 +273,7 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
         2 = 表面淬火：斑块，低段留底钢（不着色）
         3 = 沿刀轴渐变（渐变之色 / 回火带） */
   float rampW = clamp( D.z, 0.0, 1.0 );
-  if ( rampW > 0.002 && uV2Mode > 0.5 ) {
+  if ( rampW > 0.002 && uV2Mode > 0.5 && uV2Look < 0.5 ) {
     /* ★★ 2026-10-23（真斑块）：mode 2（表面淬火 / 翡翠 / 深渊 / 赤铜）的斑块场。
        ⚠ 必须声明在 field 之前 —— 第一次写的时候我把它放在 zone 之后，
        而 field 在 zone 之前使用它，GLSL 里属于"先用后声明" → 整支着色器编译失败、刀直接不渲染。
@@ -402,6 +403,82 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
        microstructure should remain visible through metallic reflection. */
     rough = mix( rough, clamp( rough * 0.76 + abs( pat.y ) * 0.035, 0.025, 0.94 ),
                  wRamp * 0.65 );
+  }
+
+  /* S5 premium PBR signatures, intentionally distinct spatial structures.
+     The selected card owns the recipe, while seeds shift placement only.
+     Use the already-linked 3-octave noise helper at most once per fragment.
+     No texture uploads, macros or per-card shader programs.
+     S3 grain and substrate remain below this colored metal surface. */
+  if ( uV2Look > 0.5 && rampW > 0.002 ) {
+    float bladeAxis = clamp( ( local.x - 0.40 ) / 0.58, 0.0, 1.0 );
+    vec2 uv = vec2( bladeAxis, local.y * 2.5 + 0.5 );
+    vec2 offset = vec2( D.y * 1.7 + uSeeds.x * 0.8,
+                        uSeeds.y * 1.3 + D.y * 0.5 );
+    float field = 0.5;
+    if ( uV2Look < 2.5 || uV2Look > 3.5 ) {
+      field = k3dFbm2( uv * vec2( 3.4, 1.55 ) + offset );
+    }
+    float pos = bladeAxis;
+    float coverage = clamp( wBlade * 1.45, 0.0, 1.0 );
+    coverage = max( coverage, smoothstep( 0.43, 0.70, local.x ) * 0.90 );
+    float amount = clamp( rampW * 1.26, 0.0, 1.0 ) * coverage;
+    vec3 enamel = col;
+    float polish = 0.20;
+
+    if ( uV2Look < 1.5 ) {
+      /* Doppler: broad, connected liquid-metal waves and gemstone glints;
+         NO thresholded confetti spots. Flow field deforms continuous bands. */
+      float flow = uv.x * 0.80 + uv.y * 0.18
+                 + (field - 0.5) * 0.72
+                 + sin( uv.y * 7.1 + uv.x * 2.7 + D.y * 6.0 ) * 0.11;
+      float ribbon = 0.5 + 0.5 * sin( flow * 6.2831853 );
+      float phase = clamp( ribbon * 0.94 + fres * 0.08, 0.0, 1.0 );
+      enamel = k3dPalette4( uDopPal0, uDopPal1, uDopPal2, uDopPal3, phase );
+      polish = 0.115 + 0.058 * abs( field - 0.5 );
+      amount *= 0.91;
+    } else if ( uV2Look < 2.5 ) {
+      /* Case hardening: irregular BLUE islands on steel with bronze/gold
+         oxidation at the boundaries. Keep a recognizable raw steel base. */
+      float blue = smoothstep( 0.53, 0.67, field );
+      float gold = smoothstep( 0.39, 0.51, field )
+                 * (1.0 - smoothstep( 0.56, 0.67, field ));
+      vec3 cobalt = mix( uDopPal1, uDopPal0, clamp((field - 0.62) * 1.5,0.0,1.0));
+      vec3 bronze = uDopPal2;
+      enamel = mix( col, bronze, gold * 0.76 );
+      enamel = mix( enamel, cobalt, blue * 0.92 );
+      enamel = mix( enamel, uDopPal3, smoothstep( 0.72, 0.88, field ) * 0.32 );
+      polish = mix( 0.26, 0.15, blue );
+      amount *= 0.95;
+    } else if ( uV2Look < 3.5 ) {
+      /* Fade: one continuous root-to-tip sweep. No patches, no repetition. */
+      float t = smoothstep( 0.02, 0.98,
+                   clamp( pos + ( uSeeds.x - 0.5 ) * 0.09, 0.0, 1.0 ) );
+      enamel = k3dPalette4( uDopPal0, uDopPal1, uDopPal2, uDopPal3, t );
+      polish = 0.125;
+      amount *= 0.95;
+    } else if ( uV2Look < 4.5 ) {
+      /* Marble Fade: wide red / gold / blue ribbons warped longitudinally.
+         The structural flow is connected; never a cloud of round freckles. */
+      float flow = uv.x * 1.22 + uv.y * 0.43 + (field - 0.5) * 0.34;
+      float stripes = 0.5 + 0.5 * sin( flow * 6.2831853 + 0.4 );
+      enamel = k3dPalette4( uDopPal0, uDopPal1, uDopPal2, uDopPal3,
+                             smoothstep( 0.05, 0.96, stripes ) );
+      polish = 0.14;
+      amount *= 0.94;
+    } else {
+      /* Ruby / Sapphire / Emerald / Black Pearl: one dominant hue family.
+         Subtle gem depth; different light reflections, not multicolor paint. */
+      float depth = clamp( 0.46 + 0.33 * (field - 0.5) + fres * 0.10, 0.05, 0.91 );
+      enamel = k3dPalette4( uDopPal0, uDopPal1, uDopPal2, uDopPal3, depth );
+      polish = 0.095;
+      amount *= 0.98;
+    }
+    float metalVariation = 0.89 + 0.11 * clamp( pat0, 0.0, 1.0 );
+    /* Color the metal reflectance, preserve physical roughness grain. */
+    col = mix( col, enamel * metalVariation, clamp( amount, 0.0, 0.97 ) );
+    rough = mix( rough, clamp( polish + abs( pat.y ) * 0.024, 0.07, 0.40 ),
+                 clamp( amount * 0.82, 0.0, 0.88 ) );
   }
 
   /* ⑤ 薄膜：视角相关色散 + 一点点加光（克制上限 0.35） */
@@ -1007,7 +1084,7 @@ export function buildHook(pack, frame, opts = {}) {
   const s5 = resolveS5Effect(finishId, Number(u.uStageTiers?.[4]) || 0,
     Number(u.uV2PaletteShift) || 0, u.uSeeds,
     { colorPhase: fp.colorPhase, hueShift: fp.hueShift, coat: fp.coat, amount: fp.amount,
-      baseHex: u.uBladeBaseColor, chosen: op.chosen === true });
+      cardId: u.uS5CardId, baseHex: u.uBladeBaseColor, chosen: op.chosen === true });
   if (s5) applyS5Effect(op, s5, fp);
   const pal = paletteFor(op, fp, [u.uDopPal0, u.uDopPal1, u.uDopPal2, u.uDopPal3]);
   /* 调色板条目有两种来源：材质派生的 [r,g,b]（0..1）与算子表里的 '#rrggbb'。
@@ -1085,6 +1162,7 @@ export function buildHook(pack, frame, opts = {}) {
     uS4Tier: { value: Number(u.uStageTiers?.[3]) || 0 },
     uS5Tier: { value: Number(u.uStageTiers?.[4]) || 0 },
     uV2FadeMode: { value: op.fadeMode ? 1 : 0 },
+    uV2Look: { value: Number(op.premiumLook) || 0 },
     uRarityColor: { value: colorOf(u.uRarityColor, '#c5d7e8') },
     uCardFx: { value: u.uCardFx || new Float32Array(36) },
     uBakedAtlas: { value: u.uBakedAtlas || null },
