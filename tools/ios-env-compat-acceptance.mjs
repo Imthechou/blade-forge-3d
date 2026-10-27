@@ -11,6 +11,7 @@ for(const c of [
  {name:'mobile-baseline',width:390,height:740,blockHDR:false,blockFloatFilter:false},
  {name:'mobile-no-old-hdr',width:390,height:740,blockHDR:true,blockFloatFilter:false},
  {name:'mobile-no-float32-linear',width:390,height:740,blockHDR:true,blockFloatFilter:true},
+ {name:'mobile-diagnostic',width:390,height:740,blockHDR:true,blockFloatFilter:true,debug:true},
  {name:'desktop-baseline',width:1280,height:900,blockHDR:false,blockFloatFilter:false},
 ]) {
  const context=await browser.newContext({viewport:{width:c.width,height:c.height},
@@ -26,7 +27,7 @@ for(const c of [
  page.on('response',r=>{if(r.status()>=400)errors.push('HTTP '+r.status()+' '+r.url());});
  page.on('request',req=>{if(req.url().includes('environment.hdr'))requests.push(req.url());});
  if(c.blockHDR) await page.route(/environment\.hdr(?:\?.*)?$/,route=>route.abort('blockedbyclient'));
- await page.goto('http://127.0.0.1:8123/',{waitUntil:'domcontentloaded',timeout:40000});
+ await page.goto('http://127.0.0.1:8123/'+(c.debug?'?envdebug=1':''),{waitUntil:'domcontentloaded',timeout:40000});
  await page.waitForFunction(()=>window.__FORGE_PREP?.ready && document.querySelector('#boot.is-gone'),null,{timeout:90000});
  await page.waitForFunction(()=>!!window.__FORGE_ENV_DIAG,null,{timeout:45000});
  const diag=await page.evaluate(()=>({env:window.__FORGE_ENV_DIAG,
@@ -51,9 +52,10 @@ for(const c of [
  const forge=await page.evaluate(()=>({page:document.querySelector('.page.is-active')?.dataset.page,
   canvas:[...document.querySelectorAll('canvas')].filter(x=>x.width>10&&x.getClientRects().length).length,
   horizontalOverflow:document.documentElement.scrollWidth>innerWidth}));
- const pass=diag.env?.mode==='studio-half-float' && diag.env.ready && forge.page==='forge' && forge.canvas>0 &&
+ const overlay=c.debug?await page.locator('#__forgeEnvDebug').textContent():null;
+ const pass=(!c.debug || (overlay?.includes('studio-half-float') && overlay?.includes('WebGL2: true'))) && diag.env?.mode==='studio-half-float' && diag.env.ready && forge.page==='forge' && forge.canvas>0 &&
    !forge.horizontalOverflow && errors.length===0 && requests.length===0;
- const record={...c,diag,forge,errors,requests,pass};report.cases.push(record);
+ const record={...c,diag,forge,overlay,errors,requests,pass};report.cases.push(record);
  console.log('CASE',JSON.stringify(record));
  await context.close();
 }
