@@ -17,7 +17,7 @@ for(const [name,url] of [['after','http://127.0.0.1:8123/']]){
   const run={name,url,preview:[],errors:[],snapshots:[],knifeVariants:[],startupMs:null};
   report.runs.push(run);
   page.on('pageerror',e=>run.errors.push('pageerror '+String(e).slice(0,1000)));
-  page.on('console',m=>{if(m.type()==='error'||/Shader Error|VALIDATE_STATUS|undeclared identifier|glsl/i.test(m.text()))run.errors.push('console '+m.text().slice(0,1000));});
+  page.on('console',m=>{if(m.type()==='error'||/Shader Error|VALIDATE_STATUS|undeclared identifier|glsl/i.test(m.text())){run.errors.push('console '+m.text().slice(0,1600));console.log('BROWSER_CONSOLE',m.type(),m.text().slice(0,1900));}});
   page.on('response',r=>{if(r.status()>=400)run.errors.push('HTTP '+r.status()+' '+r.url());});
   const t0=Date.now();
   await page.goto(url,{waitUntil:'domcontentloaded',timeout:50000});
@@ -68,8 +68,24 @@ for(const [name,url] of [['after','http://127.0.0.1:8123/']]){
       }
     // Gem and Marble coatings can be vivid red/blue, not dark gray.
     // A shader-blank canvas has neither dark silhouette nor colored metal.
-    if(modelPixels+chromaPixels<2200)
+    if(modelPixels+chromaPixels<2200) {
+      const diagnostic=await page.evaluate(async()=>{
+        const st=(await import(new URL('src/render/index.js',location.href).href)).getStage();
+        const v=st?.viewer,canvas=v?.renderer?.domElement;
+        const gl=v?.renderer?.getContext?.();
+        return {
+          stage:st?.modelId,request:st?._requestedModelId,
+          livePrograms:v?.renderer?.info?.programs?.map(p=>({id:p.id,name:p.name,usedTimes:p.usedTimes,diagnostics:p.diagnostics})).slice(0,8),
+          geometryObjects:v?.scene?.children?.length,
+          actualCanvas:{w:canvas?.width,h:canvas?.height,rect:canvas?.getBoundingClientRect()?.toJSON?.()},
+          shaderExtensions:gl?{vendor:gl.getParameter(gl.VENDOR),error:gl.getError(),shading:gl.getParameter(gl.SHADING_LANGUAGE_VERSION)}:null,
+          prep:window.__FORGE_PREP,
+        };
+      });
+      console.log('BLANK_3D_DIAG',tag,JSON.stringify(diagnostic).slice(0,7000));
+      console.log('BLANK_3D_ERRORS',JSON.stringify(run.errors).slice(0,7000));
       throw new Error(name+' '+tag+' missing visible 3D model ('+modelPixels+' dark / '+chromaPixels+' color pixels)');
+    }
     const state=await get();
     state.modelPixels=modelPixels;
     state.luma={mean:Math.round(avgLum/sampleN),hiPixels,nearBlack,sampleN};
