@@ -41,7 +41,7 @@ const K3D = __reg.proxy;
     /* Keep actual forged grain on blade faces where some knife GLBs
        report weak bladeWeight. Axial fallback excludes the grip. */
     float regionByMask = smoothstep( 0.32, 0.78, clamp( bladeWeight, 0.0, 1.0 ) );
-    float regionByAxis = smoothstep( 0.46, 0.77, clamp( vBladeLocal.x, 0.0, 1.0 ) ) * 0.74;
+    float regionByAxis = smoothstep( 0.46, 0.77, clamp( vS3Local.x + 0.5, 0.0, 1.0 ) ) * 0.74;
     float region = max( regionByMask, regionByAxis );
     float plane  = smoothstep( 0.12, 0.62, clamp( vS3PlanarFace, 0.0, 1.0 ) );
     float edgeLine = smoothstep( 0.16, 0.66, clamp( vBladeEdge, 0.0, 1.0 ) );
