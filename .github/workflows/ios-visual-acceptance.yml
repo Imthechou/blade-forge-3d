@@ -1,7 +1,7 @@
 name: iPhone Forge Browser Acceptance
 on:
-  push:
-    branches: [fix/ios-forge-viewport-lighting-20261027]
+  pull_request:
+    branches: [main]
     paths:
       - 'game/css/pages/forge.css'
       - 'game/src/render/legacy/viewer.js'
