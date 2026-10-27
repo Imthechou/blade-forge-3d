@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MATERIALS, createChallenge, restartChallenge, tick, chooseRoute, chooseFinale } from '../src/core/arenaChallenge.js';
+import { MATERIALS, createChallenge, restartChallenge, beginSwipe, swipe, tick, chooseRoute, chooseFinale } from '../src/core/arenaChallenge.js';
 import { createEncounter, phaseMaterialPool, MATERIAL_ORDER, PHASES } from '../src/core/arenaEncounters.js';
 import { advanceArenaClock } from '../src/core/arenaCutBridge.js';
 
@@ -90,4 +90,22 @@ test('正式赛选择软/硬路线只改变靶具名单，不改变硬度；重�
   const rerun=restartChallenge(run);
   assert.ok(rerun.ok);
   assert.equal(JSON.stringify(rerun.run.encounter),old);
+});
+
+test('同一种靶具面对同一把刀，在学徒/巅峰赛的破甲、进度与刀损完全一致',()=>{
+  for(const type of MATERIAL_ORDER) {
+    const lo=createChallenge(blade,{mode:'formal',seconds:45,seed:17,encounter:{tier:'school',gradient:0}}).run;
+    const hi=createChallenge(blade,{mode:'formal',seconds:45,seed:17,encounter:{tier:'apex',round:2}}).run;
+    for(const r of [lo,hi]) {
+      r.targets=[{...r.targets[0],id:'comparison',type,armorLeft:MATERIALS[type].armor*.6,
+        progress:0,alive:true,difficulty:1,cuts:[],layer:0}];
+      beginSwipe(r);
+      const hit=swipe(r,{x:r.targets[0].x-.15,y:r.targets[0].y},
+        {x:r.targets[0].x+.15,y:r.targets[0].y},{duration:.17});
+      assert.ok(hit.ok && hit.hits.length>0,type);
+    }
+    assert.equal(hi.targets[0].armorLeft,lo.targets[0].armorLeft,type+' 护甲被赛事等级修改');
+    assert.equal(hi.targets[0].progress,lo.targets[0].progress,type+' 切入效率被赛事等级修改');
+    assert.equal(hi.health,lo.health,type+' 单靶反作用损伤被赛事等级修改');
+  }
 });
