@@ -61,7 +61,12 @@ export function buildNormalFragment() {
        actual selected S3 texture in the physical normal field. The
        already-sampled S3 height is reused; no extra texture fetch. */
     if ( uS3On > 0.5 ) {
-      float patternWeight = mix( 0.40, 0.62, step( uV2Preserve, 0.5 ) );
+      /* Formed unquenched steel may show stronger forge relief; after S5
+         heat treatment, retain only a subtle imprinted normal. Keep
+         both weights below the old 2026-10-24 gritty-fabric threshold. */
+      float quenched = step( 0.001, uCardFx[4].y );
+      float patternWeight = mix( 0.07, 0.16, step( uV2Preserve, 0.5 ) )
+                          * mix( 1.0, 0.35, quenched );
       hMain = mix( hMain, clamp( k3dPatX, 0.0, 1.0 ), patternWeight );
     }
 
