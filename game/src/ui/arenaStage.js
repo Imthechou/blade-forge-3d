@@ -1,5 +1,6 @@
 import { MATERIALS } from '../core/arenaChallenge.js';
 import { impactMotion } from './arenaImpact.js';
+import { drawWholeSprite, drawSplitSprite, drawShardSprite, drawFlashSprite } from './arenaSprites.js';
 
 const TAU = Math.PI * 2;
 const TRAIL_LIFE = 260;
@@ -302,8 +303,13 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
     ctx.stroke();
   }
 
-  drawMaterial(ctx, t, data, x, y, bodyW, bodyH, bodyTop, unit);
-  if (t.type === 'rope' || t.type === 'foam') drawBundleTies(ctx, x, y, bodyW, bodyH, unit);
+  // The target is now a genuine prebaked transparent WebP material sprite.
+  // Retain existing Canvas illustration ONLY if the atlas is unavailable.
+  const textured=drawWholeSprite(ctx,t.type,x,y,bodyW,bodyH);
+  if (!textured) {
+    drawMaterial(ctx,t,data,x,y,bodyW,bodyH,bodyTop,unit);
+    if(t.type==='rope'||t.type==='foam') drawBundleTies(ctx,x,y,bodyW,bodyH,unit);
+  }
   drawKerf(ctx, t, x, y, bodyW, bodyH, bodyTop, unit, progress);
   if(impact && now-impact.at >= 0 && now-impact.at < (impact.flashMs||90)) {
     const flash=1-(now-impact.at)/(impact.flashMs||90);
@@ -776,21 +782,23 @@ function drawDebris(ctx, debris, now, w, h) {
         ctx.translate(cx + nx * sep * side, cy + ny * sep * side + fall);
         ctx.rotate(spin * side);
       }
-      ctx.beginPath();
-      ctx.moveTo(-dx * BIG, -dy * BIG);
-      ctx.lineTo(dx * BIG, dy * BIG);
-      ctx.lineTo(dx * BIG + nx * BIG * side, dy * BIG + ny * BIG * side);
-      ctx.lineTo(-dx * BIG + nx * BIG * side, -dy * BIG + ny * BIG * side);
-      ctx.closePath();
-      ctx.clip();
-      drawDebrisBody(ctx, d.type, bodyW, bodyH, unit);
-      // 断口：沿切口那条线给一条暖白高光，碎块才有"刚被切开"的味道。
-      ctx.strokeStyle = core;
-      ctx.lineWidth = Math.max(1.2, unit * .026);
-      ctx.beginPath();
-      ctx.moveTo(-dx * bodyH * .55, -dy * bodyH * .55);
-      ctx.lineTo(dx * bodyH * .55, dy * bodyH * .55);
-      ctx.stroke();
+      // Two purpose-built textured halves with material-specific exposed cut edges.
+      // The sprite's baseline fracture is ~11.3 degrees; reorient to the player's actual slash.
+      if (drawSplitSprite(ctx,d.type,side,bodyW,bodyH)) {
+        // Piece carries its own baked cross-section. Motion/rotation remains driven by input.
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(-dx * BIG, -dy * BIG);
+        ctx.lineTo(dx * BIG, dy * BIG);
+        ctx.lineTo(dx * BIG + nx * BIG * side, dy * BIG + ny * BIG * side);
+        ctx.lineTo(-dx * BIG + nx * BIG * side, -dy * BIG + ny * BIG * side);
+        ctx.closePath();ctx.clip();
+        drawDebrisBody(ctx,d.type,bodyW,bodyH,unit);
+        ctx.strokeStyle=core;
+        ctx.lineWidth=Math.max(1.2,unit*.026);
+        ctx.beginPath();ctx.moveTo(-dx*bodyH*.55,-dy*bodyH*.55);
+        ctx.lineTo(dx*bodyH*.55,dy*bodyH*.55);ctx.stroke();
+      }
       ctx.restore();
     }
     ctx.restore();
@@ -854,6 +862,8 @@ function drawBursts(ctx, bursts, now, w, h, reduced) {
     // 非命中也有反馈：护甲阻滞/弹刃偏冷白，击破在中心短闪，快速衰减。
     if(age<(b.flashMs||90)) {
       const f=1-age/(b.flashMs||90);
+      // Generated per-material 2.5D impact texture, on top of short low-cost light pulse.
+      if(!reduced)drawFlashSprite(ctx,b.type,x,y,72+hard*75,f*.58,angle);
       const r=(reduced?9:12+hard*20)*(1-f*.15);
       const gradient=ctx.createRadialGradient(x,y,0,x,y,r);
       gradient.addColorStop(0,`rgba(255,255,255,${(.75+hard*.15)*f})`);
@@ -884,6 +894,9 @@ function drawBursts(ctx, bursts, now, w, h, reduced) {
         ctx.fillStyle=b.type==='wood'?'#B7824E':b.type==='ice'?'#E8FDFF'
           :b.type==='metal'?'#F9D59D':b.type==='rope'?'#CDA66C'
           :b.type==='foam'?'#68D8CC':'#A8CFDC';
+        if(drawShardSprite(ctx,b.type,k,px,py,(b.type==='foam'?11:13)+hard*12,dir)) {
+          continue; // material-specific WebP debris sprite, not a generic drawn polygon
+        }
         if(b.type==='ice'||b.type==='wood'||b.type==='plastic'){
           const size=b.type==='ice'?3.4:b.type==='wood'?3:2.6;
           ctx.beginPath();ctx.moveTo(px,py-size);ctx.lineTo(px+size,py+size*.6);
