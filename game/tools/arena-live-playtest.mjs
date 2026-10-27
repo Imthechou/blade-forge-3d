@@ -51,10 +51,29 @@ async function newGame(label) {
   }, blade);
   const page = await context.newPage(); watch(page, label);
   await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForFunction(
-    () => window.__FORGE_PREP?.ready && document.querySelector('#boot.is-gone'),
-    null, { timeout: 90000 },
-  );
+  // 赛事为 Canvas2D：允许 GPU 降级继续玩。旧条件 __FORGE_PREP.ready
+  // 只有全套 HDR/Shader 通过才为 true，且 #boot 会在 340ms 后移除，
+  // 因此不能用它作为赛事 UI 是否可玩的判据。
+  try {
+    await page.waitForFunction(() => {
+      const boot = document.querySelector('#boot');
+      return document.querySelector('.page[data-page="home"]')
+        && (!boot || boot.classList.contains('is-gone'));
+    }, null, { timeout: 90000 });
+  } catch (error) {
+    const diagnosis = await page.evaluate(() => ({
+      title:document.title, boot:document.querySelector('#boot')?.outerHTML.slice(0,450),
+      note:document.querySelector('#bootNote')?.textContent,
+      prep:window.__FORGE_PREP || null,
+      page:document.body.innerText.slice(0,650),
+    })).catch(e => ({error:String(e)}));
+    report.issues.push({label,kind:'BOOT_BLOCK',diagnosis});
+    await snap(page,label+'-boot-blocked');
+    throw Error('游戏启动未退出加载屏：'+JSON.stringify(diagnosis).slice(0,900)+'; '+String(error));
+  }
+  const prep = await page.evaluate(() => window.__FORGE_PREP || null);
+  if (prep?.ready === false)
+    report.issues.push({label,kind:'GPU_PREP_DEGRADED',problems:prep.problems,readyStages:prep.readyStages});
   // 可能的引导/公告弹窗，不依赖它来生成存档。
   const close = page.getByRole('button', { name: '关闭', exact: true });
   if (await close.count()) await close.first().click().catch(() => {});
