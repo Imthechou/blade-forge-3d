@@ -20,12 +20,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install Chinese fonts and Playwright
+      - name: Install Playwright
+        working-directory: game
+        run: npm install --no-save --package-lock=false playwright
+      - name: Best-effort CJK fonts (do not block visual geometry tests)
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y fonts-noto-cjk
-          cd game
-          npm install --no-save --package-lock=false playwright
+          sudo timeout 35s apt-get install -y fonts-noto-cjk || true
       - name: Run core tests
         working-directory: game
         run: npm test
