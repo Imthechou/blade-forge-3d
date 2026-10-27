@@ -38,14 +38,22 @@ jobs:
           node --check game/src/render/v2/programFamilies.js
           node --check game/src/render/v2/surfaceDetail.js
           cd game && npm test
+      - name: Checkout main baseline for identical-origin browser comparison
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: baseline
+          persist-credentials: false
       - name: Serve actual candidate over HTTP
         run: |
           nohup node game/serve.cjs 8123 127.0.0.1 > forge-server.log 2>&1 &
+          nohup node baseline/game/serve.cjs 8124 127.0.0.1 > forge-baseline.log 2>&1 &
           sleep 3
           curl --fail http://127.0.0.1:8123/ -o /dev/null
+          curl --fail http://127.0.0.1:8124/ -o /dev/null
       - name: Reference screenshots from deployed main
         env:
-          FORGE_BEFORE_URL: https://imthechou.github.io/blade-forge-3d/
+          FORGE_BEFORE_URL: http://127.0.0.1:8124/
           S5_QA_OUT: forge-glare-review
         run: node tools/s5-optical-acceptance.mjs before --full
       - name: Candidate real WebGL S1-S9 and 24 S3 texture gallery
@@ -65,4 +73,5 @@ jobs:
           path: |
             forge-glare-review/
             forge-server.log
+            forge-baseline.log
           retention-days: 14
