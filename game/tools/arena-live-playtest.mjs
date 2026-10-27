@@ -209,9 +209,12 @@ await scenario('formal-school-cutting-real-pointer', async page => {
       phase,{timeout:65000});
     await body.locator('.quick-choice-overlay .quick-choice-card').first().click({timeout:12000});
   }
-  await page.waitForFunction(async () => {
-    const Game=(await import('/src/app/game.js')).default;
-    return Game.formalMatch?.session?.index>0 || Game.formalMatch?.done;
+  // waitForFunction 的 predicate 必须同步返回布尔值；不能返回 async Promise，
+  // 否则 Promise 被当作 truthy，提前在倒计时还没结束时检查成绩。
+  await page.waitForFunction(() => {
+    const root=document.querySelector('.page.is-active');
+    return root?.querySelector('.formal-test-stage')
+      || root?.querySelector('.arena-view-quick-report');
   },null,{timeout:70000});
   const result=await page.evaluate(async()=>{
     const Game=(await import('/src/app/game.js')).default;
