@@ -14,6 +14,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: arena-browser-pr
+  cancel-in-progress: true
+
 jobs:
   arena-playtest:
     runs-on: ubuntu-latest
@@ -23,11 +27,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install real Chromium test browser
+      - name: Use runner Chrome (same verified browser as forge visual acceptance)
         working-directory: game
         run: |
           npm install --no-save --package-lock=false playwright
-          npx playwright install --with-deps chromium
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || true)"
+          test -n "$CHROME_BIN"
+          echo "CHROME_PATH=$CHROME_BIN" >> "$GITHUB_ENV"
       - name: Run local web server
         run: |
           nohup node game/serve.cjs 8123 127.0.0.1 > arena-server.log 2>&1 &
