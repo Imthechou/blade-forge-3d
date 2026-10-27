@@ -27,6 +27,21 @@ jobs:
           python game/tools/build_arena_sprites.py
           test -s game/assets/arena/targets.webp
           file game/assets/arena/targets.webp
+          python - <<'PY'
+          from PIL import Image
+          im=Image.open('game/assets/arena/targets.webp').convert('RGBA')
+          assert im.size == (1536,1280), im.size
+          for i in range(6):
+              assert im.getpixel((i*256+3,3))[3] < 15, "sprite corner must be transparent"
+              assert im.crop((i*256,0,(i+1)*256,256)).getbbox(), i
+              assert im.crop((i*256,256,(i+1)*256,512)).getbbox(), i
+              assert im.crop((i*256,512,(i+1)*256,768)).getbbox(), i
+          # The former hollow tube used a near-black opening around x~65, y128;
+          # the solid billet must instead present opaque steel throughout this face.
+          pixel=im.getpixel((5*256+75,130))
+          assert pixel[3] > 180 and min(pixel[:3]) > 42, pixel
+          print('6 whole + 12 split states + transparent atlas + solid steel block PASS')
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: generated-arena-sprites
