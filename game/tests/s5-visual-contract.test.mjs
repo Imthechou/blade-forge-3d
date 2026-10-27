@@ -112,3 +112,15 @@ test('a pair shares craft lineage but not its palette and spatial identity',()=>
   assert.equal(r24.gemVariant,1);
   assert.equal(r21.key,r24.key);
 });
+
+
+test('full forged blade clamps accumulated albedo energy and retires excessive S4 surface glow',()=>{
+  const shader=readFileSync(new URL('../src/render/v2/programFamilies.js',import.meta.url),'utf8');
+  assert.match(shader,/float baseLum = dot\( identityCol/);
+  assert.match(shader,/float maxBase = max\( 0\.085, baseLum \* 1\.08 \)/);
+  assert.match(shader,/float compressedLum = finalLum - excess \* 0\.82/);
+  assert.match(shader,/col \*= compressedLum \/ finalLum/);
+  assert.match(shader,/float haloCarry = 1\.0 - 0\.48 \* postS5 - 0\.12 \* postS6/);
+  assert.match(shader,/float s4e =[\s\S]*?\* haloCarry/);
+  assert.match(shader,/bladeV2:61/);
+});
