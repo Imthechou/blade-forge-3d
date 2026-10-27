@@ -341,7 +341,7 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
     }));
     r.nextWaveAt=Number.MAX_SAFE_INTEGER;
     // 美术验收用隔离舞台：避免8秒时的路线选择删除测试摆放的靶具。
-    r.phase='finale';r.finale={id:'safe',name:'美术验收',bonus:1};r.elapsed=30.1;r.remaining=14.9;
+    r.phase='finale';r.finale={id:'safe',name:'美术验收',bonus:1};r.elapsed=30.1;r.total=120;r.remaining=89.9;r.targetLife=90;
     return {motion:(await import('/src/platform/motion.js')).mode(),
       names:r.targets.map(t=>core.MATERIALS[t.type].name),
       types:r.targets.map(t=>t.type), targets:r.targets.map(t=>({x:t.x,y:t.y,type:t.type}))};
@@ -382,7 +382,45 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
   assert.ok(snapshots.every(x=>x.contacts.length>0),'部分材质没有命中特效');
   assert.ok(snapshots.every(x=>x.contacts[0].flash>0),'闪白反馈丢失');
   assert.ok(snapshots.every(x=>x.contacts[0].particles>0),'碎屑反馈丢失');
-  return {spriteState,before,snapshots};
+  // Rebuild the six fixtures after the first single-stroke verification.
+  // Hit until each target actually breaks, not merely until hard-target armor changes.
+  await page.evaluate(()=>{
+    const r=window.__FORGE_ARENA.run;
+    r.targets=r.targets.map((t,i)=>({...t,alive:true,progress:0,armorLeft:(
+      [0,0,.45,.60,.62,1][i]*.6),cuts:[],layer:0,missed:false}));
+    r.hitIds=[];r.targetLife=90;r.total=120;r.remaining=120-r.elapsed;
+  });
+  const cutProof=[];
+  for(const t of before.targets){
+    let finished=false,attempts=0,seen=false;
+    for(let n=0;n<12;n++){
+      const alive=await page.evaluate(type=>window.__FORGE_ARENA.run.targets.find(x=>x.type===type)?.alive,t.type);
+      if(alive===false){finished=true;break;}
+      const box=await page.locator('.page.is-active .quick-canvas').boundingBox();
+      assert.ok(box,'canvas disappeared');
+      const y=box.y+box.height*t.y;
+      await page.mouse.move(box.x+box.width*Math.max(.01,t.x-.16),y);
+      await page.mouse.down();
+      await page.mouse.move(box.x+box.width*Math.min(.99,t.x+.16),y,{steps:1});
+      await page.mouse.up();attempts++;
+      const check=await page.evaluate(type=>{
+        const run=window.__FORGE_ARENA.run,fx=window.__FORGE_ARENA.effects;
+        return {alive:run.targets.find(x=>x.type===type)?.alive,
+          hasSplit:fx.debris.some(x=>x.type===type),score:run.score};
+      },t.type);
+      seen ||= check.hasSplit;
+      if(check.alive===false){
+        finished=true;
+        await snap(page,'13-break-'+t.type);
+        break;
+      }
+    }
+    assert.ok(finished,t.type+' repeated actual swipes never broke');
+    assert.ok(seen,t.type+' was broken but split-piece visual event missing');
+    cutProof.push({type:t.type,attempts,split:true});
+  }
+  console.log('SIX_MATERIAL_FULL_BREAKS',JSON.stringify(cutProof));
+  return {spriteState,before,snapshots,cutProof};
 });
 // A previous design requirement: player may voluntarily end a quick challenge
 // and inspect partial stats without repeatedly farming CR or daily completion.
