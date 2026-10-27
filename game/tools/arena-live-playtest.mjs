@@ -215,12 +215,17 @@ await scenario('formal-school-cutting-real-pointer', async page => {
   },null,{timeout:70000});
   const result=await page.evaluate(async()=>{
     const Game=(await import('/src/app/game.js')).default;
-    return {index:Game.formalMatch.session.index,
+    return {index:Game.formalMatch.session.index, done:Game.formalMatch.done,
+      formId:Game.formalMatch.id, stage:window.__FORGE_ARENA?.run&&{
+        phase:window.__FORGE_ARENA.run.phase,done:window.__FORGE_ARENA.run.done,score:window.__FORGE_ARENA.run.score,
+        reason:window.__FORGE_ARENA.run.result?.reason
+      }, 
       entries:Game.formalMatch.session.entries.map(e=>({kind:e.kind,status:e.status,result:e.result&&{
         score:e.result.score,measure:e.result.raw.measure,detail:e.result.detail
       }})),
       text:document.querySelector('.page.is-active .arena-body')?.innerText.slice(0,500)};
   });
+  console.log('FORMAL_FINAL_STATE',JSON.stringify(result));
   assert.equal(result.entries[0].status,'complete','正式赛切割未推进至下项');
   assert.ok(result.entries[0].result.measure>0,'真实切割后操作质量仍是0');
   await snap(page,'09-formal-next-project');
