@@ -1224,7 +1224,21 @@ export class BladeStage {
         st.patternSeed = ((Number(st.patternSeed) || 0)
           + (k.bladeSkin.hashSeed('card-fingerprint', ...ids) % 1001)) % 1001;
       }
-      return k.bladeSkin.composeBladeSkin(st);
+      // Per-stage visual tiers travel with the same composed pack used by
+      // visible preview, prewarming and saved-knife replay. They do NOT depend
+      // on the current UI stage or on the global maximum rarity.
+      const pack = k.bladeSkin.composeBladeSkin(st);
+      if (pack?.uniforms) {
+        const tiers = new Float32Array(9);
+        const rarity = { common:0, fine:1, rare:2, epic:3, legend:4, mythic:5 };
+        for (const entry of enriched.visualStages || []) {
+          const idx = Number(entry?.index);
+          if (Number.isInteger(idx) && idx >= 0 && idx < 9)
+            tiers[idx] = rarity[String(entry.rarity || '')] ?? 0;
+        }
+        pack.uniforms.uStageTiers = tiers;
+      }
+      return pack;
     }, null);
   }
 
