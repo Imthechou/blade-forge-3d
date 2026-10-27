@@ -346,6 +346,11 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
       names:r.targets.map(t=>core.MATERIALS[t.type].name),
       types:r.targets.map(t=>t.type), targets:r.targets.map(t=>({x:t.x,y:t.y,type:t.type}))};
   });
+  await page.waitForFunction(()=>window.__FORGE_SPRITES?.status()?.status==='ready',
+    null,{timeout:12000});
+  const spriteState=await page.evaluate(()=>window.__FORGE_SPRITES.status());
+  assert.equal(spriteState.width,1536);
+  assert.equal(spriteState.height,1280);
   await page.waitForTimeout(180);
   await snap(page,'11-six-material-design-gallery');
   const snapshots=[];
@@ -376,7 +381,7 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
   assert.ok(snapshots.every(x=>x.contacts.length>0),'部分材质没有命中特效');
   assert.ok(snapshots.every(x=>x.contacts[0].flash>0),'闪白反馈丢失');
   assert.ok(snapshots.every(x=>x.contacts[0].particles>0),'碎屑反馈丢失');
-  return {before,snapshots};
+  return {spriteState,before,snapshots};
 });
 report.summary = {
   passed: report.cases.filter(x=>x.status==='PASS').length,
