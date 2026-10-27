@@ -1,4 +1,5 @@
 import { MATERIALS } from '../core/arenaChallenge.js';
+import { impactMotion } from './arenaImpact.js';
 
 const TAU = Math.PI * 2;
 const TRAIL_LIFE = 260;
@@ -63,7 +64,7 @@ export function drawArenaStage(ctx, run, w, h, effects = {}) {
     if (!t || !t.alive) continue;
     const d = MATERIALS[t.type];
     if (!d) continue;
-    drawTarget(ctx, t, d, i, t.x * w, t.y * h, w, h, isGuideTarget(run.guide, t), now);
+    drawTarget(ctx, t, d, i, t.x * w, t.y * h, w, h, isGuideTarget(run.guide, t), now, bursts, reduced);
   }
 
   drawDebris(ctx, debris, now, w, h);
@@ -255,12 +256,24 @@ function targetMetrics(w, h, stream = false) {
   return { unit, half: unit * .5, bodyW: unit * .94, bodyH: Math.min(unit * 1.55, h * (stream ? .145 : .21)) };
 }
 
-function drawTarget(ctx, t, data, index, x, y, w, h, guided, now) {
+function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY, reduced = false) {
   const { unit, half, bodyW, bodyH } = targetMetrics(w, h, t.layout === 'stream');
   const bodyTop = y - bodyH * .49;
   const progress = clamp(Number(t.progress) || 0, 0, 1);
 
   ctx.save();
+  // 顿帧只冻结靶具的视觉压缩/回弹，不阻塞 Canvas 输入、RAF 或45秒倒计时。
+  const impact = reduced ? null : bursts.findLast(b => b.type === t.type
+    && Math.abs(b.x-t.x)<.002 && Math.abs(b.y-t.y)<.002 && now-b.at<225);
+  const motion = impactMotion(impact,now);
+  if(motion) {
+    const angle=impact.angle||0;
+    const recoil=motion.recoil*(impact.recoilPx||0);
+    ctx.translate(x+Math.cos(angle)*recoil,y+Math.sin(angle)*recoil);
+    ctx.rotate(Math.sin(angle)*motion.compress*.055);
+    ctx.scale(1-motion.compress*.085,1+motion.compress*.045);
+    ctx.translate(-x,-y);
+  }
   // 吊挂的靶具悬在半空，画"接触阴影"会变成一团灰斑；只在旧的三靶制（立在台面上）保留
   if (t.layout !== 'stream') {
     ctx.save();
@@ -291,6 +304,11 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now) {
   drawMaterial(ctx, t, data, x, y, bodyW, bodyH, bodyTop, unit);
   if (t.type === 'rope' || t.type === 'foam') drawBundleTies(ctx, x, y, bodyW, bodyH, unit);
   drawKerf(ctx, t, x, y, bodyW, bodyH, bodyTop, unit, progress);
+  if(impact && now-impact.at >= 0 && now-impact.at < (impact.flashMs||90)) {
+    const flash=1-(now-impact.at)/(impact.flashMs||90);
+    ctx.fillStyle=`rgba(250,254,255,${.24*flash})`;
+    roundedRect(ctx,x-bodyW*.52,bodyTop,bodyW*1.04,bodyH,unit*.12);ctx.fill();
+  }
 
   const railW = bodyW * .88, railY = bodyTop - Math.max(9, unit * .15), railH = Math.max(3, unit * .05);
   ctx.fillStyle = 'rgba(225,239,241,.16)'; roundedRect(ctx, x - railW / 2, railY, railW, railH, railH / 2); ctx.fill();
@@ -738,8 +756,9 @@ function drawDebris(ctx, debris, now, w, h) {
     const nx = -dy, ny = dx;
     const cx = d.x * w, cy = d.y * h;
     const sep = (4 + p * unit * .34) * (1 - p * .25);
-    const fall = p * p * bodyH * .5;
-    const spin = p * .3;
+    const heaviness = d.type==='metal'?1.5:d.type==='ice'?1.15:d.type==='wood'?1:d.type==='foam'?.55:.7;
+    const fall = p * p * bodyH * .52 * heaviness;
+    const spin = p * (d.type==='metal'?.13:d.type==='foam'?.43:.28);
     const core = CORE_COLORS[d.type] || 'rgba(240,240,230,.8)';
     const BIG = Math.max(bodyW, bodyH) * 1.4;
     ctx.save();
@@ -817,51 +836,66 @@ function drawTrail(ctx, trail, now, w, h, reduced) {
   ctx.restore();
 }
 
+/**
+ * 六层手感的可视化：轻靶闪/碎屑快，硬靶闪白→定格压缩→法线击退；
+ * 物理的切断次数仍完全由 core 判定。
+ */
 function drawBursts(ctx, bursts, now, w, h, reduced) {
-  for (let i = 0; i < bursts.length; i++) {
-    const b = bursts[i];
-    const age = now - b.at;
-    if (age < 0 || age > BURST_LIFE) continue;
-    const p = age / BURST_LIFE, alpha = (1 - p) * (b.complete ? 1 : .6);
-    const x = b.x * w, y = b.y * h;
-    const color = burstColor(b);
+  for(const b of bursts) {
+    const age=now-b.at;
+    if(age<0 || age>BURST_LIFE)continue;
+    const power=Math.max(0,1-age/BURST_LIFE);
+    const x=b.x*w,y=b.y*h,angle=Number.isFinite(b.angle)?b.angle:0;
+    const nx=-Math.sin(angle),ny=Math.cos(angle);
+    const hard=Number(b.weight)||.3;
+    const color=burstColor(b);
     ctx.save();
-    ctx.globalAlpha = alpha;
-
-    // 命中闪光：只在前 110ms，硬靶更大更亮。
-    if (b.complete && age < 110) {
-      const f = 1 - age / 110;
-      const hard = b.type === 'metal' || b.type === 'ice' ? 1.5 : 1;
-      const rr = (reduced ? 10 : 22) * hard;
-      const flash = ctx.createRadialGradient(x, y, 0, x, y, rr);
-      const warm = b.quality === 'PERFECT';
-      flash.addColorStop(0, warm ? `rgba(167,123,56,${.34 * f})` : `rgba(34,122,135,${.30 * f})`);
-      flash.addColorStop(.45, warm ? `rgba(167,123,56,${.14 * f})` : `rgba(34,122,135,${.12 * f})`);
-      flash.addColorStop(1, warm ? 'rgba(167,123,56,0)' : 'rgba(34,122,135,0)');
-      ctx.fillStyle = flash;
-      ctx.beginPath(); ctx.arc(x, y, rr, 0, TAU); ctx.fill();
+    // 非命中也有反馈：护甲阻滞/弹刃偏冷白，击破在中心短闪，快速衰减。
+    if(age<(b.flashMs||90)) {
+      const f=1-age/(b.flashMs||90);
+      const r=(reduced?9:12+hard*20)*(1-f*.15);
+      const gradient=ctx.createRadialGradient(x,y,0,x,y,r);
+      gradient.addColorStop(0,`rgba(255,255,255,${(.75+hard*.15)*f})`);
+      gradient.addColorStop(.35,`rgba(214,244,251,${.30*f})`);
+      gradient.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();
     }
-
-    const radius = (reduced ? 4 : 8) + p * (reduced ? 3 : 16);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = b.complete ? 1.6 : 1.1;
-    ctx.beginPath(); ctx.arc(x, y, radius, 0, TAU); ctx.stroke();
-
-    if (!reduced) {
-      const pieces = b.complete ? 8 : 4;
-      const angle = Number.isFinite(b.angle) ? b.angle : 0;
-      for (let k = 0; k < pieces; k++) {
-        const a = angle + k * TAU / pieces + .37;
-        const r0 = radius * .45 + p * 6;
-        const r1 = radius + p * 14 + 4 + Math.sin(k * 2.3) * 5;
-        ctx.lineWidth = k % 2 ? 1 : 1.4;
-        ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); ctx.stroke();
+    // 从切口法线向外扩张，不再所有材料画一个同款圆。
+    const ringAge=clamp(age/(reduced?155:235),0,1);
+    ctx.globalAlpha=(1-ringAge)*(.25+.46*hard);
+    ctx.strokeStyle=color;ctx.lineWidth=1+hard;
+    ctx.beginPath();ctx.ellipse(x,y,(8+ringAge*(12+hard*17)),
+      (3+ringAge*(7+hard*8)),angle,0,TAU);ctx.stroke();
+    if(!reduced) {
+      const count=Math.max(2,Math.min(16,Number(b.particleCount)||4));
+      for(let k=0;k<count;k++){
+        // 每个碎片确定性，避免每帧重新掷随机导致闪烁/乱跳。
+        const sign=k%2?1:-1;
+        const spread=(k/count-.5)*1.35;
+        const dir=angle+Math.PI*.5*sign+spread;
+        const speed=hard> .5 ? 28+hard*49 : 19+hard*28;
+        const travel=(age/1000)*speed*1.9;
+        const px=x+Math.cos(dir)*travel+nx*sign*3;
+        const py=y+Math.sin(dir)*travel+Math.min(28,(age/420)**2*16);
+        const fade=clamp(1-age/(220+hard*250),0,1);
+        if(fade<=0)continue;
+        ctx.globalAlpha=fade*.86;
+        ctx.fillStyle=b.type==='wood'?'#B7824E':b.type==='ice'?'#E8FDFF'
+          :b.type==='metal'?'#F9D59D':b.type==='rope'?'#CDA66C'
+          :b.type==='foam'?'#68D8CC':'#A8CFDC';
+        if(b.type==='ice'||b.type==='wood'||b.type==='plastic'){
+          const size=b.type==='ice'?3.4:b.type==='wood'?3:2.6;
+          ctx.beginPath();ctx.moveTo(px,py-size);ctx.lineTo(px+size,py+size*.6);
+          ctx.lineTo(px-size*.6,py+size);ctx.closePath();ctx.fill();
+        } else if(b.type==='metal') {
+          ctx.strokeStyle='#E9AE64';ctx.lineWidth=1.4;ctx.beginPath();
+          ctx.moveTo(px,py);ctx.lineTo(px+Math.cos(dir)*(4+hard*5),py+Math.sin(dir)*(4+hard*5));ctx.stroke();
+        } else {
+          ctx.beginPath();ctx.arc(px,py,b.type==='foam'?1.7:1.05,0,TAU);ctx.fill();
+        }
       }
     }
-    if (b.objective) {
-      ctx.strokeStyle = 'rgba(128,236,222,.9)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, y, radius + 5, 0, TAU); ctx.stroke();
-    }
+    if(b.objective){ctx.globalAlpha=power*.7;ctx.strokeStyle='#4CC7B0';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(x,y,16+age*.045,0,TAU);ctx.stroke();}
     ctx.restore();
   }
 }
@@ -971,20 +1005,18 @@ function drawPointer(ctx, pointer, w, h, reduced) {
 }
 
 /** 震屏：只取最近三次爆发里 130ms 内的，幅度 ≤ 2.6px，硬靶更明显。 */
+/** 有方向、强度受限、100ms内归零；不做持续噪声震屏。 */
 function shakeOffset(bursts, now) {
-  let x = 0, y = 0;
-  for (let i = bursts.length - 1; i >= 0 && i >= bursts.length - 3; i--) {
-    const b = bursts[i];
-    if (!b.complete) continue;
-    const age = now - b.at;
-    if (!(age >= 0) || age > 130) continue;
-    const f = 1 - age / 130;
-    const hard = b.type === 'metal' ? 1 : b.type === 'ice' ? .8 : b.type === 'wood' ? .6 : .35;
-    const a = b.angle || 0;
-    x += Math.cos(a + 1.57) * 2.6 * f * hard * (i % 2 ? 1 : -1);
-    y += Math.sin(a + 1.57) * 1.6 * f * hard;
+  let x=0,y=0;
+  for(let i=bursts.length-1;i>=Math.max(0,bursts.length-3);i--) {
+    const b=bursts[i],age=now-b.at;
+    if(age<0||age>115||!(b.shakePx>0))continue;
+    const fade=(1-age/115)**2;
+    const angle=b.angle||0,sign=i%2?1:-1;
+    x+=Math.cos(angle+Math.PI/2)*b.shakePx*fade*sign;
+    y+=Math.sin(angle+Math.PI/2)*b.shakePx*fade*sign;
   }
-  return { x, y };
+  return{x:clamp(x,-3.4,3.4),y:clamp(y,-3.4,3.4)};
 }
 
 /* ══ 工具 ═══════════════════════════════════════════════ */
