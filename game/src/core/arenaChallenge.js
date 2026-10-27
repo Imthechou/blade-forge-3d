@@ -123,6 +123,8 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
     },
     adaptation, buffs: [...buffs], params, ghost, matchId, winStreak,
     encounter: plan, spawnStage: null, stageSpawned: 0, stagePrefill: 0,
+    encounterHistory: plan ? Object.fromEntries(['warmup','route','speed','finale'].map(phase=>[
+      phase,{spawned:0,materials:{}}])) : null,
     total, elapsed: 0, remaining: total, phase: 'warmup', paused: false, done: false, result: null,
     spawnMode: mode === 'formal' ? 'stream' : 'wave',
     score: 0, kills: 0, combo: 0, maxCombo: 0, bestSwipe: 0, gestureKills: 0, misses: 0,
@@ -259,7 +261,11 @@ function spawnTarget(run) {
   const type = run.encounter
     ? selectEncounterMaterial(run.encounter,run.spawnStage,run.route?.id,run.finale?.id,random(run))
     : types[Math.min(types.length - 1, Math.floor(random(run) * types.length))];
-  if(run.encounter)run.stageSpawned++;
+  if(run.encounter) {
+    run.stageSpawned++;
+    const history=run.encounterHistory?.[run.spawnStage];
+    if(history) {history.spawned++;history.materials[type]=(history.materials[type]||0)+1;}
+  }
   run.spawnCount = (run.spawnCount || 0) + 1;
   if (run.spawnCount % 5 === 0) run.wave += 1;   // 让 activeTypes 的奇偶轮换起来
   const target = {
