@@ -451,6 +451,27 @@ class Viewer {
       mode, ready: !!nextEnv, reason: cause || null,
       textureType: mode === 'studio-half-float' ? 'HalfFloatType' : (nextEnv?.type ?? null),
     };
+    /* Opt-in, on-device reflection status. Allows Safari users to report the
+       actual environment path without connecting a desktop debugger.
+       It is absent during normal gameplay. */
+    try {
+      if (global.location && new URLSearchParams(global.location.search).get('envdebug') === '1') {
+        const d = global.document;
+        let el = d.getElementById('__forgeEnvDebug');
+        if (!el) {
+          el = d.createElement('div');
+          el.id = '__forgeEnvDebug';
+          el.style.cssText = 'position:fixed;left:8px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:99999;background:rgba(12,31,45,.92);color:#fff;border-radius:8px;padding:7px 10px;font:12px/1.5 ui-monospace,SFMono-Regular,monospace;white-space:pre;pointer-events:none;max-width:calc(100vw - 16px);';
+          d.body.appendChild(el);
+        }
+        const gl = this.renderer?.getContext?.();
+        const gl2 = !!(global.WebGL2RenderingContext && gl instanceof global.WebGL2RenderingContext);
+        const floatLinear = !!gl?.getExtension?.('OES_texture_float_linear');
+        el.textContent = 'Env: ' + mode + (nextEnv ? '  OK' : '  FAILED') + '\\n'
+          + 'WebGL2: ' + gl2 + ' · float-linear: ' + floatLinear
+          + (cause ? '\\n' + cause.slice(0,100) : '');
+      }
+    } catch (_) { /* diagnostics never break game rendering */ }
   }
 
   /**
