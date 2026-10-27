@@ -38,10 +38,9 @@ export const MATERIALS = Object.freeze({
   wood:    { name: '纹理木桩', short: '木桩', points: 85, hard: .45, armor: .45, health: 1.5, damage: 0.30, angle: Math.PI * .47,  color: '#b88455' },
   plastic: { name: '工程塑料板', short: '塑板', points: 105, hard: .60, armor: .60, health: 1.7, damage: 0.38, angle: 0,            color: '#dbe5e9' },
   ice:     { name: '透明冰块', short: '冰块', points: 120, hard: .62, armor: .62, health: 1.4, damage: 0.26, angle: Math.PI * .25,  color: '#8fd8e8' },
-  /* ★ T07：金属板 → 金属管。不只是改名：管状件有开口与壁厚，
-     破甲需要先穿透管壁（armor 高），之后沿管切开生命下降更快（health 中等），
-     但反作用损伤最高（damage 高）。 */
-  metal:   { name: '金属管', short: '金属管', points: 160, hard: 1, armor: 1, health: 1.3, damage: 0.72, angle: 0, color: '#b7c4cc', tubular: true },
+  /* 实心合金金属块：难度来自坚实整体抗性，而非空心管壁。保留现有
+     固定 armor / health / damage 数值，不跟随赛事档位变化。 */
+  metal:   { name: '金属块', short: '金属块', points: 160, hard: 1, armor: 1, health: 1.3, damage: 0.72, angle: 0, color: '#b7c4cc', solid: true },
 });
 export const ROUTES = Object.freeze([
   { id: 'soft', name: '连切路线', tag: '低风险 · 软靶阵列', types: ['rope', 'foam', 'rope'], bonus: 1.04 },
@@ -58,7 +57,7 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  * 破甲量（rework T07）。
  *
  * 软靶（绳束/泡棉）armor=0 → 无破甲阶段，一刀可直接断（设定：软靶可一刀断）。
- * 硬靶按材料 armor 给出：0.45（木桩）/ 0.60（塑板）/ 0.62（冰块）/ 1.0（金属管）。
+ * 硬靶按材料 armor 给出：0.45（木桩）/ 0.60（塑板）/ 0.62（冰块）/ 1.0（金属块）。
  * ⚠ 取 armor × 0.6 而非全值：全值会让硬靶多出两击才破，改变了整体手感；
  *   0.6 让「强度专长」能明显感知（强度低 → 破甲击数明显变多），
  *   而同等能力下总击数与改造前接近。可调初版，见 BALANCE_REPORT。
@@ -396,7 +395,7 @@ function addWear(run, target, quality, stats) {
   const formal = { soft: .1, softK: .003, hard: 1.2, hardK: 1.6, shift: .4 };
   const B = run.mode === 'formal' ? formal : quick;
   /* ★ rework T07：第三层「刀具临时反作用损伤」。
-     mat.damage 是该材料的反作用强度系数（绳束 0.02 … 金属管 0.72），
+     mat.damage 是该材料的反作用强度系数（绳束 0.02 … 金属块 0.72），
      由韧性（承担）与设计（降低冲击峰值）共同降低。
      这层与「破甲」「生命」完全分开：它扣的是**刀况**，不是靶具状态。 */
   const react = Math.max(0, Number(mat.damage) || 0);
@@ -549,7 +548,7 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
 
        坑：改造 T07 把一击拆成「先破甲 → 再扣生命」后，
        `power = max(power, 1)` 不再等于击破 —— 因为它还要先交一部力给破甲。
-       实测 256 能力刀命中新鲜金属管后，进度只到 0.70，硬靶仍存活，
+       实测 256 能力刀命中新鲜金属块后，进度只到 0.70，硬靶仍存活，
        开启淬火余温也打不断（A05 回归）。
 
        最终口径：承诺性必破直接落在**进度**上，但仍照常走完整链路 ——
