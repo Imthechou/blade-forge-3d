@@ -6,6 +6,11 @@ on:
       - 'game/tools/arena-live-playtest.mjs'
       - '.github/workflows/arena-live-playtest.yml'
       - 'game/src/ui/pages/arena.js'
+      - 'game/src/ui/arenaStage.js'
+      - 'game/src/ui/arenaImpact.js'
+      - 'game/src/platform/audio.js'
+      - 'game/src/core/arenaEncounters.js'
+      - 'game/tests/arena-impact.test.mjs'
       - 'game/src/ui/formalTestStage.js'
       - 'game/src/core/arenaChallenge.js'
       - 'game/src/core/arenaFormal.js'
@@ -34,12 +39,16 @@ jobs:
           CHROME_BIN="$(command -v google-chrome || command -v chromium || true)"
           test -n "$CHROME_BIN"
           echo "CHROME_PATH=$CHROME_BIN" >> "$GITHUB_ENV"
+      - name: Install CJK font for accurate Chinese mobile screenshots
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-wqy-microhei
       - name: Run local web server
         run: |
           nohup node game/serve.cjs 8123 127.0.0.1 > arena-server.log 2>&1 &
           sleep 3
           curl -fsS http://127.0.0.1:8123/ > /dev/null
-      - name: Play both live arena entries at mobile viewport
+      - name: Play all live arena entries and six-material visual gallery
         working-directory: game
         run: node tools/arena-live-playtest.mjs
       - name: Upload screenshots, run report and server logs even if test fails
