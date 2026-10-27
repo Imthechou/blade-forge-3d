@@ -444,13 +444,20 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
     if ( uV2Look < 1.5 ) {
       /* Doppler: broad, connected liquid-metal waves and gemstone glints;
          NO thresholded confetti spots. Flow field deforms continuous bands. */
-      float flow = uv.x * 0.80 + uv.y * 0.18
-                 + (field - 0.5) * 0.72
-                 + sin( uv.y * 7.1 + uv.x * 2.7 + D.y * 6.0 ) * 0.11;
-      float ribbon = 0.5 + 0.5 * sin( flow * 6.2831853 );
+      float isAmethyst = step( 21.5, uV2Art.x );
+      float flow = mix( uv.x*0.80+uv.y*0.18, uv.x*0.52-uv.y*0.48,
+                        isAmethyst )
+                 + (field - 0.5) * mix(0.72,0.30,isAmethyst)
+                 + sin( uv.y * 7.1 + uv.x * 2.7 + D.y * 6.0 )
+                   * mix(0.11,0.055,isAmethyst);
+      float ribbon = 0.5 + 0.5 * sin( flow * 6.2831853
+                   * mix(1.0,1.5,isAmethyst) );
       float phase = clamp( ribbon * 0.94 + fres * 0.08, 0.0, 1.0 );
       enamel = k3dPalette4( uDopPal0, uDopPal1, uDopPal2, uDopPal3, phase );
-      polish = 0.115 + 0.058 * abs( field - 0.5 );
+      /* Amethyst: deep dark boundary and narrow purple metal veins.
+         The ordinary Doppler keeps broad smooth blue/violet melt flow. */
+      enamel *= mix(1.0, 0.78 + 0.17*smoothstep(0.63,0.88,ribbon), isAmethyst);
+      polish = mix(0.115,0.17,isAmethyst) + 0.058 * abs( field - 0.5 );
       amount *= 0.91;
     } else if ( uV2Look < 2.5 ) {
       /* Case hardening: irregular BLUE islands on steel with bronze/gold
@@ -487,23 +494,38 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
     } else if ( uV2Look < 4.5 ) {
       /* Marble Fade: wide red / gold / blue ribbons warped longitudinally.
          The structural flow is connected; never a cloud of round freckles. */
-      float flow = uv.x * 1.22 + uv.y * 0.43 + (field - 0.5) * 0.34;
-      float stripes = 0.5 + 0.5 * sin( flow * 6.2831853 + 0.4 );
+      /* Liquid nitrogen shows fractured ribbons, anodizing follows
+         ordered diagonal oxide layers rather than another rainbow spill. */
+      float anodized = step(14.5,uV2Art.x);
+      float flow = mix(uv.x*1.22+uv.y*0.43+(field-0.5)*0.34,
+                       uv.x*0.48+uv.y*0.89+(field-0.5)*0.10,
+                       anodized);
+      float stripes = 0.5 + 0.5 * sin( flow * 6.2831853
+                        * mix(1.0,1.6,anodized)+0.4 );
       enamel = k3dPalette4( uDopPal0, uDopPal1, uDopPal2, uDopPal3,
                              smoothstep( 0.05, 0.96, stripes ) );
-      polish = 0.14;
-      amount *= 0.94;
+      polish = mix(0.14,0.19,anodized);
+      amount *= mix(0.94,0.81,anodized);
     } else {
       /* Ruby / Sapphire / Emerald / Black Pearl: one dominant hue family.
          Subtle gem depth; different light reflections, not multicolor paint. */
-      float depth = clamp( 0.46 + 0.33 * (field - 0.5) + fres * 0.10, 0.05, 0.91 );
+      float sky = step( 23.5, uV2Art.x );
+      float band = 0.5+0.5*sin(uv.x*12.0 + uv.y*4.0
+                              + (field-0.5)*2.3);
+      float depth = clamp( 0.46 + 0.33 * (field - 0.5) + fres * 0.10
+                         + sky * (band-0.5)*0.35, 0.05, 0.91 );
       enamel = k3dPalette4( uDopPal0, uDopPal1, uDopPal2, uDopPal3, depth );
-      polish = 0.095;
+      polish = mix( 0.095,0.14,sky );
       amount *= 0.98;
     }
     float metalVariation = mix( 0.85, 0.95, substrateValue )
                          * ( 0.94 + 0.06 * clamp( pat0, 0.0, 1.0 ) );
-    amount *= mix( 0.86, 1.0, qFinish ) * (1.0 - 0.13 * substrateRough) * mix(0.98,1.08,substrateValue);
+    /* Bond color treatment to actual S1 metal and inherited S3 grain.
+       Pigment coverage retreats at etched/rough regions, preserving steel
+       identity even under ruby, Fade and case-hardened color. */
+    float substrateBond = 0.73 + 0.21 * pat0;
+    amount *= mix( 0.86, 1.0, qFinish ) * (1.0 - 0.13 * substrateRough)
+             * mix(0.98,1.08,substrateValue) * substrateBond;
     /* Color the metal reflectance, preserve physical roughness grain. */
     col = mix( col, enamel * metalVariation, clamp( amount, 0.0, 0.97 ) );
     rough = mix( rough,
