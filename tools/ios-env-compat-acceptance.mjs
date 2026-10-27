@@ -35,9 +35,16 @@ for(const c of [
      return {webgl2:!!gl,floatLinear:!!gl?.getExtension('OES_texture_float_linear'),
        halfFloatType:window.THREE?.HalfFloatType};})()}));
  await page.screenshot({path:path.join(out,c.name+'-home.png'),animations:'disabled'});
- await page.waitForTimeout(750);
- for(let i=0;i<3;i++){const close=page.getByRole('button',{name:'关闭',exact:true});
-   if(await close.count() && await close.first().isVisible()) {await close.first().click({timeout:5000});await page.waitForTimeout(200);} else break;}
+ await page.waitForTimeout(1000);
+ // Onboarding sheet can disappear during its own animation; do not treat a
+ // detached close button as a game-render failure.
+ for(let i=0;i<3;i++){
+   const close=page.locator('.sheet-mask.is-in .sheet-x');
+   if(await close.count() && await close.first().isVisible()){
+     try{await close.first().click({timeout:1800});}catch(e){console.log('Guide closed during click:',String(e).slice(0,80));}
+     await page.waitForTimeout(300);
+   }else break;
+ }
  await page.getByRole('button',{name:/开始锻刀/}).first().click({timeout:12000});
  await page.waitForTimeout(900);
  await page.screenshot({path:path.join(out,c.name+'-forge.png'),animations:'disabled'});
