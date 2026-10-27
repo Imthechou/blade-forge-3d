@@ -41,7 +41,7 @@ let sourceCache = null;
    版本号进 three 的 program cache key（customProgramCacheKey），源码变了必须跟着变，
    否则同会话里可能命中上一版的 program。 */
 /* v5：补回 temper / tune / edgeGlow 三个叠加层（见下方调用点注释），改源码必须 bump */
-export const FAMILY_VERSION = 'bladeV2:60';
+export const FAMILY_VERSION = 'bladeV2:61';
 
 /** 刀身上真正会用到阶段效果函数的阶段（S8 只作用于柄，不在其中）。 */
 export const STAGE_FX = [1, 2, 3, 4, 5, 6, 7, 9];
@@ -926,8 +926,20 @@ const MAP_FRAGMENT = `
       float forgeEngrave = clamp( sig, -0.90, 0.90 ) * s3Surface * clamp( wB, 0.0, 1.0 );
       col *= 1.0 + forgeEngrave * 0.08;
     }
-    /* ⑦ 身份预算：保留金属底色、避免涂层洗掉旧锻纹 */
+    /* ⑦ 颜色能量上限：亮度累积的旧修复只约束了单个 stage tint。
+       S5 膜层直接替换高亮 albedo，S6–S9 再改色，加上磨损回填，
+       每一步都能绕过上面的 stageLum 保持规则。统一在所有颜色工序之后
+       对 S1+S3 钢材身份亮度做 soft knee；不裁切色相/粗糙度/高光结构。
+       这里作用于物理材质的反射底色，不是屏幕像素白色硬截断。 */
     col = mix( col, identityCol, uV2Art.x > 0.5 ? 0.10 : (uV2Coat > 0.001 ? 0.12 : 0.24) );
+    if ( uV2Preserve < 0.5 ) {
+      float baseLum = dot( identityCol, vec3( 0.2126, 0.7152, 0.0722 ) );
+      float finalLum = max( 0.0001, dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ) );
+      float maxBase = max( 0.085, baseLum * 1.08 );
+      float excess = max( 0.0, finalLum - maxBase );
+      float compressedLum = finalLum - excess * 0.82;
+      col *= compressedLum / finalLum;
+    }
     diffuseColor.rgb = mix( diffuseColor.rgb, col, wS );
   }
 }
@@ -1007,7 +1019,14 @@ material.clearcoatRoughness = mix( material.clearcoatRoughness, k3dS5CoatRough, 
 {
   /* 锋线当主光、大范围晕当底光；总量封顶避免过曝。
      乘 k3dS4W 保证刀柄不吃刀身卡的自发光（项目既有纪律）。 */
-  float s4e = clamp( k3dS4RimAmt * 1.85 + k3dS4SoftAmt * 1.60, 0.0, 2.20 ) * clamp( k3dS4W, 0.0, 1.0 );
+  /* S4 premium silhouette can be strong while choosing shape. After the
+     S5 treatment enters, the same emissive pass must yield to surface PBR;
+     otherwise S4 + S5 coat + S6 iridescence visually wash out the blade. */
+  float postS5 = step( 0.001, uCardFx[4].y );
+  float postS6 = step( 0.001, uCardFx[5].y );
+  float haloCarry = 1.0 - 0.48 * postS5 - 0.12 * postS6;
+  float s4e = clamp( k3dS4RimAmt * 1.85 + k3dS4SoftAmt * 1.60, 0.0, 2.20 )
+            * clamp( k3dS4W, 0.0, 1.0 ) * haloCarry;
   totalEmissiveRadiance += k3dS4Tint * s4e;
 }`;
 
