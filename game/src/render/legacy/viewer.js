@@ -162,7 +162,7 @@ class Viewer {
     this.renderer.setSize(w, h, false);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0; // Mild midtone lift under ACES; preserves material color and highlight rolloff
+    this.renderer.toneMappingExposure = 0.94; // Slightly softer after half-float studio reflections became available on iOS; keep PBR highlights
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
@@ -451,13 +451,19 @@ class Viewer {
       mode, ready: !!nextEnv, reason: cause || null,
       textureType: mode === 'studio-half-float' ? 'HalfFloatType' : (nextEnv?.type ?? null),
     };
-    /* Opt-in, on-device reflection status. Allows Safari users to report the
-       actual environment path without connecting a desktop debugger.
-       It is absent during normal gameplay. */
+    /* The status is healthy when our half-float studio reflection is ready.
+       Hide the panel even if the user previously bookmarked ?envdebug=1.
+       Failures surface automatically; ?envdebug=force remains available
+       when deliberately inspecting a healthy device. Ignore float-linear
+       false on WebGL2: the active HDR input is HalfFloatType, not FloatType. */
     try {
-      if (global.location && new URLSearchParams(global.location.search).get('envdebug') === '1') {
-        const d = global.document;
-        let el = d.getElementById('__forgeEnvDebug');
+      const d = global.document;
+      const query = new URLSearchParams(global.location?.search || '');
+      const show = mode !== 'studio-half-float' || !nextEnv || query.get('envdebug') === 'force';
+      let el = d.getElementById('__forgeEnvDebug');
+      if (!show) {
+        if (el) el.remove();
+      } else {
         if (!el) {
           el = d.createElement('div');
           el.id = '__forgeEnvDebug';
