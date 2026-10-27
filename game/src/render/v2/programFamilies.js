@@ -218,7 +218,10 @@ void k3dV2Stage( vec4 fx, vec4 cfg, vec3 stageTint, float pat, vec2 p, float fre
   /* 克制着色：只做"倾向色 + 轻微明暗"，不把底材换成卡的色相。
      早期版本用 mix(col, col*0.80 + accent*0.42, …)，多个阶段叠加后整刀变粉、
      S1 金属底色被吃掉（违反继承合同）。这里改成乘性 + 小量加色。 */
-  float wa = w * cfg.x;
+  /* When S5 has a dedicated color/patina recipe, do not overlay a
+     second rank-based hue. Roughness and motif remain stage-owned. */
+  float dedicatedFinish = ( uV2Mode > 0.5 && cfg.z > 1.5 && cfg.z < 2.5 && cfg.x > 0.35 ) ? 0.10 : 1.0;
+  float wa = w * cfg.x * dedicatedFinish;
   /* 刃侧带（S5 / S7）承担"逐卡色相"：旧实现靠一条 mix(color, color*0.64+accent*0.60, heat*…)
      给出每张淬火卡的颜色身份。这里同样只在**带内**着色（乘以 m），带外保持底材。
      ⚠ 本段在 JS 模板字符串里：注释中不能出现反引号。
@@ -832,7 +835,15 @@ const MAP_FRAGMENT = `
     if ( uV2Preserve > 0.5 ) {
       float tl = dot( baseTex, vec3( 0.2126, 0.7152, 0.0722 ) );
       vec3 tinted = diffuseColor.rgb * ( uBladeBaseColor / max( 0.18, dot( uBladeBaseColor, vec3( 0.33 ) ) ) );
-      col = mix( tinted, col, clamp( uSkinTexStrength * 0.22 + ( uCardFx[0].y + uCardFx[1].y ) * 0.10, 0.22, 0.62 ) );
+      float processBlend = clamp( uSkinTexStrength * 0.22
+        + ( uCardFx[0].y + uCardFx[1].y ) * 0.10, 0.22, 0.62 );
+      /* The billet's baked orange model texture previously dominated 60%+
+         of the surface, obscuring which S3 forging card the player chose.
+         Only after S3 is actually selected, reveal the existing card-derived
+         metal grain; preserve the original hot forging character otherwise. */
+      if ( uV2Proc.x > 1.5 && uV2Proc.x < 2.5 && uS3On > 0.5 )
+        processBlend = max( processBlend, 0.68 );
+      col = mix( tinted, col, processBlend );
       col *= mix( 1.0, 0.72 + 0.56 * tl, 0.55 );
     }
 
