@@ -453,6 +453,13 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
       vec3 bronze = mix( uDopPal2, uDopPal3, 0.22 );
       enamel = mix( col, bronze, gold * 0.91 );
       enamel = mix( enamel, cobalt, blue * 0.93 );
+      /* A sparse oxidized coastline must survive even blue-heavy seeds.
+         Otherwise a case-hardened card becomes indistinguishable from
+         sapphire Doppler. It is broad and connected, not random spots. */
+      float coastline = smoothstep( 0.72, 0.90,
+        0.5 + 0.5 * sin( uv.x * 11.5 + uv.y * 4.1
+                      + (field - 0.5) * 5.0 + D.y * 3.7 ) );
+      enamel = mix( enamel, bronze, coastline * (0.48 - blue * 0.13) );
       polish = mix( 0.28, 0.15, blue );
       amount *= 0.95;
     } else if ( uV2Look < 3.5 ) {
