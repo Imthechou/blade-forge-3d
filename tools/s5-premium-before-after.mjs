@@ -54,14 +54,18 @@ for(const [name,url] of [['before','https://imthechou.github.io/blade-forge-3d/'
     // Hard visual gate: WebGL shaders can fail silently without any JS error.
     // Screenshot geometry detection is intentionally independent of the DOM.
     const pixels=PNG.sync.read(pngBuffer);
-    let modelPixels=0;
+    let modelPixels=0, chromaPixels=0;
     for(let y=145;y<Math.min(400,pixels.height);y++)
       for(let x=120;x<Math.min(270,pixels.width);x++){
-        const k=(y*pixels.width+x)*4;
-        if(pixels.data[k]<175 && pixels.data[k+1]<175 && pixels.data[k+2]<175)
-          modelPixels++;
+        const k=(y*pixels.width+x)*4, r=pixels.data[k],g=pixels.data[k+1],b=pixels.data[k+2];
+        if(r<175 && g<175 && b<175)modelPixels++;
+        const hi=Math.max(r,g,b),lo=Math.min(r,g,b);
+        if(hi-lo>25 && lo<245)chromaPixels++;
       }
-    if(modelPixels<2400)throw new Error(name+' '+tag+' missing visible 3D model ('+modelPixels+' dark pixels)');
+    // Gem and Marble coatings can be vivid red/blue, not dark gray.
+    // A shader-blank canvas has neither dark silhouette nor colored metal.
+    if(modelPixels<2400 && chromaPixels<2400)
+      throw new Error(name+' '+tag+' missing visible 3D model ('+modelPixels+' dark / '+chromaPixels+' color pixels)');
     const state=await get();
     state.modelPixels=modelPixels;
     run.snapshots.push({filename:fn,...state});
