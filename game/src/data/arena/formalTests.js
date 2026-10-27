@@ -188,7 +188,9 @@ export function buildFormalDefinition({ branchId, gradient = 0, seed = null } = 
     window: g.window,
     /** 每项的完整规则（UI 赛前情报直接读这里） */
     rules: tests.map((t) => ({
-      kind: t,
+      // 项目 ID 与交互操作种类必须分开；kind 保留给旧舞台选择 Canvas 操作。
+      // 不可让 projectRule(t).kind = 'sweep' 覆盖 cutting 的检索 ID。
+      projectId: t,
       name: TEST_PROJECTS[t].name,
       ...(projectRule(t) || {}),
       weight: round1(weights[t] * 100) / 100,
