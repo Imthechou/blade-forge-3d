@@ -27,7 +27,7 @@
  *
  * ── HDR 值怎么办（canvas 只能 0–255）────────────────────────────
  *
- * 用 **DataTexture + Float32**，值可以直接超过 1（这里光源峰值 30–60）。
+ * 计算时用 Float32，再编码到 **DataTexture + HalfFloatType**，仍可保存超过 1 的 HDR 亮度。
  * 这才是 HDR —— 只有真 HDR 值才能让金属高光"亮得有层次"，
  * 8bit 贴图上限 1.0 会被 ACES 直接压成灰。
  */
@@ -206,7 +206,18 @@ function makeEquirectTexture(THREE) {
   /* 右下旗板：把轴侧压暗，强化圆柱体的明暗交界线 */
   darkFlag(0.985, 0.62, 0.100, 0.260, 0.085);
 
-  const tex = new THREE.DataTexture(data, W, H, THREE.RGBAFormat, THREE.FloatType);
+  /* PMREM input: use real half-float bytes, not Float32 + FloatType.
+     Several iOS WebKit/WebGL versions cannot linearly sample 32-bit float
+     textures even when a capability flag is present; broken sampling can
+     silently turn the studio reflection nearly black. WebGL2 supports
+     half-float linear sampling. Keep HDR values > 1 (do not quantize to 8bit). */
+  const toHalf = THREE.DataUtils?.toHalfFloat;
+  if (typeof toHalf !== 'function') {
+    throw new Error('THREE.DataUtils.toHalfFloat missing; cannot prepare safe HDR studio');
+  }
+  const halfData = new Uint16Array(data.length);
+  for (let i = 0; i < data.length; i++) halfData[i] = toHalf(data[i]);
+  const tex = new THREE.DataTexture(halfData, W, H, THREE.RGBAFormat, THREE.HalfFloatType);
   tex.mapping = THREE.EquirectangularReflectionMapping;
   tex.colorSpace = THREE.LinearSRGBColorSpace;
   tex.minFilter = THREE.LinearFilter;
@@ -276,7 +287,7 @@ export function applyStudioEnvToScene(renderer, scene) {
 }
 
 export function studioEnvInfo() {
-  return studioEnv ? { key: 'studio-env:v1', genMs: +lastGenMs.toFixed(2), size: `${W}x${H}` } : null;
+  return studioEnv ? { key: 'studio-env:v1', genMs: +lastGenMs.toFixed(2), size: `${W}x${H}`, inputType: 'HalfFloatType' } : null;
 }
 
 export function releaseStudioEnv() {
