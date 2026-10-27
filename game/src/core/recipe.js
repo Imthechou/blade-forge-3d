@@ -243,11 +243,11 @@ export function deriveSkinState(run, overrides = {}) {
     wearChosen: !!(p.wear != null || overrides.wear != null),
   };
 
-  // ★ S4 签名锁定：fixedTexture 优先级高于后续阶段
+  // S4 only defines the silhouette: an already selected S3 texture owns its
+  // pattern AND all relief/roughness parameters, regardless of knife shape.
   const fixedTexture = overrides.fixedTexture || p.fixedTexture;
-  if (fixedTexture) {
-    state.textureId = fixedTexture;
-    delete state.variantParams.texture;   // 旧参数套在新纹理上会出现假视觉
+  if (fixedTexture && !p.textureId && !overrides.textureId) {
+    state.textureId = fixedTexture; // legacy save fallback, not a replacement
   }
 
   // 预览覆盖（不写 run）
@@ -329,74 +329,42 @@ function hexFromHue(h, sat = 0.55, light = 0.62) {
  * @param {object} run
  */
 export function applyCardIdentity(state, run) {
-  if (!state || !state.variantParams || !run) return state;
-  const idx = Number(run.stageIndex);
-  /* S1 不参与：原料阶段的底色是**材质身份**（暗沉铁就是暗沉铁），
-     按位次给它染色会让同一种原料在不同卡位下面目不同。 */
-  if (!(idx >= 1)) return state;
+  if (!state?.variantParams || !run) return state;
   const entries = Array.isArray(state.visualStages) ? state.visualStages : [];
-  const cur = entries.find((e) => Number(e.index) === idx);
-  const g = goldenOf(cur && cur.rank);
-  if (g == null) return state;
-  const vp = state.variantParams;
-  /* 把身份也挂到 state 上：`state.js` 里 S3 的 uS3Xf / S2 的图案缩放**不是**从
-     variantParams 来的（uS3Xf 有自己的生成式），只靠写参数够不到。
-     这里给出 (rank, g)，state.js 用 g 做乘子，才真正改得动画面。 */
-  /* 该卡自己的稀有档（0..5）：S9 的磨损衰减要按"这张卡有多高级"，
-     而不是按整局的最高档 —— 后者会把所有卡的磨损一起压，连带压低卡间差。 */
-  const RARITY_TIER = { common: 0, fine: 1, rare: 2, epic: 3, legend: 4, mythic: 5 };
-  const cardTier = RARITY_TIER[String((cur && cur.rarity) || '')] ?? 0;
-  state.identity = { rank: Number(cur && cur.rank) || 0, g: +g.toFixed(4), tint: idx >= 2, tier: cardTier };
-
-  /* S5 淬火：色相锚点。hueShift 是 0..1 的色相旋转量（shader 里 k3dHueShift），
-     同一 finishId 的多张卡因此落到不同色相，而不是共用一套调色板。 */
-  /* ★★ 2026-10-23（用户口径）：**S2 熔炼阶段不改变刀身颜色** —— 只体现纯净度（表面粗糙度）。
-     所以基色色偏从 S3 起才给（S2 交给 state.js 的 purity→roughness 路径）。 */
-  const tintStageOk = idx >= 2;
-
-  /* ★ 2026-10-23（收窄）：一开始给的是**整圈**（hueShift = g ∈ [0,1)），
-     能把同 finishId 的卡彻底分开，但会把"冷蓝天幕"这类有语义色的卡转到橙红 —— 卡名与画面打架。
-     现在收成 ±0.25 圈（±90° 的一半），只做"同族内错开"，不跨色系。
-     实测收窄后撞色对仍然是 0（S6/S7/S8 均 0）。 */
-  if (vp.finish && vp.finish.hueShift == null) vp.finish.hueShift = +((g - 0.5) * 0.5).toFixed(4);
-
-  /* S6 回火：同一套机制，但摆动幅度收一半 —— 回火本来就该"在底色上偏移一点"，
-     摆满一圈会盖掉 S5 选的颜色。 */
-  /* S6 是**回火色**阶段本身（卡名就是"鲜橙暖锋/靛蓝分色/虹影分段"），色相摆动可以更大：
-     收到 ±0.35 圈时中位只有 12.3/255，仍偏"同一把灰紫刀"。放到 ±0.60 圈。 */
-  /* ★ S6 的色相摆动收到 ±0.35 圈（回调过 0.60，实测卡间中位一分不动 —— 12.32，
-     说明 S6 的卡间差**不由回火层决定**：把 hueShift 放大、把 cover 从 ×1.12 抬到 ×1.75、
-     把 temperature 按身份散开 ±0.25，三种改法给出**完全相同**的 12.32。
-     回火层只影响"绝对观感"，不影响"卡与卡的差"。所以这里保持 ±0.35，不再空转。 */
-  if (vp.temper && vp.temper.hueShift == null) vp.temper.hueShift = +((g - 0.5) * 0.7).toFixed(4);
-
-  /* S7 开刃：刃线只有一条细线，靠**色相**而不是亮度区分（亮度一动就像换强度）。 */
-  if (vp.edge && vp.edge.tintHex == null) vp.edge.tintHex = hexFromHue(g, 0.5, 0.66);
-
-  /* S2 熔炼 / S3 纹理：没有色相概念（设定上"只调明暗与粗糙度"），
-     所以走**布局**：scale 对数铺开（0.72–1.45）、走向按黄金序列散开（0–180°）、
-     S3 的密度档按位次在 0.82–1.25 之间。图案疏密是大面积结构化差异，
-     与色相同等重要，且同样不需要新增任何 uniform。 */
-  const scaleK = 0.72 * Math.pow(1.45 / 0.72, g);
-  /* ★ 2026-10-23（S2/S3 的第二个无色相杠杆）：**粗糙度响应**。
-     实测把图案疏密拉开对卡间差无效（S2 21→21 对撞色，S3 甚至 33→44 变差），
-     因为这批卡的可读差异主要来自"同一张纹理上的光泽性格"，不是图案频率。
-     粗糙度是唯一既属于"明暗/粗糙度"口径、又能在环境光下明显改变观感、且零成本的杠杆：
-     把卡自己的 roughnessStrength 按身份偏移 ±0.22（不做覆盖，只在中位两侧摆）。 */
-  const roughShift = (g - 0.5) * 0.44;
-  const nudge = (v, d) => Math.max(0.05, Math.min(1, (Number(v) || 0.45) + d));
-  if (vp.melt) {
-    const own = Number(vp.melt.scale);
-    vp.melt.scale = +((own > 0 ? own : 1) * scaleK).toFixed(4);
-    vp.melt.roughnessStrength = +nudge(vp.melt.roughnessStrength, roughShift).toFixed(4);
+  const byIndex = new Map(entries.map(e => [Number(e.index), e]));
+  const rarity = { common:0, fine:1, rare:2, epic:3, legend:4, mythic:5 };
+  const forStage = index => {
+    const e = byIndex.get(index), g = goldenOf(e?.rank);
+    return g == null ? null : { rank:Number(e.rank)||0, g:+g.toFixed(4),
+      tier:rarity[String(e.rarity||'')]??0 };
+  };
+  const current = forStage(Number(run.stageIndex));
+  if (current) state.identity = { ...current, tint:Number(run.stageIndex)>=2 };
+  // Base tint is owned by S3 and must remain identical in S4–S10.
+  const surface = forStage(2);
+  if (surface) state.materialIdentity = { ...surface, tint:true };
+  const vp=state.variantParams, finish=forStage(4), temper=forStage(5), edge=forStage(6);
+  if (vp.finish && finish && vp.finish.hueShift==null)
+    vp.finish.hueShift=+((finish.g-0.5)*0.5).toFixed(4);
+  if (vp.temper && temper && vp.temper.hueShift==null)
+    vp.temper.hueShift=+((temper.g-0.5)*0.7).toFixed(4);
+  if (vp.edge && edge && vp.edge.tintHex==null)
+    vp.edge.tintHex=hexFromHue(edge.g,0.5,0.66);
+  const scaleK=g=>0.72*Math.pow(1.45/0.72,g);
+  const nudge=(v,d)=>Math.max(0.05,Math.min(1,(Number(v)||0.45)+d));
+  const melt=forStage(1);
+  if (vp.melt && melt) {
+    const own=Number(vp.melt.scale);
+    vp.melt.scale=+((own>0?own:1)*scaleK(melt.g)).toFixed(4);
+    vp.melt.roughnessStrength=+nudge(vp.melt.roughnessStrength,(melt.g-0.5)*0.44).toFixed(4);
   }
-  if (vp.texture) {
-    const own = Number(vp.texture.scale);
-    vp.texture.scale = +((own > 0 ? own : 1) * scaleK).toFixed(4);
-    vp.texture.rotation = +(((Number(vp.texture.rotation) || 0) + g * 180) % 360).toFixed(2);
-    const d = Number(vp.texture.density);
-    if (d > 0) vp.texture.density = Math.round(d * (0.82 + 0.43 * g));
-    vp.texture.roughnessStrength = +nudge(vp.texture.roughnessStrength, roughShift).toFixed(4);
+  if (vp.texture && surface) {
+    const own=Number(vp.texture.scale);
+    vp.texture.scale=+((own>0?own:1)*scaleK(surface.g)).toFixed(4);
+    vp.texture.rotation=+(((Number(vp.texture.rotation)||0)+surface.g*180)%360).toFixed(2);
+    const density=Number(vp.texture.density);
+    if(density>0) vp.texture.density=Math.round(density*(0.82+0.43*surface.g));
+    vp.texture.roughnessStrength=+nudge(vp.texture.roughnessStrength,(surface.g-0.5)*0.44).toFixed(4);
   }
   return state;
 }
