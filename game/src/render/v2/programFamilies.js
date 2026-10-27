@@ -28,7 +28,7 @@
  *   柄   → 仍按 kind 特化（S8 一局只用一种柄；不在本次 P1 的换卡热路径上）
  */
 import { extractFunctions, extractFunction, specializeStageChain } from './glslSlices.js';
-import { finishOperators, resolveS5Effect, applyS5Effect, S5_EFFECTS } from './finishRecipe.js';
+import { finishOperators, resolveS5Effect, applyS5Effect, refineS5BaseFinish, S5_EFFECTS } from './finishRecipe.js';
 import { buildNormalFragment, surfaceParamsOf } from './surfaceDetail.js';
 import { getSurfaceAtlas, tileRectOf, STAGE_SURFACE_KIND } from './normalAtlas.js';
 
@@ -40,7 +40,7 @@ let sourceCache = null;
    版本号进 three 的 program cache key（customProgramCacheKey），源码变了必须跟着变，
    否则同会话里可能命中上一版的 program。 */
 /* v5：补回 temper / tune / edgeGlow 三个叠加层（见下方调用点注释），改源码必须 bump */
-export const FAMILY_VERSION = 'bladeV2:56';
+export const FAMILY_VERSION = 'bladeV2:57';
 
 /** 刀身上真正会用到阶段效果函数的阶段（S8 只作用于柄，不在其中）。 */
 export const STAGE_FX = [1, 2, 3, 4, 5, 6, 7, 9];
@@ -230,7 +230,14 @@ void k3dV2Stage( vec4 fx, vec4 cfg, vec3 stageTint, float pat, vec2 p, float fre
      乘性压暗从 0.34 降到 0.22 —— 保留"是哪一种热处理"的色倾向，
      但让金属的明暗层次穿过色层，而不是被一层浓色盖住。 */
   float bandAccent = ( cfg.z > 1.5 && cfg.z < 2.5 ) ? 1.0 : 0.35;
-  col = col * ( 1.0 - 0.22 * wa ) + accent * ( 0.34 * bandAccent * wa * clamp( m, 0.0, 1.0 ) );
+  /* A stage can refine color and reflectance, but must never inject fresh
+     radiance into the same surface each time a new stage is confirmed.
+     Preserve the current pixel's luminance when tinting. */
+  float stageLum = max( 0.008, dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ) );
+  float tintLum = max( 0.008, dot( accent, vec3( 0.2126, 0.7152, 0.0722 ) ) );
+  vec3 neutralTint = accent * ( stageLum / tintLum );
+  float tintBlend = min( 0.12, 0.11 * bandAccent * wa );
+  col = mix( col, neutralTint, tintBlend );
   rough = clamp( rough + ( pat - 0.5 ) * w * cfg.y, 0.02, 1.0 );
   glow += w * cfg.w * ( 0.35 + 0.65 * clamp( fres, 0.0, 1.0 ) );
 }
@@ -425,6 +432,13 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
     float amount = clamp( rampW * 1.26, 0.0, 1.0 ) * coverage;
     vec3 enamel = col;
     float polish = 0.20;
+    /* S1 base metal affects every selected S5 paint. The pattern family
+       stays recognizable; rougher/darker steel has deeper, less uniform
+       metallic reflections. Rarity gives cleaner flow, not white emission. */
+    float substrateRough = clamp( uBladeRoughness, 0.02, 0.95 );
+    float qFinish = clamp( uS5Tier / 5.0, 0.0, 1.0 );
+    float substrateValue = clamp(
+      dot( uBladeBaseColor, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.0, 1.0 );
 
     if ( uV2Look < 1.5 ) {
       /* Doppler: broad, connected liquid-metal waves and gemstone glints;
@@ -486,11 +500,17 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
       polish = 0.095;
       amount *= 0.98;
     }
-    float metalVariation = 0.89 + 0.11 * clamp( pat0, 0.0, 1.0 );
+    float metalVariation = mix( 0.83, 1.05, substrateValue )
+                         * ( 0.94 + 0.06 * clamp( pat0, 0.0, 1.0 ) );
+    amount *= mix( 0.86, 1.0, qFinish ) * (1.0 - 0.13 * substrateRough);
     /* Color the metal reflectance, preserve physical roughness grain. */
     col = mix( col, enamel * metalVariation, clamp( amount, 0.0, 0.97 ) );
-    rough = mix( rough, clamp( polish + abs( pat.y ) * 0.024, 0.07, 0.40 ),
-                 clamp( amount * 0.82, 0.0, 0.88 ) );
+    rough = mix( rough,
+                 clamp( polish * ( 1.07 - 0.15 * qFinish )
+                        + 0.23 * substrateRough
+                        + abs( pat.y ) * ( 0.040 - 0.021 * qFinish ),
+                        0.07, 0.58 ),
+                 clamp( amount * 0.76, 0.0, 0.86 ) );
   }
 
   /* ⑤ 薄膜：视角相关色散 + 一点点加光（克制上限 0.35） */
@@ -712,7 +732,7 @@ const MAP_FRAGMENT = `
            高级卡（tier≥2）追加**第二层互补色环**，tier≥3 再补一点闪辉。
            legacy 原式：duo = clamp((tier-2)/3)、亮度项 (0.10+0.045*tier)、
            glow += gate*strength*viewW*0.10*max(0,tier-3)。 */
-        float tTier = clamp( tier, 0.0, 5.0 );
+        float tTier = clamp( uStageTiers[5], 0.0, 5.0 );
         float tDuo = clamp( ( tTier - 2.0 ) / 3.0, 0.0, 1.0 );
         float tCover = clamp( uTemperIrid.y, 0.0, 1.0 );
         float tGate = clamp( mix( smoothstep( 0.52, 0.90, pat.x ), 1.0, tCover ), 0.0, 1.0 );
@@ -722,7 +742,10 @@ const MAP_FRAGMENT = `
         vec3 filmB = 0.5 + 0.5 * cos( 6.2831853 * ( tPhase + 0.50 + vec3( 0.50, 0.83, 0.17 ) ) );
         vec3 film = mix( filmA, filmB, tDuo * 0.60 );
         float tW = tStr * tGate * ( 0.10 + 0.045 * tTier ) * ( 0.42 + 0.58 * k3dFres );
-        col += ( film - 0.5 ) * tW * 3.10;                       /* 加法式薄膜：只加膜色，不压暗底色 */
+        /* Thin-film coloration is a limited multiplicative Fresnel layer;
+           old additive film made every later stage brighter. */
+        vec3 filmGain = 1.0 + ( film - 0.5 ) * min( 0.24, tW * 0.32 );
+        col *= filmGain;
         glow += tGate * tStr * k3dFres * 0.10 * max( 0.0, tTier - 3.0 );
       }
     }
@@ -753,9 +776,9 @@ const MAP_FRAGMENT = `
         vec3 uRing = 0.5 + 0.5 * cos( 6.2831853 * ( uPhase + vec3( 0.00, 0.33, 0.67 ) ) );
         /* 只加膜色，不压暗底材（与 S6 同一纪律：颜色层不得吞掉金属明暗） */
         float uW = uAmt * ( 0.045 + 0.075 * uIrid ) * ( 0.40 + 0.60 * k3dFres );
-        col += ( uRing - 0.5 ) * uW * 2.20;
+        col *= 1.0 + ( uRing - 0.5 ) * min( 0.18, uW * 0.45 );
         /* 高级卡（tier≥3）补一点视角斜光，让“精校到位”看得出来 */
-        glow += uOn * uAmt * uIrid * clamp( ( clamp( uStageTiers[5], 0.0, 5.0 ) - 2.0 ) / 3.0, 0.0, 1.0 )
+        glow += uOn * uAmt * uIrid * clamp( ( clamp( uStageTiers[8], 0.0, 5.0 ) - 2.0 ) / 3.0, 0.0, 1.0 )
               * k3dFres * 0.06;
       }
     }
@@ -906,12 +929,19 @@ const MAP_FRAGMENT = `
       }
     }
 
-    glow = clamp( glow, 0.0, 0.30 );
-    col += vec3( glow ) + uBladeEmission * uBladeEmissionInt;
-    col = col * ( 1.0 + 0.30 * ( 1.0 - smoothstep( 0.0, 0.55, dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ) ) ) );
-    float kLum = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
-    col = mix( col, col * uBladeEnvIntensity, 0.6 )
-        + uBladeEnvIntensity * ( 1.0 - smoothstep( 0.02, 0.45, kLum ) ) * 0.035;
+    /* Unified visual energy budget. Every confirmed process can change
+       reflectance or a narrow highlight but cannot add another whole-blade
+       radiance lift. S4 advanced halo lives in its separate silhouette
+       channel and remains visible. Base material emission stays bounded. */
+    float localGlow = min( 0.065, max( 0.0, glow ) ) * 0.45;
+    col += vec3( localGlow ) + uBladeEmission * min( 0.10, uBladeEmissionInt );
+    float studioScale = mix( 1.0, clamp( uBladeEnvIntensity, 0.82, 1.12 ), 0.30 );
+    col *= studioScale;
+    /* Luminance-preserving shoulder: very bright manufactured pigments
+       gently compress, midtones/steel-dark areas remain legible. */
+    float energyLum = max( 0.001, dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ) );
+    float shoulder = 0.84 + 0.16 / ( 1.0 + max( 0.0, energyLum - 0.42 ) * 1.8 );
+    col *= shoulder;
 
     /* ⑥ 过程模型：保留模型自带纹理（uniform 开关，不换宏）
 
@@ -1093,6 +1123,7 @@ export function buildHook(pack, frame, opts = {}) {
      效果库的介入条件里必须包含 `chosen`（玩家真的选过 S5），
      否则仅凭稀有度就会在未选淬火时自动上色。
      `chosen` 来自 `finishOperators()` 的返回，与算子表同一真源，不另算一份。 */
+  refineS5BaseFinish(op, u.uS5CardId, Number(u.uStageTiers?.[4]) || 0);
   const s5 = resolveS5Effect(finishId, Number(u.uStageTiers?.[4]) || 0,
     Number(u.uV2PaletteShift) || 0, u.uSeeds,
     { colorPhase: fp.colorPhase, hueShift: fp.hueShift, coat: fp.coat, amount: fp.amount,
