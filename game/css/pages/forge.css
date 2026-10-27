@@ -224,3 +224,42 @@
   .hammer-hit.is-striking { animation: none; }
   .hammer-stage-hit.is-striking .hammer-stage-cue { animation: none; }
 }
+
+
+/* iOS Safari one-screen forging: stage takes leftover height, actions never hide inside a scroll panel. */
+@media (max-width:600px) {
+  .page[data-page="forge"] { --stat-h:60px; --card-h:clamp(158px,20dvh,174px); }
+  .page[data-page="forge"] .stage { flex:1 1 0; min-height:0; max-height:none; }
+  .page[data-page="forge"] .forge-body { flex:0 0 auto; min-height:0; position:relative; overflow:visible; }
+  .page[data-page="forge"] .forge-rail { min-height:60px; margin:0 12px; padding:4px 8px; gap:2px; }
+  .page[data-page="forge"] .cards { height:calc(var(--card-h) + 10px); padding:6px 12px 4px; gap:7px; }
+  .page[data-page="forge"] .dcard { padding:5px 7px 3px; gap:3px; }
+  .page[data-page="forge"] .dcard-head { min-height:22px; flex-basis:22px; }
+  .page[data-page="forge"] .dcard-title { min-height:20px; max-height:20px; display:block; white-space:nowrap; text-overflow:ellipsis; }
+  .page[data-page="forge"] .dcard-dirs { max-height:38px; }
+  .page[data-page="forge"] .dcard-meta { flex-basis:44px; min-height:44px; }
+  /* The picked card and CTA already show the choice; preserve live text for assistive tech. */
+  .page[data-page="forge"] .forge-selection-status,
+  .page[data-page="forge"] .forge-selection-status.has-selection {
+    position:absolute; width:1px; height:1px; min-height:0; padding:0;
+    margin:-1px; border:0; overflow:hidden; clip-path:inset(50%);
+    white-space:nowrap; bottom:auto; left:auto; right:auto; visibility:visible;
+  }
+  .page[data-page="forge"] .actions { flex:0 0 auto; position:relative; bottom:auto; z-index:8;
+    padding:4px 12px calc(6px + var(--safe-b)); background:var(--base-0); }
+  .page[data-page="forge"] .actions .btn { min-height:46px; }
+}
+/* Tiny embedded viewport fallback: model remains present and CTA is pinned. */
+@media (max-width:600px) and (max-height:640px) {
+  .page[data-page="forge"] { --card-h:148px; --stat-h:56px; }
+  .page[data-page="forge"] .stage { min-height:170px; }
+  .page[data-page="forge"] .forge-body { flex:1 1 0; overflow-y:auto; }
+  .page[data-page="forge"] .actions { position:sticky; bottom:0; }
+}
+
+
+/* PC embeds the same 430px mobile layout. Do not let its fixed 60% stage clip the cards. */
+@media (min-width:601px) {
+  .page[data-page="forge"] .stage { flex:1 1 0; min-height:0; }
+  .page[data-page="forge"] .forge-body { flex:0 0 auto; overflow:visible; }
+}

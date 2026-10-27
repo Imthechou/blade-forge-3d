@@ -162,7 +162,7 @@ class Viewer {
     this.renderer.setSize(w, h, false);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.9;
+    this.renderer.toneMappingExposure = 1.0; // Mild midtone lift under ACES; preserves material color and highlight rolloff
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
