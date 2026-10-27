@@ -114,7 +114,7 @@ export const gradientRule = (tier) => GRADIENT_RULES[Math.max(0, Math.min(GRADIE
  */
 export const PROJECT_RULES = Object.freeze({
   cutting: Object.freeze({
-    kind: 'sweep', seconds: 30, materials: ['rope', 'foam', 'wood', 'plastic'],
+    kind: 'sweep', seconds: 45, materials: ['rope', 'foam', 'wood', 'plastic'],
     label: '限定时间内沿目标连切，软靶可一刀断，硬靶保留损伤',
     measureLabel: '切断效率',
   }),
