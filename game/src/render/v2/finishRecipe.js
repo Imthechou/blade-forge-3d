@@ -594,7 +594,7 @@ export function applyS5Effect(out, picked, fp = {}) {
       : (rare && eff.rare ? eff.rare.palette : eff.palette));
   out.mode = eff.mode;
   out.premiumLook = Number(eff.look) || 0;
-  out.palette = (picked.cardPalette || pal).slice();
+  out.palette = adaptS5PaletteToSubstrate(picked.cardPalette || pal, picked.baseHex, quality, eff.fromBase);
   out.cover = Math.min(0.95, cover * (0.96 + 0.04 * quality));
   /* D.x 原本空闲（旧值只是"是否渐变"的标志，shader 里没读），现在用来传**斑块尺度**：
      各效果一套、稀有模板另一套 —— 模板因此有形态差异，不只是换色。 */
@@ -627,6 +627,23 @@ export function applyS5Effect(out, picked, fp = {}) {
  *   ③ 刀尖：提亮 22%→52%、饱和缓降（像抛光/淬亮的高光区），并微微偏暖 +10°
  * 这样整把刀"还是这块钢"，但有明显的明暗与冷暖走向，不脏也不假。
  * 全部纯计算，不进 GLSL。 */
+/* Same card + different S1 substrate = same recognizable paint family,
+   but different depth, warmth and hue/value response. Use the S1 linear
+   metal base as influence, not a fresh random palette per card. */
+export function adaptS5PaletteToSubstrate(palette, baseHex, quality = 0, fromBase = false) {
+  if (fromBase || !baseHex || !/^#[0-9a-f]{6}$/i.test(String(baseHex)))
+    return palette.slice();
+  const [bh, bs, bl] = hslOfHex(baseHex);
+  const substrateDepth = Math.max(0.76, Math.min(1.10, 0.81 + bl * 0.48));
+  const materialHueOffset = ((bh + 0.5) % 1 - 0.5) * 0.046;
+  return palette.map(hex => {
+    const [h, sat, light] = hslOfHex(hex);
+    return hexOfHsl(h + materialHueOffset,
+      Math.min(1, sat * (0.91 + bs * 0.13)),
+      Math.max(0.025, Math.min(0.92, light * substrateDepth * (0.98 + 0.02 * quality))));
+  });
+}
+
 function hslOfHex(hex) {
   const n = parseInt(String(hex).replace('#', ''), 16);
   const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
