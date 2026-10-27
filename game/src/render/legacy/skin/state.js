@@ -622,7 +622,7 @@ const K3D = __reg.proxy;
      *   落在 uBladeBaseColor 上，后续阶段自然继承 —— 这是唯一还能动且零成本的通道。
      *   g 来自 recipe 的黄金序列（按 STAGE_RANK），同阶段的卡互不相邻。 */
     /* S2 不染（用户口径）：旗帜由 core/recipe.js 放在 identity.tint 上 —— state 里拿不到 stageIndex */
-    uBladeBaseColor: ((st.identity && st.identity.tint) ? identityTintHex(mat.baseColor, st.identity) : mat.baseColor),
+    uBladeBaseColor: ((st.materialIdentity && st.materialIdentity.tint) ? identityTintHex(mat.baseColor, st.materialIdentity) : mat.baseColor),
     // 2026-10-12（S3 v12）uTexTintA/B/Mix 已随色板路径删除（见上方说明）。
         uVisualTier: st.visualTier,
         /* ★★ 2026-10-23：**这张卡自己的稀有档**（0..5）。

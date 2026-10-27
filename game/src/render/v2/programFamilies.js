@@ -40,7 +40,7 @@ let sourceCache = null;
    版本号进 three 的 program cache key（customProgramCacheKey），源码变了必须跟着变，
    否则同会话里可能命中上一版的 program。 */
 /* v5：补回 temper / tune / edgeGlow 三个叠加层（见下方调用点注释），改源码必须 bump */
-export const FAMILY_VERSION = 'bladeV2:53';
+export const FAMILY_VERSION = 'bladeV2:54';
 
 /** 刀身上真正会用到阶段效果函数的阶段（S8 只作用于柄，不在其中）。 */
 export const STAGE_FX = [1, 2, 3, 4, 5, 6, 7, 9];
@@ -115,7 +115,10 @@ uniform vec3  uV2FinTint;
 uniform float uV2Mode;      // 色带来源：0 无 / 1 多普勒场 / 2 淬火斑块 / 3 沿轴渐变
 uniform float uV2Micro;     // 微粗糙度幅度（S5 品质轴，0 = 关闭）
 uniform float uV2Cover;
-uniform float uCardTier;   /* 本卡自己的稀有档（0..5），S5 效果库据此接管 */
+uniform float uCardTier;   /* 仅当前 UI 卡：不允许回写已确认阶段 */
+uniform float uStageTiers[9]; /* 每阶段各自的卡牌稀有度（0..5） */
+uniform float uS4Tier;
+uniform float uS5Tier;
 uniform float uV2FadeMode; /* 1 = 这张卡走"材质自渐变"（只有 S5_23），下面的重映射只对它生效 */     // 色带覆盖率（方案 §7：起点 10–25%、局部上限 40%）
 uniform float uV2Coat;      // 清漆增量（physicalFragment 消费）
 uniform float uV2Preserve;  // 1 = 过程模型（调制而非替换）
@@ -368,7 +371,7 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
     /* 峰值：0.92 只给**稀有+（效果库接管）**的卡，普卡保持原档 0.72/0.78/0.62 ——
        否则 05/11 这类（精良、没被效果库接管）自己的工艺色带也会被一起放大（用户已指出）。 */
     float peakBase = ( uV2Mode > 2.5 ) ? 0.78 : ( ( uV2Mode > 1.5 ) ? 0.72 : 0.62 );
-    float peak = ( uCardTier > 1.5 ) ? 0.92 : peakBase;
+    float peak = ( uS5Tier > 1.5 ) ? 0.92 : peakBase;
     /* ★★ 2026-10-23（用户：只变刀身、不变刀柄）
      *   走过的两个坑：
      *     ① 乘 wBlade（刀身权重）→ 这把刀的 wBlade 在刀面上接近 0，色带权重被乘成 0，渐变消失；
@@ -650,7 +653,7 @@ const MAP_FRAGMENT = `
         float uW = uAmt * ( 0.045 + 0.075 * uIrid ) * ( 0.40 + 0.60 * k3dFres );
         col += ( uRing - 0.5 ) * uW * 2.20;
         /* 高级卡（tier≥3）补一点视角斜光，让“精校到位”看得出来 */
-        glow += uOn * uAmt * uIrid * clamp( ( clamp( tier, 0.0, 5.0 ) - 2.0 ) / 3.0, 0.0, 1.0 )
+        glow += uOn * uAmt * uIrid * clamp( ( clamp( uStageTiers[5], 0.0, 5.0 ) - 2.0 ) / 3.0, 0.0, 1.0 )
               * k3dFres * 0.06;
       }
     }
@@ -675,14 +678,14 @@ const MAP_FRAGMENT = `
     if ( uCardFx[8].y > 0.001 ) k3dPat[8] = k3dSlotMotif8( L.xy );
 
     /* ② S1–S9 阶段效果：一个通用算子 + 每阶段权重（不再有 per-stage 分支体） */
-    k3dV2Stage( uCardFx[0], uV2StageCfg[0], uV2StageTint[0], k3dPat[0], L.xy, k3dFres, tier, col, rough, glow );
-    k3dV2Stage( uCardFx[1], uV2StageCfg[1], uV2StageTint[1], k3dPat[1], L.xy, k3dFres, tier, col, rough, glow );
-    k3dV2Stage( uCardFx[2], uV2StageCfg[2], uV2StageTint[2], k3dPat[2], L.xy, k3dFres, tier, col, rough, glow );
-    k3dV2Stage( uCardFx[3], uV2StageCfg[3], uV2StageTint[3], k3dPat[3], L.xy, k3dFres, tier, col, rough, glow );
-    k3dV2Stage( uCardFx[4], uV2StageCfg[4], uV2StageTint[4], k3dPat[4], L.xy, k3dFres, tier, col, rough, glow );
-    k3dV2Stage( uCardFx[5], uV2StageCfg[5], uV2StageTint[5], k3dPat[5], L.xy, k3dFres, tier, col, rough, glow );
-    k3dV2Stage( uCardFx[6], uV2StageCfg[6], uV2StageTint[6], k3dPat[6], L.xy, k3dFres, tier, col, rough, glow );
-    k3dV2Stage( uCardFx[8], uV2StageCfg[8], uV2StageTint[8], k3dPat[8], L.xy, k3dFres, tier, col, rough, glow );
+    k3dV2Stage( uCardFx[0], uV2StageCfg[0], uV2StageTint[0], k3dPat[0], L.xy, k3dFres, uStageTiers[0], col, rough, glow );
+    k3dV2Stage( uCardFx[1], uV2StageCfg[1], uV2StageTint[1], k3dPat[1], L.xy, k3dFres, uStageTiers[1], col, rough, glow );
+    k3dV2Stage( uCardFx[2], uV2StageCfg[2], uV2StageTint[2], k3dPat[2], L.xy, k3dFres, uStageTiers[2], col, rough, glow );
+    k3dV2Stage( uCardFx[3], uV2StageCfg[3], uV2StageTint[3], k3dPat[3], L.xy, k3dFres, uStageTiers[3], col, rough, glow );
+    k3dV2Stage( uCardFx[4], uV2StageCfg[4], uV2StageTint[4], k3dPat[4], L.xy, k3dFres, uStageTiers[4], col, rough, glow );
+    k3dV2Stage( uCardFx[5], uV2StageCfg[5], uV2StageTint[5], k3dPat[5], L.xy, k3dFres, uStageTiers[5], col, rough, glow );
+    k3dV2Stage( uCardFx[6], uV2StageCfg[6], uV2StageTint[6], k3dPat[6], L.xy, k3dFres, uStageTiers[6], col, rough, glow );
+    k3dV2Stage( uCardFx[8], uV2StageCfg[8], uV2StageTint[8], k3dPat[8], L.xy, k3dFres, uStageTiers[8], col, rough, glow );
 
     /* ③ Wear：边缘先磨、表面失纹、露底材（幅度沿用旧分层，去掉高频 fbm 划痕） */
     vec3 baseTex = diffuse * texture2D( uSkinBaseMap, vMapUv ).rgb;
@@ -707,7 +710,7 @@ const MAP_FRAGMENT = `
     glow += eg * 0.35;
 
     /* ⑤ 稀有度：只保留视角边光（不再有彩色线/星点） */
-    col = mix( col, uRarityColor, pow( clamp( k3dFres, 0.0, 1.0 ), 1.4 ) * step( 3.0, tier ) * 0.20 );
+    col = mix( col, uRarityColor, pow( clamp( k3dFres, 0.0, 1.0 ), 1.4 ) * step( 3.0, uS4Tier ) * 0.20 );
 
     /* ⑥ S4 高级决策卡：刀型轮廓光晕
 
@@ -741,7 +744,7 @@ const MAP_FRAGMENT = `
          ⚠ 减弱动效：viewer 在 reduceMotion 下把 uEffectTime 冻结在 0，
            所以扫光/呼吸会自动变成静态光晕，无需额外分支。 */
     if ( uV2Preserve < 0.5 && uCardFx[3].y > 0.001 ) {
-      float s4T = clamp( uCardTier, 0.0, 5.0 );
+      float s4T = clamp( uS4Tier, 0.0, 5.0 );
       if ( s4T > 1.5 ) {
         float tk = clamp( ( s4T - 1.5 ) / 3.5, 0.0, 1.0 );
         /* ★ 2026-10-26（诊断修正）：封顶从 1.2 提到 2.6。
@@ -973,7 +976,7 @@ export function buildHook(pack, frame, opts = {}) {
      效果库的介入条件里必须包含 `chosen`（玩家真的选过 S5），
      否则仅凭稀有度就会在未选淬火时自动上色。
      `chosen` 来自 `finishOperators()` 的返回，与算子表同一真源，不另算一份。 */
-  const s5 = resolveS5Effect(finishId, Number(u.uCardTier) || Number(u.uVisualTier) || 0,
+  const s5 = resolveS5Effect(finishId, Number(u.uStageTiers?.[4]) || 0,
     Number(u.uV2PaletteShift) || 0, u.uSeeds,
     { colorPhase: fp.colorPhase, hueShift: fp.hueShift, coat: fp.coat, amount: fp.amount,
       baseHex: u.uBladeBaseColor, chosen: op.chosen === true });
@@ -1050,6 +1053,9 @@ export function buildHook(pack, frame, opts = {}) {
     uBladeBaseColor: { value: colorOf(u.uBladeBaseColor, '#9aa2ac') },
     uVisualTier: { value: Number(u.uVisualTier) || 0 },
     uCardTier: { value: Number(u.uCardTier) || 0 },
+    uStageTiers: { value: u.uStageTiers || new Float32Array(9) },
+    uS4Tier: { value: Number(u.uStageTiers?.[3]) || 0 },
+    uS5Tier: { value: Number(u.uStageTiers?.[4]) || 0 },
     uV2FadeMode: { value: op.fadeMode ? 1 : 0 },
     uRarityColor: { value: colorOf(u.uRarityColor, '#c5d7e8') },
     uCardFx: { value: u.uCardFx || new Float32Array(36) },

@@ -184,6 +184,8 @@ class Session {
     if (card && p) {
       const v = this.previewVisual(card);
       if (v) this.applyResolvedVisual(v, { preview: true, startedAt, cardId: card.id, programsBefore });
+    } else {
+      this.syncStage(); // null candidate must also restore baseline, not leave a stale preview
     }
     return p;
   }
@@ -1156,8 +1158,8 @@ class Session {
     const idx = run.stageIndex;
     // 阶段进入时显示上一步已确认的成果；选卡时才切到本阶段加工后的预览模型。
     if (idx === 0) return 'ore_small';
-    if (idx === 1) return preview ? 'molten_sphere_small' : 'ore_small';
-    if (idx === 2) return preview ? 'blank_ingot_small' : 'molten_sphere_small';
+    if (idx === 1) return 'molten_sphere_small'; // neutral S2 geometry on stage enter
+    if (idx === 2) return 'blank_ingot_small'; // neutral S3 geometry on stage enter
     if (idx === 3 && !preview) {
       // Before the S4 decision, show the ingot. Once the knife-form card is
       // confirmed, keep that full knife through the hammer minigame; reverting
@@ -1188,8 +1190,8 @@ class Session {
     /* 每阶：[预览时, 平时] */
     const TABLE = [
       ['raw', 'raw'],            // S1
-      ['melt', 'raw'],           // S2 熔炼
-      ['billet', 'melt'],        // S3 锻打
+      ['melt', 'melt'],          // S2 neutral molten entry + preview
+      ['billet', 'billet'],      // S3 neutral ingot entry + preview
       ['forge', 'billet'],       // S4 定型
       ['edge', 'forge'],         // S5 淬火
       ['temper', 'edge'],        // S6 回火
@@ -1257,6 +1259,7 @@ class Session {
     // （例如首页 ghost 刀）短暂套到新阶段，造成一次不必要的冷 shader 编译。
     stage._skinState = nextSkin;
     stage._handle = nextHandle;
+    stage._coverAll = !hGate; // async model restore must use the new region ownership too
     const apply = () => {
       if (visualSeq !== this._visualSeq || stage.modelId !== modelId) return;
       /* coverAll = !hGate：S1–S7 整刀刀身材质；S8 起把握柄放给刀柄材质（护手仍归刀身） */

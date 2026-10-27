@@ -1157,7 +1157,8 @@ export class BladeStage {
        applySkin 是"可见材质"的唯一写入路径，所以它就是最合适的 owner 边界：
        换卡时先放旧的一（除非新卡还在用），再拿新的一，然后按预算淘汰无主项。 */
     this._leaseAtlases(pack.atlasLease);
-    if (!coverAll && pack.uniforms) pack.uniforms.uSkinCoverAll = 0;
+    if (pack.uniforms) pack.uniforms.uSkinCoverAll = coverAll ? 1 : 0;
+    // Compose cache entries are reused: NEVER leave the last Grip mask value sticky.
     /* ★★ 2026-10-16（用户：「默认纹理那层 S2 没选不应该是没有吗？没选就没有」）
      *
      *   花纹强度 `uSkinTexStrength` 是**纹理层的总闸**（shader 里
@@ -1224,7 +1225,21 @@ export class BladeStage {
         st.patternSeed = ((Number(st.patternSeed) || 0)
           + (k.bladeSkin.hashSeed('card-fingerprint', ...ids) % 1001)) % 1001;
       }
-      return k.bladeSkin.composeBladeSkin(st);
+      // Per-stage visual tiers travel with the same composed pack used by
+      // visible preview, prewarming and saved-knife replay. They do NOT depend
+      // on the current UI stage or on the global maximum rarity.
+      const pack = k.bladeSkin.composeBladeSkin(st);
+      if (pack?.uniforms) {
+        const tiers = new Float32Array(9);
+        const rarity = { common:0, fine:1, rare:2, epic:3, legend:4, mythic:5 };
+        for (const entry of enriched.visualStages || []) {
+          const idx = Number(entry?.index);
+          if (Number.isInteger(idx) && idx >= 0 && idx < 9)
+            tiers[idx] = rarity[String(entry.rarity || '')] ?? 0;
+        }
+        pack.uniforms.uStageTiers = tiers;
+      }
+      return pack;
     }, null);
   }
 
