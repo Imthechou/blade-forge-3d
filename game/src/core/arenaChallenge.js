@@ -406,7 +406,8 @@ function addWear(run, target, quality, stats) {
     loss = (B.soft + Math.max(0, 55 - tough) * B.softK + reactDrive * 0.6) * (P.wearHardMult ?? 1);
   } else {
     const risk = hard * (1.12 - tough / 210) * (1.07 - design / 500) * (target.difficulty || 1)
-      * (run.finale?.id === 'rush' ? 1.2 : 1);
+      /* 单靶反作用固定：压轴仅通过更难的材料组合/更密的出场增加风险。 */
+      * 1;
     // 越残越脆：低刀况时同样的硬靶更伤
     const worsen = 1 + 0.6 * (1 - clamp(run.health / Math.max(1, maxHealth), 0, 1));
     const shift = quality === 'ANGLE' ? B.shift * (P.wearShiftMult ?? 1) : 0;
