@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { S5_CARD_FAMILY, S5_VISUAL_FAMILY, resolveS5Effect, applyS5Effect,
+import { S5_CARD_FAMILY, S5_VISUAL_FAMILY, S5_CARD_ART, s5CardArt,
+  resolveS5Effect, applyS5Effect,
   refineS5BaseFinish, finishOperators, adaptS5PaletteToSubstrate } from '../src/render/v2/finishRecipe.js';
 import { CARD_BY_ID } from '../src/data/cards.js';
 const tiers={common:0,fine:1,rare:2,epic:3,legend:4,mythic:5};
@@ -73,4 +74,41 @@ test('S1-S6 full steel coverage, S8 grip gate and no additive late-stage film',(
   assert.ok(!shader.includes('col = col * ( 1.0 + 0.30'));
   assert.ok(game.includes('if (idx < 7) return false;'));
   assert.ok(game.includes('coverAll: !hGate'));
+});
+
+test('S5 art identities distinguish all 25 cards inside unchanged families',()=>{
+  const uniques=new Set();
+  for(let i=1;i<=25;i++){
+    const id='S5_'+String(i).padStart(2,'0');
+    const a=S5_CARD_ART[id];
+    assert.ok(a?.type && a?.name, id);
+    assert.ok(a.strength>0 && a.strength<=0.85,id);
+    const value=s5CardArt(id,true,tiers[CARD_BY_ID[id].rarity]||0);
+    assert.equal(value[0],i);
+    assert.ok(value[1]>0 && value[1]<=a.strength);
+    assert.deepEqual(s5CardArt(id,false,5),[0,0,0,0]);
+    assert.deepEqual(s5CardArt(id,true,tiers[CARD_BY_ID[id].rarity]||0),value);
+    assert.ok(!uniques.has(a.type),'duplicate S5 spatial design for '+id);
+    uniques.add(a.type);
+  }
+  assert.equal(uniques.size,25);
+  const shader=readFileSync(new URL('../src/render/v2/programFamilies.js',import.meta.url),'utf8');
+  assert.ok(shader.includes('uniform vec4 uV2Art;'));
+  assert.ok(shader.includes('s5CardArt(u.uS5CardId, op.chosen'));
+  assert.ok(shader.includes('uV2Art.x < 13.5'));
+});
+test('a pair shares craft lineage but not its palette and spatial identity',()=>{
+  const pairs=[['S5_01','S5_02'],['S5_03','S5_08'],['S5_04','S5_12'],
+    ['S5_05','S5_11'],['S5_06','S5_17'],['S5_07','S5_13'],
+    ['S5_09','S5_25'],['S5_14','S5_15'],['S5_16','S5_18'],
+    ['S5_19','S5_23'],['S5_20','S5_22'],['S5_21','S5_24']];
+  for(const [a,b] of pairs){
+    assert.equal(S5_VISUAL_FAMILY[a],S5_VISUAL_FAMILY[b]);
+    assert.notEqual(S5_CARD_ART[a].type,S5_CARD_ART[b].type);
+    assert.notDeepEqual(s5CardArt(a,true,5),s5CardArt(b,true,5));
+  }
+  const r21=resolveS5Effect(10,5,.38,seeds,{chosen:true,cardId:'S5_21'});
+  const r24=resolveS5Effect(10,5,.38,seeds,{chosen:true,cardId:'S5_24'});
+  assert.equal(r24.gemVariant,1);
+  assert.equal(r21.key,r24.key);
 });
