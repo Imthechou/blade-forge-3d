@@ -183,7 +183,10 @@ await scenario('formal-school-cutting-real-pointer', async page => {
     const r=window.__FORGE_ARENA?.run;
     return { task:Game.formalTask() && {kind:Game.formalTask().kind,
       rule:Game.formalTask().rule, sequence:Game.formalTask().sequence},
-      stage:r&&{phase:r.phase,mode:r.mode,total:r.total,targets:r.targets?.map(t=>({x:t.x,y:t.y,type:t.type}))},
+      stage:r&&{phase:r.phase,mode:r.mode,total:r.total,
+        encounter:r.encounter&&{tier:r.encounter.tier,rank:r.encounter.rank,
+          quota:r.encounter.stages.warmup.quota,spawned:r.stageSpawned},
+        targets:r.targets?.map(t=>({x:t.x,y:t.y,type:t.type,difficulty:t.difficulty}))},
     };
   });
   console.log('FORMAL_INITIAL',JSON.stringify(before));
@@ -192,6 +195,10 @@ await scenario('formal-school-cutting-real-pointer', async page => {
   assert.equal(before.task.rule.seconds,45,'正式赛规则与实际45秒计时必须一致');
   assert.ok(before.task.sequence?.length>=6,'正式赛空靶生成');
   assert.equal(before.stage?.total,45,'正式赛没有复用完整45秒切割');
+  assert.equal(before.stage?.encounter?.tier,'school','流派赛未接入独立关卡配额');
+  assert.equal(before.stage.encounter.quota,6,'学徒赛初始投放配额不对');
+  assert.ok(before.stage.targets.every(t=>['foam','rope'].includes(t.type)&&t.difficulty===1),
+    '学徒赛开场应该仅有固定强度的泡棉/绳束');
   assert.equal(before.stage?.mode,'formal');
   assert.ok(before.stage.targets.length>=3);
   for (const t of before.stage.targets) {
@@ -251,11 +258,19 @@ async function assertUnifiedFirstCut(page, label) {
   const before=await page.evaluate(()=>{
     const r=window.__FORGE_ARENA?.run;
     return r&&{unified:r.unifiedFormalCut,mode:r.mode,total:r.total,kills:r.kills,score:r.score,
-      targets:r.targets?.map(t=>({type:t.type,x:t.x,y:t.y,progress:t.progress}))};
+      encounter:r.encounter&&{tier:r.encounter.tier,rank:r.encounter.rank,
+        quota:r.encounter.stages.warmup.quota,spawned:r.stageSpawned},
+      targets:r.targets?.map(t=>({type:t.type,x:t.x,y:t.y,progress:t.progress,difficulty:t.difficulty}))};
   });
   assert.ok(before?.unified && before.mode==='formal' && before.total===45,
     label+' 并未使用正式赛统一切割引擎');
   assert.ok(before.targets?.length>=3,label+' 首帧未投放靶具');
+  const expected=label==='全国赛' ? {tier:'national',rank:5,quota:8}
+    : {tier:'apex',rank:10,quota:10};
+  assert.equal(before.encounter?.tier,expected.tier,label+' 未接赛级');
+  assert.equal(before.encounter?.rank,expected.rank,label+' 赛级错误');
+  assert.equal(before.encounter?.quota,expected.quota,label+' 初始靶具数配置未生效');
+  assert.ok(before.targets.every(t=>t.difficulty===1),label+' 单靶强度被赛事级别修改');
   const t=before.targets[0];
   await swipe(page,'.page.is-active .quick-canvas',Math.max(.02,t.x-.14),t.y,Math.min(.98,t.x+.14),t.y);
   const after=await page.evaluate(()=>{
