@@ -1,0 +1,243 @@
+/* App shell: compact navigation, quiet surfaces, and a stage-first home screen. */
+.topbar {
+  flex: 0 0 auto;
+  z-index: var(--z-bar);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: calc(var(--topbar-h) + var(--safe-t));
+  padding: var(--safe-t) var(--sp-4) 0;
+  background: rgba(255, 255, 255, .94);
+  border-bottom: 1px solid var(--line-2);
+}
+.topbar-back,
+.topbar-gear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--face-2);
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, transform var(--dur-fast) ease;
+}
+.topbar-back { margin-left: -8px; font-size: 20px; }
+.topbar-back:active,
+.topbar-gear:active { background: var(--base-2); transform: scale(.96); }
+.topbar-back[hidden] { display: none; }
+.topbar-mid { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; }
+.topbar-title {
+  overflow: hidden;
+  color: var(--face);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.25;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.topbar-sub { display: none; }
+.topbar-cr {
+  min-width: 64px;
+  min-height: 36px;
+  margin-left: auto;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: var(--r-pill);
+  background: var(--base-2);
+  color: var(--face-2);
+  font-family: var(--font-num);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+.topbar-cr b { color: var(--face); font-weight: 700; }
+.topbar-cr .muted { color: var(--face-3); }
+.topbar-gear { margin-right: -8px; }
+.topbar-gear .hex { width: 22px; height: 22px; }
+.topbar-gear .hex .core { fill: var(--face-2); }
+.topbar-gear .hex .ring { stroke: #8798A5; }
+
+/* Home: no campaign banner, hero slogan, or competing CTA. The actual model owns the space. */
+.page[data-page="home"] { overflow: hidden; padding: 0 0 calc(8px + var(--safe-b)); }
+.page[data-page="home"] .home-showcase { flex: 1 1 auto; min-height: 170px; height: auto; }
+.home-showcase { background: var(--base-0); }
+.home-showcase .showcase-label {
+  left: 16px; top: 14px; gap: 7px; padding: 5px 9px;
+  border: 0; border-radius: var(--r-pill); background: rgba(255,255,255,.82);
+  color: var(--face-2); font-size: 12px; font-weight: 500; letter-spacing: 0;
+}
+.home-showcase .showcase-label i { width: 6px; height: 6px; background: var(--accent); box-shadow: none; }
+
+/* 
+ * 舞台鉴赏控制（右下角两个**图标**，首页与锻造页共用 stageControls.js）：
+ *   ① 开启/关闭拖动（四向箭头）
+ *   ② 复原到默认位置（回转箭头）
+ *
+ * 为什么默认关：OrbitControls 启用时会把 canvas 的 touch-action 设为 none，
+ * 页面在舞台上就无法滚动；关掉后页面滚动恢复正常，也不需要持续重绘。
+ * 文字只放在 title / aria-label，不占舞台宽度。
+ *
+ * ★ 用户要求「选中的时候不要有绿框出现」—— 原先拖动开启时会在舞台四周
+ *   画 2px 青色边框，视觉上像“被选中/聚焦”。已移除；开关状态只由图标自身
+ *   点亮（aria-pressed）表达，不再改舞台外观。
+ */
+.stage-inspect {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stage-inspect .stage-icon {
+  display: inline-grid;
+  place-items: center;
+  /* ★ 2026-10-24：40px → 44px。项目自己的 --tap 令牌就写着 44px（触控最小热区），
+     而这个图标是**唯一**的拖动入口，在手机上 40px 实测偏小。
+     只改尺寸不改外阴影/圆角语义，视觉上仍是同一个小圆钮。 */
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .92);
+  color: var(--face-2);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-1);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast);
+}
+.stage-inspect .stage-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  pointer-events: none;
+}
+.stage-inspect .stage-icon:active { transform: scale(.94); }
+.stage-inspect .stage-icon:focus-visible { outline: 2px solid var(--accent-cool); outline-offset: 2px; }
+
+/* 拖动开启：图标自身点亮（不画舞台边框） */
+.stage-inspect .stage-inspect-toggle[aria-pressed="true"] {
+  border-color: var(--accent-cool);
+  background: var(--accent-cool);
+  color: #fff;
+}
+
+/* 锻造页 S4 锻打阶段：拖动按钮不可用（热区铺满舞台，拖动会与挥锤打架） */
+.page[data-page="forge"].is-no-drag .stage-inspect-toggle {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* 锻造页舞台上缘已被阶段徽标占用，鉴赏图标与进度条错开、不压刀刃 */
+.page[data-page="forge"] .stage-inspect { bottom: 44px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-inspect .stage-icon { transition: none; }
+  .stage-inspect .stage-icon:active { transform: none; }
+}
+.home-dashboard {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 16px 8px;
+}
+.home-hero { display: none; }
+.home-start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 58px;
+  border-radius: 14px;
+  position: relative;
+  font-size: 17px;
+}
+.home-start-copy { display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.home-start-title { font-size: 17px; font-weight: 650; letter-spacing: 0; }
+.home-start-copy small { display: none; }
+.home-start[aria-busy="true"] { opacity: .8; }
+.home-start .hex { width: 24px; height: 24px; }
+.home-start .hex .ring { stroke: rgba(255,255,255,.8); }
+.home-start .hex .core { fill: #FFFFFF; }
+.home-start > b { position: absolute; right: 17px; color: #FFFFFF; font-size: 22px; font-weight: 400; }
+.home-entry { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.home-entry-btn {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 6px 2px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--face-2);
+  background: var(--base-1);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  cursor: pointer;
+  transition: transform var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+.home-entry-btn .hex { width: 22px; height: 22px; }
+.home-entry-btn .hex .ring { stroke: #73899A; }
+.home-entry-btn .hex .core { fill: var(--accent); }
+.home-entry-btn span { font-size: 13px; font-weight: 600; line-height: 1.2; }
+.home-entry-btn small { display: none; }
+.home-entry-btn:active { transform: translateY(1px) scale(.98); background: var(--base-2); }
+/* ★ 2026-10-24：`.home-mission*` 系列已全部删除（含 .home-mission-track /
+   .home-mission-link）。首页「今日目标」入口已按用户要求移除：
+   · 首页少一层“进度条 + 查看”的重复陈述；
+   · 全勤 50 CR 奖励一并取消，单项任务 CR 仍自动发放（core/events.settle）。 */
+.home-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); padding-top: 4px; border-top: 1px solid var(--line-2); }
+.home-stats > div { text-align: center; border-right: 1px solid var(--line-2); }
+.home-stats > div:last-child { border: 0; }
+.home-stats span { display: block; font-size: 12px; color: var(--face-3); }
+.home-stats b { font: 650 17px/1.4 var(--font-num); color: var(--face); }
+
+/* ★ rework T12：「下一个目标」卡片。
+   一行一目标，点一下直达对应玩法；不做多层菜单。 */
+.home-goal {
+  appearance: none;
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 9px 12px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--face);
+  text-align: left;
+  cursor: pointer;
+}
+.home-goal:active { transform: translateY(1px) scale(.995); }
+.home-goal:focus-visible { outline: 2px solid var(--accent-cool); outline-offset: 2px; }
+.home-goal-kicker { color: var(--accent-cool-deep); font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+.home-goal-title { font-size: 14px; font-weight: 650; line-height: 1.35; }
+.home-goal-desc { color: var(--face-3); font-size: 12px; line-height: 1.4; }
+.home-goal-action { color: var(--accent); font-size: 12px; font-weight: 600; }
+
+@media (max-width: 350px) {
+  .home-dashboard { padding-left: 12px; padding-right: 12px; gap: 8px; }
+  .home-entry { gap: 5px; }
+  .home-entry-btn { min-height: 60px; }
+  .home-stats span { font-size: 11px; }
+}
+@media (max-height: 660px) {
+  .home-dashboard { gap: 6px; padding-top: 4px; }
+  .home-start { min-height: 52px; }
+  .home-entry-btn { min-height: 56px; }
+  .home-stats { padding-top: 2px; }
+}
