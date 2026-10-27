@@ -256,3 +256,10 @@
   .page[data-page="forge"] .forge-body { flex:1 1 0; overflow-y:auto; }
   .page[data-page="forge"] .actions { position:sticky; bottom:0; }
 }
+
+
+/* PC embeds the same 430px mobile layout. Do not let its fixed 60% stage clip the cards. */
+@media (min-width:601px) {
+  .page[data-page="forge"] .stage { flex:1 1 0; min-height:0; }
+  .page[data-page="forge"] .forge-body { flex:0 0 auto; overflow:visible; }
+}
