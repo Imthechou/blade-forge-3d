@@ -24,7 +24,7 @@ for(const [name,url] of [['before','https://imthechou.github.io/blade-forge-3d/'
   const settle=async()=>{
     for(let i=0;i<20;i++) {
       let b=await page.evaluate(async()=>{
-        const st=(await import('/src/render/index.js')).getStage();
+        const st=(await import(new URL('src/render/index.js',location.href).href)).getStage();
         return !!(st?._requestedModelId && st?._requestedModelId!==st?.modelId
               ||st?.viewer?._compiling||st?.viewer?._compilePromise);
       });
@@ -34,8 +34,8 @@ for(const [name,url] of [['before','https://imthechou.github.io/blade-forge-3d/'
     await page.waitForTimeout(750);
   };
   const get=()=>page.evaluate(async()=>{
-    const g=(await import('/src/app/game.js')).default;
-    const st=(await import('/src/render/index.js')).getStage();
+    const g=(await import(new URL('src/app/game.js',location.href).href)).default;
+    const st=(await import(new URL('src/render/index.js',location.href).href)).getStage();
     const u=st?._pack?.uniforms||{};
     return {phase:g.run?.phase,stage:g.run?.stageId,model:st?.modelId,
       material:g.resolveVisual(g.preview,{preview:!!g.preview})?.skin?.materialId,
@@ -56,9 +56,9 @@ for(const [name,url] of [['before','https://imthechou.github.io/blade-forge-3d/'
   await page.waitForTimeout(600);
   for(let j=0;j<4;j++){const n=page.locator('.sheet-mask.is-in .sheet-x');if(await n.count()&&await n.first().isVisible()){await n.first().click({timeout:3500});await page.waitForTimeout(180);}else break;}
   await page.evaluate(async()=>{
-    const g=(await import('/src/app/game.js')).default;
+    const g=(await import(new URL('src/app/game.js',location.href).href)).default;
     g.startForge({mode:'normal',seed:20261024});
-    (await import('/src/ui/router.js')).default.go('forge');
+    (await import(new URL('src/ui/router.js',location.href).href)).default.go('forge');
   });
   await page.locator('.page.is-active .dcard').first().waitFor({timeout:20000});
   for(let idx=1;idx<=5;idx++){
@@ -83,15 +83,15 @@ for(const [name,url] of [['before','https://imthechou.github.io/blade-forge-3d/'
     if(idx===5){
       await shot('S5-enter');
       const all=await page.evaluate(async(ids)=>{
-        const g=(await import('/src/app/game.js')).default;
-        const {getCard}=await import('/src/data/cards.js');
+        const g=(await import(new URL('src/app/game.js',location.href).href)).default;
+        const {getCard}=await import(new URL('src/data/cards.js',location.href).href);
         return ids.map(id=>({id,name:getCard(id)?.name,rarity:getCard(id)?.rarity}));
       },S5);
       for(const c of all){
         if(!c.name){run.errors.push('Missing '+c.id);continue;}
         await page.evaluate(async(cardId)=>{
-          const g=(await import('/src/app/game.js')).default;
-          const {getCard}=await import('/src/data/cards.js');
+          const g=(await import(new URL('src/app/game.js',location.href).href)).default;
+          const {getCard}=await import(new URL('src/data/cards.js',location.href).href);
           const card=getCard(cardId);
           const v=g.previewVisual(card);
           g.applyResolvedVisual(v,{preview:true,cardId:card.id});
@@ -101,7 +101,7 @@ for(const [name,url] of [['before','https://imthechou.github.io/blade-forge-3d/'
         run.preview.push(c);
       }
       await page.evaluate(async()=>{
-        const g=(await import('/src/app/game.js')).default;
+        const g=(await import(new URL('src/app/game.js',location.href).href)).default;
         g.syncStage();
       });
       await settle();
