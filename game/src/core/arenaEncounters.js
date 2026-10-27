@@ -18,16 +18,16 @@ const LEVEL = Object.freeze({
     {caps:[4,5,6,6],counts:[8,16,9,16],min:0,limit:5},
   ]),
   national: Object.freeze([
-    {caps:[3,4,5,6],counts:[8,17,9,18],min:0,limit:5},
-    {caps:[3,5,6,6],counts:[8,18,9,19],min:0,limit:5},
+    {caps:[4,5,6,6],counts:[8,17,9,18],min:1,limit:5},
+    {caps:[4,5,6,6],counts:[8,18,9,19],min:1,limit:5},
     {caps:[4,5,6,6],counts:[9,19,10,20],min:1,limit:5},
     {caps:[4,6,6,6],counts:[9,20,11,21],min:1,limit:6},
-    {caps:[5,6,6,6],counts:[10,21,11,22],min:1,limit:6},
+    {caps:[5,6,6,6],counts:[10,21,11,22],min:2,limit:6},
   ]),
   apex: Object.freeze([
-    {caps:[4,5,6,6],counts:[10,22,12,23],min:1,limit:6},
-    {caps:[5,6,6,6],counts:[11,23,12,24],min:1,limit:6},
-    {caps:[5,6,6,6],counts:[11,24,13,25],min:2,limit:6},
+    {caps:[5,6,6,6],counts:[10,22,12,23],min:2,limit:6},
+    {caps:[5,6,6,6],counts:[11,23,12,24],min:2,limit:6},
+    {caps:[6,6,6,6],counts:[11,24,13,25],min:3,limit:6},
   ]),
 });
 export function createEncounter({tier='school',gradient=0,round=0}={}) {
