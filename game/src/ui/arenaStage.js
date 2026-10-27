@@ -245,7 +245,8 @@ function drawRoute(ctx, run, targets, w, h) {
 function isGuideTarget(guide, t) {
   if (!guide || guide.done) return false;
   if (guide.slots?.includes(t.slot) || guide.types?.includes(t.type)) return true;
-  return !!((guide.minCombo || guide.minGestureKills) && t.alive);
+  // 连斩类目标由顶部提示/连线引导即可，给每个靶具圈巨大椭圆会遮挡材质外观。
+  return false;
 }
 
 /* ══ 靶具 ═══════════════════════════════════════════════ */
@@ -744,9 +745,9 @@ function directionHint(angle) {
  */
 function drawDebris(ctx, debris, now, w, h) {
   if (!debris.length) return;
-  const { unit, bodyW, bodyH } = targetMetrics(w, h, true);
   for (let i = 0; i < debris.length; i++) {
     const d = debris[i];
+    const { unit, bodyW, bodyH } = targetMetrics(w, h, d.layout === 'stream');
     const age = now - d.at;
     if (age < 0 || age > DEBRIS_LIFE) continue;
     const p = age / DEBRIS_LIFE;
