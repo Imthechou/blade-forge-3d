@@ -1,0 +1,51 @@
+name: Build generated arena sprite textures
+on:
+  pull_request:
+    paths:
+      - game/tools/build_arena_sprites.py
+      - game/tools/arena_prop_art.py
+      - game/assets/arena/**
+      - .github/workflows/arena-sprite-build.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-art:
+    # This is a same-repository, limited-purpose asset generator.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate WebP atlas (whole / split / shards / flash)
+        run: |
+          python -m pip install --disable-pip-version-check pillow==11.3.0
+          python game/tools/build_arena_sprites.py --verify
+          test -s game/assets/arena/targets.webp
+          file game/assets/arena/targets.webp
+          python - <<'PY'
+          from PIL import Image
+          im=Image.open('game/assets/arena/targets.webp').convert('RGBA')
+          assert im.size == (1536,1280), im.size
+          for i in range(6):
+              assert im.getpixel((i*256+3,3))[3] < 15, "sprite corner must be transparent"
+              assert im.crop((i*256,0,(i+1)*256,256)).getbbox(), i
+              assert im.crop((i*256,256,(i+1)*256,512)).getbbox(), i
+              assert im.crop((i*256,512,(i+1)*256,768)).getbbox(), i
+          # The former hollow tube used a near-black opening around x~65, y128;
+          # the solid billet must instead present opaque steel throughout this face.
+          pixel=im.getpixel((5*256+75,130))
+          assert pixel[3] > 180 and min(pixel[:3]) > 42, pixel
+          print('6 whole + 12 split states + transparent atlas + solid steel block PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-arena-sprites
+          path: game/assets/arena/
+          retention-days: 14

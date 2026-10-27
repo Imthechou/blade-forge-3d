@@ -9,8 +9,10 @@
 | [src/app/settings.js](../src/app/settings.js) | 54 | 1916 | applyAll, update, get, preview |
 | [src/core/appraise.js](../src/core/appraise.js) | 203 | 7725 | appraise, revealSteps |
 | [src/core/arena.js](../src/core/arena.js) | 386 | 17011 | baseFaces, createMatch, currentEvent, choose, fieldTestTask, submitFieldTest, submitFieldTestChallenge, skipFieldTest, finalFaces, momentumName |
-| [src/core/arenaChallenge.js](../src/core/arenaChallenge.js) | 663 | 41478 | FORMAL_RISK_TBD, CHALLENGE_SECONDS, MATERIALS, ROUTES, FINALES, createChallenge, restartChallenge, tick, chooseRoute, chooseFinale, beginSwipe, hasStructuralFailure, swipe, finish, setPaused |
-| [src/core/arenaFormal.js](../src/core/arenaFormal.js) | 625 | 25317 | FORMAL_MATCH_VERSION, validateApexRoster, createFormalMatch, currentTest, testTask, submitTest, abandon, finishMatch, APEX_ROUNDS, createApexMatch, apexAvailable, apexDispatch, apexSubmit, finishApex, NATIONAL_ROUNDS_FORMAL, createNationalMatch, nationalCurrentRound, nationalStartRound, nationalSubmit, nationalAbandon, finishNational |
+| [src/core/arenaChallenge.js](../src/core/arenaChallenge.js) | 702 | 42815 | FORMAL_RISK_TBD, CHALLENGE_SECONDS, MATERIALS, ROUTES, FINALES, createChallenge, restartChallenge, tick, chooseRoute, chooseFinale, beginSwipe, hasStructuralFailure, swipe, finish, setPaused |
+| [src/core/arenaCutBridge.js](../src/core/arenaCutBridge.js) | 44 | 1903 | advanceArenaClock, formalCutPayload |
+| [src/core/arenaEncounters.js](../src/core/arenaEncounters.js) | 88 | 4444 | MATERIAL_ORDER, PHASES, PHASE_DURATION, createEncounter, encounterPhase, phaseMaterialPool, selectEncounterMaterial, phaseQuota, stageSpawnInterval |
+| [src/core/arenaFormal.js](../src/core/arenaFormal.js) | 632 | 25788 | FORMAL_MATCH_VERSION, validateApexRoster, createFormalMatch, currentTest, testTask, submitTest, abandon, finishMatch, APEX_ROUNDS, createApexMatch, apexAvailable, apexDispatch, apexSubmit, finishApex, NATIONAL_ROUNDS_FORMAL, createNationalMatch, nationalCurrentRound, nationalStartRound, nationalSubmit, nationalAbandon, finishNational |
 | [src/core/arenaPerformance.js](../src/core/arenaPerformance.js) | 308 | 13000 | TEST_TYPES, PROTOTYPE_INPUT, createPerformance, beginOperation, moveOperation, tickOperation, endOperation, interruptOperation, pauseOperation, resetOperation, diagnoseCut |
 | [src/core/arenaSlice.js](../src/core/arenaSlice.js) | 342 | 14918 | SLICE_SECONDS, GHOST_BASE, WIN_STREAK_CAP, winStreakFactorOf, createSliceMatch, ghostOf, availableBlades, dispatchBlade, pickBuff, startRun, finishRun, nextRun, forfeitRound, currentParams |
 | [src/core/arenaSuite.js](../src/core/arenaSuite.js) | 104 | 5927 | DEFAULT_FORMAL_TESTS, FORMAL_TEST_NAMES, SUITE_POLICY, createSuite, currentSuiteTest, startSuite, addCutDiagnostic, captureCut, recordSuiteOperation, advanceSuite, suiteSummary, submitSuite, annotateAbandonedSuite |
@@ -42,7 +44,7 @@
 | [src/data/arena/branches.js](../src/data/arena/branches.js) | 67 | 2294 | GRADIENTS, BRANCHES, branchById, gradientAt, SCHOOL_RULES |
 | [src/data/arena/buffs.js](../src/data/arena/buffs.js) | 110 | 6143 | BUFF_TIERS, BUFF_FAMILIES, BUFFS, BUFF_BY_ID, rollBuffChoices |
 | [src/data/arena/events.js](../src/data/arena/events.js) | 95 | 3708 | CHOICE_KINDS, EVENTS, EVENT_BY_ID, getEvent, pickEvents |
-| [src/data/arena/formalTests.js](../src/data/arena/formalTests.js) | 214 | 9033 | FORMAL_RULES_VERSION, BRANCH_FORMATS, BRANCH_FORMAT_LIST, branchFormat, GRADIENT_RULES, gradientRule, PROJECT_RULES, projectRule, buildFormalDefinition, allBranchDefinitions |
+| [src/data/arena/formalTests.js](../src/data/arena/formalTests.js) | 216 | 9220 | FORMAL_RULES_VERSION, BRANCH_FORMATS, BRANCH_FORMAT_LIST, branchFormat, GRADIENT_RULES, gradientRule, PROJECT_RULES, projectRule, buildFormalDefinition, allBranchDefinitions |
 | [src/data/arena/opponents.js](../src/data/arena/opponents.js) | 120 | 4697 | TENDENCIES, tendencyById, tendencyOfStats, makeBranchOpponent, makeTournamentOpponent, faceScores |
 | [src/data/arena/team.js](../src/data/arena/team.js) | 12 | 329 | TEAM_POLICY |
 | [src/data/arena/tournaments.js](../src/data/arena/tournaments.js) | 61 | 2115 | NATIONAL_ROUNDS, TIERS, tierById, THEMES, themeById, rollTheme |
@@ -76,7 +78,7 @@
 | [src/data/stages.js](../src/data/stages.js) | 83 | 3143 | STAGES, STAGE_COUNT, PLAYABLE_STAGES, stageAt, stageById |
 | [src/data/tags.js](../src/data/tags.js) | 65 | 3680 | BASE_TAGS, SPECIAL_TAGS, FLAVOR_TAGS, TAGS, TAG_BY_ID, isBaseTag, isSpecialTag, isFlavorTag, tagName |
 | [src/data/traits.js](../src/data/traits.js) | 261 | 11931 | BASE_TAG_TRAITS, baseTagTraitId, SPECIAL_TAG_TRAITS, HAMMER_TRAITS, hammerTraitId, HAMMER_DIRECTION_VECTORS, hammerDirectionVector, HAMMER_TIER_TRAITS, hammerTierTraitId, legacyTraits, setLegacyTraits, getTrait, traitName, traitRarityFloor |
-| [src/platform/audio.js](../src/platform/audio.js) | 113 | 4683 | unlock, setEnabled, setVolume, settings, play, list |
+| [src/platform/audio.js](../src/platform/audio.js) | 137 | 6187 | unlock, setEnabled, setVolume, settings, playCutImpact, play, list |
 | [src/platform/bus.js](../src/platform/bus.js) | 63 | 1945 | on, off, emit, clear, EVENTS |
 | [src/platform/env.js](../src/platform/env.js) | 63 | 2191 | env |
 | [src/platform/haptics.js](../src/platform/haptics.js) | 37 | 924 | setEnabled, isEnabled, vibrate, HAPTIC, feedback |
@@ -127,15 +129,17 @@
 | [src/render/v2/s5OpticalArt.js](../src/render/v2/s5OpticalArt.js) | 157 | 8960 | s5Pattern, bakeS5Optical, S5_OPTICAL_PALETTES, getS5OpticalTexture |
 | [src/render/v2/studioEnv.js](../src/render/v2/studioEnv.js) | 308 | 14204 | getStudioEnv, applyStudioEnvToScene, studioEnvInfo, releaseStudioEnv |
 | [src/render/v2/surfaceDetail.js](../src/render/v2/surfaceDetail.js) | 425 | 23308 | buildNormalFragment, SURFACE_DEFAULTS, surfaceParamsOf |
+| [src/ui/arenaImpact.js](../src/ui/arenaImpact.js) | 67 | 3406 | IMPACT_PRESETS, cutImpact, impactMotion, targetPose |
 | [src/ui/arenaReportParts.js](../src/ui/arenaReportParts.js) | 117 | 4353 | momentumChip, momentumLadder, momentumHint, momentumTrail, FACE_CN, STAT_CN, FACE_STATS, faceOfStat, faceCompareRow |
-| [src/ui/arenaStage.js](../src/ui/arenaStage.js) | 981 | 46976 | drawArenaStage |
+| [src/ui/arenaSprites.js](../src/ui/arenaSprites.js) | 136 | 5988 | TYPES, STATES, CELL, spriteStatus, prepareArenaSprites, spriteReady, drawWholeSprite, drawSplitSprite, drawShardSprite, drawFlashSprite |
+| [src/ui/arenaStage.js](../src/ui/arenaStage.js) | 1102 | 54148 | drawArenaStage |
 | [src/ui/bladeCard.js](../src/ui/bladeCard.js) | 354 | 14785 | bladeCardModel, bladeCard, bladeCardDetail, compareModels |
 | [src/ui/components.js](../src/ui/components.js) | 512 | 24977 | ICONS, riskBar, riskChip, statRail, statGrid, rarityBadge, qualitySeal, decisionCard, traitItem |
 | [src/ui/dom.js](../src/ui/dom.js) | 143 | 6253 | el, clear, mount, on, countUp, toast, sheet |
 | [src/ui/formalPerformance.js](../src/ui/formalPerformance.js) | 285 | 23126 | disposeFormalStage, pauseFormalStage, renderFormalSuite, completeFormalCut, abandonFormalSuite, drawFormalCutGuides, noteCutStroke, renderSuiteDiagnostics |
-| [src/ui/formalTestStage.js](../src/ui/formalTestStage.js) | 562 | 23620 | disposeFormalTestStage, renderFormalTest |
+| [src/ui/formalTestStage.js](../src/ui/formalTestStage.js) | 571 | 24166 | disposeFormalTestStage, renderFormalTest |
 | [src/ui/pages/appraise.js](../src/ui/pages/appraise.js) | 651 | 29699 | create, render, enter, leave |
-| [src/ui/pages/arena.js](../src/ui/pages/arena.js) | 2478 | 163196 | create, leave, openDailyChallenge, openQuickChallenge, openTournament, render |
+| [src/ui/pages/arena.js](../src/ui/pages/arena.js) | 2634 | 171898 | create, leave, openDailyChallenge, openQuickChallenge, openTournament, render |
 | [src/ui/pages/daily.js](../src/ui/pages/daily.js) | 36 | 1460 | create, render |
 | [src/ui/pages/forge.js](../src/ui/pages/forge.js) | 761 | 36166 | create, render, syncInspect, leave |
 | [src/ui/pages/home.js](../src/ui/pages/home.js) | 175 | 7414 | create, render, syncInspect |

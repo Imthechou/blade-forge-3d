@@ -130,7 +130,14 @@ export function testTask(match) {
   if (!entry) return null;
   const def = match.definition;
   const rng = RNG.stream(match.seed, 'formal-task', entry.kind, match.styleId);
-  const rule = def.rules.find((r) => r.kind === entry.kind) || {};
+  const rule = def.rules.find((r) => r.projectId === entry.kind)
+    || def.rules.find((r) => !r.projectId && r.kind === entry.kind)
+    || def.rules.find((r) => !r.projectId && r.kind === ({
+      cutting: 'sweep', precision: 'trace', strength: 'sustain',
+      durability: 'hold', extreme: 'overload',
+    }[entry.kind])) || null;
+  // 旧存档有可能没有 projectId；兜底按操作种类兼容，仍禁止空靶自结算。
+  if (!rule) return { invalid: true, kind: entry.kind, reason: '赛事规则缺失，请重新开赛' };
   const task = {
     kind: entry.kind,
     name: entry.name,

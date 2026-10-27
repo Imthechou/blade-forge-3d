@@ -80,6 +80,15 @@ export function renderFormalTest(match, body, rerender, { submit = null, taskOve
     body.append(el('p', { class: 'arena-note', text: '没有待完成的测试项。' }));
     return;
   }
+  // 没有有效题目不能进入倒计时，更不能以 0/0 自动提交零分。
+  if (task.invalid || !task.rule?.kind || (task.kind === 'cutting' && !task.sequence?.length)) {
+    body.append(el('section', { class: 'arena-empty-card', role: 'alert' }, [
+      el('h2', { text: '赛事题目生成失败' }),
+      el('p', { text: task.reason || '未生成可切目标，请检查赛事规则；本项尚未提交成绩。' }),
+      el('button', { class: 'btn', text: '重试加载', onclick: () => rerender() }),
+    ]));
+    return;
+  }
   body.append(header(match, task));
   const stage = el('div', { class: 'formal-test-stage' });
   body.append(stage);

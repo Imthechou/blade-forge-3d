@@ -1,0 +1,147 @@
+{
+  "pass": true,
+  "errors": [],
+  "proof": [
+    {
+      "type": "foam",
+      "angle": 0,
+      "mismatch": 0,
+      "coverage": 8783
+    },
+    {
+      "type": "foam",
+      "angle": 0.7853981633974483,
+      "mismatch": 0,
+      "coverage": 8783
+    },
+    {
+      "type": "foam",
+      "angle": 1.5707963267948966,
+      "mismatch": 0,
+      "coverage": 8783
+    },
+    {
+      "type": "rope",
+      "angle": 0,
+      "mismatch": 0,
+      "coverage": 9106
+    },
+    {
+      "type": "rope",
+      "angle": 0.7853981633974483,
+      "mismatch": 0,
+      "coverage": 9106
+    },
+    {
+      "type": "rope",
+      "angle": 1.5707963267948966,
+      "mismatch": 0,
+      "coverage": 9106
+    },
+    {
+      "type": "wood",
+      "angle": 0,
+      "mismatch": 0,
+      "coverage": 8907
+    },
+    {
+      "type": "wood",
+      "angle": 0.7853981633974483,
+      "mismatch": 0,
+      "coverage": 8907
+    },
+    {
+      "type": "wood",
+      "angle": 1.5707963267948966,
+      "mismatch": 0,
+      "coverage": 8907
+    },
+    {
+      "type": "plastic",
+      "angle": 0,
+      "mismatch": 1,
+      "coverage": 9137
+    },
+    {
+      "type": "plastic",
+      "angle": 0.7853981633974483,
+      "mismatch": 1,
+      "coverage": 9137
+    },
+    {
+      "type": "plastic",
+      "angle": 1.5707963267948966,
+      "mismatch": 1,
+      "coverage": 9137
+    },
+    {
+      "type": "ice",
+      "angle": 0,
+      "mismatch": 0,
+      "coverage": 9348
+    },
+    {
+      "type": "ice",
+      "angle": 0.7853981633974483,
+      "mismatch": 0,
+      "coverage": 9348
+    },
+    {
+      "type": "ice",
+      "angle": 1.5707963267948966,
+      "mismatch": 0,
+      "coverage": 9348
+    },
+    {
+      "type": "metal",
+      "angle": 0,
+      "mismatch": 0,
+      "coverage": 8263
+    },
+    {
+      "type": "metal",
+      "angle": 0.7853981633974483,
+      "mismatch": 0,
+      "coverage": 8263
+    },
+    {
+      "type": "metal",
+      "angle": 1.5707963267948966,
+      "mismatch": 0,
+      "coverage": 8263
+    }
+  ],
+  "status": {
+    "status": "ready",
+    "error": null,
+    "url": "http://127.0.0.1:8143/assets/arena/targets.webp?v=2",
+    "width": 1536,
+    "height": 1280,
+    "fractures": 12,
+    "fractureBuilds": 18,
+    "fractureLimit": 12
+  },
+  "motion": {
+    "first": {
+      "angle": 0.006862759788484534,
+      "x": -0.24995564650610694,
+      "y": 0.05144889756281175,
+      "scaleX": 0.9997578910905599,
+      "scaleY": 1.0005380197987557
+    },
+    "second": {
+      "angle": 0.0160518727277798,
+      "x": 0.035119336392758396,
+      "y": 0.29191439921024404,
+      "scaleX": 0.9997578910905599,
+      "scaleY": 1.0005380197987557
+    },
+    "reduced": {
+      "angle": 0,
+      "x": 0,
+      "y": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    }
+  }
+}

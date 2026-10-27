@@ -101,6 +101,30 @@ const SFX = {
   lose: () => { [440, 392, 330].forEach((f, i) => tone({ freq: f, dur: 0.2, type: 'triangle', gain: 0.14, delay: i * 0.11 })); },
 };
 
+/**
+ * 三层打击音：低频重量 + 中频材质 + 高频切裂。
+ * 切割中只播放很短的合成包络，沿用已有音量/静音开关；无外部音效文件。
+ * 由画布层节流，浏览器不支持 WebAudio 时静默降级。
+ */
+export function playCutImpact(impact) {
+  if(!impact||!state.enabled)return;
+  const kind=impact.sound||'fiber', weight=Math.max(0,Math.min(1,Number(impact.weight)||.3));
+  const complete=!!impact.completed;
+  const low=kind==='metal'?112:kind==='wood'?142:kind==='plastic'?174:kind==='ice'?209:kind==='fiber'?242:296;
+  const mid=kind==='metal'?470:kind==='ice'?850:kind==='plastic'?540:kind==='wood'?365:kind==='fiber'?625:760;
+  try {
+    // 软材紧而轻；硬材低频先到，裂响略滞后，视觉定格期仍然可以继续输入。
+    tone({freq:low,dur:.055+weight*.058,type:'triangle',gain:.045+weight*.09,sweepTo:low*.65});
+    tone({freq:mid,dur:.027+weight*.035,type:kind==='metal'?'sawtooth':'triangle',
+      gain:.04+weight*.05,sweepTo:mid*.67,delay:.007});
+    if(kind==='metal'||kind==='ice')noise({dur:.04+weight*.05,gain:.065+weight*.06,
+      lowpass:kind==='metal'?6800:5200,delay:.012});
+    else if(kind==='wood'||kind==='plastic')noise({dur:.045,gain:.05+weight*.06,lowpass:2000+weight*2000,delay:.009});
+    else noise({dur:.025,gain:.04,lowpass:3000,delay:.004});
+    if(complete&&weight>.4)tone({freq:mid*1.6,dur:.038,type:'sine',gain:.035,delay:.024});
+  } catch(_) { /* 音频永不阻塞输入 */ }
+}
+
 export function play(name) {
   const fn = SFX[name];
   if (!fn) return;
@@ -109,4 +133,4 @@ export function play(name) {
 
 export const list = () => Object.keys(SFX);
 
-export default { play, list, setEnabled, setVolume, settings, unlock };
+export default { play, playCutImpact, list, setEnabled, setVolume, settings, unlock };

@@ -27,8 +27,10 @@ import { FACES } from '../../data/balance.js';
 import Game from '../../app/game.js';
 import router from '../router.js';
 import * as Challenge from '../../core/arenaChallenge.js';
+import { advanceArenaClock, formalCutPayload } from '../../core/arenaCutBridge.js';
 import { bus, EVENTS, audio, haptics, motion, env } from '../../platform/index.js';
 import { drawArenaStage } from '../arenaStage.js';
+import { cutImpact } from '../arenaImpact.js';
 import * as Formal from '../formalPerformance.js';
 import * as FormalTest from '../formalTestStage.js';
 import * as FormalDef from '../../data/arena/formalTests.js';
@@ -84,6 +86,9 @@ let challengeVisibilityHandler = null;
 let challengeKeyHandler = null;
 let fieldTestRun = null;
 let fieldTestMatchId = null;
+// 新正式赛、全国赛、巅峰赛的切割分项共用同一 Canvas/判定实例；与旧 Game.match 独立。
+let unifiedFormalRun = null;
+let unifiedFormalKey = null;
 let sliceRun = null;   // 单刀赛事的当前局（与 challengeRun / fieldTestRun 并列）
 let formalCutStroke = null;
 let teamSelection = [];
@@ -113,7 +118,7 @@ export function create() {
 export function leave() {
   stopTeamStage(true);
   disconnectCollectionPreviews();
-  const run = challengeRun && !Game.match ? challengeRun : (sliceRun || fieldTestRun);
+  const run = unifiedFormalRun || (challengeRun && !Game.match ? challengeRun : (sliceRun || fieldTestRun));
   if (run && !run.done) Challenge.setPaused(run, true);
   Formal.pauseFormalStage();
   stopChallengeFrame();
@@ -168,7 +173,11 @@ export function render() {
     /* ★ rework T06：正式单刀赛 = 多项目测试（各流派项目组合不同），
        不再是三次 35 秒切割 + 逐局 buff。 */
     if (Game.formalMatch.done) return renderFormalReport();
-    FormalTest.renderFormalTest(Game.formalMatch, body, render);
+    const task = Game.formalTask();
+    if (task?.kind === 'cutting') renderUnifiedFormalCut(Game.formalMatch, task,
+      payload => Game.submitFormalTest(payload), () => Game.abandonFormalMatch(),
+      {tier:'school',gradient:Game.formalMatch.gradient});
+    else FormalTest.renderFormalTest(Game.formalMatch, body, render);
     return;
   }
   if (Game.apexMatch) {
@@ -573,6 +582,7 @@ function renderChallenge() {
       onResume: () => { Challenge.setPaused(run, false); render(); },
       onRestart: () => startQuickChallenge(run.daily, run.seed),
       onAbandon: () => { challengeRun = null; render(); },
+      onFinish: () => { if(run.done)return; Challenge.finish(run,'manual'); settleQuickChallenge(); }, 
       label: run.daily ? '每日挑战不会因暂停而重置' : '重开或放弃都不会提前结算 CR',
     }));
   }
@@ -654,9 +664,128 @@ function renderFormalFieldTest(match) {
   } });
 }
 
+/**
+ * 正式赛切割项目统一到原来的完整切割内核。
+ * 三类正式赛仅在提交/放弃回调不同：判定、画面、路线、压轴和时钟一条链路。
+ * 非切割项目保留原正式测试操作及各流派专长。
+ */
+function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) {
+  body.className = 'arena-body arena-view-formal-match arena-view-quick-match';
+  stopChallengeFrame();
+  if (task.invalid || !task.sequence?.length || task.rule?.kind !== 'sweep') {
+    mount(body, [el('section', { class: 'arena-empty-card', role: 'alert' }, [
+      el('h2', { text: '切割题目生成失败' }),
+      el('p', { text: task.reason || '目标为空，不能记作0分。请重试加载或退出赛事。' }),
+      el('button', { class: 'btn', text: '重试加载', onclick: render }),
+    ])]);
+    return;
+  }
+  const key = `${match.id}:${task.index}:cutting`;
+  if (key !== unifiedFormalKey || !unifiedFormalRun) {
+    const source = Core.progress.bladeById(match.blade.id) || match.blade;
+    const created = Challenge.createChallenge(source, {
+      seed: ((Number(match.seed) || 1) ^ Math.imul(task.index + 1, 2654435761)) >>> 0,
+      mode: 'formal', seconds: Challenge.CHALLENGE_SECONDS, encounter,
+    });
+    if (!created.ok) {
+      mount(body, [el('p', { class: 'arena-note', text: created.reason || '无法创建切割测试' })]);
+      return;
+    }
+    unifiedFormalRun = created.run;
+    unifiedFormalRun.unifiedFormalCut = true;
+    unifiedFormalKey = key;
+  }
+  const run = unifiedFormalRun;
+  const submitResult = () => {
+    if (run !== unifiedFormalRun || !run.done) return;
+    const payload = formalCutPayload(run);
+    if (!payload) return;
+    const receipt = submit(payload);
+    if (!receipt?.ok) {
+      const message = receipt?.reason || '比赛提交失败，保留结果以便重试';
+      toast(message, 'warn');
+      clear(body);
+      body.append(el('section', { class: 'arena-empty-card', role: 'alert' }, [
+        el('h2', { text: '比赛尚未完成提交' }),
+        el('p', { text: message }),
+        el('button', { class: 'btn btn--primary', text: '重试提交', onclick: submitResult }),
+      ]));
+      return;
+    }
+    unifiedFormalRun = null; unifiedFormalKey = null;
+    render();
+  };
+  if (run.done) { submitResult(); return; }
+
+  const stage = el('section', { class: 'quick-match formal-field-match' });
+  const hud = el('div', { class: 'quick-hud' }, [
+    el('div', { class: 'quick-hud-time' }, [
+      el('small', { text: '剩余时间' }), el('b', { class: 'mono', text: run.remaining.toFixed(1) }), el('span', { text: '秒' }),
+    ]),
+    el('div', { class: 'quick-hud-score' }, [
+      el('small', { text: '当前切割分' }), el('b', { class: 'mono', text: String(Math.floor(run.score)).padStart(4, '0') }),
+    ]),
+    el('div', { class: 'quick-hud-vitals' }, [
+      el('small', { text: '临时刀况' }), el('b', { text: `${Math.round(run.health / Math.max(1,run.maxHealth) * 100)}%` }),
+      el('i', { style: { transform: `scaleX(${run.health / Math.max(1, run.maxHealth)})` } }),
+    ]),
+  ]);
+  const canvas = el('canvas', {
+    class: 'quick-canvas', 'aria-label': '正式赛事完整切割场：单指划过靶具，完成破甲、补刀与连击',
+  });
+  const mission = el('div', { class: 'quick-stage-label' }, [
+    el('b', { text: `${match.definition.branchName} · 第 ${task.index + 1}/${task.total} 项` }),
+    el('span', { text: '按住划切 · 硬靶补刀 · 留意临时受损' }),
+  ]);
+  const footer = el('div', { class: 'quick-footer' }, [
+    el('span', { class: 'quick-combo', text: `斩断 ${run.kills} · 连击 ×${run.combo}` }),
+    el('span', { class: 'quick-time-label', text: match.blade.name }),
+    el('button', { class: 'quick-pause quick-pause-toggle', text: run.paused ? '继续' : '暂停',
+      onclick: () => { Challenge.setPaused(run, !run.paused); render(); } }),
+    el('button', { class: 'quick-pause quick-help-toggle', text: '操作',
+      onclick: () => openChallengeHelp(stage, run) }),
+  ]);
+  stage.append(hud, mission, canvas, footer);
+  if (run.paused) {
+    stage.classList.add('is-paused');
+    stage.appendChild(challengePauseOverlay({
+      onResume: () => { Challenge.setPaused(run, false); render(); },
+      onRestart: () => {
+        const created = Challenge.restartChallenge(run);
+        if (!created.ok) { toast(created.reason || '本项无法重开', 'warn'); return; }
+        created.run.unifiedFormalCut = true;
+        unifiedFormalRun = created.run;
+        render();
+      },
+      onAbandon: () => {
+        const result = abandon();
+        if (!result?.ok) { toast(result?.reason || '退出失败', 'warn'); return; }
+        unifiedFormalRun = null; unifiedFormalKey = null;
+        render();
+      },
+      label: '局内损伤与临时失效参与本项判定，不销毁藏刀阁里的永久成刀。',
+    }));
+  }
+  body.append(stage);
+  const updateMission = () => {
+    const label = ({warmup:'热身连切',route:run.route?.name,speed:'节奏提速',
+      finale:run.finale?.name})[run.phase] || '切割考验';
+    mission.querySelector('b').textContent = `${run.encounter?.label || match.definition.branchName} · ${label}`;
+    mission.querySelector('span').textContent = run.risk?.status === 'failed'
+      ? '结构临时失效 · 本项结束'
+      : `第 ${task.index+1}/${task.total} 项 · 本段 ${run.stageSpawned}/${run.encounter?.stages?.[run.spawnStage]?.quota || '—'} 靶 · 刀况 ${Math.round(run.health / Math.max(1,run.maxHealth) * 100)}%`;
+  };
+  renderChallengeCanvas(canvas, run, {
+    hud, mission, footer, updateMission,
+    onDone: () => { stopChallengeFrame(); submitResult(); },
+  });
+}
+
 /** Both 45-second modes share input, RAF, resize/DPR, rendering and pause semantics. */
 function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMission, onDone }) {
   challengeCanvas = canvas;
+  // 浏览器触控时不让页面滚动/缩放抢走滑切轨迹（尤其 iOS Safari）。
+  canvas.style.touchAction = 'none';
   challengePointer = null;
   /* 诊断出口（只读）：2D 舞台的当前 run / 画布。供 tools/probe-* 直接读靶具、阶段与特效队列，
      不参与任何玩法判定；与 __FORGE_PREP 同一约定。 */
@@ -674,7 +803,7 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
   const rail=el('div',{class:'quick-phase-rail','aria-hidden':'true'},[el('i')]);stage.appendChild(rail);
   const phaseBar=rail.firstElementChild;
   const isSlice = !!run.matchId;
-  const cutFeedback = run.mode === 'formal' && !isSlice ? el('div', { class: 'formal-operation-feedback', role: 'status', 'aria-live': 'polite', text: Game.match?.formalPerformance?.cutDiagnostics?.at(-1)?.message || '沿材料虚线从「起」点划过；轨迹、切口与切断结果分别反馈。' }) : null;
+  const cutFeedback = run.mode === 'formal' && !isSlice && !run.unifiedFormalCut ? el('div', { class: 'formal-operation-feedback', role: 'status', 'aria-live': 'polite', text: Game.match?.formalPerformance?.cutDiagnostics?.at(-1)?.message || '沿材料虚线从「起」点划过；轨迹、切口与切断结果分别反馈。' }) : null;
   if (cutFeedback) stage.appendChild(cutFeedback);
   let scoreDelayUntil = 0, shownScore = run.score;
   const text=(node,value)=>{if(node.textContent!==value)node.textContent=value;};
@@ -699,14 +828,15 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
   challengeResizeHandler = resizeHandler;
   const point = (event) => {
     const rect = bounds;
-    return { x: (event.clientX - rect.left) / Math.max(1, rect.width), y: (event.clientY - rect.top) / Math.max(1, rect.height), time: performance.now() };
+    return { x: Math.max(-.05,Math.min(1.05,(event.clientX - rect.left) / Math.max(1, rect.width))),
+      y: Math.max(-.05,Math.min(1.05,(event.clientY - rect.top) / Math.max(1, rect.height))), time: performance.now() };
   };
   canvas.addEventListener('pointerdown', event => {
     if(run.done || run.paused || run.phase.endsWith('-choice') || challengePointer || event.isPrimary === false || (event.pointerType === 'mouse' && event.button !== 0))return;
     event.preventDefault();bounds=canvas.getBoundingClientRect();audio.unlock();
     try{canvas.setPointerCapture(event.pointerId);}catch{}
     Challenge.beginSwipe(run);challengePointer={...point(event),id:event.pointerId,hit:false,distance:0};
-    if (run.mode === 'formal') formalCutStroke = { points: [point(event)], hits: [], distance: 0 };
+    if (run.mode === 'formal' && !run.unifiedFormalCut) formalCutStroke = { points: [point(event)], hits: [], distance: 0 };
   });
   const movePointer = event => {
     const pointer=challengePointer;if(!pointer || pointer.id!==event.pointerId || run.paused || run.done)return;
@@ -722,11 +852,14 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
          让「弹刀 / 打不动 / 破甲 / 击破」在命中位置有不同表现，
          而不是全部变成同一句“切入 xx%”。 */
       const marker={x:hit.target.x,y:hit.target.y,points:hit.points,at:next.time,complete:hit.complete,quality:hit.quality,type:hit.target.type,progress:hit.target.progress,angle:hit.target.lastAngle,combo:hit.combo,objective:hit.objective,slot:hit.target.slot,followup:hit.target.cuts.length>1,contactEvent:hit.contactEvent||null,armorLeft:hit.armorLeft??null};
+      // 六层参数在一个地方绑定，不更改玩法刀损、强度或原生计分。
+      Object.assign(marker,cutImpact({...marker,target:hit.target},{reducedMotion:motion.reduced()}));
       hitLabels.push(marker);bursts.push({...marker});
       /* 斩断的一瞬间留一份"碎块"记录：arenaStage 据此把靶具画成两半飞开。
          只加视觉事件，不改 run —— 判定与计分仍全部由 core 完成。 */
-      if (hit.complete) debris.push({ x: hit.target.x, y: hit.target.y, type: hit.target.type, angle: hit.target.lastAngle, at: next.time });
-      if(next.time-lastSoundAt>70){audio.play(hit.complete?(hit.combo>1?'combo':'spark'):(hit.quality==='ANGLE'?'riskUp':'tap'));haptics.vibrate(hit.complete?12:5);lastSoundAt=next.time;}
+      if (hit.complete) debris.push({ x: hit.target.x, y: hit.target.y, type: hit.target.type,
+        layout: hit.target.layout, angle: hit.target.lastAngle, at: next.time });
+      if(next.time-lastSoundAt>60){audio.playCutImpact(marker);haptics.vibrate(marker.hapticMs);lastSoundAt=next.time;}
     }
     if(hitLabels.length>18)hitLabels.splice(0,hitLabels.length-18);if(bursts.length>18)bursts.splice(0,bursts.length-18);
     if(debris.length>12)debris.splice(0,debris.length-12);
@@ -742,6 +875,12 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
   });
   const endSwipe=event=>{
     const pointer=challengePointer;if(pointer?.id!==event.pointerId)return;
+    // pointerup 的终点可能没触发最后一次 pointermove：把末段纳入切割。
+    // cancel/lostcapture 不补切，防止系统手势离开页面时误击。
+    if(event.type==='pointerup'&&!run.done&&!run.paused&&canvas.isConnected) {
+      const end=point(event);
+      if(Math.hypot(end.x-pointer.x,end.y-pointer.y)>.009)movePointer(event);
+    }
     if (formalCutStroke) {
       const diagnosis = Formal.noteCutStroke(Game.match, formalCutStroke, event.type !== 'pointerup');
       if (diagnosis && cutFeedback) text(cutFeedback, `${diagnosis.message} 行程 ${(diagnosis.travel * 100).toFixed(1)}%；切口偏差 ${Number.isFinite(diagnosis.meanDeviation) ? (diagnosis.meanDeviation * 100).toFixed(1) + '%' : '—'}。`);
@@ -758,16 +897,17 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     ctx.clearRect(0,0,width,height);
     effects.now=now;effects.pointer=challengePointer;effects.reducedMotion=motion.reduced();
     drawArenaStage(ctx,run,width,height,effects);
-    if (!isSlice) Formal.drawFormalCutGuides(ctx, run, width, height);
+    if (!isSlice && !run.unifiedFormalCut) Formal.drawFormalCutGuides(ctx, run, width, height);
     if (run.mode !== 'formal' || now >= scoreDelayUntil) shownScore = run.score;
     text(timeNode,run.remaining.toFixed(1));text(scoreNode,String(Math.floor(shownScore)).padStart(4,'0'));
-    text(healthNode, isSlice ? `${Math.round(run.health)}/${Math.round(run.maxHealth ?? 100)}` : `${Math.round(run.health)}%`);
-    healthBar.style.transform=`scaleX(${Math.max(0,Math.min(100,run.health))/100})`;
-    stage.classList.toggle('is-risky',run.finale?.id==='rush');stage.classList.toggle('is-low-health',run.health<35);stage.classList.toggle('is-countdown',run.remaining<=5);
+    const healthPercent = Math.max(0, Math.min(100, run.health / Math.max(1, run.maxHealth ?? 100) * 100));
+    text(healthNode, isSlice ? `${Math.round(run.health)}/${Math.round(run.maxHealth ?? 100)}` : `${Math.round(healthPercent)}%`);
+    healthBar.style.transform=`scaleX(${healthPercent/100})`;
+    stage.classList.toggle('is-risky',run.finale?.id==='rush');stage.classList.toggle('is-low-health',healthPercent<35);stage.classList.toggle('is-countdown',run.remaining<=5);
     text(vitals.querySelector('small'), isSlice
       ? (run.risk?.status === 'failed' ? '结构失效' : run.risk?.status === 'warning' ? '⚠ 高负荷' : '刀况')
       : run.mode === 'formal' ? (run.risk?.status === 'failed' ? '结构失效' : run.risk?.status === 'warning' ? '危险征兆 · 受损' : '正式测试刀况') : '安全挑战 · 模拟刀况');
-    phaseBar.style.transform=`scaleX(${run.remaining/Challenge.CHALLENGE_SECONDS})`;
+    phaseBar.style.transform=`scaleX(${Math.max(0,run.remaining)/(run.total || Challenge.CHALLENGE_SECONDS)})`;
     text(pauseNode,run.paused?'继续':'暂停');
     updateMission();
   };
@@ -804,10 +944,13 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
   document.addEventListener('keydown', challengeKeyHandler);
   let lastFrame = 0;
   const paint = (now) => {
-    if (challengeCanvas !== canvas || (challengeRun !== run && fieldTestRun !== run && sliceRun !== run)) return;
-    const dt = lastFrame ? Math.min(.05, Math.max(0, (now - lastFrame) / 1000)) : 0;
+    if (challengeCanvas !== canvas || (challengeRun !== run && fieldTestRun !== run && sliceRun !== run && unifiedFormalRun !== run)) return;
+    // 实际经过时间 ≠ 帧时长。低 FPS 不能把 45 秒赛事拖成数分钟。
+    // 将 wall-clock delta 分片交给 core（tick 单次最多 .25s），
+    // 一旦进入暂停/路线选择/结算立即停止，避免穿过决策阶段。
+    const delta = lastFrame ? Math.max(0, (now - lastFrame) / 1000) : 0;
     lastFrame = now;
-    if (!run.paused) Challenge.tick(run, dt);
+    if (!run.paused) advanceArenaClock(run, delta, Challenge.tick);
     drawScene(now);
     if (run.phase === 'route-choice' || run.phase === 'finale-choice') {
       stopChallengeFrame(); showChallengeChoice(run); return;
@@ -820,7 +963,7 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
   else challengeFrame = requestAnimationFrame(paint);
 }
 
-function challengePauseOverlay({ onResume, onRestart, onAbandon, label }) {
+function challengePauseOverlay({ onResume, onRestart, onAbandon, onFinish, label }) {
   const panel = el('div', { class: 'quick-choice-panel' }, [
     el('div', { class: 'quick-kicker', text: '计时已冻结' }),
     el('h2', { text: '挑战已暂停' }),
@@ -829,6 +972,7 @@ function challengePauseOverlay({ onResume, onRestart, onAbandon, label }) {
     el('div', { class: 'quick-choice-list', style: { gridTemplateColumns: '1fr' } }, [
       el('button', { class: 'quick-choice-card', type: 'button', onclick: onResume }, [el('b', { text: '继续挑战' }), el('span', { text: '回到当前进度' })]),
       el('button', { class: 'quick-choice-card', type: 'button', onclick: onRestart }, [el('b', { text: '重开本局' }), el('span', { text: '从 45 秒起重新开始' })]),
+      onFinish ? el('button', { class: 'quick-choice-card', type: 'button', onclick: onFinish }, [el('b', { text: '提前收刀 · 看本局成绩' }), el('span', { text: '立即结束，不发放CR，不计挑战完成' })]) : null,
       el('button', { class: 'quick-choice-card', type: 'button', onclick: onAbandon }, [el('b', { text: '放弃并退出' }), el('span', { text: '未完成本局不发 CR' })]),
     ]),
   ]);
@@ -906,11 +1050,13 @@ function renderChallengeReport() {
   const run = challengeRun;
   if (!run?.result) return renderChallengeSetup();
   const r = run.result;
-  const settlement = quickChallengeSettlement(run);
+  const settlement = r.reason==='manual' ? { code:'MANUAL', ok:true, settled:false, settledReward:0 } : quickChallengeSettlement(run);
   // 只认本 UI 首次 OK 的成功回执；旧纪录 DUPLICATE 不能被当成到账凭据。
   const settled = settlement.code === 'OK' && settlement.ok === true && settlement.settled === true;
   const retryable = settlement.code === 'PERSIST_FAILED' && settlement.retryable === true;
-  const settlementNote = settled
+  const settlementNote = r.reason==='manual'
+    ? '已主动收刀：成绩仅供查看，不发放CR或计入挑战纪录。'
+    : settled
     ? '奖励已入账，收藏刀具完好保留。'
     : settlement.code === 'SETTLING'
       ? '正在保存本局，请稍候。'
@@ -924,9 +1070,9 @@ function renderChallengeReport() {
   ].map(([a, b]) => el('div', {}, [el('small', { text: a }), el('b', { text: String(b) })])));
   mount(body, [el('section', { class: 'quick-report' }, [
     el('div', { class: 'quick-kicker', text: run.daily ? '每日挑战' : '自由快赛' }),
-    el('div', { class: 'quick-result-heading' }, [el('div', { class: 'quick-grade', text: r.grade }), el('div', {}, [el('h2', { text: run.daily ? '每日挑战完成' : '切割挑战完成' }), el('p', { text: `${run.blade.name} · ${r.route} → ${r.finale}` })]), el('div', { class: 'quick-total' }, [el('small', { text: '赛事得分' }), el('b', { class: 'mono', text: String(r.score).padStart(4, '0') }), el('span', { text: 'PTS' })])]),
+    el('div', { class: 'quick-result-heading' }, [el('div', { class: 'quick-grade', text: r.grade }), el('div', {}, [el('h2', { text: r.reason==='manual' ? '提前收刀 · 本局成绩' : run.daily ? '每日挑战完成' : '切割挑战完成' }), el('p', { text: `${run.blade.name} · ${r.route} → ${r.finale}` })]), el('div', { class: 'quick-total' }, [el('small', { text: '赛事得分' }), el('b', { class: 'mono', text: String(r.score).padStart(4, '0') }), el('span', { text: 'PTS' })])]),
     stats,
-    el('div', { class: 'quick-reward' }, [el('span', { text: settled ? '信用点结算' : '信用点未确认到账' }), el('b', { text: settled ? `+${settlement.settledReward} CR` : `本局奖励 ${r.reward} CR（未确认到账）` })]),
+    el('div', { class: 'quick-reward' }, [el('span', { text: r.reason==='manual' ? '主动结束 · 无奖励' : settled ? '信用点结算' : '信用点未确认到账' }), el('b', { text: r.reason==='manual' ? '0 CR' : settled ? `+${settlement.settledReward} CR` : `本局奖励 ${r.reward} CR（未确认到账）` })]),
     el('div', { class: 'quick-settlement-note', role: 'status', text: settlementNote }),
     el('div', { class: 'quick-report-actions' }, [
       retryable ? el('button', { class: 'btn btn--primary', text: '重试结算', onclick: () => {
@@ -1383,9 +1529,14 @@ function renderApexMatch() {
 
   if (round?.status === 'active' && round.match) {
     /* 当前轮：复用同一套测试舞台，提交转发到 apexSubmit */
-    FormalTest.renderFormalTest(round.match, body, render, {
+    const task = Core.arenaFormal.testTask(round.match);
+    if (task?.kind === 'cutting') renderUnifiedFormalCut(round.match, task,
+      payload => Game.apexSubmit(payload),
+      () => Game.apexSubmit({ measure: 0, failed: true }),
+      {tier:'apex',round:m.roundIndex});
+    else FormalTest.renderFormalTest(round.match, body, render, {
       submit: (payload) => Game.apexSubmit(payload),
-      taskOverride: Core.arenaFormal.testTask(round.match),
+      taskOverride: task,
     });
     return;
   }
@@ -1467,9 +1618,14 @@ function renderNationalMatch() {
 
   /* 当前轮已派发 → 复用同一套测试舞台，提交转发到 nationalSubmitRound */
   if (round?.status === 'active' && round.roundMatch) {
-    FormalTest.renderFormalTest(round.roundMatch, body, render, {
+    const task = Core.arenaFormal.testTask(round.roundMatch);
+    if (task?.kind === 'cutting') renderUnifiedFormalCut(round.roundMatch, task,
+      payload => Game.nationalSubmitRound(payload),
+      () => Game.nationalAbandonRound(),
+      {tier:'national',round:m.roundIndex});
+    else FormalTest.renderFormalTest(round.roundMatch, body, render, {
       submit: (payload) => Game.nationalSubmitRound(payload),
-      taskOverride: Core.arenaFormal.testTask(round.roundMatch),
+      taskOverride: task,
     });
     return;
   }

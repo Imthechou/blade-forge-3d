@@ -126,10 +126,11 @@
   },
   {
     "file": "src/core/arenaChallenge.js",
-    "bytes": 41478,
-    "lines": 663,
+    "bytes": 42815,
+    "lines": 702,
     "imports": [
       "src/platform/bus.js",
+      "src/core/arenaEncounters.js",
       "src/core/bladeAdapter.js",
       "src/core/cutParams.js"
     ],
@@ -163,9 +164,42 @@
     ]
   },
   {
+    "file": "src/core/arenaCutBridge.js",
+    "bytes": 1903,
+    "lines": 44,
+    "imports": [],
+    "exports": [
+      "advanceArenaClock",
+      "formalCutPayload"
+    ],
+    "importedBy": [
+      "src/ui/pages/arena.js"
+    ]
+  },
+  {
+    "file": "src/core/arenaEncounters.js",
+    "bytes": 4444,
+    "lines": 88,
+    "imports": [],
+    "exports": [
+      "MATERIAL_ORDER",
+      "PHASES",
+      "PHASE_DURATION",
+      "createEncounter",
+      "encounterPhase",
+      "phaseMaterialPool",
+      "selectEncounterMaterial",
+      "phaseQuota",
+      "stageSpawnInterval"
+    ],
+    "importedBy": [
+      "src/core/arenaChallenge.js"
+    ]
+  },
+  {
     "file": "src/core/arenaFormal.js",
-    "bytes": 25317,
-    "lines": 625,
+    "bytes": 25788,
+    "lines": 632,
     "imports": [
       "src/data/arena/branches.js",
       "src/data/arena/formalTests.js",
@@ -1008,8 +1042,8 @@
   },
   {
     "file": "src/data/arena/formalTests.js",
-    "bytes": 9033,
-    "lines": 214,
+    "bytes": 9220,
+    "lines": 216,
     "imports": [
       "src/data/balance.js"
     ],
@@ -1716,8 +1750,8 @@
   },
   {
     "file": "src/platform/audio.js",
-    "bytes": 4683,
-    "lines": 113,
+    "bytes": 6187,
+    "lines": 137,
     "imports": [
       "src/platform/env.js"
     ],
@@ -1726,6 +1760,7 @@
       "setEnabled",
       "setVolume",
       "settings",
+      "playCutImpact",
       "play",
       "list"
     ],
@@ -2648,6 +2683,22 @@
     ]
   },
   {
+    "file": "src/ui/arenaImpact.js",
+    "bytes": 3406,
+    "lines": 67,
+    "imports": [],
+    "exports": [
+      "IMPACT_PRESETS",
+      "cutImpact",
+      "impactMotion",
+      "targetPose"
+    ],
+    "importedBy": [
+      "src/ui/arenaStage.js",
+      "src/ui/pages/arena.js"
+    ]
+  },
+  {
     "file": "src/ui/arenaReportParts.js",
     "bytes": 4353,
     "lines": 117,
@@ -2671,11 +2722,34 @@
     ]
   },
   {
+    "file": "src/ui/arenaSprites.js",
+    "bytes": 5988,
+    "lines": 136,
+    "imports": [],
+    "exports": [
+      "TYPES",
+      "STATES",
+      "CELL",
+      "spriteStatus",
+      "prepareArenaSprites",
+      "spriteReady",
+      "drawWholeSprite",
+      "drawSplitSprite",
+      "drawShardSprite",
+      "drawFlashSprite"
+    ],
+    "importedBy": [
+      "src/ui/arenaStage.js"
+    ]
+  },
+  {
     "file": "src/ui/arenaStage.js",
-    "bytes": 46976,
-    "lines": 981,
+    "bytes": 54148,
+    "lines": 1102,
     "imports": [
-      "src/core/arenaChallenge.js"
+      "src/core/arenaChallenge.js",
+      "src/ui/arenaImpact.js",
+      "src/ui/arenaSprites.js"
     ],
     "exports": [
       "drawArenaStage"
@@ -2801,8 +2875,8 @@
   },
   {
     "file": "src/ui/formalTestStage.js",
-    "bytes": 23620,
-    "lines": 562,
+    "bytes": 24166,
+    "lines": 571,
     "imports": [
       "src/app/game.js",
       "src/platform/index.js",
@@ -2849,11 +2923,12 @@
   },
   {
     "file": "src/ui/pages/arena.js",
-    "bytes": 163196,
-    "lines": 2478,
+    "bytes": 171898,
+    "lines": 2634,
     "imports": [
       "src/app/game.js",
       "src/core/arenaChallenge.js",
+      "src/core/arenaCutBridge.js",
       "src/core/arenaPerformance.js",
       "src/core/arenaSuite.js",
       "src/core/index.js",
@@ -2865,6 +2940,7 @@
       "src/data/knifeTypes.js",
       "src/platform/index.js",
       "src/render/collectionPreview.js",
+      "src/ui/arenaImpact.js",
       "src/ui/arenaReportParts.js",
       "src/ui/arenaStage.js",
       "src/ui/dom.js",

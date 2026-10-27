@@ -6,6 +6,7 @@
 import { emit, EVENTS } from '../platform/bus.js';
 import { deriveCutParams } from './cutParams.js';
 import { adaptBlade } from './bladeAdapter.js';
+import { createEncounter, selectEncounterMaterial, phaseQuota, stageSpawnInterval } from './arenaEncounters.js';
 
 // 待定参数不是 0%：未批准曲线前，不执行猜测性的随机销毁。
 export const FORMAL_RISK_TBD = Object.freeze({
@@ -37,10 +38,9 @@ export const MATERIALS = Object.freeze({
   wood:    { name: '纹理木桩', short: '木桩', points: 85, hard: .45, armor: .45, health: 1.5, damage: 0.30, angle: Math.PI * .47,  color: '#b88455' },
   plastic: { name: '工程塑料板', short: '塑板', points: 105, hard: .60, armor: .60, health: 1.7, damage: 0.38, angle: 0,            color: '#dbe5e9' },
   ice:     { name: '透明冰块', short: '冰块', points: 120, hard: .62, armor: .62, health: 1.4, damage: 0.26, angle: Math.PI * .25,  color: '#8fd8e8' },
-  /* ★ T07：金属板 → 金属管。不只是改名：管状件有开口与壁厚，
-     破甲需要先穿透管壁（armor 高），之后沿管切开生命下降更快（health 中等），
-     但反作用损伤最高（damage 高）。 */
-  metal:   { name: '金属管', short: '金属管', points: 160, hard: 1, armor: 1, health: 1.3, damage: 0.72, angle: 0, color: '#b7c4cc', tubular: true },
+  /* 实心合金金属块：难度来自坚实整体抗性，而非空心管壁。保留现有
+     固定 armor / health / damage 数值，不跟随赛事档位变化。 */
+  metal:   { name: '金属块', short: '金属块', points: 160, hard: 1, armor: 1, health: 1.3, damage: 0.72, angle: 0, color: '#b7c4cc', solid: true },
 });
 export const ROUTES = Object.freeze([
   { id: 'soft', name: '连切路线', tag: '低风险 · 软靶阵列', types: ['rope', 'foam', 'rope'], bonus: 1.04 },
@@ -57,7 +57,7 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  * 破甲量（rework T07）。
  *
  * 软靶（绳束/泡棉）armor=0 → 无破甲阶段，一刀可直接断（设定：软靶可一刀断）。
- * 硬靶按材料 armor 给出：0.45（木桩）/ 0.60（塑板）/ 0.62（冰块）/ 1.0（金属管）。
+ * 硬靶按材料 armor 给出：0.45（木桩）/ 0.60（塑板）/ 0.62（冰块）/ 1.0（金属块）。
  * ⚠ 取 armor × 0.6 而非全值：全值会让硬靶多出两击才破，改变了整体手感；
  *   0.6 让「强度专长」能明显感知（强度低 → 破甲击数明显变多），
  *   而同等能力下总击数与改造前接近。可调初版，见 BALANCE_REPORT。
@@ -81,7 +81,7 @@ function random(run) {
  * mode='quick'   ：45 秒、三靶一波、绝不掉刀（训练场，行为与改造前一致）
  * mode='formal'  ：35 秒、连续投放、可能断刀（赛事用；buff 与幽灵分由 arenaSlice 传入）
  */
-export function createChallenge(blade, { seed = null, daily = false, mode = 'quick', buffs = [], ghost = null, winStreak = 1, matchId = null } = {}) {
+export function createChallenge(blade, { seed = null, daily = false, mode = 'quick', buffs = [], ghost = null, winStreak = 1, matchId = null, seconds = null, encounter = null } = {}) {
   if (!blade || blade.fractured || blade.canEnterArena === false) return { ok: false, reason: '只能使用完整成刀参加挑战' };
   if (!['quick', 'formal'].includes(mode)) return { ok: false, reason: '未知测试模式' };
   /* ★ rework T01：不再 `clamp(blade.stats, 0, 100)`。
@@ -103,7 +103,9 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
   };
   // 训练场保持原口径：刀况 100、不吃 buff（避免"剩余刀况 129%"这种数）
   if (mode !== 'formal') { params.healthMax = 100; params.scoreMult = 1; params.intervalMult = 1; }
-  const total = mode === 'formal' ? 35 : CHALLENGE_SECONDS;
+  const plan = mode === 'formal' && encounter ? createEncounter(encounter) : null;
+  const total = seconds == null ? (mode === 'formal' ? 35 : CHALLENGE_SECONDS)
+    : clamp(Number(seconds) || CHALLENGE_SECONDS, 5, CHALLENGE_SECONDS);
   const run = {
     id: `C-${actualSeed.toString(36)}-${Date.now().toString(36)}`, seed: actualSeed, daily: !!daily, mode,
     blade: {
@@ -119,6 +121,9 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
       effects: Object.fromEntries(Object.entries(blade.effects || {}).map(([k,v]) => [k, clamp(Number(v)||0,0,.5)])),
     },
     adaptation, buffs: [...buffs], params, ghost, matchId, winStreak,
+    encounter: plan, spawnStage: null, stageSpawned: 0, stagePrefill: 0,
+    encounterHistory: plan ? Object.fromEntries(['warmup','route','speed','finale'].map(phase=>[
+      phase,{spawned:0,materials:{}}])) : null,
     total, elapsed: 0, remaining: total, phase: 'warmup', paused: false, done: false, result: null,
     spawnMode: mode === 'formal' ? 'stream' : 'wave',
     score: 0, kills: 0, combo: 0, maxCombo: 0, bestSwipe: 0, gestureKills: 0, misses: 0,
@@ -133,7 +138,8 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
   };
   if (run.spawnMode === 'stream') {
     /* 开场不空场：一进来就有 3 件可切，第一刀就有连击机会（原型 §5「几秒内感受到爽感」）。 */
-    run.nextSpawnAt = 0.22;
+    if (run.encounter) enterSpawnStage(run, 'warmup', 3);
+    else run.nextSpawnAt = 0.22;
     spawnTarget(run); spawnTarget(run); spawnTarget(run);
   } else {
     spawnWave(run);
@@ -145,7 +151,7 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
 export function restartChallenge(run) {
   if (!run || run.done || run.fractured) return { ok: false, reason: '已结束的测试不能重开' };
   const created = createChallenge(run.blade, { seed: run.seed, daily: run.daily, mode: run.mode || 'quick',
-    buffs: run.buffs || [], ghost: run.ghost ?? null, winStreak: run.winStreak ?? 1, matchId: run.matchId ?? null });
+    buffs: run.buffs || [], ghost: run.ghost ?? null, winStreak: run.winStreak ?? 1, matchId: run.matchId ?? null, seconds: run.total, encounter: run.encounter });
   if (created.ok && run.mode === 'formal') {
     Object.assign(created.run, { health: run.health, damage: run.damage,
       fractureChecks: run.fractureChecks, risk: copy(run.risk),
@@ -195,10 +201,10 @@ function spawnWave(run) {
   run.wave += 1;
   run.targets = types.map((type, slot) => {
     const old = oldBySlot.get(slot);
-    if (old) { old.createdAt = run.elapsed; old.difficulty = run.phase === 'finale' && run.finale?.id === 'rush' ? 1.12 : 1; old.x = [.19,.5,.81][slot]; old.y = ys[slot]; old.layout = layout; return old; }
+    if (old) { old.createdAt = run.elapsed; old.difficulty = 1; old.x = [.19,.5,.81][slot]; old.y = ys[slot]; old.layout = layout; return old; }
     return { id: `${run.wave}-${slot}`, type, slot, progress: 0, alive: true,
       x: [.19,.5,.81][slot], y: ys[slot], layout, cuts: [], lastAngle: null,
-      createdAt: run.elapsed, difficulty: run.phase === 'finale' && run.finale?.id === 'rush' ? 1.12 : 1,
+      createdAt: run.elapsed, difficulty: 1,
       /* ★ rework T07：破甲层初始值。软靶 armor=0 → 直接进入生命阶段；
          硬靶先要破甲，强度不足时硬靶会阻滞（这是强度专长刀的意义）。 */
       armorLeft: armorOf(type), layer: 0, variation: random(run) * .06 };
@@ -216,9 +222,17 @@ function spawnWave(run) {
 const STREAM_ROWS = Object.freeze([0.34, 0.52, 0.70]);
 const STREAM_COLS = Object.freeze([0.19, 0.50, 0.81]);
 const STREAM_MAX_ALIVE = 6;
+function enterSpawnStage(run,phase,prefill=0) {
+  if (!run.encounter) return;
+  run.spawnStage=phase; run.stageSpawned=0; run.stagePrefill=prefill;
+  run.nextSpawnAt=run.elapsed+stageSpawnInterval(run.encounter,phase,prefill);
+  run.log.push({type:'stage-plan',stage:phase,quota:phaseQuota(run.encounter,phase),
+    maxAlive:run.encounter.maxAlive});
+}
 
 /** 投放间隔：0.70 → 0.50 渐密；提速段 0.48；压轴段 0.40（再乘 buff 的 intervalMult） */
 function spawnInterval(run) {
+  if (run.encounter) return stageSpawnInterval(run.encounter, run.spawnStage, run.stagePrefill);
   const t = run.elapsed;
   let base;
   if (run.phase === 'finale') base = 0.40;
@@ -231,8 +245,9 @@ function spawnInterval(run) {
 /** 投放一件：在 3×3 的挂架里随机挑一个空位 */
 function spawnTarget(run) {
   if (!run || run.done) return null;
+  if (run.encounter && run.stageSpawned >= phaseQuota(run.encounter,run.spawnStage)) return null;
   const alive = run.targets.filter((t) => t.alive);
-  if (alive.length >= STREAM_MAX_ALIVE) return null;
+  if (alive.length >= (run.encounter?.maxAlive ?? STREAM_MAX_ALIVE)) return null;
   const taken = new Set(alive.map((t) => `${t.row}:${t.slot}`));
   const free = [];
   for (let r = 0; r < STREAM_ROWS.length; r++) {
@@ -242,14 +257,21 @@ function spawnTarget(run) {
   /* 按「从左到右、从上到下」填格：随机撒点会让台面像贴纸，排着填才像在装架 */
   const [row, slot] = free[0];
   const types = activeTypes(run);
-  const type = types[Math.min(types.length - 1, Math.floor(random(run) * types.length))];
+  const type = run.encounter
+    ? selectEncounterMaterial(run.encounter,run.spawnStage,run.route?.id,run.finale?.id,random(run))
+    : types[Math.min(types.length - 1, Math.floor(random(run) * types.length))];
+  if(run.encounter) {
+    run.stageSpawned++;
+    const history=run.encounterHistory?.[run.spawnStage];
+    if(history) {history.spawned++;history.materials[type]=(history.materials[type]||0)+1;}
+  }
   run.spawnCount = (run.spawnCount || 0) + 1;
   if (run.spawnCount % 5 === 0) run.wave += 1;   // 让 activeTypes 的奇偶轮换起来
   const target = {
     id: `${run.wave}-${slot}-${Math.round(run.elapsed * 100)}`, type, slot, row,
     progress: 0, alive: true, x: STREAM_COLS[slot], y: STREAM_ROWS[row], layout: 'stream',
     cuts: [], lastAngle: null, createdAt: run.elapsed,
-    difficulty: run.phase === 'finale' && run.finale?.id === 'rush' ? 1.12 : 1,
+    difficulty: 1, stage: run.encounter ? run.spawnStage : run.phase,
     armorLeft: armorOf(type), layer: 0, variation: random(run) * .06,
   };
   run.targets.push(target);
@@ -285,7 +307,7 @@ export function tick(run, seconds) {
   if (!run || run.done || run.paused || run.phase.endsWith('-choice')) return run;
   const dt = clamp(Number(seconds) || 0, 0, .25);
   const total = run.total || CHALLENGE_SECONDS;
-  const beats = run.mode === 'formal' ? FORMAL_BEATS : QUICK_BEATS;
+  const beats = run.mode === 'formal' && total < CHALLENGE_SECONDS ? FORMAL_BEATS : QUICK_BEATS;
   const stream = run.spawnMode === 'stream';
   run.elapsed += dt; run.remaining = Math.max(0, total - run.elapsed);
 
@@ -299,6 +321,7 @@ export function tick(run, seconds) {
     run.phase = 'speed';
     if (!stream) { run.carry = run.targets.filter((t) => t.alive && t.progress > .025); run.targets = []; spawnWave(run); }
     run.guide = makeGuide(run);
+    if(run.encounter) { enterSpawnStage(run,'speed',1); spawnTarget(run); }
     run.log.push({ type: 'phase', phase: 'speed', at: run.elapsed });
   }
   if (run.phase === 'speed' && run.elapsed >= beats.finale) {
@@ -313,8 +336,15 @@ export function tick(run, seconds) {
     expireTargets(run);
     let guard = 0;
     while (run.elapsed >= run.nextSpawnAt && guard++ < 4) {
-      spawnTarget(run);
-      run.nextSpawnAt += spawnInterval(run);
+      const next=spawnTarget(run);
+      if(run.encounter && !next && run.stageSpawned < phaseQuota(run.encounter,run.spawnStage)) {
+        run.nextSpawnAt=run.elapsed+.18;
+        break;
+      }
+      run.nextSpawnAt+=spawnInterval(run);
+      if(run.encounter && run.stageSpawned>=phaseQuota(run.encounter,run.spawnStage)) {
+        run.nextSpawnAt=Number.MAX_SAFE_INTEGER; break;
+      }
     }
     return run;
   }
@@ -330,7 +360,11 @@ export function chooseRoute(run, id) {
   if (!run || run.done || run.phase !== 'route-choice') return { ok: false, reason: '当前没有路线选择' };
   const choice = ROUTES.find((x) => x.id === id); if (!choice) return { ok: false, reason: '路线不存在' };
   run.route = { ...choice }; run.phase = 'route'; run.log.push({ type: 'route', id });
-  if (run.spawnMode === 'stream') { run.guide = makeGuide(run); spawnTarget(run); spawnTarget(run); }
+  if (run.spawnMode === 'stream') {
+    run.guide=makeGuide(run);
+    if(run.encounter)enterSpawnStage(run,'route',2);
+    spawnTarget(run); spawnTarget(run);
+  }
   else { run.targets = []; spawnWave(run); }
   return { ok: true, route: run.route };
 }
@@ -338,7 +372,11 @@ export function chooseFinale(run, id) {
   if (!run || run.done || run.phase !== 'finale-choice') return { ok: false, reason: '当前没有压轴选择' };
   const choice = FINALES.find((x) => x.id === id); if (!choice) return { ok: false, reason: '压轴路线不存在' };
   run.finale = { ...choice }; run.phase = 'finale'; run.log.push({ type: 'finale', id });
-  if (run.spawnMode === 'stream') { run.guide = makeGuide(run); spawnTarget(run); spawnTarget(run); }
+  if (run.spawnMode === 'stream') {
+    run.guide=makeGuide(run);
+    if(run.encounter)enterSpawnStage(run,'finale',2);
+    spawnTarget(run); spawnTarget(run);
+  }
   else { run.targets = []; spawnWave(run); }
   return { ok: true, finale: run.finale };
 }
@@ -357,7 +395,7 @@ function addWear(run, target, quality, stats) {
   const formal = { soft: .1, softK: .003, hard: 1.2, hardK: 1.6, shift: .4 };
   const B = run.mode === 'formal' ? formal : quick;
   /* ★ rework T07：第三层「刀具临时反作用损伤」。
-     mat.damage 是该材料的反作用强度系数（绳束 0.02 … 金属管 0.72），
+     mat.damage 是该材料的反作用强度系数（绳束 0.02 … 金属块 0.72），
      由韧性（承担）与设计（降低冲击峰值）共同降低。
      这层与「破甲」「生命」完全分开：它扣的是**刀况**，不是靶具状态。 */
   const react = Math.max(0, Number(mat.damage) || 0);
@@ -367,7 +405,8 @@ function addWear(run, target, quality, stats) {
     loss = (B.soft + Math.max(0, 55 - tough) * B.softK + reactDrive * 0.6) * (P.wearHardMult ?? 1);
   } else {
     const risk = hard * (1.12 - tough / 210) * (1.07 - design / 500) * (target.difficulty || 1)
-      * (run.finale?.id === 'rush' ? 1.2 : 1);
+      /* 单靶反作用固定：压轴仅通过更难的材料组合/更密的出场增加风险。 */
+      * 1;
     // 越残越脆：低刀况时同样的硬靶更伤
     const worsen = 1 + 0.6 * (1 - clamp(run.health / Math.max(1, maxHealth), 0, 1));
     const shift = quality === 'ANGLE' ? B.shift * (P.wearShiftMult ?? 1) : 0;
@@ -509,7 +548,7 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
 
        坑：改造 T07 把一击拆成「先破甲 → 再扣生命」后，
        `power = max(power, 1)` 不再等于击破 —— 因为它还要先交一部力给破甲。
-       实测 256 能力刀命中新鲜金属管后，进度只到 0.70，硬靶仍存活，
+       实测 256 能力刀命中新鲜金属块后，进度只到 0.70，硬靶仍存活，
        开启淬火余温也打不断（A05 回归）。
 
        最终口径：承诺性必破直接落在**进度**上，但仍照常走完整链路 ——
@@ -648,14 +687,14 @@ export function finish(run, reason='time') {
   const grade = ghost > 0
     ? (ratio >= 1.5 ? 'S' : ratio >= 1.15 ? 'A' : ratio >= 0.85 ? 'B' : 'C')
     : (run.score >= 1500 ? 'S' : run.score >= 990 ? 'A' : run.score >= 530 ? 'B' : 'C');
-  const reward=Math.max(2,Math.min(30,Math.floor(run.score/100)+(grade==='S'?5:grade==='A'?3:grade==='B'?1:0)));
+  const reward=reason==='manual'?0:Math.max(2,Math.min(30,Math.floor(run.score/100)+(grade==='S'?5:grade==='A'?3:grade==='B'?1:0)));
   run.result={grade,score:Math.floor(run.score),reward,kills:run.kills,maxCombo:run.maxCombo,maxStreak:run.maxStreak||0,bestSwipe:run.bestSwipe,
     health:Math.round(run.health),maxHealth:Math.round(run.maxHealth ?? 100),misses:run.misses||0,
     frenzy:run.frenzyCount||0,buffs:[...(run.buffs||[])],
     ghost: ghost || null, win: ghost > 0 ? run.score >= ghost : null,
     route:run.route?.name||'—',finale:run.finale?.name||'—',reason,riskStop:run.riskStop,fractured:!!run.fractured,
     mode:run.mode || 'quick',total:run.total,risk:copy(run.risk || {}),log:copy(run.log)};
-  if (run.mode !== 'formal') emit(EVENTS.QUICK_CHALLENGE_FINISHED, run);
+  if (run.mode !== 'formal' && reason !== 'manual') emit(EVENTS.QUICK_CHALLENGE_FINISHED, run);
   return run.result;
 }
 export function setPaused(run, paused) { if(!run||run.done)return false;run.paused=!!paused;return true; }

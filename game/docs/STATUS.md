@@ -62,7 +62,7 @@ S4/S5 与 P3 逐位相同，证明分支隔离干净。
 | T04 S4 风险收益 | **完成** | 门槛重标 12/30/54/82；`HAMMER_GAIN_SCALE` 逐锤成果；九方向向量；S4 HUD 展示逐锤收益/下一锤概率/收手保留 |
 | T05 S7 真实描线 | **完成** | `EDGE_SHAPES` 刀型刃线；`core/edge.js` 重写；`forge.js` 真实采样+跳过+失焦清理 |
 | T06 多项目计分 | **完成** | `core/testScoring.js`、`core/arenaFormal.js`、`data/arena/formalTests.js`、`ui/formalTestStage.js`；hub 启动走 `startFormalMatch` |
-| T07 六材料与切割手感 | **完成（规则层）** | `armor/health/damage` 三层；金属板→金属管；破甲→生命→反作用顺序 |
+| T07 六材料与切割手感 | **完成（规则层）** | `armor/health/damage` 三层；金属板→金属块；破甲→生命→反作用顺序 |
 | T08 六流派五档 | **完成** | 六流派指纹 6/6 互不相同；五档目标 84→100 递增 |
 | T09 全国赛与三刀赛 | **完成** | 三刀赛 core+UI；**全国赛已切到新链路**：`arenaFormal` 五轮多项目 + `Game.startNationalMatch/nationalStartRound/nationalSubmitRound` + `renderNationalMatch/Report`；旧 `nationalRuns` 提供退出归档路径（`progress.abandonNationalRun`） |
 | T10 任务/成就/经济 | **完成** | `core/events.js`；`archive/recordMatch/settleQuickChallenge` 同事务接入；`rolloverDaily` 不再因登录涨 streak；token 处理器补齐 |

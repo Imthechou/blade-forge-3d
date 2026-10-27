@@ -1,4 +1,6 @@
 import { MATERIALS } from '../core/arenaChallenge.js';
+import { impactMotion, targetPose } from './arenaImpact.js';
+import { drawWholeSprite, drawSplitSprite, drawShardSprite, drawFlashSprite, spriteReady } from './arenaSprites.js';
 
 const TAU = Math.PI * 2;
 const TRAIL_LIFE = 260;
@@ -7,7 +9,7 @@ const BURST_LIFE = 560;
 const DEBRIS_LIFE = 720;
 const MAX_COUNTS = { trail: 64, hitLabels: 14, bursts: 20, debris: 12 };
 const MATERIAL_NAMES = {
-  rope: '绳束', foam: '泡棉', wood: '木桩', plastic: '塑板', ice: '冰块', metal: '金属',
+  rope: '绳束', foam: '泡棉', wood: '木桩', plastic: '塑板', ice: '冰块', metal: '金属块',
 };
 const QUALITY_NAMES = { PERFECT: '完美', CLEAN: '利落', ANGLE: '弹刃', MISS: '未命中' };
 const backdropCaches = new WeakMap();
@@ -63,7 +65,8 @@ export function drawArenaStage(ctx, run, w, h, effects = {}) {
     if (!t || !t.alive) continue;
     const d = MATERIALS[t.type];
     if (!d) continue;
-    drawTarget(ctx, t, d, i, t.x * w, t.y * h, w, h, isGuideTarget(run.guide, t), now);
+    drawTarget(ctx, t, d, i, t.x * w, t.y * h, w, h, isGuideTarget(run.guide, t), now, bursts, reduced,
+      Math.max(0,(Number(run.elapsed)||0)-(Number(t.createdAt)||0)));
   }
 
   drawDebris(ctx, debris, now, w, h);
@@ -244,7 +247,8 @@ function drawRoute(ctx, run, targets, w, h) {
 function isGuideTarget(guide, t) {
   if (!guide || guide.done) return false;
   if (guide.slots?.includes(t.slot) || guide.types?.includes(t.type)) return true;
-  return !!((guide.minCombo || guide.minGestureKills) && t.alive);
+  // 连斩类目标由顶部提示/连线引导即可，给每个靶具圈巨大椭圆会遮挡材质外观。
+  return false;
 }
 
 /* ══ 靶具 ═══════════════════════════════════════════════ */
@@ -255,12 +259,24 @@ function targetMetrics(w, h, stream = false) {
   return { unit, half: unit * .5, bodyW: unit * .94, bodyH: Math.min(unit * 1.55, h * (stream ? .145 : .21)) };
 }
 
-function drawTarget(ctx, t, data, index, x, y, w, h, guided, now) {
+function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY, reduced = false, age = 1) {
   const { unit, half, bodyW, bodyH } = targetMetrics(w, h, t.layout === 'stream');
   const bodyTop = y - bodyH * .49;
   const progress = clamp(Number(t.progress) || 0, 0, 1);
 
   ctx.save();
+  // 顿帧只冻结靶具的视觉压缩/回弹，不阻塞 Canvas 输入、RAF 或45秒倒计时。
+  const impact = reduced ? null : bursts.findLast(b => b.type === t.type
+    && Math.abs(b.x-t.x)<.002 && Math.abs(b.y-t.y)<.002 && now-b.at<225);
+  const motion = impactMotion(impact,now);
+  if(motion) {
+    const angle=impact.angle||0;
+    const recoil=motion.recoil*(impact.recoilPx||0);
+    ctx.translate(x+Math.cos(angle)*recoil,y+Math.sin(angle)*recoil);
+    ctx.rotate(Math.sin(angle)*motion.compress*.055);
+    ctx.scale(1-motion.compress*.085,1+motion.compress*.045);
+    ctx.translate(-x,-y);
+  }
   // 吊挂的靶具悬在半空，画"接触阴影"会变成一团灰斑；只在旧的三靶制（立在台面上）保留
   if (t.layout !== 'stream') {
     ctx.save();
@@ -279,18 +295,37 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now) {
     ctx.beginPath(); ctx.ellipse(x, y, half * 1.06, bodyH * .65, 0, 0, TAU); ctx.fill();
   }
 
+  // Sway the prop about the hanger; keep captions/progress perfectly legible.
+  const pose=targetPose(t,now,age,reduced);
+  ctx.save();
+  ctx.translate(x+pose.x,bodyTop-hangGap(unit)+pose.y);
+  ctx.rotate(pose.angle);ctx.scale(pose.scaleX,pose.scaleY);
+  ctx.translate(-x,-bodyTop+hangGap(unit));
   drawHanger(ctx, x, bodyTop, unit);
 
-  ctx.strokeStyle = 'rgba(144,190,204,.30)'; ctx.lineWidth = 1;
-  for (const side of [-1, 1]) {
-    ctx.beginPath(); ctx.moveTo(x + side * bodyW * .58, bodyTop + bodyH * .2);
-    ctx.lineTo(x + side * bodyW * .74, bodyTop + bodyH * .2);
-    ctx.stroke();
+  // The target is now a genuine prebaked transparent WebP material sprite.
+  // Retain existing Canvas illustration ONLY if the atlas is unavailable.
+  ctx.save();
+  ctx.shadowColor='rgba(24,49,66,.16)';ctx.shadowBlur=Math.max(2,unit*.045);
+  ctx.shadowOffsetX=unit*.025;ctx.shadowOffsetY=unit*.05;
+  const textured=drawWholeSprite(ctx,t.type,x,y,bodyW,bodyH);
+  ctx.restore();
+  if (!textured) {
+    drawMaterial(ctx,t,data,x,y,bodyW,bodyH,bodyTop,unit);
+    if(t.type==='rope'||t.type==='foam') drawBundleTies(ctx,x,y,bodyW,bodyH,unit);
   }
-
-  drawMaterial(ctx, t, data, x, y, bodyW, bodyH, bodyTop, unit);
-  if (t.type === 'rope' || t.type === 'foam') drawBundleTies(ctx, x, y, bodyW, bodyH, unit);
   drawKerf(ctx, t, x, y, bodyW, bodyH, bodyTop, unit, progress);
+  if(impact && now-impact.at >= 0 && now-impact.at < (impact.flashMs||90)) {
+    const flash=1-(now-impact.at)/(impact.flashMs||90);
+    if(textured){
+      ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha*=.48*flash;
+      drawWholeSprite(ctx,t.type,x,y,bodyW,bodyH);ctx.restore();
+    }else{
+      ctx.fillStyle=`rgba(250,254,255,${.24*flash})`;
+      roundedRect(ctx,x-bodyW*.52,bodyTop,bodyW*1.04,bodyH,unit*.12);ctx.fill();
+    }
+  }
+  ctx.restore();
 
   const railW = bodyW * .88, railY = bodyTop - Math.max(9, unit * .15), railH = Math.max(3, unit * .05);
   ctx.fillStyle = 'rgba(225,239,241,.16)'; roundedRect(ctx, x - railW / 2, railY, railW, railH, railH / 2); ctx.fill();
@@ -363,9 +398,19 @@ function drawEmptySlots(ctx, run, targets, now, w, h, reduced) {
   if (!dead.length) return;
   const allDead = dead.length === targets.length;
   const { unit, bodyH } = targetMetrics(w, h, targets.some((t) => t.layout === 'stream'));
-  const wait = Math.max(0, (Number(run.nextWaveAt) || 0) - (Number(run.elapsed) || 0));
-  const span = Math.max(.8, (Number(run.nextWaveAt) || 0) - (Number(run.lastKillAt) || 0));
-  const p = clamp(1 - wait / span, 0, 1);
+  // Stream stages use nextSpawnAt, never the old three-target nextWaveAt.
+  // End-of-quota uses Number.MAX_SAFE_INTEGER; it is a sentinel, not a countdown.
+  const streamMode = run.spawnMode==='stream';
+  const nextAt=Number(streamMode ? run.nextSpawnAt : run.nextWaveAt);
+  const nowElapsed=Number(run.elapsed)||0;
+  const futureWait=nextAt-nowElapsed;
+  const quotaExhausted=streamMode&&run.encounter
+    && run.stageSpawned >= (run.encounter.stages?.[run.spawnStage]?.quota ?? Infinity);
+  const hasNext=Number.isFinite(nextAt)&&nextAt<1e6&&!quotaExhausted
+    && futureWait>=0&&futureWait<30;
+  const wait=hasNext?futureWait:0;
+  const span=Math.max(.8,nextAt-(Number(run.lastKillAt)||0));
+  const p=hasNext?clamp(1-wait/span,0,1):0;
   for (const t of dead) {
     const x = t.x * w, y = t.y * h;
     drawEmptyHanger(ctx, x, y - bodyH * .5, unit);
@@ -380,7 +425,7 @@ function drawEmptySlots(ctx, run, targets, now, w, h, reduced) {
       ctx.lineWidth = 1;
       roundedRect(ctx, x - unit * .46, y - bodyH * .5, unit * .92, bodyH, unit * .1); ctx.stroke();
     }
-    if (focus && !reduced) {
+    if (focus && !reduced && hasNext) {
       const size = Math.max(11, unit * .22);
       const breathe = .5 + .5 * Math.sin(now * .006);
       ctx.setLineDash([]);
@@ -399,60 +444,139 @@ function drawEmptySlots(ctx, run, targets, now, w, h, reduced) {
   }
 }
 
+/**
+ * 六个「综艺靶具」不是统一贴图卡片：用独立轮廓和材质来建立可辨识度。
+ * 全部为 Canvas2D 程序绘制、无额外图片和贴图请求；碎块也复用同一个形状。
+ */
 function drawMaterial(ctx, t, data, x, y, width, height, top, unit) {
-  const r = width * .5;
-  const type = t.type;
-  if (type === 'rope') {
-    const colors = COLORS.rope;
-    const strandW = width * .205;   // 股与股贴紧，才像"一捆"而不是五根铅笔
-    for (let k = 0; k < 5; k++) {
-      const sx = x - width * .43 + k * width * .215;
-      const sh = height * (.88 - (k % 2) * .06);
-      const sy = y - sh * .5 + (k % 2) * height * .035;
-      ctx.save(); roundedRect(ctx, sx - strandW * .5, sy, strandW, sh, strandW * .48); ctx.clip();
-      const g = ctx.createLinearGradient(sx - strandW / 2, 0, sx + strandW / 2, 0);
-      g.addColorStop(0, shade(colors[k], -.27)); g.addColorStop(.42, colors[k]); g.addColorStop(.56, '#f0e5c6'); g.addColorStop(.68, colors[k]); g.addColorStop(1, shade(colors[k], -.4));
-      ctx.fillStyle = g; ctx.fillRect(sx - strandW, sy, strandW * 2, sh);
-      ctx.strokeStyle = 'rgba(26,43,52,.50)'; ctx.lineWidth = Math.max(.7, unit * .015);
-      for (let yy = sy - strandW; yy < sy + sh; yy += strandW * .78) {
-        ctx.beginPath(); ctx.moveTo(sx - strandW * .7, yy); ctx.lineTo(sx + strandW * .7, yy + strandW * .9); ctx.stroke();
+  const type=t.type, left=x-width*.5;
+  ctx.save();
+  if(type==='rope') {
+    // 5股编织绳组成一束，绳股略有扭转；绑带是一个实体环。
+    for(let k=0;k<5;k++){
+      const sw=width*.22, sx=x-width*.43+k*width*.214, sy=top+height*(k%2?.055:.035), sh=height*.92;
+      ctx.save();roundedRect(ctx,sx-sw*.5,sy,sw,sh,sw*.42);ctx.clip();
+      const g=ctx.createLinearGradient(sx-sw*.5,0,sx+sw*.5,0);
+      g.addColorStop(0,'#6F593D');g.addColorStop(.25,'#D1B681');g.addColorStop(.53,'#F5E0AF');g.addColorStop(.78,'#B99A65');g.addColorStop(1,'#776048');
+      ctx.fillStyle=g;ctx.fillRect(sx-sw,sy,sw*2,sh);
+      for(let line=-3;line<sh/sw+3;line++){
+        const yy=sy+line*sw*.53;
+        ctx.lineWidth=Math.max(.8,unit*.018);ctx.strokeStyle=line%2?'rgba(77,58,39,.45)':'rgba(255,246,207,.60)';
+        ctx.beginPath();ctx.moveTo(sx-sw*.62,yy);ctx.lineTo(sx+sw*.64,yy+sw*.79);ctx.stroke();
       }
       ctx.restore();
+      ctx.strokeStyle='rgba(69,50,30,.38)';ctx.lineWidth=Math.max(.6,unit*.012);
+      roundedRect(ctx,sx-sw*.5,sy,sw,sh,sw*.42);ctx.stroke();
     }
-  } else if (type === 'foam') {
-    const colors = COLORS.foam;
-    for (let k = 0; k < 4; k++) {
-      const tubeW = width * .205;
-      const sx = x - width * .31 + k * width * .205;
-      const sy = top + height * .11;
-      const sh = height * .79;
-      ctx.save(); roundedRect(ctx, sx - tubeW / 2, sy, tubeW, sh, tubeW / 2); ctx.clip();
-      const g = ctx.createLinearGradient(sx - tubeW / 2, 0, sx + tubeW / 2, 0);
-      g.addColorStop(0, shade(colors[k], -.30)); g.addColorStop(.32, colors[k]); g.addColorStop(.65, shade(colors[k], .15)); g.addColorStop(1, shade(colors[k], -.36));
-      ctx.fillStyle = g; ctx.fillRect(sx - tubeW, sy, tubeW * 2, sh);
-      ctx.strokeStyle = 'rgba(245,255,249,.34)'; ctx.lineWidth = Math.max(1, unit * .018);
-      ctx.beginPath(); ctx.moveTo(sx - tubeW * .17, sy + tubeW * .35); ctx.lineTo(sx - tubeW * .17, sy + sh - tubeW * .4); ctx.stroke();
+  } else if(type==='foam') {
+    // 四块蜂窝EVA安全泡棉：高饱和但克制的运动道具配色，端面有细孔。
+    const tones=['#4BD7B3','#6EE4D3','#48C4CB','#75D8E4'];
+    for(let k=0;k<4;k++){
+      const sw=width*.235,sx=x-width*.35+k*width*.232,sy=top+height*.085,sh=height*.83;
+      ctx.save();roundedRect(ctx,sx-sw*.5,sy,sw,sh,sw*.25);ctx.clip();
+      const g=ctx.createLinearGradient(sx-sw*.5,0,sx+sw*.5,0);
+      g.addColorStop(0,shade(tones[k],-.34));g.addColorStop(.24,tones[k]);g.addColorStop(.63,shade(tones[k],.26));g.addColorStop(1,shade(tones[k],-.3));
+      ctx.fillStyle=g;ctx.fillRect(sx-sw,sy,sw*2,sh);
+      ctx.fillStyle='rgba(240,255,255,.34)';
+      for(let row=0;row<6;row++)for(let col=0;col<2;col++){
+        ctx.beginPath();ctx.arc(sx+sw*(col? .20:-.18),sy+sh*(.13+row*.135),Math.max(.65,unit*.008),0,TAU);ctx.fill();
+      }
       ctx.restore();
+      ctx.strokeStyle='rgba(21,105,102,.24)';ctx.lineWidth=Math.max(.7,unit*.012);
+      roundedRect(ctx,sx-sw*.5,sy,sw,sh,sw*.25);ctx.stroke();
     }
-  } else {
-    const isWood = type === 'wood', isIce = type === 'ice', isMetal = type === 'metal', isPlastic = type === 'plastic';
-    ctx.save();
-    roundedRect(ctx, x - r, top, width, height, isMetal ? 2 : width * .08); ctx.clip();
-    const baseColor = isWood ? COLORS.wood : isIce ? COLORS.ice : isMetal ? COLORS.metal : COLORS.plastic;
-    const g = ctx.createLinearGradient(x - r, 0, x + r, 0);
-    g.addColorStop(0, shade(baseColor, -.40)); g.addColorStop(.22, baseColor); g.addColorStop(.52, shade(baseColor, .18)); g.addColorStop(.78, baseColor); g.addColorStop(1, shade(baseColor, -.38));
-    ctx.fillStyle = g; ctx.fillRect(x - r, top, width, height);
-    if (isWood) drawWoodGrain(ctx, x, y, width, height, unit);
-    else if (isPlastic) drawPlasticTexture(ctx, x, y, width, height, unit);
-    else if (isIce) drawIceFaces(ctx, x, y, width, height, unit);
-    else drawMetalLayers(ctx, x, y, width, height, unit, t.layer);
+  } else if(type==='wood') {
+    // 圆木柱：明显的上端年轮、侧面树皮与裂纹，不再是木纹方砖。
+    const g=ctx.createLinearGradient(left,0,left+width,0);
+    g.addColorStop(0,'#523728');g.addColorStop(.19,'#966541');g.addColorStop(.45,'#BC8654');g.addColorStop(.73,'#97633D');g.addColorStop(1,'#553B2B');
+    ctx.fillStyle=g;roundedRect(ctx,left,top+height*.045,width,height*.91,width*.16);ctx.fill();
+    ctx.save();roundedRect(ctx,left,top+height*.045,width,height*.91,width*.16);ctx.clip();
+    drawWoodGrain(ctx,x,y,width,height,unit);
     ctx.restore();
-    ctx.strokeStyle = isIce ? 'rgba(223,252,255,.76)' : 'rgba(237,248,250,.44)';
-    ctx.lineWidth = Math.max(1, unit * .018);
-    roundedRect(ctx, x - r, top, width, height, isMetal ? 2 : width * .08); ctx.stroke();
+    ctx.fillStyle='#D8A770';ctx.beginPath();ctx.ellipse(x,top+height*.09,width*.47,height*.075,0,0,TAU);ctx.fill();
+    ctx.strokeStyle='#95633B';ctx.lineWidth=Math.max(.8,unit*.014);
+    for(let ring=.23;ring<.9;ring+=.22){
+      ctx.beginPath();ctx.ellipse(x,top+height*.09,width*.47*ring,height*.075*ring,-.08,0,TAU);ctx.stroke();
+    }
+    ctx.strokeStyle='rgba(53,35,22,.45)';ctx.lineWidth=Math.max(1,unit*.024);
+    ctx.beginPath();ctx.moveTo(x+width*.16,top+height*.14);ctx.lineTo(x+width*.23,top+height*.88);ctx.stroke();
+  } else if(type==='plastic') {
+    // 工业工程塑料：厚边框+细密加强肋+四个紧固点，呈刚性板而非发灰方块。
+    const g=ctx.createLinearGradient(left,0,left+width,0);
+    g.addColorStop(0,'#567886');g.addColorStop(.15,'#B6D2DA');g.addColorStop(.48,'#EDF6F7');g.addColorStop(.82,'#A0C1CB');g.addColorStop(1,'#52717D');
+    ctx.fillStyle=g;roundedRect(ctx,left,top,width,height,unit*.065);ctx.fill();
+    ctx.fillStyle='rgba(38,85,102,.15)';roundedRect(ctx,left+width*.07,top+height*.065,width*.86,height*.87,unit*.035);ctx.fill();
+    ctx.save();roundedRect(ctx,left+width*.12,top+height*.08,width*.76,height*.83,unit*.025);ctx.clip();
+    drawPlasticTexture(ctx,x,y,width,height,unit);
+    for(let i=0;i<5;i++){
+      const xx=left+width*(.18+i*.16);
+      ctx.strokeStyle=i%2?'rgba(255,255,255,.44)':'rgba(44,85,107,.21)';
+      ctx.lineWidth=Math.max(1,unit*.026);
+      ctx.beginPath();ctx.moveTo(xx,top+height*.08);ctx.lineTo(xx,top+height*.92);ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle='#3B6271';ctx.strokeStyle='rgba(246,255,255,.72)';
+    for(const dx of [.14,.86])for(const dy of [.115,.885]){
+      ctx.beginPath();ctx.arc(left+width*dx,top+height*dy,Math.max(1.3,unit*.027),0,TAU);ctx.fill();ctx.stroke();
+    }
+  } else if(type==='ice') {
+    // 多面体透明冰块：深蓝折射边界、内部雪晶与白亮碎面，保持半透明。
+    ctx.beginPath();ctx.moveTo(left+width*.10,top+height*.035);ctx.lineTo(left+width*.85,top);
+    ctx.lineTo(left+width,top+height*.15);ctx.lineTo(left+width*.91,top+height*.9);
+    ctx.lineTo(left+width*.73,top+height);ctx.lineTo(left+width*.06,top+height*.9);
+    ctx.lineTo(left,top+height*.18);ctx.closePath();
+    const g=ctx.createLinearGradient(left,top,left+width,top+height);
+    g.addColorStop(0,'#CFFAFF');g.addColorStop(.25,'#80DDEC');g.addColorStop(.60,'#BEEBF8');g.addColorStop(1,'#3C9EBF');
+    ctx.fillStyle=g;ctx.fill();
+    ctx.save();ctx.clip();drawIceFaces(ctx,x,y,width,height,unit);
+    ctx.strokeStyle='rgba(255,255,255,.65)';ctx.lineWidth=Math.max(1.1,unit*.019);
+    ctx.beginPath();ctx.moveTo(left+width*.1,top+height*.1);ctx.lineTo(left+width*.48,top+height*.28);
+    ctx.lineTo(left+width*.94,top+height*.08);ctx.moveTo(left+width*.48,top+height*.28);
+    ctx.lineTo(left+width*.62,top+height*.95);ctx.stroke();ctx.restore();
+    ctx.lineWidth=Math.max(1.1,unit*.023);ctx.strokeStyle='#5EAFC4';ctx.stroke();
+    ctx.strokeStyle='rgba(252,255,255,.96)';ctx.lineWidth=Math.max(1,unit*.035);
+    ctx.beginPath();ctx.moveTo(left+width*.08,top+height*.48);ctx.lineTo(left+width*.1,top+height*.08);
+    ctx.lineTo(left+width*.51,top+height*.05);ctx.stroke();
+  } else if(type==='metal') {
+    // Downgrade-only Canvas backup matches the new SOLID steel block silhouette.
+    // Never draw a pipe opening or hollow wall if the WebP atlas is unavailable.
+    const front=[x-width*.18,top+height*.2,x+width*.48,top+height*.09,
+      x+width*.48,top+height*.87,x-width*.18,top+height];
+    const face=ctx.createLinearGradient(left,top,left+width,top+height);
+    face.addColorStop(0,'#8c9eae');face.addColorStop(.35,'#e3eff5');
+    face.addColorStop(.63,'#8b9da9');face.addColorStop(1,'#4e6577');
+    ctx.fillStyle='#53697c';
+    ctx.beginPath();ctx.moveTo(left,top+height*.15);
+    ctx.lineTo(x-width*.18,top+height*.2);ctx.lineTo(x-width*.18,top+height);
+    ctx.lineTo(left,top+height*.83);ctx.closePath();ctx.fill();
+    ctx.fillStyle=face;
+    ctx.beginPath();ctx.moveTo(x-width*.18,top+height*.2);
+    ctx.lineTo(x+width*.48,top+height*.09);
+    ctx.lineTo(x+width*.48,top+height*.87);
+    ctx.lineTo(x-width*.18,top+height);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#d5e2eb';
+    ctx.beginPath();ctx.moveTo(left,top+height*.15);
+    ctx.lineTo(x+width*.17,top+height*.03);
+    ctx.lineTo(x+width*.48,top+height*.09);
+    ctx.lineTo(x-width*.18,top+height*.2);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(248,253,255,.82)';ctx.lineWidth=Math.max(1.0,unit*.025);
+    ctx.beginPath();ctx.moveTo(x-width*.18,top+height*.2);
+    ctx.lineTo(x+width*.48,top+height*.09);
+    ctx.lineTo(x+width*.48,top+height*.87);ctx.stroke();
+    // Fine directional brushed steel grain with no hollow opening.
+    ctx.save();ctx.beginPath();ctx.moveTo(x-width*.18,top+height*.2);
+    ctx.lineTo(x+width*.48,top+height*.09);ctx.lineTo(x+width*.48,top+height*.87);
+    ctx.lineTo(x-width*.18,top+height);ctx.closePath();ctx.clip();
+    for(let n=0;n<18;n++){
+      const yy=top+height*(.17+n*.041);
+      ctx.strokeStyle=n%3?'rgba(25,44,66,.07)':'rgba(247,253,255,.28)';
+      ctx.lineWidth=.65;ctx.beginPath();ctx.moveTo(left,yy+height*.11);
+      ctx.lineTo(x+width*.54,yy);ctx.stroke();
+    }
+    ctx.restore();
   }
+  ctx.restore();
 }
-
 /** 捆扎带：两道深色绳 + 结。绳束/泡棉靠它读作"一捆"。 */
 function drawBundleTies(ctx, x, y, width, height, unit) {
   const bandW = Math.max(1.3, height * .030);
@@ -667,9 +791,9 @@ function directionHint(angle) {
  */
 function drawDebris(ctx, debris, now, w, h) {
   if (!debris.length) return;
-  const { unit, bodyW, bodyH } = targetMetrics(w, h);
   for (let i = 0; i < debris.length; i++) {
     const d = debris[i];
+    const { unit, bodyW, bodyH } = targetMetrics(w, h, d.layout === 'stream');
     const age = now - d.at;
     if (age < 0 || age > DEBRIS_LIFE) continue;
     const p = age / DEBRIS_LIFE;
@@ -679,8 +803,9 @@ function drawDebris(ctx, debris, now, w, h) {
     const nx = -dy, ny = dx;
     const cx = d.x * w, cy = d.y * h;
     const sep = (4 + p * unit * .34) * (1 - p * .25);
-    const fall = p * p * bodyH * .5;
-    const spin = p * .3;
+    const heaviness = d.type==='metal'?1.5:d.type==='ice'?1.15:d.type==='wood'?1:d.type==='foam'?.55:.7;
+    const fall = p * p * bodyH * .52 * heaviness;
+    const spin = p * (d.type==='metal'?.13:d.type==='foam'?.43:.28);
     const core = CORE_COLORS[d.type] || 'rgba(240,240,230,.8)';
     const BIG = Math.max(bodyW, bodyH) * 1.4;
     ctx.save();
@@ -697,21 +822,25 @@ function drawDebris(ctx, debris, now, w, h) {
         ctx.translate(cx + nx * sep * side, cy + ny * sep * side + fall);
         ctx.rotate(spin * side);
       }
-      ctx.beginPath();
-      ctx.moveTo(-dx * BIG, -dy * BIG);
-      ctx.lineTo(dx * BIG, dy * BIG);
-      ctx.lineTo(dx * BIG + nx * BIG * side, dy * BIG + ny * BIG * side);
-      ctx.lineTo(-dx * BIG + nx * BIG * side, -dy * BIG + ny * BIG * side);
-      ctx.closePath();
-      ctx.clip();
-      drawDebrisBody(ctx, d.type, bodyW, bodyH, unit);
-      // 断口：沿切口那条线给一条暖白高光，碎块才有"刚被切开"的味道。
-      ctx.strokeStyle = core;
-      ctx.lineWidth = Math.max(1.2, unit * .026);
-      ctx.beginPath();
-      ctx.moveTo(-dx * bodyH * .55, -dy * bodyH * .55);
-      ctx.lineTo(dx * bodyH * .55, dy * bodyH * .55);
-      ctx.stroke();
+      // Two purpose-built textured halves with material-specific exposed cut edges.
+      // The sprite's baseline fracture is ~11.3 degrees; reorient to the player's actual slash.
+      if (spriteReady()) {
+        // Clip the actual material at the slash angle. The intact prop's
+        // orientation is preserved instead of rotating the entire log/plate.
+        drawSplitSprite(ctx,d.type,side,bodyW,bodyH,angle);
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(-dx * BIG, -dy * BIG);
+        ctx.lineTo(dx * BIG, dy * BIG);
+        ctx.lineTo(dx * BIG + nx * BIG * side, dy * BIG + ny * BIG * side);
+        ctx.lineTo(-dx * BIG + nx * BIG * side, -dy * BIG + ny * BIG * side);
+        ctx.closePath();ctx.clip();
+        drawDebrisBody(ctx,d.type,bodyW,bodyH,unit);
+        ctx.strokeStyle=core;
+        ctx.lineWidth=Math.max(1.2,unit*.026);
+        ctx.beginPath();ctx.moveTo(-dx*bodyH*.55,-dy*bodyH*.55);
+        ctx.lineTo(dx*bodyH*.55,dy*bodyH*.55);ctx.stroke();
+      }
       ctx.restore();
     }
     ctx.restore();
@@ -720,39 +849,8 @@ function drawDebris(ctx, debris, now, w, h) {
 
 /** 断块本体（以自身中心为原点）：按材质保留最后的可辨识轮廓。 */
 function drawDebrisBody(ctx, type, width, height, unit) {
-  const halfH = height * .5;
-  if (type === 'rope' || type === 'foam') {
-    const n = type === 'rope' ? 5 : 4;
-    const colors = COLORS[type];
-    const barW = width * (type === 'rope' ? .135 : .17);
-    const span = type === 'rope' ? width * .86 : width * .62;
-    const step = n > 1 ? (span - barW) / (n - 1) : 0;
-    const inset = type === 'foam' ? height * .105 : 0;
-    for (let k = 0; k < n; k++) {
-      const bx = -span / 2 + barW * .5 + k * step;
-      const g = ctx.createLinearGradient(bx - barW * .5, 0, bx + barW * .5, 0);
-      g.addColorStop(0, shade(colors[k], -.32));
-      g.addColorStop(.42, colors[k]);
-      g.addColorStop(.62, shade(colors[k], .14));
-      g.addColorStop(1, shade(colors[k], -.38));
-      ctx.fillStyle = g;
-      roundedRect(ctx, bx - barW * .5, -halfH + inset, barW, height - inset * 2, barW * .45);
-      ctx.fill();
-    }
-    return;
-  }
-  const baseColor = type === 'wood' ? COLORS.wood : type === 'ice' ? COLORS.ice : type === 'metal' ? COLORS.metal : COLORS.plastic;
-  const g = ctx.createLinearGradient(-width * .5, 0, width * .5, 0);
-  g.addColorStop(0, shade(baseColor, -.36));
-  g.addColorStop(.5, shade(baseColor, .1));
-  g.addColorStop(1, shade(baseColor, -.3));
-  ctx.fillStyle = g;
-  roundedRect(ctx, -width * .5, -halfH, width, height, type === 'metal' ? 2 : width * .07);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(240,250,255,.22)';
-  ctx.lineWidth = Math.max(.8, unit * .012);
-  roundedRect(ctx, -width * .5, -halfH, width, height, type === 'metal' ? 2 : width * .07);
-  ctx.stroke();
+  drawMaterial(ctx, { type, layer:1 }, MATERIALS[type]||{}, 0,0,width,height,-height*.5,unit);
+  if(type==='rope'||type==='foam')drawBundleTies(ctx,0,0,width,height,unit);
 }
 
 /* ══ 刀光 / 火花 / 文字 ═════════════════════════════════ */
@@ -789,51 +887,71 @@ function drawTrail(ctx, trail, now, w, h, reduced) {
   ctx.restore();
 }
 
+/**
+ * 六层手感的可视化：轻靶闪/碎屑快，硬靶闪白→定格压缩→法线击退；
+ * 物理的切断次数仍完全由 core 判定。
+ */
 function drawBursts(ctx, bursts, now, w, h, reduced) {
-  for (let i = 0; i < bursts.length; i++) {
-    const b = bursts[i];
-    const age = now - b.at;
-    if (age < 0 || age > BURST_LIFE) continue;
-    const p = age / BURST_LIFE, alpha = (1 - p) * (b.complete ? 1 : .6);
-    const x = b.x * w, y = b.y * h;
-    const color = burstColor(b);
+  for(const b of bursts) {
+    const age=now-b.at;
+    if(age<0 || age>BURST_LIFE)continue;
+    const power=Math.max(0,1-age/BURST_LIFE);
+    const x=b.x*w,y=b.y*h,angle=Number.isFinite(b.angle)?b.angle:0;
+    const nx=-Math.sin(angle),ny=Math.cos(angle);
+    const hard=Number(b.weight)||.3;
+    const color=burstColor(b);
     ctx.save();
-    ctx.globalAlpha = alpha;
-
-    // 命中闪光：只在前 110ms，硬靶更大更亮。
-    if (b.complete && age < 110) {
-      const f = 1 - age / 110;
-      const hard = b.type === 'metal' || b.type === 'ice' ? 1.5 : 1;
-      const rr = (reduced ? 10 : 22) * hard;
-      const flash = ctx.createRadialGradient(x, y, 0, x, y, rr);
-      const warm = b.quality === 'PERFECT';
-      flash.addColorStop(0, warm ? `rgba(167,123,56,${.34 * f})` : `rgba(34,122,135,${.30 * f})`);
-      flash.addColorStop(.45, warm ? `rgba(167,123,56,${.14 * f})` : `rgba(34,122,135,${.12 * f})`);
-      flash.addColorStop(1, warm ? 'rgba(167,123,56,0)' : 'rgba(34,122,135,0)');
-      ctx.fillStyle = flash;
-      ctx.beginPath(); ctx.arc(x, y, rr, 0, TAU); ctx.fill();
+    // 非命中也有反馈：护甲阻滞/弹刃偏冷白，击破在中心短闪，快速衰减。
+    if(age<(b.flashMs||90)) {
+      const f=1-age/(b.flashMs||90);
+      // Generated per-material 2.5D impact texture, on top of short low-cost light pulse.
+      if(!reduced)drawFlashSprite(ctx,b.type,x,y,72+hard*75,f*.58,angle);
+      const r=(reduced?9:12+hard*20)*(1-f*.15);
+      const gradient=ctx.createRadialGradient(x,y,0,x,y,r);
+      gradient.addColorStop(0,`rgba(255,255,255,${(.75+hard*.15)*f})`);
+      gradient.addColorStop(.35,`rgba(214,244,251,${.30*f})`);
+      gradient.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();
     }
-
-    const radius = (reduced ? 4 : 8) + p * (reduced ? 3 : 16);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = b.complete ? 1.6 : 1.1;
-    ctx.beginPath(); ctx.arc(x, y, radius, 0, TAU); ctx.stroke();
-
-    if (!reduced) {
-      const pieces = b.complete ? 8 : 4;
-      const angle = Number.isFinite(b.angle) ? b.angle : 0;
-      for (let k = 0; k < pieces; k++) {
-        const a = angle + k * TAU / pieces + .37;
-        const r0 = radius * .45 + p * 6;
-        const r1 = radius + p * 14 + 4 + Math.sin(k * 2.3) * 5;
-        ctx.lineWidth = k % 2 ? 1 : 1.4;
-        ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); ctx.stroke();
+    // 从切口法线向外扩张，不再所有材料画一个同款圆。
+    const ringAge=clamp(age/(reduced?155:235),0,1);
+    ctx.globalAlpha=(1-ringAge)*(.25+.46*hard);
+    ctx.strokeStyle=color;ctx.lineWidth=1+hard;
+    ctx.beginPath();ctx.ellipse(x,y,(8+ringAge*(12+hard*17)),
+      (3+ringAge*(7+hard*8)),angle,0,TAU);ctx.stroke();
+    if(!reduced) {
+      const count=Math.max(2,Math.min(16,Number(b.particleCount)||4));
+      for(let k=0;k<count;k++){
+        // 每个碎片确定性，避免每帧重新掷随机导致闪烁/乱跳。
+        const sign=k%2?1:-1;
+        const spread=(k/count-.5)*1.35;
+        const dir=angle+Math.PI*.5*sign+spread;
+        const speed=hard> .5 ? 28+hard*49 : 19+hard*28;
+        const travel=(age/1000)*speed*1.9;
+        const px=x+Math.cos(dir)*travel+nx*sign*3;
+        const py=y+Math.sin(dir)*travel+Math.min(28,(age/420)**2*16);
+        const fade=clamp(1-age/(220+hard*250),0,1);
+        if(fade<=0)continue;
+        ctx.globalAlpha=fade*.86;
+        ctx.fillStyle=b.type==='wood'?'#B7824E':b.type==='ice'?'#E8FDFF'
+          :b.type==='metal'?'#F9D59D':b.type==='rope'?'#CDA66C'
+          :b.type==='foam'?'#68D8CC':'#A8CFDC';
+        if(drawShardSprite(ctx,b.type,k,px,py,(b.type==='foam'?11:13)+hard*12,dir)) {
+          continue; // material-specific WebP debris sprite, not a generic drawn polygon
+        }
+        if(b.type==='ice'||b.type==='wood'||b.type==='plastic'){
+          const size=b.type==='ice'?3.4:b.type==='wood'?3:2.6;
+          ctx.beginPath();ctx.moveTo(px,py-size);ctx.lineTo(px+size,py+size*.6);
+          ctx.lineTo(px-size*.6,py+size);ctx.closePath();ctx.fill();
+        } else if(b.type==='metal') {
+          ctx.strokeStyle='#E9AE64';ctx.lineWidth=1.4;ctx.beginPath();
+          ctx.moveTo(px,py);ctx.lineTo(px+Math.cos(dir)*(4+hard*5),py+Math.sin(dir)*(4+hard*5));ctx.stroke();
+        } else {
+          ctx.beginPath();ctx.arc(px,py,b.type==='foam'?1.7:1.05,0,TAU);ctx.fill();
+        }
       }
     }
-    if (b.objective) {
-      ctx.strokeStyle = 'rgba(128,236,222,.9)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, y, radius + 5, 0, TAU); ctx.stroke();
-    }
+    if(b.objective){ctx.globalAlpha=power*.7;ctx.strokeStyle='#4CC7B0';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(x,y,16+age*.045,0,TAU);ctx.stroke();}
     ctx.restore();
   }
 }
@@ -873,7 +991,11 @@ function drawComboBanner(ctx, run, w, h, reduced) {
 
 /** 得分贴命中点上方；未命中贴边、缩小、更快淡出 —— 两者不再互相压住。 */
 function drawLabels(ctx, labels, now, w, h, reduced) {
-  const scored = labels.filter((l) => l.quality !== 'MISS');
+  // 每个目标的连续补刀只显示最新一次，避免三排密集出场时数字叠成一大片。
+  const recent=new Map();
+  for(const label of labels)if(label.quality!=='MISS')
+    recent.set(`${Math.round(label.x*100)}:${Math.round(label.y*100)}`,label);
+  const scored=[...recent.values()];
   const missed = labels.filter((l) => l.quality === 'MISS');
   ctx.save();
   ctx.textAlign = 'center';
@@ -885,37 +1007,38 @@ function drawLabels(ctx, labels, now, w, h, reduced) {
     const p = age / LABEL_LIFE;
     const lane = Number(hit.slot) || 0;
     const x = clamp(hit.x * w, Math.min(w * .18, 68), w - Math.min(w * .18, 68));
-    // 同一批击杀会同时出现，按顺序错开 22px，避免三个数字糊成一团
-    const stagger = (i % 3) * 22;
-    const y = hit.y * h - (reduced ? 54 : 54 + age * .028) - lane * 3 - stagger;
+    // 标签只在所属靶具正上方小范围浮动，避免跨列/跨排遮住材料细节。
+    const y = hit.y * h - (reduced ? 47 : 47 + age * .023) - lane * 2;
     const color = hit.quality === 'PERFECT' ? '#8C6D14' : hit.objective ? '#195B65' : '#17344B';
     ctx.globalAlpha = 1 - p * p;
-    ctx.font = `800 ${clamp(w * .052, 16, 22)}px system-ui, sans-serif`;
+    ctx.font = hit.complete
+      ? `800 ${clamp(w * .048, 16, 19)}px system-ui, sans-serif`
+      : `750 ${clamp(w * .034, 12, 14)}px system-ui, sans-serif`;
     /* ★ rework T07：按**接触结果类型**给不同主文案。
        改造前只有“切入/弹刃/补刀”三种词，无法区分
        “破甲成功”与“强度不足根本打不动”。 */
     const ev = hit.contactEvent;
     const mainText = hit.complete
       ? `+${Math.round(Number(hit.points) || 0)}`
-      : ev === 'armor' ? `破甲! ${Math.round((hit.progress || 0) * 100)}%`
-      : ev === 'blocked' ? `强度不足 ${Math.round((hit.progress || 0) * 100)}%`
-      : ev === 'deflect' ? `弹刀 ${Math.round((hit.progress || 0) * 100)}%`
+      : ev === 'armor' ? `破甲 ${Math.round((hit.progress || 0) * 100)}%`
+      : ev === 'blocked' ? `受阻 ${Math.round((hit.progress || 0) * 100)}%`
+      : ev === 'deflect' ? `弹刃 ${Math.round((hit.progress || 0) * 100)}%`
       : `${hit.followup ? '补刀' : '切入'} ${Math.round((hit.progress || 0) * 100)}%`;
     ctx.fillStyle = color;
-    ctx.fillText(mainText, x, y);
-    ctx.font = `650 ${clamp(w * .029, 10, 13)}px system-ui, sans-serif`;
+    ctx.fillText(mainText, x, y, w * .28);
+    ctx.font = `650 ${clamp(w * .026, 9, 11)}px system-ui, sans-serif`;
     let detail = QUALITY_NAMES[hit.quality] || '';
     if (hit.complete && hit.combo > 1) detail += `${detail ? ' · ' : ''}连斩 ×${hit.combo}`;
     if (hit.objective) detail += `${detail ? ' · ' : ''}目标 +${hit.objective}`;
     /* 未击破时：先按接触类型说清楚“为什么没切开”，再给方向提示 */
     else if (!hit.complete) {
-      if (ev === 'armor') detail = `护甲已破 · 继续切`;
-      else if (ev === 'blocked') detail = `护甲还在 · 换更硬的刀或加攻略`;
-      else if (ev === 'deflect') detail = `角度偏了 · 刀身反感伤`;
+      if (ev === 'armor') detail = `已破甲 · 补刀`;
+      else if (ev === 'blocked') detail = `未破甲 · 调整刀路`;
+      else if (ev === 'deflect') detail = `角度偏离 · 注意刀损`;
       else detail = `沿刀痕继续切`;
       detail += ` ${directionHint(hit.angle)}`;
     }
-    if (detail) { ctx.fillStyle = 'rgba(56,84,105,.92)'; ctx.fillText(detail, x, y + 18); }
+    if (detail) { ctx.fillStyle = 'rgba(56,84,105,.92)'; ctx.fillText(detail, x, y + 15, w * .31); }
   }
   ctx.globalAlpha = 1;
   for (let i = 0; i < missed.length; i++) {
@@ -943,20 +1066,18 @@ function drawPointer(ctx, pointer, w, h, reduced) {
 }
 
 /** 震屏：只取最近三次爆发里 130ms 内的，幅度 ≤ 2.6px，硬靶更明显。 */
+/** 有方向、强度受限、100ms内归零；不做持续噪声震屏。 */
 function shakeOffset(bursts, now) {
-  let x = 0, y = 0;
-  for (let i = bursts.length - 1; i >= 0 && i >= bursts.length - 3; i--) {
-    const b = bursts[i];
-    if (!b.complete) continue;
-    const age = now - b.at;
-    if (!(age >= 0) || age > 130) continue;
-    const f = 1 - age / 130;
-    const hard = b.type === 'metal' ? 1 : b.type === 'ice' ? .8 : b.type === 'wood' ? .6 : .35;
-    const a = b.angle || 0;
-    x += Math.cos(a + 1.57) * 2.6 * f * hard * (i % 2 ? 1 : -1);
-    y += Math.sin(a + 1.57) * 1.6 * f * hard;
+  let x=0,y=0;
+  for(let i=bursts.length-1;i>=Math.max(0,bursts.length-3);i--) {
+    const b=bursts[i],age=now-b.at;
+    if(age<0||age>115||!(b.shakePx>0))continue;
+    const fade=(1-age/115)**2;
+    const angle=b.angle||0,sign=i%2?1:-1;
+    x+=Math.cos(angle+Math.PI/2)*b.shakePx*fade*sign;
+    y+=Math.sin(angle+Math.PI/2)*b.shakePx*fade*sign;
   }
-  return { x, y };
+  return{x:clamp(x,-3.4,3.4),y:clamp(y,-3.4,3.4)};
 }
 
 /* ══ 工具 ═══════════════════════════════════════════════ */
