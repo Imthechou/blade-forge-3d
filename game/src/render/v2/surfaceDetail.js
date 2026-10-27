@@ -56,6 +56,19 @@ export function buildNormalFragment() {
     hMain += k3dPat[8] * step( 0.001, uCardFx[8].y ); slotCount += step( 0.001, uCardFx[8].y );
     /* 归一：除以参与槽数，避免后期阶段因为槽多而变成一团噪点 */
     hMain = ( slotCount > 0.5001 ) ? hMain / slotCount : 0.5;
+    /* Keep S3 forged relief visible after other stages are added.
+       Previously an unweighted average of S1..S9 motifs diluted the
+       actual selected S3 texture in the physical normal field. The
+       already-sampled S3 height is reused; no extra texture fetch. */
+    if ( uS3On > 0.5 ) {
+      /* Formed unquenched steel may show stronger forge relief; after S5
+         heat treatment, retain only a subtle imprinted normal. Keep
+         both weights below the old 2026-10-24 gritty-fabric threshold. */
+      float quenched = step( 0.001, uCardFx[4].y );
+      float patternWeight = mix( 0.05, 0.10, step( uV2Preserve, 0.5 ) )
+                          * mix( 1.0, 0.35, quenched );
+      hMain = mix( hMain, clamp( k3dPatX, 0.0, 1.0 ), patternWeight );
+    }
 
     /* 方向性微脊（各向异性）。
 

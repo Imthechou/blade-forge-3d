@@ -1,0 +1,47 @@
+name: S3/S5 visual quality A-B (real Chrome)
+on:
+  push:
+    branches: [feat/s3-grain-s5-metal-finish-20261027]
+    paths:
+      - 'game/src/render/v2/programFamilies.js'
+      - 'game/src/render/v2/surfaceDetail.js'
+      - 'game/src/render/legacy/skin/shader/bladeSkinShader.js'
+      - 'tools/s3-s5-before-after-20261027.mjs'
+      - '.github/workflows/s3-s5-quality.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install playwright and CJK fonts
+        run: |
+          cd game && npm install --no-save --package-lock=false playwright pngjs
+          sudo timeout 32s apt-get install -y fonts-noto-cjk || true
+      - name: Core regression suite
+        working-directory: game
+        run: npm test
+      - name: Local source server
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > server.log 2>&1 &
+          sleep 2
+      - name: Capture baseline and candidate, S3 cards/S4/S5 exemplar finishes
+        working-directory: game
+        run: |
+          cp ../tools/s3-s5-before-after-20261027.mjs tools/s3-s5-before-after-20261027.mjs
+          node tools/s3-s5-before-after-20261027.mjs
+      - name: Save actual screenshots and metadata
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s3-s5-before-after
+          path: |
+            game/s3-s5-review/
+            server.log
+          retention-days: 14

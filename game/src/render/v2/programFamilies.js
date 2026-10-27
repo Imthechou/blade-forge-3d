@@ -40,7 +40,7 @@ let sourceCache = null;
    版本号进 three 的 program cache key（customProgramCacheKey），源码变了必须跟着变，
    否则同会话里可能命中上一版的 program。 */
 /* v5：补回 temper / tune / edgeGlow 三个叠加层（见下方调用点注释），改源码必须 bump */
-export const FAMILY_VERSION = 'bladeV2:54';
+export const FAMILY_VERSION = 'bladeV2:55';
 
 /** 刀身上真正会用到阶段效果函数的阶段（S8 只作用于柄，不在其中）。 */
 export const STAGE_FX = [1, 2, 3, 4, 5, 6, 7, 9];
@@ -218,7 +218,10 @@ void k3dV2Stage( vec4 fx, vec4 cfg, vec3 stageTint, float pat, vec2 p, float fre
   /* 克制着色：只做"倾向色 + 轻微明暗"，不把底材换成卡的色相。
      早期版本用 mix(col, col*0.80 + accent*0.42, …)，多个阶段叠加后整刀变粉、
      S1 金属底色被吃掉（违反继承合同）。这里改成乘性 + 小量加色。 */
-  float wa = w * cfg.x;
+  /* When S5 has a dedicated color/patina recipe, do not overlay a
+     second rank-based hue. Roughness and motif remain stage-owned. */
+  float dedicatedFinish = ( uV2Mode > 0.5 && cfg.z > 1.5 && cfg.z < 2.5 && cfg.x > 0.35 ) ? 0.10 : 1.0;
+  float wa = w * cfg.x * dedicatedFinish;
   /* 刃侧带（S5 / S7）承担"逐卡色相"：旧实现靠一条 mix(color, color*0.64+accent*0.60, heat*…)
      给出每张淬火卡的颜色身份。这里同样只在**带内**着色（乘以 m），带外保持底材。
      ⚠ 本段在 JS 模板字符串里：注释中不能出现反引号。
@@ -321,7 +324,7 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
       /* 只有"材质自渐变"（S5_23）走这条按实测分布的重映射：
          aBladeT 绝大多数顶点落在 0~0.45，按 0~1 铺只会用到调色板前 30%。
          其它卡的 mode 3 保持原式 —— 否则 05/11 这类会跟着变（用户已指出）。 */
-      if ( uV2FadeMode > 0.5 ) {
+      if ( uV2FadeMode > 0.5 || uS5Tier > 1.5 ) {
         /* 实测：aRegion=1（刀身）的顶点 aBladeT 从 **0.40** 起，到 0.98；
            按 0~1 铺只用到调色板末段（读成一片奶金）。这里把刀身的真实区间铺满 0~1。 */
         ramp = clamp( ( tAxis - 0.40 ) / 0.58 + fres * 0.05, 0.0, 1.0 );
@@ -391,11 +394,14 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
        实测 aRegion=1 对应刀身（高 aBladeT）、=0 对应刀柄（低 aBladeT）。
        所以直接乘刀身权重 wB 就是"只染刀身"。只对 fadeMode（S5_23）生效。 */
     float bladeOnly = mix( 1.0, clamp( wBlade, 0.0, 1.0 ), step( 0.5, uV2FadeMode ) );
-    col = mix( col, rampCol, wRamp * bladeOnly );
+    col = mix( col, rampCol, wRamp * bladeOnly * 0.90 );
     /* 视角虹彩：斜看时色环前进；只加一点，避免把金属洗成自发光 */
     float fwR = pow( clamp( fres, 0.0, 1.0 ), max( 0.8, C.x ) );
     col += rampCol * fwR * wRamp * 0.22;
-    rough = mix( rough, rough * 0.78, wRamp * 0.65 );
+    /* Avoid perfectly flat clear-coat roughness: the pre-existing S3
+       microstructure should remain visible through metallic reflection. */
+    rough = mix( rough, clamp( rough * 0.76 + abs( pat.y ) * 0.035, 0.025, 0.94 ),
+                 wRamp * 0.65 );
   }
 
   /* ⑤ 薄膜：视角相关色散 + 一点点加光（克制上限 0.35） */
@@ -551,7 +557,11 @@ const MAP_FRAGMENT = `
     float s3Surface = ( uS3On > 0.5 ) ? k3dS3SurfaceMask( wB ) : 1.0;
     k3dPatX = p; k3dS3Surf = s3Surface;
     float sig = clamp( pat.y * 1.1111, -1.0, 1.0 );
-    float amp = clamp( ( 0.34 + 0.66 * texC ) * ( uS3Alpha / 0.60 ), 0.0, 1.30 ) * 0.38;
+    /* S3 is a forged surface, not a color overlay. On a formed knife,
+       the same card's existing grayscale engraving reads more clearly;
+       the molten/billet stages retain their subtle process texture. */
+    float amp = clamp( ( 0.34 + 0.66 * texC ) * ( uS3Alpha / 0.60 ), 0.0, 1.30 )
+              * mix( 0.38, 0.53, step( uV2Preserve, 0.5 ) );
     float textureMix = ( uS3On > 0.5 ) ? clamp( uSkinTexStrength, 0.0, 1.0 ) * s3Surface : 0.0;
     vec3 col = uBladeBaseColor * mix( 1.0, 1.0 + amp * sig, textureMix );
     vec3 identityCol = col;
@@ -571,7 +581,10 @@ const MAP_FRAGMENT = `
     /* 沿轴参数：只对"材质自渐变"（S5_23，uV2FadeMode）用真实的 aBladeT（L.x）；
        其它卡保持原来的 vBladeT —— 否则 05/11 这类它们自己的工艺色带会跟着变
        （用户已指出"11 和 05 一模一样了"，实测它们色差从 Δ7 被压到 Δ3）。 */
-    float tAxisUse = ( uV2FadeMode > 0.5 ) ? L.x : vBladeT;
+    /* Premium longitudinal fades need the real, per-vertex blade axis.
+       Basic finishes retain their legacy art-directed soft color bands. */
+    float tAxisUse = ( uV2FadeMode > 0.5 || ( uV2Mode > 2.5 && uS5Tier > 1.5 ) )
+                   ? L.x : vBladeT;
     k3dV2Finish( L, tAxisUse, pat, k3dFres,
                  uV2FinA, uV2FinB, uV2FinC, uV2FinD, uV2FinTint, wB,
                  col, rough, glow );
@@ -822,12 +835,27 @@ const MAP_FRAGMENT = `
     if ( uV2Preserve > 0.5 ) {
       float tl = dot( baseTex, vec3( 0.2126, 0.7152, 0.0722 ) );
       vec3 tinted = diffuseColor.rgb * ( uBladeBaseColor / max( 0.18, dot( uBladeBaseColor, vec3( 0.33 ) ) ) );
-      col = mix( tinted, col, clamp( uSkinTexStrength * 0.22 + ( uCardFx[0].y + uCardFx[1].y ) * 0.10, 0.22, 0.62 ) );
+      float processBlend = clamp( uSkinTexStrength * 0.22
+        + ( uCardFx[0].y + uCardFx[1].y ) * 0.10, 0.22, 0.62 );
+      /* The billet's baked orange model texture previously dominated 60%+
+         of the surface, obscuring which S3 forging card the player chose.
+         Only after S3 is actually selected, reveal the existing card-derived
+         metal grain; preserve the original hot forging character otherwise. */
+      if ( uV2Proc.x > 1.5 && uV2Proc.x < 2.5 && uS3On > 0.5 )
+        processBlend = max( processBlend, 0.59 );
+      col = mix( tinted, col, processBlend );
       col *= mix( 1.0, 0.72 + 0.56 * tl, 0.55 );
     }
 
-    /* ⑦ 身份预算：彩色覆盖层最多 84%，材质底色必须可辨 */
-    col = mix( col, identityCol, uV2Coat > 0.001 ? 0.16 : 0.30 );
+    /* Existing finish coats sometimes flatten forged grain. Restore only
+       a small, zero-mean micro-luminance variation on blade faces, based
+       on the SAME S3 map and seed; no new texture or shader family. */
+    if ( uS3On > 0.5 && uV2Preserve < 0.5 ) {
+      float forgeEngrave = clamp( sig, -0.90, 0.90 ) * s3Surface * clamp( wB, 0.0, 1.0 );
+      col *= 1.0 + forgeEngrave * 0.08;
+    }
+    /* ⑦ 身份预算：保留金属底色、避免涂层洗掉旧锻纹 */
+    col = mix( col, identityCol, uV2Coat > 0.001 ? 0.12 : 0.24 );
     diffuseColor.rgb = mix( diffuseColor.rgb, col, wS );
   }
 }
@@ -841,7 +869,7 @@ const ROUGHNESS_FRAGMENT = `
     vec3 pat = ( uS3On > 0.5 ) ? k3dS3Sample( vS3Local ) : vec3( 0.5, 0.0, 0.5 );
     float s3Surface = ( uS3On > 0.5 ) ? k3dS3SurfaceMask( wB ) : 1.0;
     float bladeRough = clamp( uBladeRoughness
-      + clamp( pat.y * 0.28, -0.12, 0.12 ) * s3Surface * ( uS3On > 0.5 ? 1.0 : 0.0 )
+      + clamp( pat.y * 0.32, -0.14, 0.14 ) * s3Surface * ( uS3On > 0.5 ? 1.0 : 0.0 )
       + uWearRough * 0.45, 0.02, 1.0 );
     /* 工艺层的粗糙度增量在 mapFragment 里算好（固定算子同一条式子） */
     bladeRough = clamp( bladeRough + k3dFinishRoughDelta, 0.025, 0.98 );
