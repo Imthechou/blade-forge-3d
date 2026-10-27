@@ -1,0 +1,47 @@
+name: Arena live browser playtest
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'game/tools/arena-live-playtest.mjs'
+      - '.github/workflows/arena-live-playtest.yml'
+      - 'game/src/ui/pages/arena.js'
+      - 'game/src/ui/formalTestStage.js'
+      - 'game/src/core/arenaChallenge.js'
+      - 'game/src/core/arenaFormal.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  arena-playtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install real Chromium test browser
+        working-directory: game
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Run local web server
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > arena-server.log 2>&1 &
+          sleep 3
+          curl -fsS http://127.0.0.1:8123/ > /dev/null
+      - name: Play both live arena entries at mobile viewport
+        working-directory: game
+        run: node tools/arena-live-playtest.mjs
+      - name: Upload screenshots, run report and server logs even if test fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arena-playtest-evidence
+          path: |
+            game/arena-playtest/
+            arena-server.log
+          retention-days: 14
