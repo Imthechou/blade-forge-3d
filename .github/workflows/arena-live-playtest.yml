@@ -1,12 +1,15 @@
 name: Arena live browser playtest
 on:
   pull_request:
-    branches: [main]
+    branches: [main, test/arena-live-playtest-20261027]
     paths:
       - 'game/tools/arena-live-playtest.mjs'
       - '.github/workflows/arena-live-playtest.yml'
       - 'game/src/ui/pages/arena.js'
       - 'game/src/ui/arenaStage.js'
+      - 'game/src/ui/arenaSprites.js'
+      - 'game/assets/arena/**'
+      - 'game/tools/build_arena_sprites.py'
       - 'game/src/ui/arenaImpact.js'
       - 'game/src/platform/audio.js'
       - 'game/src/core/arenaEncounters.js'
