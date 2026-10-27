@@ -496,6 +496,8 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
     ? forced.key
     : S5_EFFECT_SLOTS[Math.min(S5_EFFECT_SLOTS.length - 1, Math.floor(pick * S5_EFFECT_SLOTS.length))]);
   const eff = S5_EFFECTS[key];
+  const cardPalette = cardId === 'S5_16'
+    ? ['#656d75','#2059a9','#e4b146','#a65529'] : null;
   const gemVariant = key === 'gemDoppler'
     ? Math.min(3, Math.floor(mix01(Number(s[0]), Number(s[2]), 0.71) * 4))
     : -1;
@@ -507,7 +509,7 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
   const rareRoll = mix01(s[1], s[3], (Number(finishId) || 1) / 12, 0.71);
   const rare = !!(r && rareRoll < r.chance);
   return {
-    key, eff, rare, gemVariant,
+    key, eff, rare, gemVariant, cardPalette,
     baseHex: extra.baseHex || null,
     phase: jPhase,
     cover: Math.max(0.08, Math.min(0.95, (rare ? r.cover : eff.cover) * jCover)),
@@ -534,7 +536,7 @@ export function applyS5Effect(out, picked, fp = {}) {
       : (rare && eff.rare ? eff.rare.palette : eff.palette));
   out.mode = eff.mode;
   out.premiumLook = Number(eff.look) || 0;
-  out.palette = pal.slice();
+  out.palette = (picked.cardPalette || pal).slice();
   out.cover = cover;
   /* D.x 原本空闲（旧值只是"是否渐变"的标志，shader 里没读），现在用来传**斑块尺度**：
      各效果一套、稀有模板另一套 —— 模板因此有形态差异，不只是换色。 */
