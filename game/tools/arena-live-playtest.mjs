@@ -239,6 +239,69 @@ await scenario('formal-school-cutting-real-pointer', async page => {
   await snap(page,'10-formal-settlement');
   return {before,after,result};
 });
+/**
+ * 全国赛 / 三刀巅峰赛并不复用单刀赛的 Game.formalMatch。
+ * 这里通过实际 UI 路由 + 真实 PointerEvent 验证各自的赛事派发确实接到共享画布。
+ * 完整45秒赛程/正式项目入账在上一条单刀场景已覆盖。
+ */
+async function assertUnifiedFirstCut(page, label) {
+  const stage = page.locator('.page.is-active .quick-canvas');
+  await stage.waitFor({timeout:18000});
+  const before=await page.evaluate(()=>{
+    const r=window.__FORGE_ARENA?.run;
+    return r&&{unified:r.unifiedFormalCut,mode:r.mode,total:r.total,kills:r.kills,score:r.score,
+      targets:r.targets?.map(t=>({type:t.type,x:t.x,y:t.y,progress:t.progress}))};
+  });
+  assert.ok(before?.unified && before.mode==='formal' && before.total===45,
+    label+' 并未使用正式赛统一切割引擎');
+  assert.ok(before.targets?.length>=3,label+' 首帧未投放靶具');
+  const t=before.targets[0];
+  await swipe(page,'.page.is-active .quick-canvas',Math.max(.02,t.x-.14),t.y,Math.min(.98,t.x+.14),t.y);
+  const after=await page.evaluate(()=>{
+    const r=window.__FORGE_ARENA?.run;
+    return r&&{kills:r.kills,score:r.score,progress:r.targets?.map(t=>t.progress)};
+  });
+  assert.ok(after && (after.score>before.score||after.progress.some(v=>v>0)),
+    label+' 完整画布不能实际切割');
+  return {before,after};
+}
+await scenario('national-opening-real-cut', async page=>{
+  const setup=await page.evaluate(async()=>{
+    const Game=(await import('/src/app/game.js')).default;
+    const P=await import('/src/core/progress.js');
+    const id=P.get().collection[0].id;
+    const a=Game.startNationalMatch({bladeId:id,seed:243});
+    if(!a.ok)return{error:a.reason};
+    const b=Game.nationalStartRound();
+    if(!b.ok)return{error:b.reason};
+    (await import('/src/ui/router.js')).go('arena');
+    return {tier:Game.nationalMatch.tier,round:Game.nationalMatch.roundIndex};
+  });
+  assert.ok(!setup.error,JSON.stringify(setup));
+  const result=await assertUnifiedFirstCut(page,'全国赛');
+  return {setup,result};
+});
+await scenario('apex-opening-real-cut', async page=>{
+  const setup=await page.evaluate(async()=>{
+    const Game=(await import('/src/app/game.js')).default;
+    const P=await import('/src/core/progress.js');
+    const store=P.get();
+    const base=store.collection[0];
+    const blades=[base,{...base,id:'arena-apex-blade-2',bladeName:'巅峰测试刀二'},
+      {...base,id:'arena-apex-blade-3',bladeName:'巅峰测试刀三'}];
+    store.collection=blades;
+    P.persist();
+    const a=Game.startApexMatch({bladeIds:blades.map(b=>b.id),seed:178});
+    if(!a.ok)return{error:a.reason};
+    const b=Game.apexDispatch(blades[0].id);
+    if(!b.ok)return{error:b.reason};
+    (await import('/src/ui/router.js')).go('arena');
+    return{tier:Game.apexMatch.tier,round:Game.apexMatch.roundIndex};
+  });
+  assert.ok(!setup.error,JSON.stringify(setup));
+  const result=await assertUnifiedFirstCut(page,'巅峰赛');
+  return {setup,result};
+});
 report.summary = {
   passed: report.cases.filter(x=>x.status==='PASS').length,
   failed: report.cases.filter(x=>x.status==='FAIL').length,
