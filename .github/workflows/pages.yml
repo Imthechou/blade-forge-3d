@@ -1,9 +1,10 @@
-name: Deploy Blade Forge V3 to GitHub Pages
+name: Verify and deploy Blade Forge to GitHub Pages
 
 on:
   push:
     branches: [main, chore/restore-v3-pages-20261027]
     paths:
+      - 'game/**'
       - '锻刀大赛_v3.0.zip'
       - 'scripts/prepare_site.py'
       - '.github/workflows/pages.yml'
@@ -23,10 +24,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract release and locate website
-        run: python3 scripts/prepare_site.py '锻刀大赛_v3.0.zip' dist
-      - name: Check site entry point
-        run: test -s dist/index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify game source
+        if: hashFiles('game/package.json') != ''
+        working-directory: game
+        run: npm run verify
+      - name: Prepare website
+        run: |
+          if [ -s game/index.html ]; then
+            echo "Deploying editable game/ source"
+            mkdir -p dist
+            cp -a game/. dist/
+          else
+            echo "game/ unavailable, using legacy release archive"
+            python3 scripts/prepare_site.py '锻刀大赛_v3.0.zip' dist
+          fi
+          test -s dist/index.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
