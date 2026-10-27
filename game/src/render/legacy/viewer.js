@@ -162,7 +162,7 @@ class Viewer {
     this.renderer.setSize(w, h, false);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.94; // Slightly softer after half-float studio reflections became available on iOS; keep PBR highlights
+    this.renderer.toneMappingExposure = 0.90; // Slight exposure trim; stage PBR reflection budget does the heavy lifting
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();

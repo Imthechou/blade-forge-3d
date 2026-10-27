@@ -1,0 +1,77 @@
+name: Forge S1-S9 mobile WebGL glare and texture acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'game/src/render/**'
+      - 'game/tests/s5-visual-contract.test.mjs'
+      - 'tools/forge-brightness-metrics.mjs'
+      - '.github/workflows/forge-s3-glare-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forge-glare-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  mobile-webgl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install browser and PNG inspection
+        working-directory: game
+        run: |
+          npm install --no-save --package-lock=false playwright pngjs
+          sudo timeout 30s apt-get install -y fonts-noto-cjk || true
+          command -v google-chrome || command -v chromium
+      - name: Parse changed modules and run visual contracts
+        run: |
+          node --check game/src/render/legacy/viewer.js
+          node --check game/src/render/legacy/bladeViewer.js
+          node --check game/src/render/v2/programFamilies.js
+          node --check game/src/render/v2/surfaceDetail.js
+          cd game && npm test
+      - name: Checkout main baseline for identical-origin browser comparison
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: baseline
+          persist-credentials: false
+      - name: Serve actual candidate over HTTP
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > forge-server.log 2>&1 &
+          nohup node baseline/game/serve.cjs 8124 127.0.0.1 > forge-baseline.log 2>&1 &
+          sleep 3
+          curl --fail http://127.0.0.1:8123/ -o /dev/null
+          curl --fail http://127.0.0.1:8124/ -o /dev/null
+      - name: Reference screenshots from deployed main
+        env:
+          FORGE_BEFORE_URL: http://127.0.0.1:8124/
+          S5_QA_OUT: forge-glare-review
+        run: node tools/s5-optical-acceptance.mjs before --full
+      - name: Candidate real WebGL S1-S9 and 24 S3 texture gallery
+        env:
+          FORGE_URL: http://127.0.0.1:8123/
+          S5_QA_OUT: forge-glare-review
+        run: node tools/s5-optical-acceptance.mjs after --full
+      - name: Compare matched full-resolution stage screenshots
+        env:
+          S5_QA_OUT: forge-glare-review
+        run: node tools/forge-brightness-metrics.mjs
+      - name: Always upload real screenshots, errors, performance and brightness report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-glare-mobile-webgl
+          path: |
+            forge-glare-review/
+            forge-server.log
+            forge-baseline.log
+          retention-days: 14

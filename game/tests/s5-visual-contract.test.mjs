@@ -122,5 +122,21 @@ test('full forged blade clamps accumulated albedo energy and retires excessive S
   assert.match(shader,/col \*= compressedLum \/ finalLum/);
   assert.match(shader,/float haloCarry = 1\.0 - 0\.48 \* postS5 - 0\.12 \* postS6/);
   assert.match(shader,/float s4e =[\s\S]*?\* haloCarry/);
-  assert.match(shader,/bladeV2:61/);
+  assert.match(shader,/bladeV2:62/);
+});
+
+test('S3 billet card engraving stays legible while the entire forging chain has a bounded reflection budget',()=>{
+  const shader=readFileSync(new URL('../src/render/v2/programFamilies.js',import.meta.url),'utf8');
+  const detail=readFileSync(new URL('../src/render/v2/surfaceDetail.js',import.meta.url),'utf8');
+  const viewer=readFileSync(new URL('../src/render/legacy/bladeViewer.js',import.meta.url),'utf8');
+  const lights=readFileSync(new URL('../src/render/legacy/viewer.js',import.meta.url),'utf8');
+  assert.match(shader,/uV2Proc\.x > 1\.5 && uV2Proc\.x < 2\.5 && uS3On > 0\.5/);
+  assert.match(shader,/amp \*= mix\( 0\.84, 1\.18, billetFace \)/);
+  assert.match(shader,/processBlend = max\( processBlend, mix\( 0\.68, 0\.84, billetFace \) \)/);
+  assert.match(shader,/float s4e = clamp\([\s\S]*?0\.0, 0\.92 \)/);
+  assert.match(detail,/float patternWeight = mix\( 0\.16, 0\.26,/);
+  assert.match(viewer,/const STAGE_ENV_GAIN = \[0\.88, 0\.90, 0\.80, 0\.88, 1\.00, 1\.04, 1\.08, 1\.10, 1\.12\]/);
+  assert.match(viewer,/Math\.min\(1\.48, M\.envIntensity \* stageEnvGain\)/);
+  assert.doesNotMatch(viewer,/0\.90 \+ 0\.1025 \* \(g - 1\)/);
+  assert.match(lights,/toneMappingExposure = 0\.90/);
 });
