@@ -377,11 +377,38 @@ await scenario('six-target-material-gallery-and-touch-response', async page => {
   console.log('SIX_MATERIAL_IMPACTS',JSON.stringify(snapshots));
   await snap(page,'12-six-material-slicing-feedback');
   assert.equal(before.types.length,6);
+  assert.equal(before.names[5],'金属块','第六靶必须是实心金属块而不是金属管');
   assert.equal(before.motion,'full','六材命中特效必须在完整动效模式下验收');
   assert.ok(snapshots.every(x=>x.contacts.length>0),'部分材质没有命中特效');
   assert.ok(snapshots.every(x=>x.contacts[0].flash>0),'闪白反馈丢失');
   assert.ok(snapshots.every(x=>x.contacts[0].particles>0),'碎屑反馈丢失');
   return {spriteState,before,snapshots};
+});
+// A previous design requirement: player may voluntarily end a quick challenge
+// and inspect partial stats without repeatedly farming CR or daily completion.
+await scenario('quick-manual-end-safe-no-reward', async page=>{
+  const body=page.locator('.page[data-page="arena"].is-active');
+  const storeBefore=await page.evaluate(async()=> {
+    const P=await import('/src/core/progress.js');
+    return {cr:P.get().cr,records:JSON.stringify(P.get().quickChallengeRecords)};
+  });
+  await body.getByRole('button',{name:'快速挑战'}).click();
+  await body.getByRole('button',{name:'开始自由快赛'}).click();
+  await body.locator('.quick-canvas').waitFor({timeout:10000});
+  await body.getByRole('button',{name:'暂停',exact:true}).click();
+  await body.getByRole('button',{name:/提前收刀/}).click();
+  await body.locator('.arena-view-quick-report,.quick-report').first().waitFor({timeout:10000});
+  const state=await page.evaluate(async()=>{
+    const P=await import('/src/core/progress.js');
+    return {cr:P.get().cr,records:JSON.stringify(P.get().quickChallengeRecords),
+      text:document.querySelector('.page.is-active .arena-body')?.innerText.slice(0,750)};
+  });
+  assert.equal(state.cr,storeBefore.cr,'提前收刀不得发CR');
+  assert.equal(state.records,storeBefore.records,'提前收刀不得更新挑战纪录');
+  assert.ok(state.text.includes('主动收刀')||state.text.includes('主动结束'),
+    '未显示主动结束的安全战报');
+  await snap(page,'13-voluntary-early-finish');
+  return {startCr:storeBefore.cr,endCr:state.cr,text:state.text.slice(0,250)};
 });
 report.summary = {
   passed: report.cases.filter(x=>x.status==='PASS').length,
