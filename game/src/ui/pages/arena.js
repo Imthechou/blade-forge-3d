@@ -723,7 +723,7 @@ function renderUnifiedFormalCut(match, task, submit, abandon) {
       el('small', { text: '当前切割分' }), el('b', { class: 'mono', text: String(Math.floor(run.score)).padStart(4, '0') }),
     ]),
     el('div', { class: 'quick-hud-vitals' }, [
-      el('small', { text: '临时刀况' }), el('b', { text: `${Math.round(run.health)}%` }),
+      el('small', { text: '临时刀况' }), el('b', { text: `${Math.round(run.health / Math.max(1,run.maxHealth) * 100)}%` }),
       el('i', { style: { transform: `scaleX(${run.health / Math.max(1, run.maxHealth)})` } }),
     ]),
   ]);
@@ -770,7 +770,7 @@ function renderUnifiedFormalCut(match, task, submit, abandon) {
     mission.querySelector('b').textContent = `${match.definition.branchName} · ${label}`;
     mission.querySelector('span').textContent = run.risk?.status === 'failed'
       ? '结构临时失效 · 本项结束'
-      : `第 ${task.index+1}/${task.total} 项 · 破甲 / 切断 / 连击 · 临时刀况 ${Math.round(run.health)}%`;
+      : `第 ${task.index+1}/${task.total} 项 · 破甲 / 切断 / 连击 · 临时刀况 ${Math.round(run.health / Math.max(1,run.maxHealth) * 100)}%`;
   };
   renderChallengeCanvas(canvas, run, {
     hud, mission, footer, updateMission,
@@ -885,9 +885,10 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     if (!isSlice && !run.unifiedFormalCut) Formal.drawFormalCutGuides(ctx, run, width, height);
     if (run.mode !== 'formal' || now >= scoreDelayUntil) shownScore = run.score;
     text(timeNode,run.remaining.toFixed(1));text(scoreNode,String(Math.floor(shownScore)).padStart(4,'0'));
-    text(healthNode, isSlice ? `${Math.round(run.health)}/${Math.round(run.maxHealth ?? 100)}` : `${Math.round(run.health)}%`);
-    healthBar.style.transform=`scaleX(${Math.max(0,Math.min(100,run.health))/100})`;
-    stage.classList.toggle('is-risky',run.finale?.id==='rush');stage.classList.toggle('is-low-health',run.health<35);stage.classList.toggle('is-countdown',run.remaining<=5);
+    const healthPercent = Math.max(0, Math.min(100, run.health / Math.max(1, run.maxHealth ?? 100) * 100));
+    text(healthNode, isSlice ? `${Math.round(run.health)}/${Math.round(run.maxHealth ?? 100)}` : `${Math.round(healthPercent)}%`);
+    healthBar.style.transform=`scaleX(${healthPercent/100})`;
+    stage.classList.toggle('is-risky',run.finale?.id==='rush');stage.classList.toggle('is-low-health',healthPercent<35);stage.classList.toggle('is-countdown',run.remaining<=5);
     text(vitals.querySelector('small'), isSlice
       ? (run.risk?.status === 'failed' ? '结构失效' : run.risk?.status === 'warning' ? '⚠ 高负荷' : '刀况')
       : run.mode === 'formal' ? (run.risk?.status === 'failed' ? '结构失效' : run.risk?.status === 'warning' ? '危险征兆 · 受损' : '正式测试刀况') : '安全挑战 · 模拟刀况');
