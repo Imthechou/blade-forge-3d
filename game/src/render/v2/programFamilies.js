@@ -574,15 +574,18 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
     } else if ( card < 4.5 ) {
       /* Diagonal quench engraving: directional steel hairlines,
          reflected as roughness shifts rather than painted white lines. */
-      float brushed = (microGrain - 0.5)*0.18*fidelity;
-      col *= 1.0 + brushed*0.52;
-      rough = clamp( rough + brushed*0.72, 0.10, 0.89 );
+      float brushed = (microGrain - 0.5)*0.40*fidelity;
+      col *= 1.0 + brushed*0.67;
+      rough = clamp( rough + brushed*0.76, 0.10, 0.89 );
     } else if ( card < 5.5 ) {
       /* Salt bath: fine, muted mineral clouds in the steel oxide. */
       float salt = 0.5 + 0.5*sin( xy.x*12.4+xy.y*8.1+pat.y*4.7 );
-      float stain = smoothstep( 0.55, 0.86, salt )*fidelity;
-      col = mix( col, col*vec3( 1.04, 1.01, 0.91 ), stain*0.26 );
-      rough = clamp( rough + (salt-0.5)*fidelity*0.16, 0.10, 0.86 );
+      float stain = smoothstep( 0.37, 0.90, salt )*fidelity;
+      /* Salt bath is a mostly uniform ivory/warm-gray protective surface;
+         tiny local roughness changes, no striped red/blue heat window. */
+      col = mix( col, col*vec3( 1.10, 1.055, 0.91 ),
+                 (0.35 + 0.65*stain)*fidelity*0.32 );
+      rough = clamp( rough + (salt-0.5)*fidelity*0.13, 0.10, 0.86 );
     } else if ( card < 6.5 ) {
       /* Light-absorbing charcoal: dark satin, not unlit black plastic. */
       col *= 1.0 - fidelity*(0.29 + 0.10*(1.0 - pat0));
@@ -612,17 +615,22 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
     } else if ( card < 11.5 ) {
       /* Controlled heat window: one precise narrow golden oxidation line,
          cold hard steel left exposed on both sides. */
-      float window = exp( -22.0*abs( xy.x - 0.55
-                          - 0.08*sin(xy.y*4.8+pat0)) );
-      vec3 bronze = vec3(1.15,0.83,0.46);
-      col *= mix( vec3(1.0),bronze,window*fidelity*0.55 );
+      float window = exp( -13.0*abs( xy.x - 0.51
+                          - 0.10*sin(xy.y*4.8+pat0)) );
+      float coldBank = smoothstep(0.32,0.68,xy.x)*(1.0-window);
+      vec3 bronze = vec3(1.18,0.80,0.42);
+      col *= mix( vec3(1.0),bronze,window*fidelity*0.85 );
+      col *= mix( vec3(1.0),vec3(0.89,0.98,1.11),
+                  coldBank*fidelity*0.23 );
       rough = mix(rough,0.26+0.15*uBladeRoughness,window*fidelity*0.55);
     } else if ( card < 12.5 ) {
       /* Deep hardened grain: etched forged layers in the same S3 coordinates. */
-      float etched = smoothstep( 0.32,0.70,
-          mix(pat0,grain,0.38) );
-      col *= 1.0 - etched*fidelity*0.23;
-      rough = clamp(rough + etched*fidelity*0.12,0.09,0.92);
+      float etched = smoothstep( 0.29,0.70,
+          mix(pat0,grain,0.44) );
+      /* Deeply hardened folds should be broader and darker than the
+         S5_04 narrow, diagonal high-frequency grinding lines. */
+      col *= 1.0 - etched*fidelity*0.42;
+      rough = clamp(rough + etched*fidelity*0.17,0.09,0.92);
     } else if ( card < 13.5 ) {
       /* Interference exists on bevel/corners; avoid painting the whole blade. */
       float tangentFilm = edge * pow(fres,0.62)*fidelity;
