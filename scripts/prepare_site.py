@@ -24,9 +24,10 @@ def prepare(archive: Path, destination: Path) -> None:
             if sum(info.file_size for info in members) > 1_500_000_000:
                 raise ValueError("Uncompressed ZIP is unexpectedly large")
             for info in members:
-                relative = PurePosixPath(info.filename)
+                normalized = info.filename.replace(chr(92), '/')
+                relative = PurePosixPath(normalized)
                 if (not info.filename or relative.is_absolute() or
-                    '..' in relative.parts or '\\' in info.filename):
+                    '..' in relative.parts or (len(relative.parts[0]) > 1 and relative.parts[0][1] == ':')):
                     raise ValueError(f"Unsafe ZIP path: {info.filename}")
                 unix_mode = info.external_attr >> 16
                 if stat.S_IFMT(unix_mode) == stat.S_IFLNK:
