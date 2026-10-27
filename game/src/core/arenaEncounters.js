@@ -40,7 +40,10 @@ export function createEncounter({tier='school',gradient=0,round=0}={}) {
   }]));
   return {
     tier:event,gradient:event==='school'?step:0,round:event==='school'?0:step,
-    rank:ranks[event]+step, label: event==='school'?'流派试炼':event==='national'?'全国赛':'全球巅峰赛',
+    rank:ranks[event]+step,
+    label: event==='school'?`流派试炼 · ${['学徒','能手','专家','大师','传奇'][step]}`
+      : event==='national'?`全国赛 · ${['32强','16强','8强','半决赛','决赛'][step]}`
+      : `全球巅峰赛 · 第${step+1}轮`,
     minIndex:config.min,maxAlive:config.limit,stages,
   };
 }
