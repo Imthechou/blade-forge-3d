@@ -157,21 +157,41 @@ def ice():
     return im
 
 def metal():
-    im=new();d=ImageDraw.Draw(im)
-    # hollow aluminum tube rather than a rectangular slab, tilted to show full rim
-    rect_texture(im,(53,68,210,198),(172,186,202),28,60)
+    """Premium forged solid-steel billet, chamfered and brushed (NO hollow pipe)."""
+    im=new();d=ImageDraw.Draw(im);r=random.Random(60)
+    top=[(39,72),(170,50),(219,86),(90,107)]
+    side=[(39,72),(90,107),(90,215),(39,187)]
+    front=[(90,107),(219,86),(219,187),(90,215)]
+    d.polygon(side,fill=(58,75,88,255))
+    d.polygon(front,fill=(140,153,169,255))
+    d.polygon(top,fill=(216,231,242,255))
+    # Satin steel face: directional speculars following ingot perspective.
+    for x in range(94,216):
+        t=(x-94)/124
+        level=104+56*math.exp(-((t-.32)/.19)**2)+12*math.cos(t*9)-9*t
+        d.line((x,106-(x-90)*.157,x,215-(x-90)*.217),
+               fill=rgba((level*.84,level*.93,level*1.03),180),width=2)
+    # Forged grain / micro-scratches clipped to the visible solid face.
+    mask=Image.new('L',(S,S),0);ImageDraw.Draw(mask).polygon(front,fill=255)
+    marks=new();md=ImageDraw.Draw(marks)
+    for i in range(580):
+        x=r.randint(92,216);y=r.randint(88,216);ln=r.randint(2,18)
+        c=(251,254,255,r.randint(18,85)) if i%3==0 else (19,38,54,r.randint(14,83))
+        md.line((x,y,x+ln,y-max(1,int(ln*.14))),fill=c,width=1)
+    marks.putalpha(ImageChops.multiply(marks.getchannel('A'),mask))
+    im.alpha_composite(marks)
     d=ImageDraw.Draw(im)
-    for x in (74,186):
-        d.rounded_rectangle((x-9,68,x+9,197),radius=5,fill=(72,90,110,160))
-        d.line((x-5,70,x-5,195),fill=(231,242,246,170),width=3)
-    for yy in (77,183):
-        d.line((88,yy,180,yy),fill=(244,249,250,145),width=3)
-    d.ellipse((41,66,112,199),fill=(39,55,72,255),outline=(226,238,246,255),width=8)
-    d.ellipse((55,81,97,184),fill=(17,29,43,255),outline=(123,143,159,245),width=4)
-    d.arc((38,64,113,201),95,263,fill=(255,255,255,245),width=4)
-    d.line((96,74,203,75),fill=(255,255,255,174),width=3)
-    d.line((98,190,204,188),fill=(34,53,71,153),width=3)
+    # Chamfered perimeter and solid top reflection; no dark oval or opening.
+    d.line(top+[top[0]],fill=(238,248,255,211),width=4,joint='curve')
+    d.line([(39,72),(90,107),(90,215),(39,187),(39,72)],fill=(48,65,80,220),width=4,joint='curve')
+    d.line([(90,107),(219,86),(219,187),(90,215)],fill=(240,248,253,210),width=3,joint='curve')
+    d.line((96,111,211,91),fill=(250,254,255,190),width=3)
+    d.line((92,211,214,184),fill=(31,46,61,235),width=5)
+    d.line((49,77,165,56),fill=(255,255,255,176),width=3)
+    d.line((103,143,189,129),fill=(32,52,65,107),width=2)
+    d.line((103,145,189,131),fill=(245,252,254,112),width=1)
     return im
+
 
 BUILD={'foam':foam,'rope':rope,'wood':wood,'plastic':plastic,'ice':ice,'metal':metal}
 
@@ -234,10 +254,35 @@ def flash(mat):
     glow_layer.alpha_composite(im)
     return glow_layer
 
+def premium_finish(source, mat):
+    """Offline baked micro-texture & transparent bevel sheen for all six materials."""
+    im=source.copy();alpha=im.getchannel('A');overlay=new()
+    d=ImageDraw.Draw(overlay);r=random.Random(8800+ORDER.index(mat)*713)
+    light=(248,255,255,110) if mat in ('metal','ice','plastic') else (252,228,175,128)
+    dark=(34,63,87,85) if mat in ('metal','ice','plastic') else (74,48,29,100)
+    for i in range(200):
+        x=r.randrange(25,230);y=r.randrange(25,231)
+        if alpha.getpixel((x,y))<80:continue
+        c=light if i%4==0 else dark
+        if mat in ('metal','plastic'):
+            dx=r.randrange(4,18);d.line((x,y,x+dx,y-max(0,dx//7)),fill=c,width=1)
+        elif mat in ('rope','wood'):
+            d.line((x,y,x+r.randrange(-2,5),y+r.randrange(2,12)),fill=c,width=1)
+        else:
+            rr=1 if i%8 else 2;d.ellipse((x-rr,y-rr,x+rr,y+rr),fill=c)
+    overlay.putalpha(ImageChops.multiply(overlay.getchannel('A'),alpha))
+    im.alpha_composite(overlay)
+    interior=alpha.filter(ImageFilter.MinFilter(5))
+    rim=ImageChops.subtract(alpha,interior)
+    shine=Image.new('RGBA',(S,S),(231,248,255,0))
+    shine.putalpha(rim.point(lambda a:int(a*.25)))
+    im.alpha_composite(shine)
+    return im
+
 def build():
     atlas=Image.new('RGBA',(6*S,5*S),(0,0,0,0))
     for i,mat in enumerate(ORDER):
-        whole=BUILD[mat]()
+        whole=premium_finish(BUILD[mat](),mat)
         row=(whole,split(whole,'top',mat),split(whole,'bottom',mat),chips(mat),flash(mat))
         for j,sprite in enumerate(row):atlas.alpha_composite(sprite,(i*S,j*S))
     target=OUT/'targets.webp'
