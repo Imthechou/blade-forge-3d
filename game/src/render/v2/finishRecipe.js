@@ -409,6 +409,49 @@ export const S5_CARD_FAMILY = Object.freeze({
 });
 /* The two Fade cards use different palettes but share one forge family;
    same for the case-hardened and gemstone variants. */
+/* Card-level visual signatures. Family decides the main metallurgical finish;
+   this art-direction map provides DIFFERENT spatial response within a family.
+   x: stable card index; y: subtle effect strength; z: physical motif frequency;
+   w: motif direction (radians). Never changes gameplay/card probability.
+   Quality is selected-stage rarity, never the global maximum rarity.
+   These 25 signatures share ONE fixed GLSL program, not 25 shader variants. */
+export const S5_CARD_ART = Object.freeze({
+  S5_01: {name:'冷蓝幕层',      type:'cold-veil',          strength:0.36, freq:4.2, angle:0.18},
+  S5_02: {name:'急冷锁锋',      type:'quenched-edge',      strength:0.62, freq:3.1, angle:0.0},
+  S5_03: {name:'冷灰匣面',      type:'satin-flats',        strength:0.52, freq:3.0, angle:0.0},
+  S5_04: {name:'斜向冷纹',      type:'diagonal-grain',     strength:0.65, freq:16.0,angle:0.55},
+  S5_05: {name:'盐浴定色',      type:'salt-oxide',         strength:0.36, freq:5.5, angle:0.0},
+  S5_06: {name:'暗灰吸光',      type:'charcoal-absorb',    strength:0.72, freq:4.0, angle:0.0},
+  S5_07: {name:'渐染色层',      type:'light-oxide-film',   strength:0.48, freq:3.2, angle:0.13},
+  S5_08: {name:'细砂压光',      type:'bead-blasted',       strength:0.70, freq:34.0,angle:0.0},
+  S5_09: {name:'真空净镜',      type:'vacuum-mirror',      strength:0.72, freq:2.0, angle:0.0},
+  S5_10: {name:'氧化枪灰',      type:'nitrided-gunmetal',  strength:0.62, freq:5.0, angle:0.0},
+  S5_11: {name:'牢温控窗',      type:'heat-window',        strength:0.64, freq:5.0, angle:0.0},
+  S5_12: {name:'深硬暗纹',      type:'deep-etched-grain',  strength:0.75, freq:13.0,angle:0.28},
+  S5_13: {name:'转角吐膜',      type:'bevel-iridescence',  strength:0.62, freq:3.5, angle:0.0},
+  S5_14: {name:'液氮断彩',      type:'fractured-marble',   strength:0.72, freq:3.9, angle:0.24},
+  S5_15: {name:'阳极纹彩',      type:'anodized-strata',    strength:0.62, freq:8.0, angle:0.74},
+  S5_16: {name:'赤金临界',      type:'gold-case-islands',  strength:0.68, freq:3.3, angle:0.0},
+  S5_17: {name:'碳化暗甲',      type:'carbon-armor',       strength:0.73, freq:9.0, angle:0.38},
+  S5_18: {name:'横贯热带',      type:'blue-case-ribbon',   strength:0.67, freq:3.4, angle:0.0},
+  S5_19: {name:'幻彩氧层',      type:'axial-fade',         strength:0.58, freq:2.1, angle:0.0},
+  S5_20: {name:'蓝紫流界',      type:'doppler-ribbons',    strength:0.75, freq:3.3, angle:0.0},
+  S5_21: {name:'神淬虹纹',      type:'gem-depth',          strength:0.65, freq:3.0, angle:0.0},
+  S5_22: {name:'玄蚀紫界',      type:'amethyst-boundary',  strength:0.80, freq:4.0, angle:0.0},
+  S5_23: {name:'冷热虹界',      type:'substrate-fade',     strength:0.60, freq:2.0, angle:0.0},
+  S5_24: {name:'冷蓝天带',      type:'sapphire-bands',     strength:0.70, freq:5.0, angle:0.0},
+  S5_25: {name:'静镜留底',      type:'raw-steel-polish',   strength:0.25, freq:1.5, angle:0.0},
+});
+export function s5CardArt(cardId, chosen, tier=0) {
+  if (!chosen) return [0,0,0,0];
+  const c = S5_CARD_ART[String(cardId || '')];
+  if (!c) return [0,0,0,0];
+  const id = Number(String(cardId).slice(3));
+  const quality = Math.min(1, Math.max(0, Number(tier) / 5));
+  // More rare = clearer microstructure and uniform polish, not increased emission.
+  return [id, +(c.strength*(0.76+0.24*quality)).toFixed(5), c.freq, c.angle];
+}
+
 export const S5_VISUAL_FAMILY = Object.freeze(Object.fromEntries(
   Object.entries(S5_CARD_FAMILY).map(([id,family]) =>
     [id, family === 'fadeColdHot' ? 'fade' : family])
@@ -522,7 +565,8 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
   const cardPalette = cardId === 'S5_16'
     ? ['#656d75','#2059a9','#e4b146','#a65529'] : null;
   const gemVariant = key === 'gemDoppler'
-    ? Math.min(3, Math.floor(mix01(Number(s[0]), Number(s[2]), 0.71) * 4))
+    ? (cardId === 'S5_24' ? 1 /* Blue sky sapphire only */ :
+       Math.min(3, Math.floor(mix01(Number(s[0]), Number(s[2]), 0.71) * 4)))
     : -1;
   /* 逐局小差：同一个 key 在同一张卡上，每局相位/覆盖率都会轻微不同 */
   const jPhase = (mix01(s[0], s[1], Number(shift) || 0) - 0.5) * 2 * (eff.jitter?.phase || 0);
