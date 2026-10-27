@@ -500,9 +500,9 @@ void k3dV2Finish( vec3 local, float tAxis, vec3 pat, float fres,
       polish = 0.095;
       amount *= 0.98;
     }
-    float metalVariation = mix( 0.83, 1.05, substrateValue )
+    float metalVariation = mix( 0.85, 0.95, substrateValue )
                          * ( 0.94 + 0.06 * clamp( pat0, 0.0, 1.0 ) );
-    amount *= mix( 0.86, 1.0, qFinish ) * (1.0 - 0.13 * substrateRough);
+    amount *= mix( 0.86, 1.0, qFinish ) * (1.0 - 0.13 * substrateRough) * mix(0.98,1.08,substrateValue);
     /* Color the metal reflectance, preserve physical roughness grain. */
     col = mix( col, enamel * metalVariation, clamp( amount, 0.0, 0.97 ) );
     rough = mix( rough,
@@ -944,7 +944,7 @@ const MAP_FRAGMENT = `
     /* Luminance-preserving shoulder: very bright manufactured pigments
        gently compress, midtones/steel-dark areas remain legible. */
     float energyLum = max( 0.001, dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ) );
-    float shoulder = 0.84 + 0.16 / ( 1.0 + max( 0.0, energyLum - 0.42 ) * 1.8 );
+    float shoulder = 1.0 / ( 1.0 + max( 0.0, energyLum - 0.42 ) * 0.60 );
     col *= shoulder;
 
     /* ⑥ 过程模型：保留模型自带纹理（uniform 开关，不换宏）
