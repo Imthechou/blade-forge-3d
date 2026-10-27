@@ -562,8 +562,16 @@ export function resolveS5Effect(finishId, tier, shift, seeds, extra = {}) {
     ? forced.key
     : S5_EFFECT_SLOTS[Math.min(S5_EFFECT_SLOTS.length - 1, Math.floor(pick * S5_EFFECT_SLOTS.length))]);
   const eff = S5_EFFECTS[key];
-  const cardPalette = cardId === 'S5_16'
-    ? ['#656d75','#2059a9','#e4b146','#a65529'] : null;
+  const cardPalette = ({
+    /* Every related pair shares a physical family, but NOT its visual pattern.
+       Anodized banding stays more restrained than liquid-nitrogen marble. */
+    S5_15: ['#332e63','#694886','#c578a0','#d6b15a'],
+    S5_16: ['#656d75','#2059a9','#e4b146','#a65529'],
+    /* Amethyst-black corrosion, not a copy of the vivid blue Doppler card. */
+    S5_22: ['#090e1a','#201b35','#483365','#786295'],
+    /* Sky sapphire belongs to one cool blue metal family. */
+    S5_24: ['#0b2e56','#18498c','#347ac0','#91c8e7'],
+  })[cardId] || null;
   const gemVariant = key === 'gemDoppler'
     ? (cardId === 'S5_24' ? 1 /* Blue sky sapphire only */ :
        Math.min(3, Math.floor(mix01(Number(s[0]), Number(s[2]), 0.71) * 4)))
