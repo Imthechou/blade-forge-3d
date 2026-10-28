@@ -463,9 +463,8 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
       rarityBadge(card.rarity, card.rarityCn),
       el('span', { class: 'dcard-stage-mark', text: card.stage }),
     ]),
-    el('div', { class: 'dcard-visual', style: `--art-hue:${artHue};`, 'aria-hidden': 'true' }, [
+    el('div', { class: 'dcard-visual dcard-visual--' + card.stage, style: `--art-hue:${artHue};`, 'aria-hidden': 'true' }, [
       el('span', { class: 'dcard-visual-glint' }),
-      el('span', { class: 'dcard-visual-engrave', text: String(rank || '') }),
     ]),
     el('div', { class: 'dcard-title', text: card.name }),
     el('div', { class: 'dcard-build-title', text: tagTitle }),
