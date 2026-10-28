@@ -432,6 +432,20 @@ function tagTierHint(tags, counts) {
   return out[0] || null;
 }
 
+function ellipsisIcon(){
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 24 24');
+  svg.setAttribute('aria-hidden','true');
+  svg.setAttribute('focusable','false');
+  svg.classList.add('dcard-more-svg');
+  for(const x of [5,12,19]){
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',String(x));circle.setAttribute('cy','12');circle.setAttribute('r','1.75');
+    circle.setAttribute('fill','currentColor');svg.appendChild(circle);
+  }
+  return svg;
+}
+
 /* ── 决策卡 ── */
 
 export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts = null } = {}) {
@@ -462,7 +476,11 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
   }, [
     el('div', { class: 'dcard-head' }, [
       rarityBadge(card.rarity, card.rarityCn),
-      el('span', { class: 'dcard-stage-mark', text: card.stage }),
+      onDetail ? el('button', {
+        class:'dcard-more',type:'button',title:card.name+'详情',
+        'aria-label':card.name+'详情',
+        onclick:event=>{event.stopPropagation();onDetail(card);},
+      },[ellipsisIcon()]) : null,
     ]),
     el('div', { class: 'dcard-visual', 'aria-hidden': 'true',
       dataset: { doodleFamily: art.primary, doodleSignature: art.signature } }, [
@@ -479,13 +497,6 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
         class: i < tierHint.from ? 'is-owned' : i < tierHint.to ? 'is-added' : '',
       }))),
     ]) : null,
-    el('div', { class: 'dcard-meta' }, [
-      el('span', { class: 'grow', text: picked ? '已选中' : card.role || '点击预览' }),
-      onDetail ? el('button', {
-        class: 'dcard-detail', text: '详情', 'aria-label': `${card.name}详情`,
-        onclick: e => { e.stopPropagation(); onDetail(card); },
-      }) : null,
-    ]),
   ]);
   return node;
 }
