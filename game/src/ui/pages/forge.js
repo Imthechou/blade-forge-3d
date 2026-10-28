@@ -372,9 +372,6 @@ function renderSelect(body, run) {
       const selected = node.dataset.cardId === pickedCard?.id;
       node.classList.toggle('is-picked', selected);
       node.setAttribute('aria-pressed', String(selected));
-      const card = Game.run.candidates.find(c => c.id === node.dataset.cardId);
-      const label = node.querySelector('.dcard-meta > .grow');
-      if (label) label.textContent = selected ? '预览' : card?.role || '点击预览';
     }
     rerollButton.textContent = `重铸 ${rerollCostText()}`;
     confirmButton.textContent = pickedCard ? '确认工艺 →' : '选择工艺卡';
