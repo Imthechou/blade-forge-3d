@@ -50,8 +50,7 @@ function random(run) {
 /**
  * 创建一局切割。
  *
- * mode='quick'   ：45 秒、三靶一波、绝不掉刀（训练场，行为与改造前一致）
- * mode='formal'  ：35 秒、连续投放、可能断刀（赛事用；buff 与幽灵分由 arenaSlice 传入）
+ * 两种模式均为 45 秒、连续补位、三次强化。quick 保证收藏安全；formal 输出临时受损与失效证据。
  */
 export function createChallenge(blade, { seed = null, daily = false, mode = 'quick', buffs = [], ghost = null, winStreak = 1, matchId = null, seconds = null, encounter = null, augments = true, styleId = null, targetScore = null } = {}) {
   if (!blade || blade.fractured || blade.canEnterArena === false) return { ok: false, reason: '只能使用完整成刀参加挑战' };

@@ -2316,7 +2316,7 @@ function renderNationalEntry() {
     if (!blades.some(b => b.id === selectedBladeId)) selectedBladeId = blades[0].id;
     body.append(bladePicker(blades, blades.find(b => b.id === selectedBladeId)));
   } else body.append(el('p', { text: '没有可参赛成刀，请先锻造；断刀不会恢复参赛资格。' }));
-  body.append(el('section', { class: 'national-summary' }, [el('p', { text: '每胜一轮 +70 CR；失利轮 +20 CR 后淘汰。五连胜共 350 CR，不另发冠军奖励；冠军以赛事历史与刀具履历兑现。五轮梯度逐轮提升。' })]),
+  body.append(el('section', { class: 'national-summary' }, [el('p', { text: `本届基础奖励：夺冠 +${Core.economy.matchReward(1,true)} CR，未夺冠 +${Core.economy.matchReward(1,false)} CR；每日任务奖励另计。冠军与各轮表现写入赛事履历。` })]),
     teamFooter('五轮各为 45 秒切割，每轮独立选三次强化，代表刀整届锁定。一败即淘汰；普通淘汰不断刀。', run ? '开始新一届全国赛' : '开始全国赛', () => {
       /* ★ rework T09：切换到新链路（core/arenaFormal 五轮多项目），
          不再走 startSliceMatch({kind:'national'}) 的旧三局切割结构。 */
