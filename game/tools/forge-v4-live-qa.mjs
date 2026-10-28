@@ -67,7 +67,7 @@ try{
      await page.mouse.up();
    }
    await trace();await shot(width+'-edge-attempt-1');
-   assert.match(await page.locator('.edge-simple-hint').innerText(),/×1\\.12/);
+   assert.ok((await page.locator('.edge-simple-hint').innerText()).includes('×1.12'));
    const used=width===360?3:1;
    for(let i=2;i<=used;i++){
      await page.getByRole('button',{name:/再描一次/}).click();
