@@ -7,7 +7,8 @@
 
 import { el } from './dom.js';
 import { STAT_KEYS, STAT_META, STAT_SOFT_CAP, RARITY_THRESHOLDS, tagTierOf } from '../data/balance.js';
-import { RARITY_CN, stageRankOf } from '../data/cards.js';
+import { RARITY_CN } from '../data/cards.js';
+import { cardDoodle, doodleSpec } from './cardDoodles.js';
 import { tagName, isBaseTag, isSpecialTag } from '../data/tags.js';
 
 /* ── 六边形图标：外环统一，内圈按旋转/半径/色差异化 ── */
@@ -445,8 +446,7 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
       : tierHint.toNext ? `距离升阶 ${tierHint.toNext - tierHint.to} 层`
         : '已达最高档'
     : special.length ? '稀有工艺 · 即刻激活' : (card.role || '独立工艺');
-  const rank = stageRankOf(card);
-  const artHue = ((rank * 31 + (card.stageIndex + 1) * 41) % 275 + 200) % 360;
+  const art = doodleSpec(card);
 
   const node = el('div', {
     class: `dcard dcard--r-${card.rarity || 'common'}${picked ? ' is-picked' : ''}`,
@@ -463,8 +463,9 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
       rarityBadge(card.rarity, card.rarityCn),
       el('span', { class: 'dcard-stage-mark', text: card.stage }),
     ]),
-    el('div', { class: 'dcard-visual dcard-visual--' + card.stage, style: `--art-hue:${artHue};`, 'aria-hidden': 'true' }, [
-      el('span', { class: 'dcard-visual-glint' }),
+    el('div', { class: 'dcard-visual', 'aria-hidden': 'true',
+      dataset: { doodleFamily: art.primary, doodleSignature: art.signature } }, [
+      cardDoodle(card),
     ]),
     el('div', { class: 'dcard-title', text: card.name }),
     el('div', { class: 'dcard-build-title', text: tagTitle }),
