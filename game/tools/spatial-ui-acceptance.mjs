@@ -89,6 +89,17 @@ try {
       assert.ok(art.every(a => a.svg && a.paths>=3 && a.family && a.signature && (a.stageArt==='none'||a.stageArt==='normal')),
         'doodle stickers must be real name-led vectors, without old steel pseudo art: '+JSON.stringify(art));
       assert.equal(new Set(art.map(a=>a.signature)).size,3);
+      assert.equal(await cards.locator('.dcard-more svg').count(),3,
+        'only top-right ellipsis opens the details');
+      assert.equal(await cards.locator('.dcard-meta,.dcard-stage-mark').count(),0,
+        'old footer and stage-text should be removed from cards');
+      await cards.first().locator('.dcard-more').click();
+      assert.equal(await cards.first().getAttribute('aria-pressed'),'false',
+        'opening details must not silently select the card');
+      await centered(page,'.sheet');
+      assert.equal(await page.locator('.sheet-x[aria-label="关闭"] svg.sheet-x-icon').count(),1);
+      await page.keyboard.press('Escape');
+      await page.locator('.sheet-mask').waitFor({state:'detached'});
       if(width===390) await shot(page,'390-doodle-choice');
       const before = await page.evaluate(async()=>JSON.stringify((await import('/src/app/game.js')).default.run.ledger));
       await cards.first().click();
