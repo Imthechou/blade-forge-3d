@@ -72,7 +72,10 @@ const motions=Object.freeze([
   {id:'stable',re:/匀|稳|控|定|校|准|衡|均/,label:'校准刻度'},
 ]);
 function motionFor(name,primary,seed){
-  const match=motions.find(m=>m.re.test(name));
+  const matches=motions.map((m,i)=>({m,i,hit:m.re.exec(name)}))
+    .filter(x=>x.hit)
+    .sort((a,b)=>a.hit.index-b.hit.index || b.hit[0].length-a.hit[0].length || a.i-b.i);
+  const match=matches[0]?.m;
   // If a name has no secondary modifier, main glyph semantics still guide ink.
   const fallback={frost:'crystal',flame:'spark',flow:'ribbon',shard:'crystal',
     star:'orbit',void:'orbit',echo:'orbit',electric:'spark',fracture:'fractured',
