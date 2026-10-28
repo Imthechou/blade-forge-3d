@@ -411,3 +411,87 @@
 @media(prefers-reduced-motion:reduce) {
   .page[data-page="forge"] .dcard {transition:none}
 }
+
+
+/* ── V7: content-first compact cards, all detail access in header ── */
+.page[data-page="forge"] {--card-h:208px}
+.page[data-page="forge"] .dcard {
+  gap:5px;
+  padding:8px 8px 9px;
+  overflow:hidden;
+}
+.page[data-page="forge"] .dcard-head {
+  min-height:23px;
+  flex:0 0 23px;
+  flex-wrap:nowrap;
+  justify-content:space-between;
+  padding-right:29px;
+}
+.page[data-page="forge"] .dcard-head .rarity {
+  white-space:nowrap;
+}
+.page[data-page="forge"] .dcard-more {
+  position:absolute;
+  right:4px;top:3px;
+  z-index:2;
+  display:grid;place-items:center;
+  width:34px;height:32px;min-width:0;min-height:0;
+  margin:0;padding:0;
+  color:var(--face-3);
+  border:0;border-radius:11px;
+  background:transparent;
+  cursor:pointer;
+  transition:color .14s,background .14s;
+}
+.page[data-page="forge"] .dcard-more-svg {width:20px;height:20px;display:block}
+.page[data-page="forge"] .dcard-more:hover,
+.page[data-page="forge"] .dcard-more:focus-visible {
+  color:var(--accent);
+  background:rgba(132,143,184,.12);
+}
+.page[data-page="forge"] .dcard.is-picked .dcard-more {
+  color:color-mix(in srgb,var(--rarity-glow) 70%,var(--face-2));
+}
+.page[data-page="forge"] .dcard-visual {
+  flex:0 0 49px;
+  margin:3px 0 8px;
+  border-radius:12px;
+}
+.page[data-page="forge"] .dcard-title {
+  min-height:32px;max-height:32px;
+  margin:0;font-size:13px;line-height:16px;
+}
+.page[data-page="forge"] .dcard-plan {
+  margin-top:3px;
+  gap:3px;
+  grid-template-rows:13px 12px;
+  min-height:28px;max-height:28px;
+}
+.page[data-page="forge"] .dcard-tier {
+  margin-top:auto;
+  padding-bottom:1px;
+  flex:0 0 18px;
+  max-height:18px;
+}
+.page[data-page="forge"] .dcard:not(:has(.dcard-tier)) .dcard-plan {
+  margin-top:auto;margin-bottom:6px;
+}
+.page[data-page="forge"] .dcard-meta,
+.page[data-page="forge"] .dcard-detail,
+.page[data-page="forge"] .dcard-stage-mark {
+  display:none;
+}
+@media(max-height:740px){
+  .page[data-page="forge"]{--card-h:190px}
+  .page[data-page="forge"] .dcard {padding:6px 7px 7px;gap:3px}
+  .page[data-page="forge"] .dcard-head {min-height:21px;flex-basis:21px}
+  .page[data-page="forge"] .dcard-visual {flex-basis:38px;margin:2px 0 7px}
+  .page[data-page="forge"] .dcard-plan {margin-top:2px;gap:1px;min-height:26px;max-height:26px}
+}
+@media(max-height:660px){
+  .page[data-page="forge"]{--card-h:182px}
+  .page[data-page="forge"] .dcard-visual {flex-basis:29px;margin:1px 0 5px}
+  .page[data-page="forge"] .dcard-title {min-height:27px;max-height:27px;font-size:12px;line-height:13px}
+  .page[data-page="forge"] .dcard-plan {min-height:24px;max-height:24px}
+  .page[data-page="forge"] .dcard-tier {flex-basis:15px;max-height:15px}
+}
