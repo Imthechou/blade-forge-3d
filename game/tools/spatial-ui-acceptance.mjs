@@ -83,6 +83,16 @@ try {
       await page.locator('.stage-preview:not([hidden])').waitFor();
       assert.ok(await cards.first().getAttribute('aria-pressed')==='true');
       assert.equal(await page.evaluate(async()=>JSON.stringify((await import('/src/app/game.js')).default.run.ledger)),before);
+      // Card faces carry strategy only; precise before/after numbers live on the preview rail.
+      assert.equal(await cards.first().locator('.dcard-dirs,.chip--risk').count(),0);
+      assert.equal(await page.locator('.stat-grid.is-comparing .stat-cell').count(),6);
+      const riskText=await page.locator('.forge-rail .risk-value').innerText();
+      assert.ok(riskText.includes('→'), 'risk delta should show before and after');
+      await page.locator('.stage-traits').click();
+      await centered(page,'.sheet');
+      assert.ok(await page.locator('.sheet .build-entry').count()>=1);
+      await shot(page,`${width}-forge-build`);
+      await page.keyboard.press('Escape');await page.locator('.sheet-mask').waitFor({state:'detached'});
       await cards.first().click();
       assert.ok(await page.getByRole('button',{name:'选择工艺卡',exact:true}).isDisabled());
       await cards.nth(1).click();
