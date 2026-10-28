@@ -4,13 +4,16 @@ import { chromium } from 'playwright';
 
 const root = path.resolve(process.cwd(), 'visual-acceptance');
 await fs.mkdir(root, {recursive:true});
-const browser = await chromium.launch({headless:true, executablePath:'/usr/bin/google-chrome',
-  args:['--no-sandbox','--disable-dev-shm-usage','--enable-unsafe-swiftshader','--use-angle=swiftshader']});
+
 const report={date:new Date().toISOString(),checks:[],consoleErrors:[],failedRequests:[],failures:[],screenshots:[]};
 const candidate='http://127.0.0.1:8123/';
 const before='https://imthechou.github.io/blade-forge-3d/';
 const sizes=[{width:390,height:844},{width:390,height:740},{width:390,height:680},{width:375,height:667},{width:1280,height:900}];
 async function capture(label,url,viewport,check) {
+  // One Chromium/SwiftShader process per viewport; a single long-lived GPU context
+  // can stall WebGL shader preparation after several mobile profiles.
+  const browser = await chromium.launch({headless:true, executablePath:'/usr/bin/google-chrome',
+    args:['--no-sandbox','--disable-dev-shm-usage','--enable-unsafe-swiftshader','--use-angle=swiftshader']});
   const mobile=viewport.width<600;
   const context=await browser.newContext({viewport,deviceScaleFactor:mobile?2:1,isMobile:mobile,hasTouch:mobile,locale:'zh-CN',reducedMotion:'reduce'});
   const page=await context.newPage();
@@ -86,12 +89,12 @@ async function capture(label,url,viewport,check) {
   }
   console.log('CASE',JSON.stringify(record));
   await context.close();
+  await browser.close();
 }
 for(const viewport of sizes) {
   if(viewport.width===390&&viewport.height===740) await capture('BEFORE',before,viewport,false);
   await capture('AFTER',candidate,viewport,true);
 }
-await browser.close();
 await fs.writeFile(path.join(root,'report.json'),JSON.stringify(report,null,2));
 console.log('SUMMARY',JSON.stringify({passed:report.failures.length===0,failures:report.failures,errors:report.consoleErrors.length,failedRequests:report.failedRequests.length,screenshots:report.screenshots.length}));
 if(report.failures.length>0 || report.consoleErrors.length>0 || report.failedRequests.length>0) process.exitCode=1;
