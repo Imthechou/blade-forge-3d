@@ -177,15 +177,16 @@ export function cardDoodle(card) {
   svg.setAttribute('class','dcard-doodle');
   svg.setAttribute('aria-hidden','true');
   svg.setAttribute('focusable','false');
-  e(svg,'rect',{x:0,y:0,width:160,height:64,fill:p.paper});
+  // A translucent color wash lets the surrounding glass card remain visible.
+  e(svg,'rect',{x:0,y:0,width:160,height:64,fill:p.paper,opacity:'.26'});
   const brush=s.variant%2===0
     ? 'M-6 10 Q34 -13 72 10 Q95 22 167 -7 L167 31 Q115 18 80 48 Q35 74 -6 43Z'
     : 'M-5 37 Q28 2 78 11 T166 15 L166 46 Q104 63 64 47 Q23 39 -5 68Z';
-  path(svg,brush,{fill:p.field,opacity:'.95'});
+  path(svg,brush,{fill:p.field,opacity:'.57'});
   // Decal backing: hand-cut capsule shape, flat screen-print look.
   const x=61+s.offset;
   const back=e(svg,'g',{transform:'translate('+x+' 33) rotate('+s.tilt+')'});
-  path(back,'M-30 -17 Q-19 -31 6 -25 Q31 -23 33 -5 Q37 13 13 27 Q-14 33 -30 13 Q-37 -5 -30 -17Z',{fill:p.main,opacity:'.23'});
+  path(back,'M-30 -17 Q-19 -31 6 -25 Q31 -23 33 -5 Q37 13 13 27 Q-14 33 -30 13 Q-37 -5 -30 -17Z',{fill:p.main,opacity:'.16'});
   const main=e(svg,'g',{transform:'translate('+x+' 32) rotate('+s.tilt+') scale(.79)'});
   motif(main,s.primary,p,s.variant);
   const mini=e(svg,'g',{transform:'translate('+(127-s.offset/2)+' '+(31+(s.variant%3-1)*3)+') rotate('+(-s.tilt*1.3)+') scale(.45)'});
