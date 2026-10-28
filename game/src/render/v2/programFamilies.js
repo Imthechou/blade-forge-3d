@@ -41,7 +41,7 @@ let sourceCache = null;
    版本号进 three 的 program cache key（customProgramCacheKey），源码变了必须跟着变，
    否则同会话里可能命中上一版的 program。 */
 /* v5：补回 temper / tune / edgeGlow 三个叠加层（见下方调用点注释），改源码必须 bump */
-export const FAMILY_VERSION = 'bladeV2:63';
+export const FAMILY_VERSION = 'bladeV2:62';
 
 /** 刀身上真正会用到阶段效果函数的阶段（S8 只作用于柄，不在其中）。 */
 export const STAGE_FX = [1, 2, 3, 4, 5, 6, 7, 9];
@@ -923,30 +923,13 @@ const MAP_FRAGMENT = `
       if ( uV2Proc.x > 1.5 && uV2Proc.x < 2.5 && uS3On > 0.5 )
         {
           float billetFace = smoothstep( 0.25, 0.80, clamp( vS3PlanarFace, 0.0, 1.0 ) );
-          /* S3 whitening root cause: replacing 84% of the hot billet's
-             original albedo with the S1 flat steel color also replaced its
-             dark grooves with broad pale patches. Keep the original model
-             reflectance as the substrate; the centered S3 grayscale signal
-             still owns the card pattern, not a new bright paint layer. */
-          processBlend = max( processBlend, mix( 0.44, 0.58, billetFace ) );
+          /* Prior 0.59 left 41% of the orange baked GLB color across the
+             whole face; reflection then masked the S3 card's imprint.
+             Reuse the S3 sample already fetched; no texture or program. */
+          processBlend = max( processBlend, mix( 0.68, 0.84, billetFace ) );
         }
       col = mix( tinted, col, processBlend );
       col *= mix( 1.0, 0.72 + 0.56 * tl, 0.55 );
-      if ( uV2Proc.x > 1.5 && uV2Proc.x < 2.5 && uS3On > 0.5 ) {
-        /* Bound *only* the S3 preview's increased albedo against the
-           original billet on the same fragment. A white plateau is not an
-           engraving. This is a soft shoulder, not a clamp on screen-space
-           PBR highlights: specular reflections and normal detail survive. */
-        float billetLum = dot( tinted, vec3( 0.2126, 0.7152, 0.0722 ) );
-        float forgedLum = max( 0.0001, dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ) );
-        float billetCeiling = max( 0.060, billetLum * 1.08 );
-        float excess = max( 0.0, forgedLum - billetCeiling );
-        col *= ( forgedLum - 0.90 * excess ) / forgedLum;
-        /* Dark hammered troughs should read as relief, never as fresh
-           white stripes. S3 is grayscale/roughness, not self-illumination. */
-        float billetFace = smoothstep( 0.25, 0.80, clamp( vS3PlanarFace, 0.0, 1.0 ) );
-        col *= 1.0 - 0.13 * max( 0.0, -sig ) * billetFace * s3Surface;
-      }
     }
 
     /* Existing finish coats sometimes flatten forged grain. Restore only
