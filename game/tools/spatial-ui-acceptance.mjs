@@ -100,7 +100,44 @@ try {
       assert.equal(await page.locator('.sheet-x[aria-label="关闭"] svg.sheet-x-icon').count(),1);
       await page.keyboard.press('Escape');
       await page.locator('.sheet-mask').waitFor({state:'detached'});
-      if(width===390) await shot(page,'390-doodle-choice');
+      if(width===390){
+        // Render a real SPECIAL-only card alongside the live choices. Its rare
+        // activation state must occupy the empty tier area and be centered.
+        const rareLayout=await page.evaluate(async()=>{
+          const {CARDS}=await import('/src/data/cards.js');
+          const {isBaseTag,isSpecialTag}=await import('/src/data/tags.js');
+          const {decisionCard}=await import('/src/ui/components.js');
+          const target=CARDS.find(c=>(c.tags||[]).some(isSpecialTag)
+            && !(c.tags||[]).some(isBaseTag));
+          if(!target)return {found:false};
+          const example=document.querySelector('.page.is-active .cards .dcard');
+          const card=decisionCard(target,{tagCounts:{},onPick:()=>{},onDetail:()=>{}});
+          const bounds=example.getBoundingClientRect();
+          card.style.position='absolute';
+          card.style.top='0';
+          card.style.left='0';
+          card.style.width=bounds.width+'px';
+          card.style.height=bounds.height+'px';
+          card.style.visibility='hidden';
+          example.parentNode.appendChild(card);
+          const rect=card.getBoundingClientRect(),plan=card.querySelector('.dcard-plan')?.getBoundingClientRect();
+          const box=card.querySelector('.dcard-instant')?.getBoundingClientRect();
+          const inner=card.querySelector('.dcard-instant-action')?.getBoundingClientRect();
+          const padding=parseFloat(getComputedStyle(card).paddingBottom)||0;
+          const freeMid=(plan.bottom+rect.bottom-padding)/2;
+          const center=box?(box.top+box.bottom)/2:0;
+          const textCenter=inner?(inner.left+inner.right)/2:0;
+          const result={found:true,name:target.name,centerDiff:Math.abs(center-freeMid),
+            horizontalDiff:Math.abs(textCenter-(rect.left+rect.right)/2),
+            bottomClearance:rect.bottom-(inner?.bottom||rect.bottom),
+            text:card.querySelector('.dcard-instant')?.textContent};
+          card.remove();return result;
+        });
+        assert.ok(rareLayout.found && rareLayout.text==='稀有工艺即刻激活'
+          && rareLayout.centerDiff<=6 && rareLayout.horizontalDiff<=6
+          && rareLayout.bottomClearance>=5,'instant activation must be centered: '+JSON.stringify(rareLayout));
+        await shot(page,'390-doodle-choice');
+      }
       const before = await page.evaluate(async()=>JSON.stringify((await import('/src/app/game.js')).default.run.ledger));
       await cards.first().click();
       await page.locator('.stage-preview:not([hidden])').waitFor();
