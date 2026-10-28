@@ -122,7 +122,7 @@ test('full forged blade clamps accumulated albedo energy and retires excessive S
   assert.match(shader,/col \*= compressedLum \/ finalLum/);
   assert.match(shader,/float haloCarry = 1\.0 - 0\.48 \* postS5 - 0\.12 \* postS6/);
   assert.match(shader,/float s4e =[\s\S]*?\* haloCarry/);
-  assert.match(shader,/bladeV2:62/);
+  assert.match(shader,/bladeV2:66/);
 });
 
 test('S3 billet card engraving stays legible while the entire forging chain has a bounded reflection budget',()=>{
@@ -132,11 +132,40 @@ test('S3 billet card engraving stays legible while the entire forging chain has 
   const lights=readFileSync(new URL('../src/render/legacy/viewer.js',import.meta.url),'utf8');
   assert.match(shader,/uV2Proc\.x > 1\.5 && uV2Proc\.x < 2\.5 && uS3On > 0\.5/);
   assert.match(shader,/amp \*= mix\( 0\.84, 1\.18, billetFace \)/);
-  assert.match(shader,/processBlend = max\( processBlend, mix\( 0\.68, 0\.84, billetFace \) \)/);
+  assert.match(shader,/col = mix\( tinted, min\( tinted, col \), 0\.30 \)/);
   assert.match(shader,/float s4e = clamp\([\s\S]*?0\.0, 0\.92 \)/);
   assert.match(detail,/float patternWeight = mix\( 0\.16, 0\.26,/);
   assert.match(viewer,/const STAGE_ENV_GAIN = \[0\.88, 0\.90, 0\.80, 0\.88, 1\.00, 1\.04, 1\.08, 1\.10, 1\.12\]/);
   assert.match(viewer,/Math\.min\(1\.48, M\.envIntensity \* stageEnvGain\)/);
   assert.doesNotMatch(viewer,/0\.90 \+ 0\.1025 \* \(g - 1\)/);
   assert.match(lights,/toneMappingExposure = 0\.90/);
+});
+
+
+test('S3 is carved into baked billet albedo with bounded one-sided contrast and no costly new normals',()=>{
+  const shader=readFileSync(new URL('../src/render/v2/programFamilies.js',import.meta.url),'utf8');
+  const detail=readFileSync(new URL('../src/render/v2/surfaceDetail.js',import.meta.url),'utf8');
+  const process=shader.slice(shader.indexOf('/* ⑥ 过程模型'),shader.indexOf('/* Existing finish coats'));
+  assert.match(process,/uV2Proc\.x > 1\.5 && uV2Proc\.x < 2\.5 && uS3On > 0\.5/);
+  assert.match(process,/float darkGroove = max\( 0\.0, -sig \) \* s3Surface/);
+  assert.match(process,/float grooveDepth = mix\( 0\.26, 0\.48, billetFace \)/);
+  assert.match(process,/col = mix\( tinted, min\( tinted, col \), 0\.30 \)/);
+  assert.match(process,/col \*= 1\.0 - darkGroove \* grooveDepth/);
+  assert.match(process,/else \{\s*col = mix\( tinted, col, processBlend \)/);
+  assert.doesNotMatch(process,/billetCeiling|forgedLum|fwidth\s*\(|s3FrontBoost|grooveAA/);
+  assert.doesNotMatch(shader,/mix\( 0\.68, 0\.84, billetFace \)|mix\( 0\.44, 0\.58, billetFace \)/);
+  assert.doesNotMatch(detail,/s3FrontBoost/);
+  assert.match(shader,/bladeV2:66/);
+
+  // The new S3 process can only retain or remove albedo from each baked
+  // channel: bright ridges remain baked metal; card troughs are dark only.
+  for(const baked of [0.02,0.15,0.45,0.85])
+    for(const forged of [0.0,0.18,0.55,1.4])
+      for(const sig of [-0.8,-0.2,0.2,0.8]) {
+        const substrate=baked*0.7+Math.min(baked,forged)*0.3;
+        const darkGroove=Math.max(0,-sig)*0.9;
+        const result=substrate*(1-darkGroove*0.48);
+        assert.ok(result<=baked+1e-10&&result>=0,{baked,forged,sig,result}.toString());
+        if(sig>=0)assert.equal(result,substrate);
+      }
 });
