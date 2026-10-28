@@ -157,6 +157,8 @@ function renderCollection() {
     return;
   }
 
+  const grid = el('div', { class: 'ws-collection-grid' });
+  body.appendChild(grid);
   for (const blade of shown) {
     /* ★ rework T13.1：用**共用**展示模型与卡片，不在这里另拼一套。
        3D 缩略图仍由 mountCollectionPreview 挂到卡面主视觉位。 */
@@ -185,7 +187,7 @@ function renderCollection() {
         },
       }),
     ]));
-    body.appendChild(card);
+    grid.appendChild(card);
   }
 }
 

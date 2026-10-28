@@ -20,16 +20,14 @@ export function render() {
   if (!body) return;
   Core.progress.rolloverDaily();
   const dayKey = Core.daily.dayKey();
-  const seed = Core.daily.seedOfDay(dayKey);
   clear(body);
   mount(body, [
     el('section', { class: 'card' }, [
-      el('div', { class: 'section-title', text: '每日快速赛事已移入赛事页' }),
-      el('div', { class: 'forge-question', text: `${dayKey} · 固定挑战种子` }),
-      el('div', { class: 'report-line', text: '使用同一组每日目标序列，带上藏刀阁中的成刀进行 45 秒 2D 切割挑战。每日挑战可重复游玩，每局按成绩赚取信用点。' }),
-      el('div', { class: 'muted tiny', text: `今日固定 Seed：${seed}` }),
+      el('div', { class: 'section-title', text: '每日挑战' }),
+      el('div', { class: 'forge-question', text: dayKey }),
+      el('div', { class: 'report-line', text: '相同靶序，挑战今天的最高分。每局 45 秒，收藏刀具不会受损。' }),
     ]),
-    el('button', { class: 'btn btn--primary btn--block', text: '前往赛事 · 开始每日挑战', onclick: openDailyChallenge }),
+    el('button', { class: 'btn btn--primary btn--block', text: '开始每日挑战 →', onclick: openDailyChallenge }),
   ]);
 }
 export default { create, render };

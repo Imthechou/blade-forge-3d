@@ -1,265 +1,104 @@
-/* Forge and shared home presentation. Color roles consume the project token names. */
-/* ★ 2026-10-24：`.goal` / `.goal-name` / `.goal-state` 已删除。
-   它们只服务于已移除的「今日目标」抽屉（用户：不需要这个了）。 */
-
-/* 舞台占顶栏以下可视内容区的 50%；选卡操作行仍在正常文档流中。 */
-.stage { position: relative; isolation: isolate; background: var(--showcase-base); }
-.stage::before { content: ''; position: absolute; inset: 0; z-index: 0; background: var(--showcase-surface); pointer-events: none; }
-.stage canvas { width: 100%; height: 100%; display: block; position: relative; z-index: 1; }
-.stage canvas.is-ghost { opacity: .58; transition: opacity .35s; }
-.showcase-label { position: absolute; left: 18px; top: 12px; z-index: 3; display: flex; align-items: center; gap: 7px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 20px; background: var(--base-1); font-size: 12px; color: var(--face); pointer-events: none; }
-.showcase-label i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-cool); }
-.showcase-caption { position: absolute; bottom: 9px; right: 18px; z-index: 3; padding: 6px 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--base-1); font-size: 12px; color: var(--face-2); pointer-events: none; }
-.stage.is-preparing::after { content: '3D 正在准备'; position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%,-50%); padding: 8px 14px; border: 1px solid var(--line); border-radius: 20px; color: var(--face-2); background: var(--base-1); font-size: 12px; pointer-events: none; }
-.stage-chipbar { position: absolute; top: 14px; left: 16px; right: 16px; z-index: 7; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; pointer-events: none; }
-.stage-chipbar > * { pointer-events: auto; }
-.stage-badge { display: flex; align-items: baseline; gap: 6px; padding: 5px 10px; font-size: 14px; border-radius: 9px; background: var(--face); color: var(--base-1); border-color: var(--line); box-shadow: 0 2px 8px #07152520; }
-.stage-badge b { font: 700 21px/1.3 var(--font-num); color: var(--accent-cool); }
-.stage-badge i { font-size: 12px; font-style: normal; color: #D4E0E8; }
-.stage-traits { font-family: var(--font); cursor: pointer; background: var(--base-1); color: var(--face); }
-.stage-question { width: 100%; box-sizing: border-box; padding-right: 58%; line-height: 1.4; overflow-wrap: anywhere; font-size: 14px; font-weight: 600; color: var(--face); margin: 0 0 0 2px; text-shadow: 0 1px 1px #FFFFFF; pointer-events: none; }
-
-/* ★★ 阶段推进回执（解决“换阶段没感觉”）
-   预览时 3D 已经是“选完的样子”，点确认进下一阶段时画面几乎不变。
-   这里给三件事：徽标重播入场 + 题面滑入 + 舞台中央淡出一行“第 N 阶段 · 名称”。
-   全部只动 transform / opacity，不触发重排；全部由 JS 加/删 .stage-advance 类控制。 */
-.stage-advance-toast {
-  position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%);
-  z-index: 9; display: flex; align-items: baseline; gap: 8px;
-  padding: 10px 18px; border-radius: var(--r-pill);
-  background: color-mix(in srgb, var(--face) 92%, transparent);
-  color: var(--base-1); box-shadow: var(--shadow-3);
-  pointer-events: none; white-space: nowrap;
-  animation: stageAdvanceToast 1.4s var(--ease) both;
-}
-.stage-advance-toast b { font: 700 18px/1.2 var(--font-num); color: var(--accent-cool); }
-.stage-advance-toast span { font: 600 14px/1.2 var(--font); }
-@keyframes stageAdvanceToast {
-  0%   { opacity: 0; transform: translate(-50%, -34%) scale(.94); }
-  18%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  72%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -58%) scale(.98); }
-}
-
-/* 徽标重播入场：让“阶段号变了”在固定位置也有一个可捕捉的变化 */
-.stage-advance .stage-badge { animation: stageBadgeIn .42s var(--ease) both; }
-@keyframes stageBadgeIn {
-  0%   { transform: translateY(-6px) scale(.94); opacity: .55; }
-  60%  { transform: translateY(0) scale(1.04); opacity: 1; }
-  100% { transform: translateY(0) scale(1); opacity: 1; }
-}
-.stage-advance .stage-question { animation: stageQuestionIn .38s var(--ease) both; }
-@keyframes stageQuestionIn {
-  0%   { transform: translateY(-4px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
-}
-/* 进度条末点亮起，强调“又前进了一段” */
-.stage-advance .sp-dot.active { animation: stageDotIn .5s var(--ease) both; }
-@keyframes stageDotIn {
-  0%   { transform: scale(.8); }
-  55%  { transform: scale(1.18); }
-  100% { transform: scale(1); }
-}
-
-/* 减少动效：去掉位移与缩放动画，只保留可读回执（文字仍在） */
-@media (prefers-reduced-motion: reduce) {
-  .stage-advance-toast { animation: none; opacity: 1; }
-  .stage-advance .stage-badge,
-  .stage-advance .stage-question,
-  .stage-advance .sp-dot.active { animation: none; }
-}
-.stage-readiness { position: absolute; right: 14px; bottom: 29px; z-index: 4; max-width: calc(100% - 28px); padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--base-1); color: var(--face-2); font-size: 12px; pointer-events: none; }
-.stage-readiness.is-ready { display: none; }
-.page[data-page="forge"] .stage-progress { background: linear-gradient(0deg,var(--base-0),color-mix(in srgb,var(--base-0) 94%,transparent) 75%,transparent); }
-.page[data-page="forge"] { padding-bottom: 0; overflow: hidden; min-height: 0; height: 100%; --card-h: clamp(168px,calc(23dvh - 14px),210px); --stat-h: 66px; }
-/* ★ 用户要求：3D 舞台占**再多 10%**，取整数 → 50% 提到 **60%**。
-   卡片高度相应从 25dvh 收到 23dvh，保证“舞台 + 卡片 + 操作栏”仍是一屏不溢出。 */
-.page[data-page="forge"] .stage { flex: 0 0 60%; min-height: 0; max-height: none; }
-.forge-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 0; padding: 0; overflow-y: auto; overscroll-behavior-y: contain; }
-.page[data-page="forge"] .forge-rail { flex: 0 0 auto; min-height: var(--stat-h); display: flex; flex-direction: column; justify-content: center; gap: 5px; margin: 0 16px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb,var(--base-1) 92%,transparent); box-shadow: 0 3px 12px #1B3C5307; }
-.page[data-page="forge"] .risk { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 2px 6px; }
-.page[data-page="forge"] .risk-head { grid-column: 1; grid-row: 1; line-height: 18px; font-size: 12px; }
-.page[data-page="forge"] .risk-foot { grid-column: 2; grid-row: 1; justify-content: flex-end; line-height: 18px; font-size: 12px; }
-.page[data-page="forge"] .risk-bar { grid-column: 1 / -1; grid-row: 2; height: 5px; }
-.page[data-page="forge"] .risk-value { font-size: 14px; }
-.page[data-page="forge"] .stat-grid { gap: 3px; }
-.page[data-page="forge"] .stat-cell { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; column-gap: 2px; row-gap: 0; border-right: 1px solid var(--line-2); }
-.page[data-page="forge"] .stat-cell:last-child { border: 0; }
-.page[data-page="forge"] .stat-cell-name { grid-column: 1 / -1; font-size: 12px; }
-.page[data-page="forge"] .stat-cell-val { grid-column: 1; grid-row: 2; font-size: 12px; line-height: 1.6; }
-.page[data-page="forge"] .stat-cell-dir { grid-column: 2; grid-row: 2; font-size: 12px; line-height: 19px; }
-.cards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; align-items: stretch; }
-.page[data-page="forge"] .cards { flex: 0 0 auto; height: calc(var(--card-h) + 18px); padding: 10px 16px 6px; gap: 9px; }
-.page[data-page="forge"] .dcard { position: relative; height: 100%; min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: stretch; padding: 5px 9px 4px; gap: 4px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(150deg,var(--base-1),var(--base-2)); box-shadow: inset 0 1px #FFFFFF,0 3px 10px #15364D0D; cursor: pointer; transition: transform .16s ease,border-color .16s ease,box-shadow .16s ease,opacity .16s ease; }
-.dcard-ornament { display: none; }
-.dcard-ornament i { height: 1px; flex: 1; background: currentColor; }
-.dcard-ornament span { font: 600 13px/1 var(--font-num); letter-spacing: .12em; }
-.page[data-page="forge"] .dcard-head { position: relative; inset: auto; min-height: 26px; padding-top: 2px; gap: 3px; justify-content: space-between; flex: 0 0 auto; }
-.page[data-page="forge"] .dcard-head .rarity { background: transparent; border: 0; font-size: 12px; line-height: 16px; padding: 0; }
-.page[data-page="forge"] .dcard-head .chip { font-size: 12px; line-height: 16px; padding: 0; border: 0; background: color-mix(in srgb,var(--base-1) 80%,transparent); }
-.page[data-page="forge"] .dcard-title { flex: 0 0 auto; min-height: 36px; font-size: 14px; line-height: 1.3; font-weight: 700; letter-spacing: -.02em; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.page[data-page="forge"] .dcard-copy { display: none; }
-.page[data-page="forge"] .dcard-dirs { flex: 1 1 auto; min-height: 22px; max-height: 46px; overflow: hidden; display: flex; flex-wrap: wrap; gap: 3px; }
-.page[data-page="forge"] .dcard-dirs .chip { padding: 0 3px; font-size: 11px; line-height: 17px; }
-/* rework T14：标签补档行——“这张卡让我离哪个特性更近”。
-   升档时用强调色，否则保持低调，不抢六维方向的注意力。 */
-.page[data-page="forge"] .dcard-tier {
-  flex: 0 0 auto;
-  overflow: hidden;
-  padding: 2px 5px;
-  border-radius: var(--r-sm);
-  background: color-mix(in srgb, var(--base-3) 55%, transparent);
-  color: var(--face-3);
-  font-size: 11px;
-  line-height: 1.3;
-  /* ★ 修复：卡宽只有 ~94px，单行放不下「稳态 0→1 层 · 补到工艺倾向」（需 ~152px），
-     原来 nowrap + ellipsis 会把关键信息「补到哪一档」直接截成省略号，
-     玩家看不到 T14 要求的「补到哪档标签」。改为最多两行，保留完整语义。 */
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  word-break: break-word;
-}
-.page[data-page="forge"] .dcard-tier.is-up {
-  background: color-mix(in srgb, var(--accent-cool) 14%, transparent);
-  color: var(--accent-cool-deep);
-  font-weight: 650;
-}
-.page[data-page="forge"] .dcard-tags { display: none; }
-.page[data-page="forge"] .dcard-tags .chip { border: 0; padding: 1px 0; font-size: 12px; border-radius: 0; background: transparent; color: var(--face-3); }
-.page[data-page="forge"] .dcard-tags .chip + .chip::before { content: '·'; margin-right: 4px; }
-.page[data-page="forge"] .dcard-meta { flex: 0 0 44px; min-height: 44px; margin-top: auto; font-size: 12px; color: var(--face-3); gap: 2px; }
-.page[data-page="forge"] .dcard-meta > .grow { font-size: 11px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.page[data-page="forge"] .dcard-detail { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: flex-end; padding: 0 2px 0 5px; font-size: 12px; color: var(--accent-cool-deep); text-decoration: none; }
-.page[data-page="forge"] .dcard:active { transform: scale(.985); }
-.page[data-page="forge"] .dcard.is-picked { transform: translateY(-4px); border-color: var(--accent-cool); box-shadow: inset 0 0 0 2px var(--accent-cool),0 6px 16px #17344B20; }
-.page[data-page="forge"] .dcard.is-picked .dcard-title { color: var(--accent-cool-deep); }
-.page[data-page="forge"] .dcard.is-picked .dcard-meta > .grow { color: var(--accent-cool-deep); font-weight: 700; }
-.cards.is-picking .dcard:not(.is-picked) { opacity: .74; }
-.page[data-page="forge"] .dcard--r-fine { border-top: 3px solid var(--accent-cool); }
-.page[data-page="forge"] .dcard--r-rare { border-top: 3px double var(--r-rare-t); }
-.page[data-page="forge"] .dcard--r-epic { box-shadow: inset 0 0 0 2px var(--base-1),inset 0 0 0 3px var(--r-epic-t),0 3px 10px #15364D0D; }
-.page[data-page="forge"] .dcard--r-legend { border-width: 2px; border-style: double; }
-.page[data-page="forge"] .dcard--r-mythic { border-width: 2px; border-style: double; }
-.page[data-page="forge"] .dcard--r-mythic::before { content: ''; position: absolute; inset: 5px; border-radius: 7px; border: 1px solid var(--r-myth-t); opacity: .45; pointer-events: none; }
-.actions { display: flex; gap: 10px; }
-.actions .btn { flex: 1 1 0; }
-.page[data-page="forge"] .actions { flex: 0 0 auto; padding: 5px 16px calc(10px + var(--safe-b)); }
-.forge-selection-status { flex: 0 0 auto; min-height: 22px; text-align: center; font-size: 12px; line-height: 22px; color: var(--accent-cool-deep); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 16px; }
-.forge-selection-status:empty { display: block; visibility: hidden; }
-.page[data-page="forge"] .actions .btn { min-height: 48px; font-size: 14px; transition: transform .12s ease,background .16s ease; }
-.page[data-page="forge"] .actions .btn--primary { background: var(--face); color: var(--base-1); }
-.page[data-page="forge"] .actions .btn:active { transform: translateY(2px) scale(.99); }
-.page[data-page="forge"] .actions .btn[disabled] { opacity: .48; }
-.forge-pad { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px calc(12px + var(--safe-b)); overflow-y: auto; max-height: 47dvh; }
-.forge-question { font-size: 22px; font-weight: 700; line-height: 1.25; color: var(--face); }
-.forge-question span { display: block; font-size: 14px; color: var(--face-2); font-weight: 400; margin-top: 5px; }
-.hammer-hit { flex: 0 0 auto; min-height: 92px; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(145deg,var(--base-1),var(--base-2)); box-shadow: inset 0 1px 0 #FFFFFF,0 4px 12px #1C40530C; display: flex; align-items: center; justify-content: center; color: var(--face); font: 700 18px var(--font); user-select: none; touch-action: manipulation; cursor: pointer; transition: transform .12s ease,background .12s ease,border-color .12s ease; }
-.hammer-hit:active { background: var(--accent-soft); border-color: var(--accent-cool); transform: scale(.985); }
-.hammer-hit.is-striking { animation: forgeStrike .24s ease-out; }
-@keyframes forgeStrike { 35% { transform: scale(.97); background: var(--accent-soft); border-color: var(--accent-cool); } 100% { transform: scale(1); } }
-.hammer-stage-hit { position: absolute; inset: 0; z-index: 6; width: 100%; height: 100%; display: flex; align-items: flex-end; justify-content: center; padding: 0 16px 32px; border: 0; border-radius: 0; background: transparent; color: var(--face); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.hammer-stage-cue { padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--base-1); font: 600 13px/1.4 var(--font); pointer-events: none; }
-.hammer-stage-hit:active .hammer-stage-cue { background: var(--accent-soft); border-color: var(--accent-cool); }
-.hammer-stage-hit:focus-visible { outline: 3px solid var(--accent-cool); outline-offset: -4px; }
-.hammer-stage-hit.is-striking .hammer-stage-cue { animation: forgeStrike .24s ease-out; }
-.page[data-page="forge"].is-hammer .hammer-panel { flex: 1 1 0; min-height: 0; max-height: none; padding-bottom: 8px; gap: 10px; overscroll-behavior: contain; }
-.hammer-instructions { font-size: 13px; color: var(--face-2); text-align: center; }
-.hammer-actions { flex: 0 0 auto; padding: 8px 16px calc(12px + var(--safe-b)); border-top: 1px solid var(--line); background: var(--base-0); }
-.hammer-actions .btn { min-height: 48px; }
-.hammer-stat { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; text-align: center; }
-.hammer-stat b { display: block; font: 700 20px var(--font-num); color: var(--face); }
-.hammer-stat span { font-size: 12px; color: var(--face-3); }
-/* rework T04.4：逐锤成果与收手保留内容 —— 中间锤必须看得到收益，
-   否则“多冒一锤”只能在看不见的进度条上赌。 */
-.hammer-gain { display: flex; justify-content: space-between; gap: 8px; padding: 5px 8px; border-radius: var(--r-sm); background: color-mix(in srgb,var(--accent-cool) 10%,transparent); color: var(--accent-cool-deep); font: 600 12px/1.4 var(--font-num); }
-.edge-canvas { width: 100%; height: clamp(100px,16dvh,160px); flex: 0 0 auto; background: var(--base-1); border: 1px solid var(--line); border-radius: 12px; touch-action: none; display: block; }
-.edge-canvas:active { border-color: var(--accent-cool); }
-
-@media (max-height: 740px) {
-  .page[data-page="forge"] { --stat-h: 62px; --card-h: clamp(162px,calc(23dvh - 12px),196px); }
-  .page[data-page="forge"] .dcard { gap: 3px; }
-  /* 405×720 等中短竖屏也需要把预览反馈移出下半区预算：保留卡高和 48px 主操作。 */
-  .page[data-page="forge"] .forge-selection-status { position: absolute; left: 16px; right: 16px; bottom: calc(50% + 44px); z-index: 8; padding: 2px 7px; border-radius: 8px; background: var(--base-1); pointer-events: none; }
-  .page[data-page="forge"] .actions { position: sticky; bottom: 0; z-index: 8; background: var(--base-0); }
-  .page[data-page="forge"] .forge-pad > .btn { flex: 0 0 auto; min-height: 48px; }
-}
-@media (max-height: 660px) {
-  .page[data-page="forge"] { --stat-h: 60px; --card-h: 142px; }
-  /* 360×640：内容区 578px，舞台仍为 289px（50%）。
-   * 下半区只收紧信息栏留白；卡高和 44/48px 点击热区不缩小。
-   * 选卡反馈作为舞台浮层，不再在下半区预留一整行。 */
-  .page[data-page="forge"] .forge-rail { gap: 3px; padding-top: 3px; padding-bottom: 3px; }
-  .page[data-page="forge"] .stat-cell-name,
-  .page[data-page="forge"] .stat-cell-val,
-  .page[data-page="forge"] .stat-cell-dir { line-height: 16px; }
-  .page[data-page="forge"] .stat-cell { column-gap: 0; }
-  .page[data-page="forge"] .stat-cell-val { white-space: nowrap; }
-  .page[data-page="forge"] .stat-cell-dir { font-size: 11px; white-space: nowrap; }
-  .page[data-page="forge"] .actions { position: sticky; bottom: 0; z-index: 8; padding-top: 3px; padding-bottom: calc(6px + var(--safe-b)); background: var(--base-0); }
-  .page[data-page="forge"] .dcard-dirs { align-content: flex-start; gap: 2px; }
-  .page[data-page="forge"] .dcard-dirs .chip { line-height: 15px; }
-  .page[data-page="forge"] .forge-selection-status { position: absolute; left: 16px; right: 16px; bottom: calc(50% + 44px); z-index: 8; padding: 2px 7px; border-radius: 8px; background: var(--base-1); pointer-events: none; }
-  .page[data-page="forge"] .dcard { padding-left: 6px; padding-right: 6px; }
-  .page[data-page="forge"] .forge-pad:has(.edge-canvas) { flex: 1 1 auto; min-height: 0; max-height: none; gap: 6px; padding-top: 6px; padding-bottom: calc(8px + var(--safe-b)); }
-  .page[data-page="forge"] .forge-pad:has(.edge-canvas) > .btn { flex: 0 0 auto; min-height: 48px; }
-  .page[data-page="forge"] .dcard-title { min-height: 18px; white-space: nowrap; display: block; text-overflow: ellipsis; }
-  .page[data-page="forge"] .dcard-copy { min-height: 18px; max-height: 1.5em; -webkit-line-clamp: 1; }
-  .page[data-page="forge"] .dcard-head { flex-basis: 24px; min-height: 24px; flex-wrap: nowrap; }
-  .page[data-page="forge"] .dcard-head .rarity,.page[data-page="forge"] .dcard-head .chip { font-size: 11px; }
-  .page[data-page="forge"] .dcard-dirs { max-height: 42px; }
-  .page[data-page="forge"] .dcard-tags { display: none; }
-  .forge-selection-status { min-height: 18px; line-height: 18px; }
-}
-@media (max-width: 350px) {
-  .page[data-page="forge"] .cards { padding-left: 10px; padding-right: 10px; gap: 7px; }
-  .page[data-page="forge"] .dcard { padding-left: 6px; padding-right: 6px; }
-  .page[data-page="forge"] .dcard-head .rarity { font-size: 11px; }
-  .page[data-page="forge"] .dcard-head .chip { font-size: 11px; }
-  .page[data-page="forge"] .dcard-copy { font-size: 12px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .dcard,.stage canvas,.hammer-hit,.page[data-page="forge"] .actions .btn { transition: none; }
-  .hammer-hit.is-striking { animation: none; }
-  .hammer-stage-hit.is-striking .hammer-stage-cue { animation: none; }
-}
-
-
-/* iOS Safari one-screen forging: stage takes leftover height, actions never hide inside a scroll panel. */
-@media (max-width:600px) {
-  .page[data-page="forge"] { --stat-h:60px; --card-h:clamp(158px,20dvh,174px); }
-  .page[data-page="forge"] .stage { flex:1 1 0; min-height:0; max-height:none; }
-  .page[data-page="forge"] .forge-body { flex:0 0 auto; min-height:0; position:relative; overflow:visible; }
-  .page[data-page="forge"] .forge-rail { min-height:60px; margin:0 12px; padding:4px 8px; gap:2px; }
-  .page[data-page="forge"] .cards { height:calc(var(--card-h) + 10px); padding:6px 12px 4px; gap:7px; }
-  .page[data-page="forge"] .dcard { padding:5px 7px 3px; gap:3px; }
-  .page[data-page="forge"] .dcard-head { min-height:22px; flex-basis:22px; }
-  .page[data-page="forge"] .dcard-title { min-height:20px; max-height:20px; display:block; white-space:nowrap; text-overflow:ellipsis; }
-  .page[data-page="forge"] .dcard-dirs { max-height:38px; }
-  .page[data-page="forge"] .dcard-meta { flex-basis:44px; min-height:44px; }
-  /* The picked card and CTA already show the choice; preserve live text for assistive tech. */
-  .page[data-page="forge"] .forge-selection-status,
-  .page[data-page="forge"] .forge-selection-status.has-selection {
-    position:absolute; width:1px; height:1px; min-height:0; padding:0;
-    margin:-1px; border:0; overflow:hidden; clip-path:inset(50%);
-    white-space:nowrap; bottom:auto; left:auto; right:auto; visibility:visible;
-  }
-  .page[data-page="forge"] .actions { flex:0 0 auto; position:relative; bottom:auto; z-index:8;
-    padding:4px 12px calc(6px + var(--safe-b)); background:var(--base-0); }
-  .page[data-page="forge"] .actions .btn { min-height:46px; }
-}
-/* Tiny embedded viewport fallback: model remains present and CTA is pinned. */
-@media (max-width:600px) and (max-height:640px) {
-  .page[data-page="forge"] { --card-h:148px; --stat-h:56px; }
-  .page[data-page="forge"] .stage { min-height:170px; }
-  .page[data-page="forge"] .forge-body { flex:1 1 0; overflow-y:auto; }
-  .page[data-page="forge"] .actions { position:sticky; bottom:0; }
-}
-
-
-/* PC embeds the same 430px mobile layout. Do not let its fixed 60% stage clip the cards. */
-@media (min-width:601px) {
-  .page[data-page="forge"] .stage { flex:1 1 0; min-height:0; }
-  .page[data-page="forge"] .forge-body { flex:0 0 auto; overflow:visible; }
-}
+/* Spatial forge: genuine PBR model above a single, readable decision surface. */
+.stage { position:relative; isolation:isolate; background:var(--showcase-base); }
+.stage::before { content:''; position:absolute; inset:0; z-index:0; background:var(--showcase-surface); pointer-events:none; }
+.stage canvas { width:100%; height:100%; display:block; position:relative; z-index:1; }
+.stage canvas.is-ghost { opacity:.64; transition:opacity .35s; }
+.showcase-label { position:absolute; left:16px; top:14px; z-index:3; display:flex; align-items:center; gap:7px; padding:7px 11px; border:1px solid var(--glass-border); border-radius:var(--r-pill); background:var(--glass-bg); color:var(--face-2); font-size:12px; pointer-events:none; }
+.showcase-label i { width:6px; height:6px; border-radius:50%; background:var(--accent); }
+.showcase-caption,.stage-readiness { position:absolute; right:14px; bottom:38px; z-index:4; max-width:calc(100% - 28px); padding:7px 11px; border:1px solid var(--glass-border); border-radius:12px; background:var(--glass-bg); color:var(--face-2); font-size:12px; pointer-events:none; }
+.stage-readiness.is-ready { display:none; }
+.stage.is-preparing::after { content:'3D 正在准备'; position:absolute; z-index:5; left:50%; top:50%; transform:translate(-50%,-50%); padding:8px 14px; border-radius:20px; color:var(--face-2); background:var(--glass-bg); pointer-events:none; }
+.stage-chipbar { position:absolute; top:14px; left:14px; right:14px; z-index:7; display:flex; align-items:center; flex-wrap:wrap; gap:6px; pointer-events:none; }
+.stage-chipbar>* { pointer-events:auto; }
+.stage-badge { display:flex; align-items:center; gap:8px; padding:7px 11px; border:1px solid var(--glass-border); border-radius:16px; background:var(--glass-bg); color:var(--face); box-shadow:var(--shadow-1); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+.stage-badge b { font:750 27px/1 var(--font-num); color:var(--accent); }
+.stage-badge span { font-size:16px; font-weight:700; }
+.stage-badge i { font-size:11px; font-style:normal; color:var(--face-3); }
+.stage-traits { margin-left:auto; font-family:var(--font); cursor:pointer; background:var(--glass-bg); color:var(--face-2); min-height:44px; }
+.stage-question { width:100%; max-width:65%; margin:0 0 0 3px; color:var(--face-2); font-size:12px; line-height:1.4; pointer-events:none; }
+.stage-preview { position:absolute; left:14px; bottom:48px; z-index:5; max-width:calc(100% - 125px); padding:6px 10px; border:1px solid var(--glass-border); border-radius:var(--r-pill); background:var(--glass-bg); color:var(--accent); font-size:12px; font-weight:600; pointer-events:none; }
+.stage-preview::before { content:''; display:inline-block; width:6px; height:6px; margin-right:6px; border-radius:50%; background:var(--accent); }
+.stage-preview[hidden] { display:none; }
+.stage-advance-toast { position:absolute; left:50%; top:42%; z-index:9; display:flex; align-items:center; gap:10px; padding:10px 18px; border:1px solid var(--glass-border); border-radius:20px; color:var(--face); background:var(--dialog-glass); box-shadow:var(--shadow-2); pointer-events:none; white-space:nowrap; animation:stageAdvanceToast 1.1s var(--ease) both; }
+.stage-advance-toast b { color:var(--accent); font:700 22px var(--font-num); }
+.stage-advance-toast span { font-size:15px; font-weight:650; }
+@keyframes stageAdvanceToast { 0%{opacity:0;transform:translate(-50%,-40%) scale(.96)} 20%,70%{opacity:1;transform:translate(-50%,-50%)} 100%{opacity:0;transform:translate(-50%,-65%)} }
+.stage-advance .stage-badge { animation:stageBadgeIn .35s var(--ease); }
+@keyframes stageBadgeIn { from{opacity:.3;transform:translateY(-6px)} to{opacity:1;transform:none} }
+.page[data-page="forge"] { padding:10px 0 0; overflow:hidden; min-height:0; height:100%; --card-h:194px; }
+.page[data-page="forge"] .stage { flex:1 1 0; min-height:0; margin:0 12px 9px; border:1px solid var(--glass-border); border-radius:27px; overflow:hidden; box-shadow:var(--shadow-2); }
+.page[data-page="forge"] .stage-progress { padding:10px 8px; background:linear-gradient(0deg,rgba(246,247,255,.8),rgba(246,247,255,0)); backdrop-filter:none; -webkit-backdrop-filter:none; }
+.page[data-page="forge"] .sp-num { border-color:var(--line-firm); background:rgba(255,255,255,.6); }
+.page[data-page="forge"] .sp-dot.done .sp-num { background:var(--accent-soft); border-color:var(--accent-line); color:var(--accent); }
+.page[data-page="forge"] .sp-dot.active .sp-num { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:0 0 0 3px var(--accent-soft); }
+.forge-body { flex:0 0 auto; min-height:0; position:relative; display:flex; flex-direction:column; gap:0; }
+.page[data-page="forge"] .forge-rail { flex:0 0 auto; display:flex; flex-direction:column; gap:5px; margin:0 12px; padding:7px 10px; border:1px solid var(--glass-border); border-radius:18px; background:var(--surface-glass); box-shadow:var(--shadow-1); }
+.page[data-page="forge"] .risk { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:2px 6px; }
+.page[data-page="forge"] .risk-head { grid-column:1; grid-row:1; font-size:11px; line-height:17px; }
+.page[data-page="forge"] .risk-foot { grid-column:2; grid-row:1; justify-content:flex-end; font-size:11px; line-height:17px; }
+.page[data-page="forge"] .risk-value { font-size:14px; }
+.page[data-page="forge"] .risk-bar { grid-column:1/-1; grid-row:2; height:4px; }
+.page[data-page="forge"] .stat-grid { gap:8px; }
+.page[data-page="forge"] .stat-cell { position:relative; display:grid; grid-template-columns:1fr auto; gap:0 2px; text-align:left; }
+.page[data-page="forge"] .stat-cell-name { grid-column:1; font-size:11px; }
+.page[data-page="forge"] .stat-cell-val { display:none; }
+.page[data-page="forge"] .stat-cell-dir { grid-column:2; grid-row:1; color:var(--st); font-size:11px; line-height:18px; }
+.stat-cell-meter { grid-column:1/-1; height:4px; background:var(--base-3); border-radius:4px; overflow:hidden; }
+.stat-cell-meter i { display:block; height:100%; border-radius:inherit; background:var(--st); transition:width var(--dur-base) var(--ease); }
+.cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:stretch; gap:8px; }
+.page[data-page="forge"] .cards { flex:0 0 auto; height:var(--card-h); padding:9px 12px 5px; }
+.page[data-page="forge"] .dcard { height:100%; min-height:0; padding:8px 8px 0; gap:5px; overflow:hidden; border:1px solid var(--glass-border); border-radius:19px; background:var(--surface-glass); box-shadow:var(--shadow-1),inset 0 1px #fff; }
+.page[data-page="forge"] .dcard-head { min-height:19px; flex:0 0 auto; gap:2px; justify-content:space-between; }
+.page[data-page="forge"] .dcard-head .rarity { padding:0; border:0; background:transparent; font-size:11px; }
+.page[data-page="forge"] .dcard-head .chip { padding:0; border:0; background:transparent; font-size:11px; }
+.page[data-page="forge"] .dcard-title { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; flex:0 0 auto; min-height:34px; max-height:34px; overflow:hidden; color:var(--face); font-size:14px; line-height:17px; font-weight:750; letter-spacing:-.025em; white-space:normal; }
+.page[data-page="forge"] .dcard-copy,.page[data-page="forge"] .dcard-tags { display:none; }
+.page[data-page="forge"] .dcard-dirs { display:flex; flex:1 0 29px; max-height:32px; min-height:0; align-content:flex-start; flex-wrap:wrap; gap:2px; overflow:hidden; }
+.page[data-page="forge"] .dcard-dirs .chip { padding:1px 4px; border:0; font-size:11px; line-height:14px; }
+.page[data-page="forge"] .dcard-tier { display:flex; flex-direction:column; gap:4px; flex:0 0 26px; max-height:26px; overflow:hidden; font-size:11px; line-height:14px; color:var(--face-3); }
+.dcard-layer-dots { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; height:3px; }
+.dcard-layer-dots i { border-radius:3px; background:var(--base-3); }
+.dcard-layer-dots .is-owned { background:var(--accent-cool); }
+.dcard-layer-dots .is-added { background:var(--accent); }
+.page[data-page="forge"] .dcard-tier.is-up { color:var(--accent); font-weight:650; }
+.page[data-page="forge"] .dcard-meta { flex:0 0 44px; min-height:44px; margin-top:auto; border-top:1px solid var(--line-2); gap:0; }
+.page[data-page="forge"] .dcard-meta>.grow { font-size:11px; color:var(--face-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.page[data-page="forge"] .dcard-detail { display:inline-flex; align-items:center; justify-content:flex-end; min-width:44px; min-height:44px; padding:0; color:var(--accent); font-size:11px; text-decoration:none; }
+.page[data-page="forge"] .dcard.is-picked { transform:translateY(-4px); border-color:var(--accent); background:linear-gradient(145deg,#fff,rgba(233,227,255,.82)); box-shadow:0 0 0 1px var(--accent-line),0 8px 18px rgba(112,85,223,.16),inset 0 1px #fff; }
+.page[data-page="forge"] .dcard.is-picked .dcard-meta>.grow { color:var(--accent); font-weight:700; }
+.cards.is-picking .dcard:not(.is-picked) { opacity:.8; }
+.page[data-page="forge"] .dcard--r-fine { background:linear-gradient(150deg,#FFFFFFD9,#E9F8F0C9); }
+.page[data-page="forge"] .dcard--r-rare { background:linear-gradient(150deg,#FFFFFFE6,#DFEBFFB8); }
+.page[data-page="forge"] .dcard--r-epic { background:linear-gradient(150deg,#FFFFFFE6,#EDDEFFC9); }
+.page[data-page="forge"] .dcard--r-legend { background:linear-gradient(150deg,#FFFFFFE6,#FFEBC4C9); }
+.page[data-page="forge"] .dcard--r-mythic { background:linear-gradient(150deg,#FFFFFFE6,#FFDEDEC9); }
+.actions { display:flex; gap:8px; }
+.actions .btn { flex:1 1 0; }
+.page[data-page="forge"] .actions { flex:0 0 auto; padding:5px 12px calc(9px + var(--safe-b)); }
+.page[data-page="forge"] .actions .btn { min-height:48px; font-size:14px; }
+.page[data-page="forge"] .actions .btn--primary { flex-grow:1.4; }
+.forge-selection-status { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.forge-pad { display:flex; flex-direction:column; gap:10px; padding:10px 12px calc(12px + var(--safe-b)); overflow-y:auto; max-height:43dvh; }
+.forge-pad>.btn { flex-shrink:0; min-height:48px; }
+.forge-question { font-size:20px; font-weight:700; line-height:1.25; }
+.forge-question span { display:block; color:var(--face-2); font-size:13px; font-weight:400; margin-top:5px; }
+.hammer-hit { min-height:76px; flex:0 0 auto; border:1px solid var(--glass-border); border-radius:18px; background:var(--surface-glass); color:var(--face); font:700 18px var(--font); cursor:pointer; touch-action:manipulation; }
+.hammer-stage-hit { position:absolute; inset:0; z-index:6; width:100%; height:100%; display:flex; align-items:flex-end; justify-content:center; padding:0 12px 40px; border:0; background:transparent; cursor:pointer; touch-action:manipulation; }
+.hammer-stage-cue { padding:9px 14px; border:1px solid var(--glass-border); border-radius:var(--r-pill); background:var(--glass-bg); color:var(--accent); font:650 13px/1.4 var(--font); pointer-events:none; box-shadow:var(--shadow-1); }
+.hammer-stage-hit:focus-visible { outline:2px solid var(--accent); outline-offset:-4px; }
+.hammer-stage-hit.is-striking .hammer-stage-cue,.hammer-hit.is-striking { animation:forgeStrike .24s ease-out; }
+@keyframes forgeStrike { 35%{transform:scale(.95);background:var(--accent-soft)} 100%{transform:scale(1)} }
+.page[data-page="forge"].is-hammer .forge-body { flex:0 1 auto; min-height:0; }
+.page[data-page="forge"].is-hammer .hammer-panel { min-height:0; max-height:35dvh; }
+.hammer-instructions { font-size:12px; color:var(--face-3); text-align:center; }
+.hammer-actions { flex:0 0 auto; padding:6px 12px calc(10px + var(--safe-b)); }
+.hammer-actions .btn { min-height:48px; }
+.hammer-stat { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; text-align:center; }
+.hammer-stat b { display:block; font:700 22px var(--font-num); }
+.hammer-stat span { font-size:12px; color:var(--face-3); }
+.hammer-gain { display:flex; justify-content:space-between; gap:8px; padding:6px 9px; border-radius:10px; background:var(--accent-soft); color:var(--accent); font:600 12px/1.4 var(--font-num); }
+.edge-canvas { display:block; width:100%; height:clamp(100px,16dvh,150px); flex:0 0 auto; border:1px solid var(--glass-border); border-radius:16px; background:var(--glass-bg); touch-action:none; }
+@media (max-height:740px) { .page[data-page="forge"]{--card-h:178px} .page[data-page="forge"] .dcard{gap:3px;padding:6px 6px 0} .page[data-page="forge"] .stage{margin-bottom:6px} }
+@media (max-height:660px) { .page[data-page="forge"]{--card-h:162px;padding-top:6px} .page[data-page="forge"] .forge-rail{padding:4px 8px;gap:3px} .page[data-page="forge"] .dcard-title{min-height:30px;max-height:30px;font-size:13px;line-height:15px} .page[data-page="forge"] .dcard-dirs{flex-basis:28px;max-height:28px} .page[data-page="forge"] .dcard-dirs .chip{line-height:12px;padding:1px 2px} .page[data-page="forge"] .dcard-tier{font-size:11px;line-height:13px;max-height:26px} .page[data-page="forge"] .actions{padding-top:3px;padding-bottom:6px} .page[data-page="forge"] .actions .btn{min-height:44px} .stage-question{max-width:78%;font-size:11px} .forge-pad{gap:6px;padding-top:6px} }
+@media (max-height:500px) { .page[data-page="forge"]{overflow-y:auto} .page[data-page="forge"] .stage{flex:0 0 190px} }
+@media (prefers-reduced-motion:reduce) { .stage-advance-toast{animation:none;transform:translate(-50%,-50%)} .stage-advance .stage-badge,.hammer-stage-hit.is-striking .hammer-stage-cue,.hammer-hit.is-striking{animation:none} }

@@ -1,0 +1,43 @@
+name: Spatial UI visual and interaction acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths: ['game/**', '.github/workflows/spatial-ui-acceptance.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  spatial-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install browser tooling and Chinese fonts
+        run: |
+          cd game
+          npm install --no-save --package-lock=false playwright
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-wqy-microhei
+          echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - name: Static and core regression checks
+        working-directory: game
+        run: npm run verify
+      - name: Start game
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > ui-server.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:8123/ > /dev/null
+      - name: WebGL, mobile layouts, complete forge and modals
+        working-directory: game
+        run: node tools/spatial-ui-acceptance.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spatial-ui-evidence
+          path: |
+            game/spatial-ui-evidence/
+            ui-server.log
+          retention-days: 14

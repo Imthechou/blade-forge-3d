@@ -83,7 +83,7 @@ export function countUp(node, from, to, ms = 700) {
 let toastHost = null;
 export function toast(message, tone = 'info', ms = 2200) {
   if (!toastHost) {
-    toastHost = el('div', { class: 'toast-host' });
+    toastHost = el('div', { class: 'toast-host', role: 'status', 'aria-live': 'polite' });
     document.body.appendChild(toastHost);
   }
   // 移动端锻造页底部就是主要操作区；新提示替换旧提示，避免连续操作时
@@ -99,7 +99,7 @@ export function toast(message, tone = 'info', ms = 2200) {
   return node;
 }
 
-/** 底部信息抽屉：焦点约束、Esc 关闭与返回触发器。 */
+/** 居中玻璃弹窗：焦点约束、Esc 关闭与返回触发器。 */
 export function sheet({ title, body, onClose }) {
   const trigger = document.activeElement;
   const mask = el('div', { class: 'sheet-mask' });
@@ -123,6 +123,9 @@ export function sheet({ title, body, onClose }) {
   };
   mask.appendChild(panel);
   document.body.appendChild(mask);
+  const app = document.getElementById('app');
+  if (app) app.inert = true;
+  for (const other of document.querySelectorAll('.sheet-mask')) if (other !== mask) other.inert = true;
   document.addEventListener('keydown', keys);
   requestAnimationFrame(() => { if (!closed) { mask.classList.add('is-in'); panel.querySelector('.sheet-x')?.focus({ preventScroll: true }); } });
   function close() {
@@ -132,7 +135,10 @@ export function sheet({ title, body, onClose }) {
     mask.classList.remove('is-in');
     setTimeout(() => {
       mask.remove();
-      if (!document.querySelector('.sheet-mask') && trigger?.isConnected) trigger.focus({ preventScroll: true });
+      const remaining = [...document.querySelectorAll('.sheet-mask')].at(-1);
+      if (remaining) remaining.inert = false;
+      else if (app) app.inert = false;
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
     }, 220);
     if (onClose) onClose();
   }

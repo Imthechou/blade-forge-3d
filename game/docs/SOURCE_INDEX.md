@@ -9,7 +9,7 @@
 | [src/app/settings.js](../src/app/settings.js) | 54 | 1916 | applyAll, update, get, preview |
 | [src/core/appraise.js](../src/core/appraise.js) | 203 | 7725 | appraise, revealSteps |
 | [src/core/arena.js](../src/core/arena.js) | 386 | 17011 | baseFaces, createMatch, currentEvent, choose, fieldTestTask, submitFieldTest, submitFieldTestChallenge, skipFieldTest, finalFaces, momentumName |
-| [src/core/arenaChallenge.js](../src/core/arenaChallenge.js) | 770 | 45224 | FORMAL_RISK_TBD, CHALLENGE_SECONDS, MATERIALS, ROUTES, FINALES, createChallenge, restartChallenge, chooseAugment, tick, chooseRoute, chooseFinale, beginSwipe, hasStructuralFailure, swipe, finish, setPaused |
+| [src/core/arenaChallenge.js](../src/core/arenaChallenge.js) | 771 | 45265 | FORMAL_RISK_TBD, CHALLENGE_SECONDS, MATERIALS, ROUTES, FINALES, createChallenge, restartChallenge, chooseAugment, tick, chooseRoute, chooseFinale, beginSwipe, hasStructuralFailure, swipe, finish, setPaused |
 | [src/core/arenaCutBridge.js](../src/core/arenaCutBridge.js) | 48 | 2360 | advanceArenaClock, formalCutPayload |
 | [src/core/arenaEncounters.js](../src/core/arenaEncounters.js) | 92 | 4740 | MATERIAL_ORDER, PHASES, PHASE_DURATION, createEncounter, encounterPhase, phaseMaterialPool, selectEncounterMaterial, phaseQuota, stageSpawnInterval |
 | [src/core/arenaFormal.js](../src/core/arenaFormal.js) | 658 | 27817 | FORMAL_MATCH_VERSION, validateApexRoster, createFormalMatch, currentTest, testTask, submitTest, abandon, finishMatch, APEX_ROUNDS, createApexMatch, apexAvailable, apexDispatch, apexSubmit, finishApex, NATIONAL_ROUNDS_FORMAL, createNationalMatch, nationalCurrentRound, nationalStartRound, nationalSubmit, nationalAbandon, finishNational |
@@ -132,18 +132,18 @@
 | [src/ui/arenaImpact.js](../src/ui/arenaImpact.js) | 67 | 3406 | IMPACT_PRESETS, cutImpact, impactMotion, targetPose |
 | [src/ui/arenaReportParts.js](../src/ui/arenaReportParts.js) | 117 | 4353 | momentumChip, momentumLadder, momentumHint, momentumTrail, FACE_CN, STAT_CN, FACE_STATS, faceOfStat, faceCompareRow |
 | [src/ui/arenaSprites.js](../src/ui/arenaSprites.js) | 136 | 5988 | TYPES, STATES, CELL, spriteStatus, prepareArenaSprites, spriteReady, drawWholeSprite, drawSplitSprite, drawShardSprite, drawFlashSprite |
-| [src/ui/arenaStage.js](../src/ui/arenaStage.js) | 1113 | 54843 | drawArenaStage |
+| [src/ui/arenaStage.js](../src/ui/arenaStage.js) | 1113 | 54857 | drawArenaStage |
 | [src/ui/bladeCard.js](../src/ui/bladeCard.js) | 354 | 14785 | bladeCardModel, bladeCard, bladeCardDetail, compareModels |
-| [src/ui/components.js](../src/ui/components.js) | 512 | 24977 | ICONS, riskBar, riskChip, statRail, statGrid, rarityBadge, qualitySeal, decisionCard, traitItem |
-| [src/ui/dom.js](../src/ui/dom.js) | 143 | 6253 | el, clear, mount, on, countUp, toast, sheet |
+| [src/ui/components.js](../src/ui/components.js) | 514 | 25264 | ICONS, riskBar, riskChip, statRail, statGrid, rarityBadge, qualitySeal, decisionCard, traitItem |
+| [src/ui/dom.js](../src/ui/dom.js) | 149 | 6592 | el, clear, mount, on, countUp, toast, sheet |
 | [src/ui/formalPerformance.js](../src/ui/formalPerformance.js) | 285 | 23126 | disposeFormalStage, pauseFormalStage, renderFormalSuite, completeFormalCut, abandonFormalSuite, drawFormalCutGuides, noteCutStroke, renderSuiteDiagnostics |
 | [src/ui/formalTestStage.js](../src/ui/formalTestStage.js) | 571 | 24166 | disposeFormalTestStage, renderFormalTest |
-| [src/ui/pages/appraise.js](../src/ui/pages/appraise.js) | 651 | 29699 | create, render, enter, leave |
-| [src/ui/pages/arena.js](../src/ui/pages/arena.js) | 2630 | 172237 | create, leave, openDailyChallenge, openQuickChallenge, openTournament, render |
-| [src/ui/pages/daily.js](../src/ui/pages/daily.js) | 36 | 1460 | create, render |
-| [src/ui/pages/forge.js](../src/ui/pages/forge.js) | 761 | 36166 | create, render, syncInspect, leave |
-| [src/ui/pages/home.js](../src/ui/pages/home.js) | 175 | 7414 | create, render, syncInspect |
-| [src/ui/pages/workshop.js](../src/ui/pages/workshop.js) | 559 | 27423 | create, render, openTab |
+| [src/ui/pages/appraise.js](../src/ui/pages/appraise.js) | 648 | 29538 | create, render, enter, leave |
+| [src/ui/pages/arena.js](../src/ui/pages/arena.js) | 2633 | 172434 | create, leave, openDailyChallenge, openQuickChallenge, openTournament, render |
+| [src/ui/pages/daily.js](../src/ui/pages/daily.js) | 34 | 1200 | create, render |
+| [src/ui/pages/forge.js](../src/ui/pages/forge.js) | 771 | 36702 | create, render, syncInspect, leave |
+| [src/ui/pages/home.js](../src/ui/pages/home.js) | 120 | 4920 | create, render, syncInspect |
+| [src/ui/pages/workshop.js](../src/ui/pages/workshop.js) | 561 | 27508 | create, render, openTab |
 | [src/ui/router.js](../src/ui/router.js) | 77 | 2618 | PAGES, register, onNavigate, go, currentKey, start |
 | [src/ui/settingsSheet.js](../src/ui/settingsSheet.js) | 134 | 5156 | open |
 | [src/ui/shell.js](../src/ui/shell.js) | 72 | 2252 | create, sync |

@@ -977,10 +977,10 @@ function showAugmentChoice(run) {
   const stage=body.querySelector('.quick-match') || body;
   if(stage.querySelector('.arena-augment-overlay'))return;
   const tier=BUFF_TIERS[BUFF_BY_ID[run.offers[0]]?.tier];
-  const overlay=el('div',{class:'quick-choice-overlay is-inline arena-augment-overlay',role:'dialog','aria-label':'选择局内强化'},[
+  const overlay=el('div',{class:'quick-choice-overlay is-inline arena-augment-overlay',role:'dialog','aria-modal':'true','aria-label':'选择局内强化'},[
     el('div',{class:'quick-choice-panel'},[
-      el('div',{class:'quick-kicker',text:`第 ${run.choicesMade+1}/3 次强化 · ${tier?.name || ''} · 计时暂停`}),
-      el('h2',{text:'锻造这一局的刀势'}),
+      el('div',{class:'quick-kicker',text:`${run.choicesMade+1} / 3 · ${tier?.name || ''} · 计时暂停`}),
+      el('h2',{text:'选择强化'}),
       el('p',{text:`${run.total} 秒切割 · 本轮目标 ${run.targetScore || '自由高分'}${run.buffs.length?' · 已选 '+run.buffs.map(id=>BUFF_BY_ID[id]?.name).join(' / '):''}`}),
       el('div',{class:'quick-choice-list'},run.offers.map(id=>{
         const b=BUFF_BY_ID[id];
@@ -988,7 +988,7 @@ function showAugmentChoice(run) {
           const result=Challenge.chooseAugment(run,id);
           if(!result.ok){toast(result.reason,'warn');return;}
           audio.play('select');render();
-        }},[el('small',{text:tier?.name+'色强化'}),el('b',{text:b.name}),el('span',{text:b.desc})]);
+        }},[el('small',{text:tier?.name}),el('b',{text:b.name}),el('span',{text:b.desc})]);
       })),
       run.resonances.length?el('p',{text:'已激活共鸣：'+run.resonances.map(id=>BUILD_TAGS[id]).join(' / ')}):null,
     ]),
@@ -1000,7 +1000,7 @@ function showChallengeChoice(run) {
   if(run.phase==='buff-choice')return showAugmentChoice(run);
   const isFinal = run.phase === 'finale-choice';
   const options = isFinal ? Challenge.FINALES : Challenge.ROUTES;
-  const overlay = el('div', { class: 'quick-choice-overlay is-inline', role:'dialog', 'aria-modal':'false', 'aria-label':isFinal?'选择压轴路线':'选择挑战路线' }, [
+  const overlay = el('div', { class: 'quick-choice-overlay is-inline', role:'dialog', 'aria-modal':'true', 'aria-label':isFinal?'选择压轴路线':'选择挑战路线' }, [
     el('div', { class: 'quick-choice-panel' }, [
       el('div', { class: 'quick-kicker', text: '计时已暂停 · 选完继续' }),
       el('h2', { text: isFinal ? '收官路线' : '本轮赛道' }),
@@ -1103,6 +1103,9 @@ function renderChallengeReport() {
 }
 
 function secureOverlay(overlay){
+  // The paused choice owns keyboard focus; background controls cannot activate.
+  const owner = overlay.parentElement;
+  for (const sibling of owner?.children || []) if (sibling !== overlay) sibling.inert = true;
   overlay.addEventListener('keydown',event=>{
     if(event.key!=='Tab')return;
     const buttons=[...overlay.querySelectorAll('button:not(:disabled)')];

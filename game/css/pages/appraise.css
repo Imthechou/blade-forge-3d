@@ -154,3 +154,43 @@
   .ap-glow { animation: none; }
   .ap-sec,.ap-stagger,.ap-bd-track > i,.ap-tab,.ap-actions .btn { transition: none; }
 }
+
+/* Spatial collection reveal. The PBR viewport stays above the scrollable result. */
+.page[data-page="appraise"] { padding-top:10px; background:transparent; }
+.page[data-page="appraise"].is-active { grid-template-rows:minmax(0,1.1fr) minmax(0,1fr) auto; }
+.ap-stage { margin:0 12px 9px; border:1px solid var(--glass-border); border-radius:28px; overflow:hidden; box-shadow:var(--shadow-2); }
+.ap-body { border:0; background:transparent; padding:0 16px 12px; gap:12px; }
+.ap-head { padding:7px 0 2px; gap:8px; }
+.ap-eyebrow { color:var(--accent); font-size:12px; font-weight:650; }
+.ap-title { font-size:25px; }
+.ap-title .qseal { gap:4px; }
+.ap-title .qseal-svg { width:32px; height:32px; }
+.ap-title .qseal-name { font-size:11px; padding:5px 8px; }
+.ap-stats--three { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.ap-stat { border-color:var(--glass-border); border-radius:16px; background:var(--surface-glass); min-height:62px; padding:10px; }
+.ap-stat-k { font-size:11px; }
+.ap-stat-v { font-size:18px; }
+.ap-body>.ap-sec[data-step="six"] { padding:10px 12px; border:1px solid var(--glass-border); border-radius:20px; background:var(--surface-glass); }
+.page[data-page="appraise"] .section-title { font-size:14px; letter-spacing:0; margin:0 0 8px; }
+.ap-body>.ap-sec[data-step="six"] .stat-rail { display:grid; grid-template-columns:1fr 1fr; gap:9px 14px; }
+.ap-body>.ap-sec[data-step="six"] .stat-row { grid-template-columns:28px 1fr 27px; gap:6px; }
+.ap-body>.ap-sec[data-step="six"] .stat-name,.ap-body>.ap-sec[data-step="six"] .stat-dir { font-size:12px; }
+.ap-final-score { align-items:center; justify-content:space-between; margin:8px 0; padding:16px 18px; border-color:var(--glass-border); border-radius:22px; background:var(--surface-glass); box-shadow:var(--shadow-2); }
+.ap-final-score .ap-stat-v.is-score { color:var(--accent); font-size:48px; letter-spacing:-.05em; }
+.ap-actions,.ap-actions--try { display:grid; grid-template-columns:minmax(0,1fr) 76px; gap:8px; padding:10px 16px calc(10px + var(--safe-b)); border:0; background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); }
+.ap-actions--try { grid-template-columns:minmax(0,1fr) 94px 56px; }
+.ap-actions .btn { border-radius:16px; min-height:48px; }
+.ap-actions .btn--primary { background:var(--metal-grad); color:#fff; }
+.ap-actions--try .ap-try { grid-column:auto; }
+.ap-actions .ap-skip,.ap-actions--try .ap-skip { grid-column:1/-1; min-height:44px; padding:5px; border:0; }
+.ap-actions .ap-more { padding-inline:6px; }
+.ap-card-art { min-height:44px; background:transparent; color:var(--accent); }
+.ap-card-art::before { content:'✓'; display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--accent-soft); }
+.ap-tabs { background:rgba(255,255,255,.45); border-color:var(--glass-border); }
+.ap-tab.is-active { background:rgba(255,255,255,.9); color:var(--accent); border-color:var(--glass-border); }
+@media (max-height:660px) { .ap-body{gap:8px;padding-inline:12px} .ap-actions{padding-inline:12px;padding-block:6px} .ap-title{font-size:22px} .ap-stat{min-height:52px;padding:7px} }
+.ap-archive-receipt { padding:8px 12px; border-radius:12px; background:var(--accent-soft); color:var(--accent); font-size:12px; }
+
+/* Detail tabs use the same body scroll area at every screen height. */
+.ap-panels { flex:0 0 auto; min-height:100px; overflow:visible; }
+.ap-panel { height:auto; min-height:100px; overflow:visible; }

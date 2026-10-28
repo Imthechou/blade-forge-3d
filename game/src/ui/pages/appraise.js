@@ -11,7 +11,6 @@ import { el, $, clear, mount, countUp, sheet, toast } from '../dom.js';
 import { qualitySeal, statRail, traitItem } from '../components.js';
 /* ★ rework T13.1：鉴定页也读**同一份**成刀展示模型与卡片，
    不再自己拼一套（否则同一把刀在鉴定页与藏刀阁长得不一样）。 */
-import { bladeCardModel, bladeCard } from '../bladeCard.js';
 import { motion } from '../../platform/index.js';
 import { getTrait } from '../../data/traits.js';
 import { tagName } from '../../data/tags.js';
@@ -67,12 +66,18 @@ export function render() {
 
   const rec = Game.record || (Game.run ? Game.appraise() : null);
   if (!rec) {
-    mount(body, [
-      el('div', { class: 'ap-sec is-in' }, [
-        el('div', { class: 'card' }, [el('div', { text: '没有待鉴定的刀。' })]),
-      ]),
+    // A refreshed result has no live run. Show the saved work without re-awarding it,
+    // and keep a real model mounted so startup can complete its normal GPU preparation.
+    const saved = Core.progress.collection().slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+    if (saved) Game.showRecord(saved);
+    else Game.showDefault();
+    mount(body, [el('div', { class: 'ap-sec is-in' }, [
+      el('div', { class: 'card', text: saved ? '作品已保存至藏刀阁' : '开始锻造你的第一把刀' }),
+    ])]);
+    mount(actions, [
+      saved ? el('button', { class: 'btn btn--primary', text: '查看收藏', onclick: () => Workshop.openTab('collection') }) : null,
+      el('button', { class: saved ? 'btn' : 'btn btn--primary', text: '回首页', onclick: () => router.go('home') }),
     ]);
-    mount(actions, [el('button', { class: 'btn btn--primary', text: '回首页', onclick: () => router.go('home') })]);
     return;
   }
 
@@ -156,7 +161,7 @@ function renderReveal(rec) {
   mount(body, [
     sec('top', [
       el('div', { class: 'ap-head' }, [
-        el('div', { class: 'ap-eyebrow', text: '鉴定结果' }),
+        el('div', { class: 'ap-eyebrow', text: '作品鉴定' }),
         el('h1', { class: 'ap-title' }, [qualitySeal(rec.rarity, rec.rarityName), el('span', { text: rec.bladeName || '未命名' })]),
         el('div', { class: 'ap-sub' }, [
           el('span', { class: 'chip', text: `品质 ${rec.qualityName}` }),
@@ -166,7 +171,7 @@ function renderReveal(rec) {
         ]),
       ]),
       /* 顶部只放“这是什么”与归位指标；**总分不在这里先揭晓** */
-      el('div', { class: 'ap-stats' }, [
+      el('div', { class: 'ap-stats ap-stats--three' }, [
         stat(1, '峰值风险', riskValue(rec.riskPeak, riskBand)),
         stat(2, '永久特性', value(`${rec.traits.length} 条`)),
         stat(3, 'S7 开刃', value(edgeCn || '未开刃', rec.edge ? `贴合度 ${rec.edge.acc}` : null)),
@@ -178,12 +183,12 @@ function renderReveal(rec) {
        正常停在概览页的玩家从未真正看完因果链。
        现在主链内容全部在概览页**可见**，分页只负责“更详细的资料”。 */
     sec('six', [
-      el('div', { class: 'section-title', text: `六维揭晓（均值 ${rec.statMean}）` }),
+      el('div', { class: 'section-title', text: '六维表现' }),
       statRail(rec.stats, null, true),
     ]),
     sec('traits', [traitsSection(steps), craftSection(rec)]),
     sec('bd', [
-      el('div', { class: 'section-title', text: '倍率与最终评分' }),
+      el('div', { class: 'section-title', text: '作品评分' }),
       el('div', { class: 'ap-bd' }, bdRows(d)),
       /* 总分**在此处**才揭晓，紧跟着它的来源 */
       el('div', { class: 'ap-final-score' }, [
@@ -202,32 +207,9 @@ function renderReveal(rec) {
     /* ★ rework T13.3 最后一步：收藏卡/档案。
        这里直接渲染**共用收藏卡**（卡面：刀具主视觉 + 名称/稀有度/评分 + 核心特性），
        玩家在鉴定页看到的卡，与入藏后在藏刀阁看到的是同一个组件、同一份数据。 */
-    sec('archive', [
-      el('div', { class: 'section-title', text: '收藏卡与档案' }),
-      (() => {
-        const model = bladeCardModel(rec, { kind: 'appraise' });
-        return bladeCard(model, {
-          art: el('div', { class: 'ap-card-art', 'aria-hidden': 'true', text: '成品已入藏' }),
-        });
-      })(),
-      el('div', { class: 'card' }, [
-        reportLine('收藏状态', rec.canEnterArena ? '已保存至藏刀阁，可带刀参赛' : '已保存至记录；每日挑战成品不可参赛'),
-        reportLine('图鉴奖励', `+${rec._reward || 0} CR`),
-      ]),
-    ]),
+    sec('archive', [el('div', { class: 'ap-archive-receipt', text: rec.canEnterArena ? '✓ 已收录藏刀阁' : '✓ 已保存鉴定记录' })]),
     freshSection(rec),
-    /* 详细资料分页：主链信息已在上面完整呈现，这里不再是“唯一可见处” */
-    tabs([['overview', '概览'], ['six', '六维'], ['craft', '工艺'], ['score', '评分']]),
-    el('div', { class: 'ap-panels' }, [
-      panel('overview', [el('div', { class: 'muted tiny', text: '主链揭晓已在上方完成。这里提供可回看的详细资料。' })]),
-      panel('six', [sec('six-detail', [el('div', { class: 'section-title', text: `六维精确值（均值 ${rec.statMean}）` }), statRail(rec.stats, null, true)])]),
-      panel('craft', [sec('craft-detail', [craftSection(rec)])]),
-      panel('score', [sec('bd-detail', [
-        el('div', { class: 'section-title', text: '评分构成明细' }),
-        el('div', { class: 'ap-bd' }, bdRows(d)),
-        ...bdSrcRows(d),
-      ])]),
-    ]),
+
   ]);
   bindTabs(body);
   bindStatDetails(body);
@@ -236,10 +218,15 @@ function renderReveal(rec) {
      跳过与完整播放的结果**完全相同**（只是不播动画）。 */
   mount(actions, [
     el('button', { class: 'btn ap-skip', text: '跳过揭晓', onclick: () => skipReveal(rec) }),
-    rec.canEnterArena ? el('button', { class: 'btn btn--primary ap-try', text: '先试刀·快速挑战', onclick: () => Arena.openQuickChallenge(rec.id) }) : null,
-    rec.canEnterArena ? el('button', { class: 'btn', text: '正式赛事', onclick: () => Arena.openTournament(rec.id) }) : null,
+    rec.canEnterArena ? el('button', { class: 'btn btn--primary ap-try', text: '带刀试炼 →', onclick: () => Arena.openQuickChallenge(rec.id) }) : null,
     reforgeButton(!rec.canEnterArena),
-    el('button', { class: 'btn', text: '查看收藏', onclick: () => Workshop.openTab('collection') }),
+    el('button', { class: 'btn ap-more', text: '更多', 'aria-label': '作品操作', onclick: () => {
+      let dialog;
+      dialog = sheet({ title: rec.bladeName || '作品', body: el('div', { class: 'stack' }, [
+        rec.canEnterArena ? el('button', { class: 'btn btn--primary', text: '正式赛事', onclick: () => { dialog.close(); Arena.openTournament(rec.id); } }) : null,
+        el('button', { class: 'btn', text: '查看收藏', onclick: () => { dialog.close(); Workshop.openTab('collection'); } }),
+      ]) });
+    } }),
   ]);
 }
 
@@ -254,6 +241,7 @@ function skipReveal(rec) {
   const seal = $('.qseal', root);
   if (seal) seal.classList.add('is-stamp');
   if (scoreEl) scoreEl.textContent = String(rec.fractured ? 0 : (rec.score || 0));
+  finishReveal();
 }
 
 function reforgeButton(primary = true) {
@@ -535,6 +523,7 @@ function play(reduce, rec) {
   if (reduce) {
     for (const n of all) n.classList.add('is-in');
     if (scoreEl) scoreEl.textContent = String(target);
+    finishReveal();
     return;
   }
   const at = (ms, fn) => { timers.push(setTimeout(fn, ms)); };
@@ -550,7 +539,15 @@ function play(reduce, rec) {
   at(1560, () => { if (scoreEl) countUp(scoreEl, 0, target, 900); });
   at(2240, () => { const n = get('explain'); if (n) n.classList.add('is-in'); });
   at(2400, () => { const n = get('news'); if (n) n.classList.add('is-in'); });
-  at(2560, () => { const n = get('archive'); if (n) n.classList.add('is-in'); });
+  at(2560, () => { const n = get('archive'); if (n) n.classList.add('is-in'); finishReveal(); });
+}
+
+/** After the sequence, the real score becomes the work's permanent summary. */
+function finishReveal() {
+  $('.ap-skip', root)?.remove();
+  const score = $('.ap-final-score', root);
+  const heading = $('.ap-sec[data-step="top"]', root);
+  if (score && heading && score.parentElement !== heading) heading.appendChild(score);
 }
 
 /* ── 小工具 ───────────────────────────────────────────── */
