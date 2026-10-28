@@ -68,7 +68,7 @@
   --accent-cool:       #258DB6;
   --accent-cool-deep:  #1F6D92;
   --accent-cool-soft:  rgba(65, 159, 211, .12);
-  --accent-cool-line:  rgba(112, 85, 223, .30);
+  --accent-cool-line:  rgba(37, 141, 182, .30);
   --reward:            #A77B38;
   --side-me:  #1E6E9C;            /* 我方 */
   --side-opp: #C4402F;            /* 对手 */
@@ -113,7 +113,7 @@
   /* ── 阴影（冷灰蓝投影，**禁止纯黑投影**） ───────────── */
   --shadow-1: 0 4px 14px rgba(77, 82, 154, .06);
   --shadow-2: 0 10px 28px rgba(77, 82, 154, .10), 0 2px 6px rgba(77, 82, 154, .04);
-  --shadow-3: 0 8px 20px rgba(89, 93, 153, .14), 0 24px 60px rgba(23, 52, 75, .14);
+  --shadow-3: 0 16px 40px rgba(65, 59, 130, .16), 0 32px 90px rgba(65, 59, 130, .12);
   --shadow-cta: 0 8px 20px rgba(111, 83, 221, .26);
   /* 决策卡专用：内 hairline（inset 不触发 layout，替代双边框） */
   --card-hair:    inset 0 0 0 .5px rgba(22, 28, 35, .09);

@@ -34,7 +34,8 @@ try {
   for (const [width, height] of [[390,844],[360,640],[430,932],[1280,900]]) {
     const context = await browser.newContext({ viewport: {width,height}, locale:'zh-CN', deviceScaleFactor:1,
       isMobile:width<500, hasTouch:true });
-    const blades = [sampleBlade(150), {...sampleBlade(100),id:'spatial-b',bladeName:'冷镜唐刀'}];
+    const identity = {knifeType:'knife_tangdao',knifeTypeId:'tangdao',rarity:'rare',rarityName:'稀有',qualityName:'精制',history:[],seed:123};
+    const blades = [{...sampleBlade(150),...identity,score:320,bladeName:'冷镜唐刀'}, {...sampleBlade(100),...identity,id:'spatial-b',score:220,bladeName:'拉丝唐刀'}];
     await context.addInitScript(blades => localStorage.setItem('bladeforge.save', JSON.stringify({version:1,cr:2000,collection:blades,settings:{tutorialSeen:true,sound:false,motion:'reduced'}})), blades);
     const page = current = await context.newPage();
     page.on('pageerror', e => report.errors.push({width,error:String(e)}));
@@ -102,7 +103,7 @@ try {
           } else if(state.phase==='hammer') {
             await page.locator('.hammer-stage-hit').click({position:{x:100,y:130}});
             await shot(page,'flow-hammer');
-            await page.getByRole('button',{name:/收手/}).click();
+            await page.getByRole('button',{name:'结束锻打',exact:true}).click();
           } else if(state.phase==='edge') {
             const points=await page.evaluate(async()=>{const G=(await import('/src/app/game.js')).default;return (await import('/src/core/edge.js')).makeTask(G.run).points;});
             const b=await page.locator('.edge-canvas').boundingBox();
@@ -143,7 +144,7 @@ try {
       await page.evaluate(async()=>(await import('/src/ui/pages/arena.js')).openTournament());
       await shot(page,`${width}-arena`);
       await page.evaluate(async()=>(await import('/src/ui/pages/arena.js')).openQuickChallenge());
-      await page.getByRole('button',{name:'开始快速挑战',exact:true}).click();
+      await page.getByRole('button',{name:'开始自由快赛',exact:true}).click();
       await page.locator('[data-augment-id]').first().waitFor();
       await centered(page,'.quick-choice-panel');
       await shot(page,`${width}-augment`);

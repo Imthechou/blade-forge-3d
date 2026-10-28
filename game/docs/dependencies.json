@@ -2994,8 +2994,8 @@
   },
   {
     "file": "src/ui/pages/forge.js",
-    "bytes": 36675,
-    "lines": 770,
+    "bytes": 36726,
+    "lines": 771,
     "imports": [
       "src/app/game.js",
       "src/core/cards.js",

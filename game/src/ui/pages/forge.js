@@ -87,6 +87,7 @@ export function render() {
   inspectCtl?.setBlocked?.(hammering);
   pickedCard = null;
   $('#forgeStage', root)?.classList.remove('is-previewing');
+  $('#forgeStage .stage-preview', root)?.remove();
   body.innerHTML = '';
 
   if (run.phase === 'appraise' || run.phase === 'fractured') {
