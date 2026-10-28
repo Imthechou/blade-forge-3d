@@ -49,7 +49,15 @@ try {
       memory:r?.info?.memory,render:r?.info?.render,handle:g.isHandleExplicit?.()};
   });
   const shot=async(tag)=>{
-    await settle();const state=await get();
+    await settle();
+    /* Render the settled stage, not the 1.4s central transition toast.
+       The toast intermittently obscured the sword in baseline/candidate:
+       flow-S6 and flow-S8 then looked 20 luminance units different even
+       though the underlying material was pixel-identical. Wait for actual
+       DOM removal; never relax brightness thresholds or alter the game. */
+    await page.locator('.page.is-active .stage-advance-toast')
+      .waitFor({state:'detached',timeout:6000});
+    const state=await get();
     await page.screenshot({path:path.join(out,tag+'.png'),animations:'disabled'});
     report.shots.push({tag,...state});console.log('SHOT',tag,JSON.stringify(state));
   };
