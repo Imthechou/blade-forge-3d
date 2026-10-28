@@ -91,7 +91,7 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
     refillAt: null, targetSerial: 0, travel: 0, contacts: {},
     perfects: 0, weakHits: 0, armorBreaks: 0, crossCuts: 0, secondaryKills: 0, secondaryScore: 0,
     shield: 0, deathSaveUsed: false, objectives: 0, objectiveBonus: 0, materialSet: [],
-    metrics: { emptySeconds: 0, activeSeconds: 0, refills: 0 },
+    metrics: { emptySeconds: 0, activeSeconds: 0, refills: 0, emptyGap:0, maxEmptyGap:0 },
     encounter: plan, spawnStage: null, stageSpawned: 0, stagePrefill: 0,
     encounterHistory: plan ? Object.fromEntries(['warmup','route','speed','finale'].map(phase=>[
       phase,{spawned:0,materials:{}}])) : null,
@@ -321,7 +321,11 @@ export function tick(run, seconds) {
   dt=Math.max(0,Math.min(dt,nextChoice-run.elapsed,run.total-run.elapsed));
   run.metrics ||= {emptySeconds:0,activeSeconds:0,refills:0};
   run.metrics.activeSeconds+=dt;
-  if (!run.targets.some(t=>t.alive)) run.metrics.emptySeconds+=dt;
+  if (!run.targets.some(t=>t.alive)) {
+    run.metrics.emptySeconds+=dt;
+    run.metrics.emptyGap=(run.metrics.emptyGap || 0)+dt;
+    run.metrics.maxEmptyGap=Math.max(run.metrics.maxEmptyGap || 0,run.metrics.emptyGap);
+  } else run.metrics.emptyGap=0;
   run.elapsed+=dt; run.remaining=Math.max(0,run.total-run.elapsed);
   if(run.elapsed>=run.total-1e-7) return finish(run);
   const phase=run.elapsed>=30?'finale':run.elapsed>=23?'speed':run.elapsed>=8?'route':'warmup';

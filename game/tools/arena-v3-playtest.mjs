@@ -58,7 +58,7 @@ async function pointerCut(page) {
   const row=angle===0 && state.rowTargets>1 && state.healthy;
   const start=row?[box.x+box.width*.02,box.y+box.height*t.y]:p(-.13);
   const end=row?[box.x+box.width*.98,box.y+box.height*t.y]:p(.13);
-  await page.mouse.move(...start);await page.mouse.down();await page.mouse.move(...end,{steps:row?18:5});await page.mouse.up();
+  await page.mouse.move(...start);await page.mouse.down();await page.mouse.move(...end,{steps:5});await page.mouse.up();
 }
 async function playRound(page,virtual,{capture=false}={}) {
   await page.locator('.quick-canvas').waitFor();
@@ -77,7 +77,7 @@ async function playRound(page,virtual,{capture=false}={}) {
   }
   const r=await page.evaluate(()=>globalThis.__FORGE_ARENA?.run?.result);
   assert.ok(r,'No settled round');assert.equal(r.total,45);assert.equal(r.choicesMade,3);assert.equal(r.reason,'time',JSON.stringify({score:r.score,health:r.health,kills:r.kills,log:r.log.slice(-3)}));
-  assert.ok(r.kills>20);assert.ok(r.metrics.emptySeconds<1);
+  assert.ok(r.kills>20);assert.ok((r.metrics.maxEmptyGap || 0)<=.251,JSON.stringify(r.metrics));
   assert.equal(await page.locator('.quick-canvas').count(),0,'result still showing running canvas');
   return r;
 }

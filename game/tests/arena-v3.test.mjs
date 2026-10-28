@@ -52,7 +52,7 @@ test('清场后 0.15 秒开始补位，不受阶段投放预算耗尽限制；�
     C.tick(r,.1);assert.equal(r.targets.length,0);
     C.tick(r,.1);assert.ok(r.targets.some(t=>t.alive));
   }
-  assert.equal(r.metrics.emptySeconds<=6.1,true);
+  assert.equal(r.metrics.emptySeconds<=6.1,true);assert.ok(r.metrics.maxEmptyGap<=.201);
 });
 test('36 张强化各有真实参数，1000 次抽取均为同品质三张且不重复；五种共鸣可达',()=>{
   assert.equal(BUFFS.length,36);assert.equal(new Set(BUFFS.map(b=>b.id)).size,36);

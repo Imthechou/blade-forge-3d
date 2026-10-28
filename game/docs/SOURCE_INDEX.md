@@ -9,7 +9,7 @@
 | [src/app/settings.js](../src/app/settings.js) | 54 | 1916 | applyAll, update, get, preview |
 | [src/core/appraise.js](../src/core/appraise.js) | 203 | 7725 | appraise, revealSteps |
 | [src/core/arena.js](../src/core/arena.js) | 386 | 17011 | baseFaces, createMatch, currentEvent, choose, fieldTestTask, submitFieldTest, submitFieldTestChallenge, skipFieldTest, finalFaces, momentumName |
-| [src/core/arenaChallenge.js](../src/core/arenaChallenge.js) | 766 | 45012 | FORMAL_RISK_TBD, CHALLENGE_SECONDS, MATERIALS, ROUTES, FINALES, createChallenge, restartChallenge, chooseAugment, tick, chooseRoute, chooseFinale, beginSwipe, hasStructuralFailure, swipe, finish, setPaused |
+| [src/core/arenaChallenge.js](../src/core/arenaChallenge.js) | 770 | 45224 | FORMAL_RISK_TBD, CHALLENGE_SECONDS, MATERIALS, ROUTES, FINALES, createChallenge, restartChallenge, chooseAugment, tick, chooseRoute, chooseFinale, beginSwipe, hasStructuralFailure, swipe, finish, setPaused |
 | [src/core/arenaCutBridge.js](../src/core/arenaCutBridge.js) | 48 | 2360 | advanceArenaClock, formalCutPayload |
 | [src/core/arenaEncounters.js](../src/core/arenaEncounters.js) | 92 | 4740 | MATERIAL_ORDER, PHASES, PHASE_DURATION, createEncounter, encounterPhase, phaseMaterialPool, selectEncounterMaterial, phaseQuota, stageSpawnInterval |
 | [src/core/arenaFormal.js](../src/core/arenaFormal.js) | 658 | 27817 | FORMAL_MATCH_VERSION, validateApexRoster, createFormalMatch, currentTest, testTask, submitTest, abandon, finishMatch, APEX_ROUNDS, createApexMatch, apexAvailable, apexDispatch, apexSubmit, finishApex, NATIONAL_ROUNDS_FORMAL, createNationalMatch, nationalCurrentRound, nationalStartRound, nationalSubmit, nationalAbandon, finishNational |
