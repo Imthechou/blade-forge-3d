@@ -1,9 +1,5 @@
-/**
- * 正式赛事靶具出场计划。六种材料本体硬度/护甲/生命值/刀损保持不变，
- * 只调整：解锁在哪个阶段、各材料出现概率、每阶段总投放数/并发数。
- *
- * 固定 45s：热身 0–8 / 路线 8–23 / 提速 23–30 / 压轴 30–45。
- * 同一把刀切中同一种靶，其切入难度与赛事等级无关。
+/** 45 秒出场计划：赛级与流派仅改变阵型、材料配比和自然投放节奏。
+ * quota 是节奏预算；击破补位可超过预算，材料本体始终固定。
  */
 export const MATERIAL_ORDER = Object.freeze(['foam','rope','wood','plastic','ice','metal']);
 export const PHASES = Object.freeze(['warmup','route','speed','finale']);

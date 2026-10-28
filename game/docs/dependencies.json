@@ -181,8 +181,8 @@
   },
   {
     "file": "src/core/arenaEncounters.js",
-    "bytes": 4923,
-    "lines": 96,
+    "bytes": 4740,
+    "lines": 92,
     "imports": [],
     "exports": [
       "MATERIAL_ORDER",
@@ -2938,8 +2938,8 @@
   },
   {
     "file": "src/ui/pages/arena.js",
-    "bytes": 173188,
-    "lines": 2648,
+    "bytes": 172214,
+    "lines": 2630,
     "imports": [
       "src/app/game.js",
       "src/core/arenaChallenge.js",

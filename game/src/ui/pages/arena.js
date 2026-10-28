@@ -1,23 +1,5 @@
 import { momentumChip, momentumLadder, momentumHint, momentumTrail, FACE_CN, STAT_CN, FACE_STATS, faceOfStat, faceCompareRow } from '../arenaReportParts.js';
-/**
- * 表现层 · 赛事页（V2.1 §15–§21）
- *
- * 赛事的任务是**验证成刀**，不是重新锻造。流程（§16）：
- *   选刀 + 原赛事层级 → 赛前事件策略 → 切割/精度/强度实际操作 → 原70/30综合分战报。
- *
- * ★ 三层结构（§20）
- *   流派试炼 SCHOOL TRIALS —— 六分支 × 五梯度，逐档挑战，失败可重打不降级
- *   全国大赛 NATIONAL      —— 32→16→8→4→决赛，每轮重新抽签
- *   全球巅峰赛 GLOBAL APEX —— 主题单刀终局，每场 4 个事件（含 1 个主题事件）
- *
- * ★ 赛前事件页内决策，保留对阵上下文；切割使用沉浸Canvas2D舞台。
- *
- * ★ 明确不做（§21 / §20.3）：不把锻造 Risk 套进比赛；普通落败不等于断刀；
- *   单刀赛保持原规则；可选 provisional 三刀组队由独立 Game 团队 API 编排。
- *
- * ⚠ 本文件不自行判定玩法：切割在 core/arenaChallenge.js，赛事在 core/arena.js。
- *   事件、刀路、磨损、选路、压轴和评级都由core返回；不写入永久刀况。
- */
+/** 赛事 V3 页面：四类赛事共用切割输入、时钟、选卡与 Canvas 舞台。旧赛程保留恢复入口。 */
 
 import { el, $, clear, mount, toast, countUp, sheet } from '../dom.js';
 import * as Core from '../../core/index.js';

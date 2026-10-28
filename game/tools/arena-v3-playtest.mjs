@@ -26,7 +26,7 @@ async function newGame(name,{width=390,height=844,virtual=true}={}) {
   await page.goto(base,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>{const boot=document.querySelector('#boot');return document.querySelector('.page[data-page="home"]')&&(!boot||boot.classList.contains('is-gone'));},null,{timeout:60000});
   await page.evaluate(async()=> (await import('/src/ui/router.js')).go('arena'));
-  if(virtual){await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+200));}
+  if(virtual){await page.clock.install({time:new Date('2026-10-28T00:00:00Z')});await page.clock.pauseAt(new Date('2026-10-28T00:00:00.200Z'));}
   return {page,context,virtual};
 }
 async function choose(page,virtual) {
@@ -48,14 +48,17 @@ async function pointerCut(page) {
     const r=globalThis.__FORGE_ARENA?.run;
     if(!r||r.done||r.phase.endsWith('-choice'))return null;
     const t=r.targets.filter(t=>t.alive && (r.health>r.maxHealth*.45 || t.type==='foam'||t.type==='rope')).sort((a,b)=>({foam:50,rope:70,wood:160,plastic:220,ice:250,metal:460}[b.type]-{foam:50,rope:70,wood:160,plastic:220,ice:250,metal:460}[a.type]))[0];
-    return t?{target:t,elapsed:r.elapsed}:null;
+    return t?{target:t,elapsed:r.elapsed,rowTargets:r.targets.filter(n=>n.alive && Math.abs(n.y-t.y)<.012).length,healthy:r.health>r.maxHealth*.5}:null;
   });
   if(!state)return;
   const {target:t}=state;
   const angle={foam:Math.PI*.77,rope:0,wood:Math.PI*.47,plastic:0,ice:Math.PI*.25,metal:0}[t.type];
   const box=await page.locator('.quick-canvas').boundingBox();assert.ok(box?.height>50);
   const p=(d)=>[box.x+(t.x+Math.cos(angle)*d)*box.width,box.y+(t.y+Math.sin(angle)*d)*box.height];
-  await page.mouse.move(...p(-.13));await page.mouse.down();await page.mouse.move(...p(.13),{steps:5});await page.mouse.up();
+  const row=angle===0 && state.rowTargets>1 && state.healthy;
+  const start=row?[box.x+box.width*.02,box.y+box.height*t.y]:p(-.13);
+  const end=row?[box.x+box.width*.98,box.y+box.height*t.y]:p(.13);
+  await page.mouse.move(...start);await page.mouse.down();await page.mouse.move(...end,{steps:row?18:5});await page.mouse.up();
 }
 async function playRound(page,virtual,{capture=false}={}) {
   await page.locator('.quick-canvas').waitFor();
@@ -145,7 +148,7 @@ try {
     await choose(page,virtual);
     await page.getByRole('button',{name:'暂停',exact:true}).click({force:true});
     const at=await page.evaluate(()=>__FORGE_ARENA.run.elapsed);await page.clock.fastForward(1500);assert.equal(await page.evaluate(()=>__FORGE_ARENA.run.elapsed),at);
-    await page.locator('.quick-pause-overlay .quick-choice-card').first().click({force:true});await page.clock.fastForward(300);
+    await page.locator('.quick-pause-overlay .quick-choice-card').first().click({force:true});await page.clock.fastForward(35);await page.clock.fastForward(300);
     assert.ok(await page.evaluate(()=>__FORGE_ARENA.run.elapsed)>at);
     return {overflow:false,pauseFreezes:true};
   },{width:320,height:568});

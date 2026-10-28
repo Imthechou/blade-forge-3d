@@ -121,7 +121,7 @@ test('正式赛只消费真实切割分，不再重复乘刀具能力；无操�
     F.submitTest(m,payload(3600));assert.equal(m.result.composite,3600);assert.equal(m.done,true);
   }
   const m=F.createFormalMatch({blade:sampleBlade(150)}).match;
-  const r=run();r.health=0;r.score=50000;C.finish(r,'wearout');F.submitTest(m,formalCutPayload(r));assert.equal(m.result.win,false);
+  const r=run();r.health=0;r.score=50000;C.finish(r,'wearout');F.submitTest(m,formalCutPayload(r));assert.equal(m.result.win,false);assert.equal(m.result.composite,50000,'失效保留真实过程分，但不能赢下比赛');
 });
 test('全国五轮不同风格且不累积强化；失败/放弃不毁刀，三刀巅峰严格轮换并正常结算',()=>{
   const blade=sampleBlade(150),before=JSON.stringify(blade),n=F.createNationalMatch({blade,seed:15}).match;
