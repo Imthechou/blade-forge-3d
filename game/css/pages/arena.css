@@ -186,3 +186,13 @@
 .quick-choice-overlay.is-inline .quick-choice-card span{font-size:11px;line-height:1.4}
 .quick-choice-overlay.is-inline .quick-choice-card strong{font-size:19px;color:var(--accent-cool-deep)}
 .quick-choice-overlay.is-inline .quick-choice-card small{font-size:10px}
+
+/* V3 三选一：品质与共鸣在原有舞台内表达，保留移动端触控面积。 */
+.arena-augment-overlay .quick-choice-card{border-left:3px solid var(--line);grid-template-columns:1fr}
+.arena-augment-overlay .augment--gold{border-left-color:var(--risk-warn)}
+.arena-augment-overlay .augment--prismatic{border-left-color:var(--accent);background:var(--accent-soft)}
+.arena-augment-overlay .quick-choice-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-height:650px){.arena-augment-overlay .quick-choice-panel{max-height:78dvh;overflow-y:auto}}
+.arena-augment-overlay.is-inline .quick-choice-card.augment--gold{border-left-color:var(--risk-warn)}
+.arena-augment-overlay.is-inline .quick-choice-card.augment--prismatic{border-left-color:var(--accent);background:var(--accent-soft)}
+.quick-stage-label>span{max-width:58%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

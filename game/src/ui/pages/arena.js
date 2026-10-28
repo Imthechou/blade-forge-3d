@@ -37,7 +37,7 @@ import * as FormalDef from '../../data/arena/formalTests.js';
 import * as Suite from '../../core/arenaSuite.js';
 import * as Performance from '../../core/arenaPerformance.js';
 import { KNIFE_TYPES, resolveModelId } from '../../data/knifeTypes.js';
-import { BUFF_BY_ID, BUFF_TIERS, BUFF_FAMILIES } from '../../data/arena/buffs.js';
+import { BUFF_BY_ID, BUFF_TIERS, BUFF_FAMILIES, BUILD_TAGS } from '../../data/arena/buffs.js';
 import { mountCollectionPreview, disconnectCollectionPreviews } from '../../render/collectionPreview.js';
 
 let root = null;
@@ -222,7 +222,7 @@ export function render() {
 function modeSwitch() {
   return el('div', { class: 'arena-mode-switch' }, [
     el('button', { class: 'arena-mode' + (['tournament', 'national-entry', 'national'].includes(arenaMode) ? ' is-active' : ''), text: '正式赛事', onclick: () => { if (guardPendingQuickChallenge()) return; arenaMode = 'tournament'; challengeRun = null; render(); } }),
-    el('button', { class: 'arena-mode' + (arenaMode === 'team' ? ' is-active' : ''), text: teamView().team && teamView().status !== 'settled' ? '恢复组刀赛' : '三刀组队', onclick: () => { if (guardPendingQuickChallenge()) return; const r = Game.resumeTeamMatch(); if (!r.ok) { toast(r.reason, 'warn'); return; } arenaMode = 'team'; render(); } }),
+    el('button', { class: 'arena-mode' + (arenaMode === 'team' ? ' is-active' : ''), text: teamView().team && teamView().status !== 'settled' ? '恢复组刀赛' : '三刀巅峰', onclick: () => { if (guardPendingQuickChallenge()) return; if(!teamView().team || teamView().status==='settled'){arenaMode='tournament';tier='apex';challengeRun=null;render();return;} const r = Game.resumeTeamMatch(); if (!r.ok) { toast(r.reason, 'warn'); return; } arenaMode = 'team'; render(); } }),
     el('button', { class: 'arena-mode' + (arenaMode === 'challenge' ? ' is-active' : ''), text: '快速挑战', onclick: () => { arenaMode = 'challenge'; Game.match = null; render(); } }),
   ]);
 }
@@ -261,7 +261,7 @@ function bladePicker(blades, selected) {
       'aria-pressed': String(b.id === selectedBladeId), onclick: () => { selectedBladeId = b.id; handle.close(); render(); },
     }, [bladeSymbol(), el('span', {}, [el('b', {text:b.bladeName || b.name || b.id}), el('small', {text:`${b.rarityName || b.rarity || '成刀'} · 评分 ${b.score || 0}`})]), el('span', {text:b.id === selectedBladeId ? '已选' : '选择'})])));
     const handle = sheet({ title: '选择参赛刀', body: list });
-  } }, [bladeSymbol(), el('span', {class:'arena-loadout-copy'}, [el('small',{text:'参赛刀'}),el('b',{text:selected?.bladeName || selected?.name || '成刀'}),el('small',{text:`${selected?.rarityName || selected?.rarity || '成刀'} · 档案永久保留`})]), el('span',{class:'arena-loadout-score'},[el('b',{text:String(selected?.score || 0)}),el('small',{text:'评分'})]), el('span',{class:'arena-loadout-change',text:'更换'})]);
+  } }, [bladeSymbol(), el('span', {class:'arena-loadout-copy'}, [el('small',{text:'参赛刀'}),el('b',{text:selected?.bladeName || selected?.name || '成刀'}),el('small',{text:`六维均值 ${Math.round(Object.values(selected?.stats || {}).reduce((a,b)=>a+(Number(b)||0),0)/6)} · 档案永久保留`})]), el('span',{class:'arena-loadout-score'},[el('b',{text:String(selected?.score || 0)}),el('small',{text:'评分'})]), el('span',{class:'arena-loadout-change',text:'更换'})]);
 }
 function bladeSymbol() {
   const mark = el('span',{class:'arena-blade-symbol','aria-hidden':'true'});
@@ -283,11 +283,11 @@ function renderTournamentHub() {
   const maxUnlocked=Math.min(GRADIENTS.length-1,Math.max(0,...cleared.map(x=>x+1)));
   if(tier==='school'&&(gradient>maxUnlocked||gradient<0))gradient=maxUnlocked;
   const t=TIERS[tier];
-  const node=el('div',{class:'arena-hub'},[modeSwitch(),bladePicker(blades,selected),el('div',{class:'hub-tier-tabs','aria-label':'赛事层级'},Object.values(TIERS).map(x=>el('button',{class:'hub-tier'+(tier===x.id?' is-active':''),'aria-pressed':String(tier===x.id),text:x.name,onclick:()=>{tier=x.id;render();}}))),el('header',{class:'hub-event-heading'},[el('h1',{text:tier==='school'?'选择流派':tier==='national'?'全国晋级之路':'选择三把刀'}),el('p',{text:({school:'选择流派，逐级证明你的刀。',national:'从32强到决赛，每轮重新抽签。',apex:'三把不同的刀，三轮不同项目，每把本场一次。'})[tier]})])]);
+  const node=el('div',{class:'arena-hub'},[modeSwitch(),bladePicker(blades,selected),el('div',{class:'hub-tier-tabs','aria-label':'赛事层级'},Object.values(TIERS).map(x=>el('button',{class:'hub-tier'+(tier===x.id?' is-active':''),'aria-pressed':String(tier===x.id),text:x.name,onclick:()=>{tier=x.id;render();}}))),el('header',{class:'hub-event-heading'},[el('h1',{text:tier==='school'?'选择流派':tier==='national'?'全国晋级之路':'选择三把刀'}),el('p',{text:({school:'选择流派，逐级证明你的刀。',national:'从32强到决赛，每轮重新抽签。',apex:'三把不同的刀，三轮主题切割，每把本场一次。'})[tier]})])]);
   if(tier==='school'){
-    node.append(el('div',{class:'hub-branches'},BRANCHES.map((b,i)=>el('button',{class:'hub-branch'+(styleId===b.id?' is-active':''),'aria-pressed':String(styleId===b.id),onclick:()=>{styleId=b.id;gradient=0;render();}},[el('span',{class:'hub-branch-glyph',text:['锤','刃','准','彩','复','载'][i]}),el('span',{},[el('b',{text:b.name}),el('small',{text:b.tag || FACE_CN[b.emphasis]})]),styleId===b.id?el('span',{class:'selection-check',text:'✓'}):null]))),el('div',{class:'hub-section-label'},[el('b',{text:'进阶之路'}),el('span',{text:`已通关 ${cleared.length}/${GRADIENTS.length}`})]),el('div',{class:'hub-progression'},GRADIENTS.map((g,i)=>{const unlocked=i===0||cleared.includes(i-1),done=cleared.includes(i);return el('button',{class:'hub-step'+(i===gradient?' is-active':'')+(done?' is-done':'')+(!unlocked?' is-locked':''),disabled:!unlocked,'aria-label':`${g.name}${done?'，已通关':!unlocked?'，未解锁':''}`,'aria-pressed':String(i===gradient),onclick:()=>{gradient=i;render();}},[el('b',{text:done?'✓':String(i+1)}),el('small',{text:g.name})]);})));
+    node.append(el('div',{class:'hub-branches'},BRANCHES.map((b,i)=>el('button',{class:'hub-branch'+(styleId===b.id?' is-active':''),'aria-pressed':String(styleId===b.id),onclick:()=>{styleId=b.id;gradient=0;render();}},[el('span',{class:'hub-branch-glyph',text:['锤','刃','准','彩','复','载'][i]}),el('span',{},[el('b',{text:b.name}),el('small',{text:FormalDef.branchFormat(b.id)?.focus || b.tag})]),styleId===b.id?el('span',{class:'selection-check',text:'✓'}):null]))),el('div',{class:'hub-section-label'},[el('b',{text:'进阶之路'}),el('span',{text:`已通关 ${cleared.length}/${GRADIENTS.length}`})]),el('div',{class:'hub-progression'},GRADIENTS.map((g,i)=>{const unlocked=i===0||cleared.includes(i-1),done=cleared.includes(i);return el('button',{class:'hub-step'+(i===gradient?' is-active':'')+(done?' is-done':'')+(!unlocked?' is-locked':''),disabled:!unlocked,'aria-label':`${g.name}${done?'，已通关':!unlocked?'，未解锁':''}`,'aria-pressed':String(i===gradient),onclick:()=>{gradient=i;render();}},[el('b',{text:done?'✓':String(i+1)}),el('small',{text:g.name})]);})));
   }else if(tier==='national')node.append(el('div',{class:'hub-national-strip'},NATIONAL_ROUNDS.map(r=>el('span',{},[el('b',{text:String(r.size)}),el('small',{text:r.name})]))));
-  else node.append(el('div',{class:'hub-themes'},THEMES.slice(0,4).map(x=>el('button',{class:'hub-theme'+(themeId===x.id?' is-active':''),'aria-pressed':String(themeId===x.id),onclick:()=>{themeId=x.id;render();}},[el('b',{text:x.name}),el('small',{text:x.desc || ''})]))));
+  else if(tier!=='apex') node.append(el('div',{class:'hub-themes'},THEMES.slice(0,4).map(x=>el('button',{class:'hub-theme'+(themeId===x.id?' is-active':''),'aria-pressed':String(themeId===x.id),onclick:()=>{themeId=x.id;render();}},[el('b',{text:x.name}),el('small',{text:x.desc || ''})]))));
   /* ★ rework T09：巅峰赛必须选三把不同的刀，不再允许单刀旁路。
      资格由 core/arenaFormal.validateApexRoster 最终把关；这里只做选择与可见回执。 */
   if(tier==='apex'){
@@ -309,11 +309,11 @@ function renderTournamentHub() {
           },
           text:`${on?'✓ ':''}${b.bladeName||b.name||b.id} · ${b.rarityName||b.rarity||'成刀'} · 评分 ${b.score||0}`});
       })),
-      el('p',{class:'arena-note',text:roster.ok?'三把刀已就位：三轮项目不同，请按刀的长处派刀。':`还不能开赛：${roster.reason}`}),
-      el('p',{class:'arena-note',text:'三轮主题：切割 → 结构/耐久 → 精度/综合。每轮只记录临时损伤，永久断刀政策待定。'}),
+      el('p',{class:'arena-note',text:roster.ok?'三把刀已就位：每轮 45 秒，独立选择三次强化。':`还不能开赛：${roster.reason}`}),
+      el('p',{class:'arena-note',text:'三轮主题：极致锋芒 → 不屈之刃 → 巅峰之作。各刀只出场一次。'}),
     );
   }
-  node.append(el('details',{class:'arena-rules'},[el('summary',{text:'赛制与对手情报'}),tournamentPreviewCard(t,branch)]),el('div',{class:'hub-launch-bar'},[el('span',{class:'hub-ready-note',text:`${tier==='school'?GRADIENTS[gradient]?.name+' · ':''}${tier==='school'?branch?.name:''}${t.events} 项赛前策略 → 正式多项目测试`}),el('button',{class:'btn btn--primary hub-launch',text:'开始挑战',onclick:()=>{
+  node.append(el('details',{class:'arena-rules'},[el('summary',{text:'赛制与对手情报'}),tournamentPreviewCard(t,branch)]),el('div',{class:'hub-launch-bar'},[el('span',{class:'hub-ready-note',text:`${tier==='school'?GRADIENTS[gradient]?.name+' · ':''}${tier==='school'?branch?.name:''} · 45秒切割 · 三次强化`}),el('button',{class:'btn btn--primary hub-launch',text:'开始挑战',onclick:()=>{
     /* ★ rework T06：正式单刀赛走 core/arenaFormal 的多项目测试，
        不再走 arenaSlice 的三次 35 秒切割 + 逐局 buff。
        每个流派的项目组合不同（锻压=强度+耐久、精密=精度+切割 …）。 */
@@ -331,28 +331,12 @@ function renderTournamentHub() {
   }})]));
   body.append(node);
 }
-function tournamentPreviewCard(t, branch) {
-  const theme = tier === 'apex' ? THEMES.find((x) => x.id === themeId) : null;
-  const format = tier === 'school'
-    ? `${GRADIENTS[gradient]?.name || '试炼'} · ${t.events} 事件`
-    : tier === 'national'
-      ? NATIONAL_ROUNDS.map((round) => round.name).join(' → ')
-      : `${theme?.name || '主题单刀'} · ${t.events} 项赛事事件`;
-  const focusLabel = tier === 'school' ? '流派侧重' : tier === 'apex' ? '主题策略' : '赛制特点';
-  const focus = tier === 'school'
-    ? `${branch?.name || '流派'} · ${branch?.tag || FACE_CN[branch?.emphasis] || ''}`
-    : tier === 'apex'
-      ? (theme?.desc || '主题单刀终局')
-      : '每轮重新抽签';
-  const opponentInfo = t.infoTransparency === 'high'
-    ? '流派与倾向公开'
-    : t.infoTransparency === 'partial'
-      ? '倾向部分公开'
-      : '仅凭事件线索推断';
-  return el('section', { class: 'hub-rule-card', 'aria-label': '本轮赛事规则与对手信息' }, [
-    el('div', { class: 'hub-rule-cell' }, [el('small', { text: '本轮赛制' }), el('b', { text: format })]),
-    el('div', { class: 'hub-rule-cell' }, [el('small', { text: focusLabel }), el('b', { text: focus })]),
-    el('div', { class: 'hub-rule-cell' }, [el('small', { text: '对手情报' }), el('b', { text: `${opponentInfo}；正式测试可能断刀，普通落败不等于断刀（概率曲线待定）` })]),
+function tournamentPreviewCard(t,branch) {
+  const def=FormalDef.buildFormalDefinition({branchId:branch?.id || 'composite',gradient});
+  return el('section',{class:'hub-rule-card','aria-label':'赛事规则'},[
+    el('div',{class:'hub-rule-cell'},[el('small',{text:'本轮赛制'}),el('b',{text:'45 秒切割 · 三次同品质强化'})]),
+    el('div',{class:'hub-rule-cell'},[el('small',{text:'操作侧重'}),el('b',{text:tier==='apex'?'极致锋芒 / 不屈之刃 / 巅峰之作':def.focus})]),
+    el('div',{class:'hub-rule-cell'},[el('small',{text:'达标条件'}),el('b',{text:tier==='school'?`${def.targetScore} 分 · ${def.require}`:'每轮达到公开目标分；刀况耗尽判负'})]),
   ]);
 }
 
@@ -530,7 +514,7 @@ function renderChallengeSetup() {
   if(!blades.some(b=>b.id===selectedBladeId))selectedBladeId=blades[0].id;
   const selected=blades.find(b=>b.id===selectedBladeId);
   const stats=[['强度','strength'],['锋利','sharpness'],['韧性','toughness']];
-  mount(body,[modeSwitch(),bladePicker(blades,selected),el('header',{class:'quick-hero'},[el('h2',{text:'45秒，尽展锋芒'}),el('p',{text:'划过材料，连切得分。收藏刀具不会受损。'})]),el('div',{class:'quick-stat-strip'},stats.map(([label,key])=>el('span',{},[el('small',{text:label}),el('b',{text:String(Math.round(selected.stats?.[key] || 0))})]))),el('div',{class:'quick-entry-list'},[el('section',{class:'quick-entry-card is-daily'},[el('div',{class:'quick-entry-copy'},[el('h3',{text:'每日挑战'}),el('p',{text:'相同靶序，磨练你的最佳刀路。'})]),el('span',{class:'quick-entry-duration',text:'45秒'}),el('button',{class:'btn btn--primary btn--block',text:'开始每日挑战',onclick:()=>startQuickChallenge(true,Core.daily.seedOfDay(Core.daily.dayKey()))})]),el('section',{class:'quick-entry-card'},[el('div',{class:'quick-entry-copy'},[el('h3',{text:'自由快赛'}),el('p',{text:'随机靶序，随时挑战新的高分。'})]),el('span',{class:'quick-entry-duration',text:'45秒'}),el('button',{class:'btn btn--block',text:'开始自由快赛',onclick:()=>startQuickChallenge(false)})])]),el('details',{class:'arena-rules'},[el('summary',{text:'赛道、刀况与奖励'}),el('p',{text:'第8秒选择赛道，第30秒选择压轴。硬靶需要多次补刀；刀况仅在本局模拟，任何失败、失误或中途结束均不会断刀。完成后按得分与评级结算CR，不影响正式赛事晋级。'})])]);
+  mount(body,[modeSwitch(),bladePicker(blades,selected),el('header',{class:'quick-hero'},[el('h2',{text:'45秒，尽展锋芒'}),el('p',{text:'划过材料，连切得分。收藏刀具不会受损。'})]),el('div',{class:'quick-stat-strip'},stats.map(([label,key])=>el('span',{},[el('small',{text:label}),el('b',{text:String(Math.round(selected.stats?.[key] || 0))})]))),el('div',{class:'quick-entry-list'},[el('section',{class:'quick-entry-card is-daily'},[el('div',{class:'quick-entry-copy'},[el('h3',{text:'每日挑战'}),el('p',{text:'相同靶序，磨练你的最佳刀路。'})]),el('span',{class:'quick-entry-duration',text:'45秒'}),el('button',{class:'btn btn--primary btn--block',text:'开始每日挑战',onclick:()=>startQuickChallenge(true,Core.daily.seedOfDay(Core.daily.dayKey()))})]),el('section',{class:'quick-entry-card'},[el('div',{class:'quick-entry-copy'},[el('h3',{text:'自由快赛'}),el('p',{text:'随机靶序，随时挑战新的高分。'})]),el('span',{class:'quick-entry-duration',text:'45秒'}),el('button',{class:'btn btn--block',text:'开始自由快赛',onclick:()=>startQuickChallenge(false)})])]),el('details',{class:'arena-rules'},[el('summary',{text:'赛道、刀况与奖励'}),el('p',{text:'开局、第15秒和第30秒各选一次强化；选卡时暂停。硬靶需要多次补刀；刀况仅在本局模拟，任何失败、失误或中途结束均不会断刀。完成后按得分与评级结算CR，不影响正式赛事晋级。'})])]);
 }
 
 function startQuickChallenge(daily, seed = null) {
@@ -637,7 +621,7 @@ function renderFormalFieldTest(match) {
     stage.classList.add('is-paused');
     stage.appendChild(challengePauseOverlay({
       onResume: () => { Challenge.setPaused(run, false); render(); },
-      onRestart: () => {
+      onRestart: run.version==='arena-3' && run.mode==='formal' ? null : () => {
         const created = Challenge.restartChallenge(run);
         if (!created.ok) { toast(created.reason || '无法重开现场测试', 'warn'); return; }
         fieldTestRun = created.run; render();
@@ -685,7 +669,7 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
     const source = Core.progress.bladeById(match.blade.id) || match.blade;
     const created = Challenge.createChallenge(source, {
       seed: ((Number(match.seed) || 1) ^ Math.imul(task.index + 1, 2654435761)) >>> 0,
-      mode: 'formal', seconds: Challenge.CHALLENGE_SECONDS, encounter,
+      mode: 'formal', seconds: Challenge.CHALLENGE_SECONDS, encounter:{...encounter,styleId:match.styleId,styleIds:match.styleIds}, styleId:match.styleId, targetScore:match.definition.targetScore,
     });
     if (!created.ok) {
       mount(body, [el('p', { class: 'arena-note', text: created.reason || '无法创建切割测试' })]);
@@ -750,7 +734,7 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
     stage.classList.add('is-paused');
     stage.appendChild(challengePauseOverlay({
       onResume: () => { Challenge.setPaused(run, false); render(); },
-      onRestart: () => {
+      onRestart: run.version==='arena-3' && run.mode==='formal' ? null : () => {
         const created = Challenge.restartChallenge(run);
         if (!created.ok) { toast(created.reason || '本项无法重开', 'warn'); return; }
         created.run.unifiedFormalCut = true;
@@ -770,10 +754,10 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
   const updateMission = () => {
     const label = ({warmup:'热身连切',route:run.route?.name,speed:'节奏提速',
       finale:run.finale?.name})[run.phase] || '切割考验';
-    mission.querySelector('b').textContent = `${run.encounter?.label || match.definition.branchName} · ${label}`;
+    mission.querySelector('b').textContent = `${match.definition.branchName} · ${label}`;
     mission.querySelector('span').textContent = run.risk?.status === 'failed'
       ? '结构临时失效 · 本项结束'
-      : `第 ${task.index+1}/${task.total} 项 · 本段 ${run.stageSpawned}/${run.encounter?.stages?.[run.spawnStage]?.quota || '—'} 靶 · 刀况 ${Math.round(run.health / Math.max(1,run.maxHealth) * 100)}%`;
+      : `目标 ${match.definition.targetScore} 分 · 本段已投放 ${run.stageSpawned} 靶 · 刀况 ${Math.round(run.health / Math.max(1,run.maxHealth) * 100)}%`;
   };
   renderChallengeCanvas(canvas, run, {
     hud, mission, footer, updateMission,
@@ -897,8 +881,9 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     ctx.clearRect(0,0,width,height);
     effects.now=now;effects.pointer=challengePointer;effects.reducedMotion=motion.reduced();
     drawArenaStage(ctx,run,width,height,effects);
-    if (!isSlice && !run.unifiedFormalCut) Formal.drawFormalCutGuides(ctx, run, width, height);
+    if (run.mode==='formal' && !isSlice && !run.unifiedFormalCut) Formal.drawFormalCutGuides(ctx, run, width, height);
     if (run.mode !== 'formal' || now >= scoreDelayUntil) shownScore = run.score;
+    text(hud.querySelector('.quick-hud-score small'),run.targetScore?`目标 ${run.targetScore}`:'当前得分');
     text(timeNode,run.remaining.toFixed(1));text(scoreNode,String(Math.floor(shownScore)).padStart(4,'0'));
     const healthPercent = Math.max(0, Math.min(100, run.health / Math.max(1, run.maxHealth ?? 100) * 100));
     text(healthNode, isSlice ? `${Math.round(run.health)}/${Math.round(run.maxHealth ?? 100)}` : `${Math.round(healthPercent)}%`);
@@ -906,10 +891,14 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     stage.classList.toggle('is-risky',run.finale?.id==='rush');stage.classList.toggle('is-low-health',healthPercent<35);stage.classList.toggle('is-countdown',run.remaining<=5);
     text(vitals.querySelector('small'), isSlice
       ? (run.risk?.status === 'failed' ? '结构失效' : run.risk?.status === 'warning' ? '⚠ 高负荷' : '刀况')
-      : run.mode === 'formal' ? (run.risk?.status === 'failed' ? '结构失效' : run.risk?.status === 'warning' ? '危险征兆 · 受损' : '正式测试刀况') : '安全挑战 · 模拟刀况');
+      : run.mode === 'formal' ? (run.risk?.status === 'failed' ? '结构失效' : '临时刀况') : '模拟刀况');
     phaseBar.style.transform=`scaleX(${Math.max(0,run.remaining)/(run.total || Challenge.CHALLENGE_SECONDS)})`;
     text(pauseNode,run.paused?'继续':'暂停');
     updateMission();
+    if(run.version==='arena-3') {
+      const span=mission.querySelector('span');
+      if(span)span.textContent=`${run.buffs.map(id=>BUFF_BY_ID[id]?.name).join(' · ') || '等待强化'}${run.resonances.length?' | '+run.resonances.map(id=>BUILD_TAGS[id]+'共鸣').join(' '):''} · 可反向补刀`;
+    }
   };
   challengeVisibilityHandler = () => {
     if (challengeCanvas !== canvas || !canvas.isConnected || run.done) return;
@@ -952,7 +941,7 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     lastFrame = now;
     if (!run.paused) advanceArenaClock(run, delta, Challenge.tick);
     drawScene(now);
-    if (run.phase === 'route-choice' || run.phase === 'finale-choice') {
+    if (run.phase.endsWith('-choice')) {
       stopChallengeFrame(); showChallengeChoice(run); return;
     }
     if (run.done) { stopChallengeFrame(); onDone(); return; }
@@ -971,7 +960,7 @@ function challengePauseOverlay({ onResume, onRestart, onAbandon, onFinish, label
     el('p', { class: 'quick-settlement-note', text: label }),
     el('div', { class: 'quick-choice-list', style: { gridTemplateColumns: '1fr' } }, [
       el('button', { class: 'quick-choice-card', type: 'button', onclick: onResume }, [el('b', { text: '继续挑战' }), el('span', { text: '回到当前进度' })]),
-      el('button', { class: 'quick-choice-card', type: 'button', onclick: onRestart }, [el('b', { text: '重开本局' }), el('span', { text: '从 45 秒起重新开始' })]),
+      onRestart ? el('button', { class: 'quick-choice-card', type: 'button', onclick: onRestart }, [el('b', { text: '重开本局' }), el('span', { text: '从 45 秒起重新开始' })]) : null,
       onFinish ? el('button', { class: 'quick-choice-card', type: 'button', onclick: onFinish }, [el('b', { text: '提前收刀 · 看本局成绩' }), el('span', { text: '立即结束，不发放CR，不计挑战完成' })]) : null,
       el('button', { class: 'quick-choice-card', type: 'button', onclick: onAbandon }, [el('b', { text: '放弃并退出' }), el('span', { text: '未完成本局不发 CR' })]),
     ]),
@@ -992,8 +981,8 @@ function openChallengeHelp(stage, run) {
     el('div', { class: 'quick-choice-panel' }, [
       el('div', { class: 'quick-kicker', text: '操作说明' }),
       el('h2', { text: '按住，划过，连切' }),
-      el('p', { text: '鼠标或单指按住舞台，从目标上划过即可切割。尽量一笔串过多个靶具；同一个目标在一次按压中只计一次命中。' }),
-      el('p', { text: '先利用软靶熟悉刀路，再在第 8 秒选择赛道、第 30 秒选择压轴。路线倍率越高，材料越难、刀况损耗越大；快速挑战绝不断刀，正式测试需留意结构失效征兆。' }),
+      el('p', { text: '鼠标或单指按住舞台，从目标上划过即可切割。尽量一笔串过多个靶具；手指不必抬起，划离后反向补刀可再次命中硬靶。' }),
+      el('p', { text: '开局、第15秒、第30秒各有一次同品质三选一。高级靶具更难切、刀损更高、得分更高；沿亮点和虚线入刀更有效率。' }),
       el('p', { text: '得分、评级和 CR 只在完成后的战报结算。暂停不会消耗时间；按 P 或 Escape 可暂停，切到后台会自动暂停。' }),
       el('button', { class: 'quick-choice-card', type: 'button', onclick: close }, [el('b', { text: '明白，继续' })]),
     ]),
@@ -1002,7 +991,31 @@ function openChallengeHelp(stage, run) {
   secureOverlay(overlay);
 }
 
+function showAugmentChoice(run) {
+  const stage=body.querySelector('.quick-match') || body;
+  if(stage.querySelector('.arena-augment-overlay'))return;
+  const tier=BUFF_TIERS[BUFF_BY_ID[run.offers[0]]?.tier];
+  const overlay=el('div',{class:'quick-choice-overlay is-inline arena-augment-overlay',role:'dialog','aria-label':'选择局内强化'},[
+    el('div',{class:'quick-choice-panel'},[
+      el('div',{class:'quick-kicker',text:`第 ${run.choicesMade+1}/3 次强化 · ${tier?.name || ''} · 计时暂停`}),
+      el('h2',{text:'锻造这一局的刀势'}),
+      el('p',{text:`${run.total} 秒切割 · 本轮目标 ${run.targetScore || '自由高分'}${run.buffs.length?' · 已选 '+run.buffs.map(id=>BUFF_BY_ID[id]?.name).join(' / '):''}`}),
+      el('div',{class:'quick-choice-list'},run.offers.map(id=>{
+        const b=BUFF_BY_ID[id];
+        return el('button',{class:`quick-choice-card augment--${b.tier}`,'data-augment-id':id,onclick:()=>{
+          const result=Challenge.chooseAugment(run,id);
+          if(!result.ok){toast(result.reason,'warn');return;}
+          audio.play('select');render();
+        }},[el('small',{text:tier?.name+'色强化'}),el('b',{text:b.name}),el('span',{text:b.desc})]);
+      })),
+      run.resonances.length?el('p',{text:'已激活共鸣：'+run.resonances.map(id=>BUILD_TAGS[id]).join(' / ')}):null,
+    ]),
+  ]);
+  stage.appendChild(overlay);secureOverlay(overlay);
+}
+
 function showChallengeChoice(run) {
+  if(run.phase==='buff-choice')return showAugmentChoice(run);
   const isFinal = run.phase === 'finale-choice';
   const options = isFinal ? Challenge.FINALES : Challenge.ROUTES;
   const overlay = el('div', { class: 'quick-choice-overlay is-inline', role:'dialog', 'aria-modal':'false', 'aria-label':isFinal?'选择压轴路线':'选择挑战路线' }, [
@@ -1432,24 +1445,25 @@ function renderFormalReport() {
       el('div', { class: 'quick-kicker', text: `${d.branchName || '正式赛'} · ${d.gradientName || ''}` }),
       el('div', { class: 'circuit-verdict-title', text: r.headline || (r.win ? '达标' : '未达标') }),
       el('div', { class: 'circuit-scoreline' }, [
-        el('div', {}, [el('small', { text: '合成分' }), el('b', { class: 'mono', text: String(r.composite) })]),
+        el('div', {}, [el('small', { text: '切割分' }), el('b', { class: 'mono', text: String(r.composite) })]),
         el('span', { text: 'VS' }),
         el('div', {}, [el('small', { text: '目标分' }), el('b', { class: 'mono', text: String(r.target) })]),
       ]),
       el('div', { class: 'circuit-opponent-name', text: `${r.bladeName || m.blade.name} · ${r.margin >= 0 ? '超出' : '差'} ${Math.abs(r.margin)} 分` }),
     ]),
     el('div', { class: 'quick-result-stats' }, [
-      ['最强项', r.strongest ? `${r.strongest.name} ${r.strongest.score}` : '—'],
-      ['最弱项', r.weakest ? `${r.weakest.name} ${r.weakest.score}` : '—'],
+      ['精准命中',m.session.entries[0]?.result?.detail?.perfects || 0],
+      ['有效破甲',m.session.entries[0]?.result?.detail?.armorBreaks || 0],
       ['临时损伤', `${Math.round((r.temporaryDamage || 0) * 100)}%`],
       ['获得', `+${m.reward || 0} CR`],
     ].map(([a, b]) => el('div', {}, [el('small', { text: a }), el('b', { text: String(b) })]))),
     el('div', { class: 'stack' }, [
       el('div', { class: 'section-title', text: '分项成绩（权重来自赛事定义）' }),
       ...scoreRows,
+      r.honors?.length?el('div',{class:'row row--wrap'},r.honors.map(text=>el('span',{class:'chip chip--accent',text}))):null,
       r.report ? el('div', { class: 'section-title', text: '赛报' }) : null,
       ...((r.report?.lines || []).map((line) => el('p', { class: 'arena-note', text: line }))),
-      el('p', { class: 'arena-note', text: '本场不执行永久断刀：正式断刀概率、跨项目受损与退出细则仍待定（FORMAL_RISK_TBD）。临时损伤不影响这把刀的永久属性。' }),
+      el('p', { class: 'arena-note', text: '刀况耗尽将结束本轮；临时损伤不影响收藏刀具。' }),
     ]),
     saveFail ? el('p', { class: 'arena-note', text: '本场记录尚未保存。' }) : null,
     /* ★ rework T12：赛后也给出“下一步”。
@@ -1563,11 +1577,11 @@ function renderApexMatch() {
   mount(body, [
     el('div', { class: 'quick-kicker', text: `全球巅峰赛 · 第 ${m.roundIndex + 1}/${m.rounds.length} 轮` }),
     el('h1', { text: round?.label || '三轮已完' }),
-    el('p', { class: 'arena-note', text: '三把不同的刀，每把本场只能出场一次。每轮考的项目不同，请按刀的长处派刀。' }),
+    el('p', { class: 'arena-note', text: '三把不同的刀，每把只出场一次。每轮 45 秒，强化不跨轮继承。' }),
     rounds,
     el('div', { class: 'section-title', text: available.length ? '选择本轮出场的刀' : '没有可用的刀' }),
     list,
-    el('p', { class: 'arena-note', text: '正式断刀政策仍待定：本场只记录临时损伤，不销毁永久成刀。' }),
+    el('p', { class: 'arena-note', text: '刀况与强化仅作用于本轮，收藏刀具保留。' }),
   ]);
 }
 
@@ -1587,7 +1601,7 @@ function renderApexReport() {
     el('section', { class: `circuit-verdict ${r.win ? 'is-win' : 'is-lose'}` }, [
       el('div', { class: 'quick-kicker', text: 'GLOBAL APEX · 三刀巅峰赛' }),
       el('div', { class: 'circuit-verdict-title', text: r.report?.headline || (r.win ? '达标' : '未达标') }),
-      el('div', { class: 'circuit-opponent-name', text: `完成 ${r.rounds}/${m.rounds.length} 轮 · 胜 ${r.wins} 轮 · 合成分 ${r.composite}` }),
+      el('div', { class: 'circuit-opponent-name', text: `完成 ${r.rounds}/${m.rounds.length} 轮 · 胜 ${r.wins} 轮 · 切割分 ${r.composite}` }),
     ]),
     el('div', { class: 'stack' }, [
       el('div', { class: 'section-title', text: '各轮成绩' }),
@@ -1639,10 +1653,10 @@ function renderNationalMatch() {
   mount(body, [
     el('div', { class: 'quick-kicker', text: `全国大赛 · 第 ${m.roundIndex + 1}/${m.rounds.length} 轮` }),
     el('h1', { text: round?.label || '本届已结束' }),
-    el('p', { class: 'arena-note', text: `代表刀整届锁定：${m.blade.name}。每轮都是综合三项实测（切割 + 强度 + 精度），梯度逐轮提升。` }),
+    el('p', { class: 'arena-note', text: `代表刀整届锁定：${m.blade.name}。每轮 45 秒切割，独立构筑。对手风格与阵型逐轮变化。` }),
     rounds,
     el('p', { class: 'arena-note', text: '一败即淘汰；普通淘汰不等于断刀，成刀与全部履历保留。' }),
-    el('p', { class: 'arena-note', text: '正式断刀政策仍待定：本赛只记录临时损伤，不销毁永久成刀。' }),
+    el('p', { class: 'arena-note', text: '每轮重置刀况和强化；刀况耗尽或得分不足将淘汰。' }),
     el('div', { class: 'quick-report-actions' }, [
       el('button', {
         class: 'btn btn--primary',
@@ -1740,7 +1754,7 @@ function renderTeamSetup() {
   if (!THEMES.some(x => x.id === themeId)) themeId = THEMES[0]?.id || null;
   const select = el('select', { class: 'arena-team-theme', 'aria-label': '组刀赛事主题', onchange: event => { themeId = event.target.value; } }, THEMES.map(x => el('option', { value: x.id, text: x.name, selected: x.id === themeId })));
   if (!qualification.ok && teamSelection.length === 3) body.append(el('small', { text: qualification.reason }));
-  body.append(select, teamFooter('三把刀各打一局 35 秒；每把刀自带一个本命强化，赛前再选一个。掉一把仍可翻盘。', '确认队伍，开始派刀', () => {
+  body.append(select, teamFooter('三把刀各打一局 45 秒，各自构筑三次强化。', '确认队伍，开始派刀', () => {
     const r = Game.startSliceMatch({
       bladeIds: [...teamSelection], kind: 'team', tier: 'apex', styleId,
       theme: THEMES.find((x) => x.id === themeId),
@@ -1811,7 +1825,7 @@ function renderTeamTest() {
   }
   const suite = m.formalPerformance;
   const entry = Suite.currentSuiteTest(suite);
-  mount(body, [teamHeading(`组刀赛 · 第 ${teamView().currentRound} 轮`, `${entry.name} · 正式实测`, '沿用原三项测试；不新增合成分、权重或断刀规则。'),
+  mount(body, [teamHeading(`组刀赛 · 第 ${teamView().currentRound} 轮`, `${entry.name} · 正式实测`, '沿用原三项测试；不新增切割分、权重或断刀规则。'),
     el('div', { class: 'arena-team-rounds' }, suite.entries.map(x => el('span', { text: `${x.name}${x.status === 'complete' ? ' ✓' : x.status === 'not-run' ? ' 未进行' : ''}` }))),
   ]);
   if (!suite.started) {
@@ -2293,13 +2307,13 @@ function renderNationalEntry() {
   const run = nationalSnapshot || resumed.run || previous;
   const active = run && ['ready', 'round'].includes(run.status);
   mount(body, [modeSwitch(), el('div', { class: 'hub-tier-tabs' }, Object.values(TIERS).map(x => el('button', { class: 'hub-tier' + (tier === x.id ? ' is-active' : ''), text: x.name, onclick: () => { tier = x.id; arenaMode = x.id === 'national' ? 'national-entry' : 'tournament'; render(); } }))),
-    teamHeading('NATIONAL · 暂定赛制', '全国晋级之路', '同一把成刀，连续五轮；胜后才推进，普通落败或真实断刀结束本届。'), nationalStrip(active ? run : null),
+    teamHeading('NATIONAL · 暂定赛制', '全国晋级之路', '同一把成刀连续五轮，达到公开目标分即可晋级；得分不足或刀况耗尽结束本届。'), nationalStrip(active ? run : null),
   ]);
   body.append(nationalSaveStatus());
   if (!nationalCheckpointAvailable()) nationalReady();
   nationalPaintSave();
   if (active) {
-    body.append(el('section', { class: 'national-summary' }, [el('b', { text: `已有赛事（旧赛制） · ${run.blade.bladeName || run.blade.name || run.bladeId}` }), el('p', { text: `第${run.roundIndex + 1}/5轮 · ${NATIONAL_LABELS[run.roundIndex]} · ${run.activeMatch ? '恢复同一场比赛' : '等待手动开轮'}。返回入口不会退赛，不能另开第二届。` }), el('p', { class: 'muted tiny', text: '这是旧赛制（三局切割）的进行中纪录。可选择恢复，或退出它改用新的五轮多项目赛制。' })]),
+    body.append(el('section', { class: 'national-summary' }, [el('b', { text: `已有赛事（旧赛制） · ${run.blade.bladeName || run.blade.name || run.bladeId}` }), el('p', { text: `第${run.roundIndex + 1}/5轮 · ${NATIONAL_LABELS[run.roundIndex]} · ${run.activeMatch ? '恢复同一场比赛' : '等待手动开轮'}。返回入口不会退赛，不能另开第二届。` }), el('p', { class: 'muted tiny', text: '这是旧赛制（三局切割）的进行中纪录。可选择恢复，或退出它改用新的五轮切割赛制。' })]),
       el('div', { class: 'quick-report-actions' }, [
         el('button', { class: 'btn btn--primary', text: '恢复旧赛制全国赛', onclick: () => { if (nationalWrite(nationalRestore(run.id))) { arenaMode = 'national'; render(); } } }),
         /* ★ rework T09：旧档退出路径。不伪造成绩、不扣已得奖励、不断刀。 */
@@ -2321,7 +2335,7 @@ function renderNationalEntry() {
     body.append(bladePicker(blades, blades.find(b => b.id === selectedBladeId)));
   } else body.append(el('p', { text: '没有可参赛成刀，请先锻造；断刀不会恢复参赛资格。' }));
   body.append(el('section', { class: 'national-summary' }, [el('p', { text: '每胜一轮 +70 CR；失利轮 +20 CR 后淘汰。五连胜共 350 CR，不另发冠军奖励；冠军以赛事历史与刀具履历兑现。五轮梯度逐轮提升。' })]),
-    teamFooter('五轮各是一场综合三项实测（切割 + 强度 + 精度），代表刀整届锁定。一败即淘汰；普通淘汰不断刀。', run ? '开始新一届全国赛' : '开始全国赛', () => {
+    teamFooter('五轮各为 45 秒切割，每轮独立选三次强化，代表刀整届锁定。一败即淘汰；普通淘汰不断刀。', run ? '开始新一届全国赛' : '开始全国赛', () => {
       /* ★ rework T09：切换到新链路（core/arenaFormal 五轮多项目），
          不再走 startSliceMatch({kind:'national'}) 的旧三局切割结构。 */
       const r = Game.startNationalMatch({ bladeId: selectedBladeId });
@@ -2366,7 +2380,7 @@ function renderNationalTest() {
   }
   const suite = m.formalPerformance;
   const entry = Suite.currentSuiteTest(suite);
-  mount(body, [teamHeading(`全国赛 · 第 ${nationalSnapshot.roundIndex + 1}/5 轮`, `${entry.name} · 正式实测`, '沿用原三项测试；不新增合成分、权重或断刀规则。'),
+  mount(body, [teamHeading(`全国赛 · 第 ${nationalSnapshot.roundIndex + 1}/5 轮`, `${entry.name} · 正式实测`, '沿用原三项测试；不新增切割分、权重或断刀规则。'),
     el('div', { class: 'arena-team-rounds' }, suite.entries.map(x => el('span', { text: `${x.name}${x.status === 'complete' ? ' ✓' : x.status === 'not-run' ? ' 未进行' : ''}` }))),
   ]);
   if (!suite.started) {

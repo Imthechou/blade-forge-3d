@@ -19,6 +19,7 @@
  */
 
 import { buildFormalDefinition, gradientRule, FORMAL_RULES_VERSION } from '../data/arena/formalTests.js';
+import { ARENA_V3 } from '../data/balance.js';
 import { BRANCHES, GRADIENTS } from '../data/arena/branches.js';
 import * as TestScoring from './testScoring.js';
 import { adaptBlade } from './bladeAdapter.js';
@@ -60,19 +61,19 @@ export function validateApexRoster(blades) {
  * @param {number} [o.gradient] 档位 0–4
  * @param {number} [o.seed]
  */
-export function createFormalMatch({ blade, tier = 'school', styleId = null, gradient = 0, seed = null } = {}) {
+export function createFormalMatch({ blade, tier = 'school', styleId = null, gradient = 0, seed = null, round = 0 } = {}) {
   if (!blade || blade.fractured || blade.canEnterArena === false) {
     return { ok: false, reason: '只能使用完整成刀参赛' };
   }
   /* 全国赛不绑定流派：用复合（三项）代表综合考核，梯度按轮次推进 */
-  const branchId = tier === 'national'
-    ? 'composite'
-    : (styleId || 'composite');
+  const branchId = styleId || 'composite';
   if (!BRANCHES.some((b) => b.id === branchId)) return { ok: false, reason: '未知流派' };
 
   const actualSeed = seed == null ? (Date.now() >>> 0) : Number(seed) >>> 0;
   const def = buildFormalDefinition({ branchId, gradient, seed: actualSeed });
   if (!def.ok) return def;
+  if(tier==='national')def.targetScore=ARENA_V3.nationalTargets[Math.min(4,round|0)];
+  if(tier==='apex')def.targetScore=ARENA_V3.apexTargets[Math.min(2,round|0)];
 
   const view = adaptBlade(blade);
   const session = TestScoring.createTestSession({
@@ -89,6 +90,7 @@ export function createFormalMatch({ blade, tier = 'school', styleId = null, grad
       tier,
       styleId: branchId,
       gradient: gradient | 0,
+      round,
       seed: actualSeed,
       definition: def,
       blade: {
@@ -197,6 +199,10 @@ export function submitTest(match, { measure, detail = {}, temporaryDamage = 0, f
   const entry = currentTest(match);
   if (!entry) return { ok: false, reason: '没有待完成的测试项' };
 
+  if(match.version===FORMAL_RULES_VERSION && !failed &&
+    (detail.source!=='arenaChallenge' || !Number.isFinite(detail.score) || detail.score<0 || detail.duration!==45)) {
+    return {ok:false,reason:'缺少完整切割成绩，请完成本轮切割后提交'};
+  }
   const res = TestScoring.settleTest(match.session, match.view, {
     kind: entry.kind,
     measure: num(measure),
@@ -205,6 +211,12 @@ export function submitTest(match, { measure, detail = {}, temporaryDamage = 0, f
     failed,
   });
   if (!res.ok) return res;
+  if(match.version===FORMAL_RULES_VERSION) {
+    // 刀具属性已在切割/刀损中生效；真实分数不再乘第二遍能力分。
+    res.result.score=failed?0:Math.floor(detail.score);
+    res.result.raw.score=res.result.score;
+    res.result.version='cut-score-3';
+  }
 
   match.log.push({
     type: 'test', kind: entry.kind, score: res.result.score,
@@ -250,14 +262,16 @@ export function finishMatch(match, reason = 'complete') {
 
   /* 临时失效 → 判负，但**不是**永久断刀（FORMAL_RISK_TBD 未定） */
   const temporaryFailure = match.session.aborted === 'temporary-failure';
-  const win = !temporaryFailure && judge.win;
+  const win = reason==='complete' && !temporaryFailure && judge.win;
 
   match.done = true;
   match.fieldTest = {
     used: true,
     result: { tier: win ? 'perfect' : 'fail', performance: null },
   };
+  const cut=match.session.entries[0]?.result?.detail || {};
   match.result = {
+    cut, honors:match.version===FORMAL_RULES_VERSION && win ? honorsOf(cut,match.styleId) : [],
     version: FORMAL_MATCH_VERSION,
     reason,
     win,
@@ -293,11 +307,30 @@ export function finishMatch(match, reason = 'complete') {
   return { ok: true, done: true, result: match.result };
 }
 
+function honorsOf(cut,styleId) {
+  const honors=[];
+  if(cut.bestSwipe>=3 && cut.maxStreak>=12)honors.push('疾风连斩');
+  if(cut.armorBreaks>=8 && cut.health/Math.max(1,cut.maxHealth)>=.2)honors.push('百炼之刃');
+  if(cut.perfects>=30 && cut.weakHits>=15)honors.push('精准锋芒');
+  if(cut.materials?.length===6)honors.push('六材通解');
+  if(cut.crossCuts>=8)honors.push('冰裂匠心');
+  return honors;
+}
 function buildReport(match, agg, judge, win) {
+  if(match.version===FORMAL_RULES_VERSION) {
+    const cut=match.session.entries[0]?.result?.detail || {};
+    return {headline:match.session.aborted==='temporary-failure'?'刀况耗尽 · 本轮终止':win?'挑战成功':'未达目标',lines:[
+      `${match.definition.branchName} · ${match.definition.focus}`,
+      `切割分 ${agg.composite} / 目标 ${judge.target}`,
+      `斩断 ${cut.kills || 0} · 精准 ${cut.perfects || 0} · 弱点 ${cut.weakHits || 0} · 破甲 ${cut.armorBreaks || 0}`,
+      `一划最多 ${cut.bestSwipe || 0} 断 · 跨划连斩 ${cut.maxStreak || 0} · 连锁击破 ${cut.secondaryKills || 0}`,
+      `本轮强化 ${(cut.buffs || []).length}/3 · 剩余刀况 ${Math.round((cut.health || 0)/Math.max(1,cut.maxHealth || 100)*100)}%`,
+    ]};
+  }
   const lines = [];
   const d = match.definition;
   lines.push(`${d.branchName} · ${d.gradientName}：${d.focus}`);
-  lines.push(`合成分 ${agg.composite} / 目标 ${judge.target}（${judge.margin >= 0 ? '超出' : '差'} ${Math.abs(judge.margin)}）`);
+  lines.push(`切割分 ${agg.composite} / 目标 ${judge.target}（${judge.margin >= 0 ? '超出' : '差'} ${Math.abs(judge.margin)}）`);
   for (const p of agg.projectScores) {
     if (p.score === null) lines.push(`${p.name}：未完成`);
     else lines.push(`${p.name}：${p.score}${p.failed ? '（临时失效）' : ''}`);
@@ -321,9 +354,9 @@ function buildReport(match, agg, judge, win) {
 
 /** 三轮主题：分别覆盖切割、结构/耐久、精度/综合 */
 export const APEX_ROUNDS = Object.freeze([
-  { round: 0, label: '第一轮 · 切割', branchId: 'edge', gradient: 2 },
-  { round: 1, label: '第二轮 · 结构耐久', branchId: 'press', gradient: 2 },
-  { round: 2, label: '第三轮 · 精度综合', branchId: 'composite', gradient: 2 },
+  { round: 0, label: '第一轮 · 极致锋芒', branchId: 'edge', gradient: 4 },
+  { round: 1, label: '第二轮 · 不屈之刃', branchId: 'press', gradient: 4 },
+  { round: 2, label: '第三轮 · 巅峰之作', branchId: 'composite', gradient: 4 },
 ]);
 
 /**
@@ -377,12 +410,13 @@ export function apexDispatch(match, blades, bladeId) {
   if ((match.usedBladeIds || []).includes(bladeId)) {
     return { ok: false, reason: '这把刀本场已经出过场，不能重复派出' };
   }
+  if(!match.roster.some(b=>b.id===bladeId))return {ok:false,reason:'这把刀不在本届三刀阵容内'};
   const rec = (blades || []).find((b) => b && b.id === bladeId);
   if (!rec) return { ok: false, reason: '找不到这把刀' };
   if (rec.fractured || rec.canEnterArena === false) return { ok: false, reason: '这把刀已失去参赛资格' };
 
   const created = createFormalMatch({
-    blade: rec, tier: 'school', styleId: round.branchId, gradient: round.gradient,
+    blade: rec, tier: 'apex', styleId: round.branchId, gradient: round.gradient, round:match.roundIndex,
     seed: (match.seed + match.roundIndex * 7919) >>> 0,
   });
   if (!created.ok) return created;
@@ -403,11 +437,11 @@ export function apexSubmit(match, payload) {
   if (!res.ok) return res;
   if (res.done) {
     round.status = 'complete';
-    round.result = res.result;
+    round.result = res.matchResult;
     match.usedBladeIds.push(round.dispatchedBladeId);
     match.roundIndex += 1;
     if (match.roundIndex >= match.rounds.length) return finishApex(match);
-    return { ok: true, roundDone: true, result: res.result, next: match.rounds[match.roundIndex] };
+    return { ok: true, roundDone: true, result: round.result, next: match.rounds[match.roundIndex] };
   }
   return res;
 }
@@ -429,6 +463,7 @@ export function finishApex(match) {
     win,
     wins,
     rounds: completed.length,
+    honors:[...new Set(completed.flatMap(r=>r.result.honors || [])),...(wins===3?['三刀全胜']:[])],
     composite,
     roundsDetail: match.rounds.map((r) => ({
       round: r.round, label: r.label, branchId: r.branchId,
@@ -436,6 +471,7 @@ export function finishApex(match) {
       composite: r.result?.composite ?? null,
       win: r.result?.win ?? null,
       projectScores: r.result?.projectScores || [],
+      honors:r.result?.honors || [],
     })),
     bladeDestroyed: false,
     permanentRiskPolicy: 'FORMAL_RISK_TBD',
@@ -463,11 +499,11 @@ export function finishApex(match) {
  */
 
 export const NATIONAL_ROUNDS_FORMAL = Object.freeze([
-  { round: 0, label: '32 强', gradient: 0, size: 32 },
-  { round: 1, label: '16 强', gradient: 1, size: 16 },
-  { round: 2, label: '8 强', gradient: 2, size: 8 },
-  { round: 3, label: '半决赛', gradient: 3, size: 4 },
-  { round: 4, label: '决赛', gradient: 4, size: 2 },
+  { round: 0, label: '32 强 · 高速连斩', gradient: 0, size: 32, styleId:'edge' },
+  { round: 1, label: '16 强 · 精准刀路', gradient: 1, size: 16, styleId:'precise' },
+  { round: 2, label: '8 强 · 重型破甲', gradient: 2, size: 8, styleId:'press' },
+  { round: 3, label: '半决赛 · 综合考验', gradient: 3, size: 4, styleId:'composite' },
+  { round: 4, label: '决赛 · 双风格对抗', gradient: 4, size: 2, styleId:'overload' },
 ]);
 
 /**
@@ -530,7 +566,8 @@ export function nationalStartRound(match, blades) {
   const created = createFormalMatch({
     blade: record,
     tier: 'national',
-    styleId: 'composite',
+    styleId: round.styleId,
+    round:round.round,
     gradient: round.gradient,
     seed: (match.seed + round.round * 7919) >>> 0,
   });
@@ -538,6 +575,13 @@ export function nationalStartRound(match, blades) {
 
   round.status = 'active';
   round.roundMatch = created.match;
+  if(round.round===4) {
+    const styles=['press','edge','precise','quench'];
+    const rng=RNG.stream(match.seed,'national-final');
+    const first=styles.splice(Math.floor(rng()*styles.length),1)[0];
+    created.match.styleIds=[first,styles[Math.floor(rng()*styles.length)]];
+    created.match.definition.focus='双风格：'+created.match.styleIds.map(id=>BRANCHES.find(b=>b.id===id)?.name).join(' + ');
+  }
   return { ok: true, round, roundMatch: created.match };
 }
 
@@ -603,6 +647,7 @@ export function finishNational(match, reason = 'eliminated') {
       target: r.result?.target ?? null,
       win: r.result?.win ?? null,
       projectScores: r.result?.projectScores || [],
+      honors:r.result?.honors || [],
     })),
     report: {
       headline: champion ? '全国大赛冠军'

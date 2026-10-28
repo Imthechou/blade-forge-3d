@@ -13,7 +13,7 @@ import * as Challenge from './arenaChallenge.js';
 import { deriveCutParams, deriveCutParamsForBlade } from './cutParams.js';
 import { adaptBlade } from './bladeAdapter.js';
 
-export const SLICE_SECONDS = 35;
+export const SLICE_SECONDS = 45;
 export const GHOST_BASE = Object.freeze({ school: 4200, national: 5000, apex: 5800 });
 
 /** 三种赛事的结构参数 */

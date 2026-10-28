@@ -1,18 +1,6 @@
-/**
- * 核心层 · 切割参数（测试能力 + buff → 一组可读的手感参数）
- *
- * 唯一出口：`arenaChallenge.swipe()` 与 UI 的「本刀参数」都从这里取，
- * 避免"面板显示的数和实际判定用的数"两套。
- *
- * ★ rework T01：输入是**经曲线换算后的测试能力值**（0…STAT_CURVE_CEILING），
- *   不再是硬截到 100 的永久六维。改造前这里 clamp(0,100)，
- *   于是六维 100 与 256 得到完全相同的切割参数（审计问题 1）。
- *   现在高于 100 的部分按 balance.applyStatCurve 的饱和曲线继续生效。
- *   原始永久六维 → 能力的换算只能在 core/bladeAdapter 里发生一次，
- *   本文件不接受裸永久六维，避免同一份收益被两次换算。
- */
-import { BUFF_BY_ID } from '../data/arena/buffs.js';
-import { STAT_CURVE_CEILING } from '../data/balance.js';
+/** 赛事能力 + 局内强化 → 切割参数。arenaStat 仅作用于局内副本，保留永久属性。 */
+import { BUFF_BY_ID, resonanceOf } from '../data/arena/buffs.js';
+import { ARENA_STAT_CEILING as STAT_CURVE_CEILING, arenaStat, arenaGrowth, ARENA_POWER } from '../data/balance.js';
 import { adaptBlade } from './bladeAdapter.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -59,6 +47,8 @@ export function deriveCutParams(stats, buffs = []) {
   };
   const { add, mult } = foldBuffMods(buffs);
   const m = (key, dflt = 1) => mult[key] ?? dflt;
+  const resonances=resonanceOf(buffs);
+  const resonancePower=.04+s.spirit*.0002;
 
   // 铁匠之魂等：把韧性抬起来再参与刀况计算
   const tough = clamp(s.toughness + num(add.toughAdd), 0, STAT_CURVE_CEILING + 40);
@@ -70,20 +60,22 @@ export function deriveCutParams(stats, buffs = []) {
     perfectMult: m('perfectMult'),
 
     /* 进度 */
-    softBase: 1.05 + (s.sharpness - 50) * 0.0064 + (s.craft - 50) * 0.0018,
-    hardBase: 0.37 + (s.strength - 50) * 0.0042 + (s.sharpness - 50) * 0.0016 + (s.craft - 50) * 0.0015,
+    softBase: arenaGrowth(s.sharpness * .8 + s.craft * .2, ARENA_POWER.soft),
+    hardBase: arenaGrowth(s.strength * .55 + s.sharpness * .3 + s.craft * .15, ARENA_POWER.hard),
     speedBonus: 1.35 * m('speedBonusMult'),
     hardPowerMult: m('hardPowerMult'),
+    crackPowerMult: m('crackPowerMult'),
 
     /* 连击 */
-    comboWindow: 1.65 + num(add.comboWindow),
+    comboWindow: 1.65 + num(add.comboWindow) + (resonances.includes('combo')?.2:0),
     comboStep: 0.09 + num(add.comboStep),
-    comboCap: 0.7,
+    comboCap: resonances.includes('combo')?.8:.7,
+    resonancePower,
     tripleBonus: num(add.tripleBonus),
 
     /* 得分 */
-    spiritMult: 0.9 + s.spirit * 0.0029,
-    softSharpWall: (s.sharpness - 55) * 0.0018,
+    spiritMult: 1,
+    softSharpWall: 0,
     scoreMult: m('scoreMult'),
     softScoreMult: m('softScoreMult'),
     flatPerKill: num(add.flatPerKill),
@@ -92,7 +84,7 @@ export function deriveCutParams(stats, buffs = []) {
     winStreakMult: m('winStreakMult'),
 
     /* 刀况 */
-    healthMax: Math.max(20, (120 + (tough - 50) * 0.5 + num(add.healthMaxAdd)) * m('healthMaxMult')),
+    healthMax: Math.max(20, (100 + num(add.healthMaxAdd)) * m('healthMaxMult')),
     healthStart: num(add.healthStart),
     wearHardMult: m('wearHardMult'),
     wearShiftMult: m('wearShiftMult'),
@@ -100,13 +92,20 @@ export function deriveCutParams(stats, buffs = []) {
     killHeal: num(add.killHeal),
     layerHeal: num(add.layerHeal),
     emergencyHeal: num(add.emergencyHeal),
-    wearBase: { hard: 2.2, hardK: 3.4, shift: 0.6, soft: 0.1, softK: 0.003 },
+    wearRate: arenaGrowth(tough * .8 + s.design * .2, ARENA_POWER.wear),
     tough, design: s.design, stats: s,
 
     /* 狂热 */
-    frenzyThreshold: add.frenzyThreshold ? num(add.frenzyThreshold) : 8,
-    frenzyMult: Math.max(1.5, num(add.frenzyMult) || 1.5),
+    frenzyThreshold: add.frenzyThreshold ? num(add.frenzyThreshold) : 3,
+    frenzyMult: Math.max(1.5, m('frenzyMult',1.5)),
     frenzyHardBreak: !!num(add.frenzyHardBreak),
+
+    /* V3 机制强化；仅当局状态消费 */
+    weakMap: num(add.weakMap), pierce: num(add.pierce), crackSpread: num(add.crackSpread),
+    armorBounty: num(add.armorBounty), marked: num(add.marked), directional: num(add.directional),
+    nextCutBoost: num(add.nextCutBoost), weakScore: num(add.weakScore),
+    waveBlade: num(add.waveBlade), iceChain: num(add.iceChain), deathSave: num(add.deathSave),
+    objectiveMult: num(add.objectiveGain), armorShield: num(add.armorShield),
 
     /* 投放 */
     intervalMult: m('intervalMult', 1),
@@ -128,7 +127,7 @@ export function deriveCutParamsForBlade(blade, buffs = []) {
   const view = blade && blade.version && blade.capabilities
     ? blade                 // 已经是适配视图，不重复换算
     : adaptBlade(blade);
-  const params = deriveCutParams(view.capabilities, buffs);
+  const params = deriveCutParams(Object.fromEntries(Object.entries(view.permanentStats).map(([k,v])=>[k,arenaStat(v)])), buffs);
   // 把适配结果挂在参数上，供 UI 展示「为什么这把刀在这项更强」
   params.adaptation = {
     version: view.version,

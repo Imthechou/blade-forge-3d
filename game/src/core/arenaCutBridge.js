@@ -33,11 +33,15 @@ export function formalCutPayload(run) {
     detail: {
       source: 'arenaChallenge', duration: run.total,
       score, kills, misses: result.misses,
-      bestSwipe: result.bestSwipe, maxCombo: result.maxCombo,
+      bestSwipe: result.bestSwipe, maxCombo: result.maxCombo, maxStreak:result.maxStreak,
       route: result.route, finale: result.finale,
-      grade: result.grade,
+      grade: result.grade, version:result.version,
+      choicesMade:result.choicesMade, buffs:result.buffs,
+      perfects:result.perfects, weakHits:result.weakHits, armorBreaks:result.armorBreaks,
+      crossCuts:result.crossCuts, secondaryKills:result.secondaryKills, metrics:result.metrics,
+      health:result.health, maxHealth:result.maxHealth, materials:result.materials, objectives:result.objectives, resonances:result.resonances,
     },
     temporaryDamage: Number(Math.min(1, loss / maxHealth).toFixed(3)),
-    failed: !!result.fractured || !!result.riskStop,
+    failed: run.health<=0 || !!result.fractured || !!result.riskStop,
   };
 }

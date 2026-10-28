@@ -38,6 +38,44 @@ export const STAT_META = Object.freeze({
 /** 单维软上限：防止单一维度无限堆叠（V2.1 §30 平衡原则 1） */
 export const STAT_SOFT_CAP = 300;
 
+/** 赛事 V3：独立标尺，不重算鉴定、锻造或历史成刀。150 之后软饱和。 */
+export const ARENA_V3 = Object.freeze({
+  version: 'arena-3', seconds: 45, choices: [0, 15, 30],
+  refillDelay: .15, maxAlive: 6, minAlive: 3, repeatCooldown: .16, repeatTravel: .12,
+  secondaryScore: .35, secondaryLimit: 3,
+  schoolTargets: [1800, 3800, 7500, 15000, 28000],
+  nationalTargets: [15000, 20000, 26000, 33000, 42000],
+  apexTargets: [35000, 40000, 48000],
+});
+export const ARENA_STAT_CEILING = 210;
+export function arenaStat(value) {
+  const v = Math.max(0, Math.min(STAT_SOFT_CAP, Number(value) || 0));
+  return v <= 150 ? v : 150 + 60 * (1 - Math.exp(-(v - 150) / 60));
+}
+export function arenaGrowth(value, anchors) {
+  const v = Math.max(0, Number(value) || 0);
+  for (let i = 1; i < anchors.length; i++) {
+    if (v <= anchors[i][0]) {
+      const [x, y] = anchors[i - 1], [nx, ny] = anchors[i];
+      return y + (ny - y) * (v - x) / (nx - x);
+    }
+  }
+  return anchors.at(-1)[1];
+}
+export const ARENA_POWER = Object.freeze({
+  soft: [[0,.12],[30,.48],[60,1.035],[100,1.8],[150,2.7],[210,3.2]],
+  hard: [[0,.025],[30,.15],[60,.5],[100,1.2],[150,3.4],[210,4.4]],
+  wear: [[0,7],[30,5.8],[60,4.3],[100,2.35],[150,1.05],[210,.8]],
+});
+export const ARENA_MATERIALS = Object.freeze({
+  foam: { name:'塑料泡棉', short:'泡棉', points:50, hard:0, armor:0, health:1, damage:.01, life:3.6, angle:Math.PI*.77, color:'#83c9aa' },
+  rope: { name:'编织绳束', short:'绳束', points:70, hard:0, armor:0, health:1.3, damage:.02, life:4, angle:0, color:'#e7b65e' },
+  wood: { name:'纹理木桩', short:'木桩', points:160, hard:.45, armor:.45, health:2.65, damage:.30, life:5.5, angle:Math.PI*.47, color:'#b88455' },
+  plastic: { name:'工程塑料板', short:'塑板', points:220, hard:.6, armor:.6, health:3.4, damage:.38, life:6, angle:0, color:'#dbe5e9' },
+  ice: { name:'透明冰块', short:'冰块', points:250, hard:.62, armor:.62, health:3.2, damage:.26, life:6, angle:Math.PI*.25, color:'#8fd8e8' },
+  metal: { name:'金属块', short:'金属块', points:460, hard:1, armor:1, health:6.4, damage:.72, life:8, angle:0, color:'#b7c4cc', solid:true },
+});
+
 /**
  * ══════════════════════════════════════════════════════════════════
  * 成刀六维 → 测试能力曲线（rework T01，规则版本 cap-1）
