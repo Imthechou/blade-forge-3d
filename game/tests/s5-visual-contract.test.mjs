@@ -122,7 +122,7 @@ test('full forged blade clamps accumulated albedo energy and retires excessive S
   assert.match(shader,/col \*= compressedLum \/ finalLum/);
   assert.match(shader,/float haloCarry = 1\.0 - 0\.48 \* postS5 - 0\.12 \* postS6/);
   assert.match(shader,/float s4e =[\s\S]*?\* haloCarry/);
-  assert.match(shader,/bladeV2:64/);
+  assert.match(shader,/bladeV2:65/);
 });
 
 test('S3 billet card engraving stays legible while the entire forging chain has a bounded reflection budget',()=>{
@@ -158,14 +158,15 @@ test('S3 front-on microrelief is stronger without affecting later stages or brig
   assert.match(detail,/uV2Preserve > 0\.5 && uV2Proc\.x > 1\.5 && uV2Proc\.x < 2\.5 && uS3On > 0\.5/);
   assert.match(detail,/float facing = 1\.0 - smoothstep\( 0\.25, 0\.72, nFres \)/);
   assert.match(detail,/s3FrontBoost = planar \* facing/);
-  assert.match(detail,/patternWeight = min\( 0\.34, patternWeight \+ 0\.08 \* s3FrontBoost \)/);
-  assert.match(detail,/blend = min\( 0\.75, blend \+ 0\.18 \* s3FrontBoost \* reliefMask \)/);
+  assert.match(detail,/float planar = smoothstep\( 0\.20, 0\.72, clamp\( vS3PlanarFace, 0\.0, 1\.0 \) \)/);
+  assert.match(detail,/patternWeight = min\( 0\.38, patternWeight \+ 0\.12 \* s3FrontBoost \)/);
+  assert.match(detail,/blend = min\( 0\.78, blend \+ 0\.24 \* s3FrontBoost \* reliefMask \)/);
   assert.match(detail,/reliefMask \*= 1\.0 - 0\.92 \* smoothstep/);
   assert.match(shader,/float billetFacing = 1\.0 - smoothstep\( 0\.25, 0\.72, k3dFres \)/);
-  assert.match(shader,/float grooveDepth = mix\( 0\.10, 0\.24, billetFacing \)/);
+  assert.match(shader,/float grooveDepth = mix\( 0\.10, 0\.30, billetFacing \)/);
   assert.match(shader,/float grooveSignal = smoothstep\( 0\.03, 0\.34, max\( 0\.0, -sig \) \)/);
   assert.match(shader,/float grooveAA = 1\.0 - smoothstep\( 0\.35, 0\.80, fwidth\( sig \) \)/);
   assert.match(shader,/grooveDepth \* grooveSignal \* grooveAA \* billetFace \* s3Surface/);
   assert.match(shader,/float billetCeiling = max\( 0\.060, billetLum \* 1\.08 \)/);
-  assert.match(shader,/bladeV2:64/);
+  assert.match(shader,/bladeV2:65/);
 });
