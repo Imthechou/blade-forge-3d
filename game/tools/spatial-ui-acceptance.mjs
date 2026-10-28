@@ -108,8 +108,21 @@ try {
       await cards.first().click();
       assert.ok(await page.getByRole('button',{name:'选择工艺卡',exact:true}).isDisabled());
       await cards.nth(1).click();
+      const chosenGlow=await cards.nth(1).evaluate(node=>({
+        shadow:getComputedStyle(node).boxShadow,
+        rarity:getComputedStyle(node).getPropertyValue('--rarity-glow').trim(),
+        color:getComputedStyle(node).getPropertyValue('--dcard-color').trim(),
+        name:node.querySelector('.dcard-title')?.textContent,
+      }));
+      assert.ok(chosenGlow.shadow!=='none' && chosenGlow.rarity.startsWith('#') && chosenGlow.color.startsWith('#'),
+        'selected card must glow in its rarity and retain name-based art pigment');
       await page.getByRole('button',{name:/详情$/}).nth(1).click();
       await centered(page,'.sheet');
+      assert.equal(await page.locator('.sheet.forge-card-detail-dialog .forge-detail-art svg.dcard-doodle').count(),1);
+      assert.equal(await page.locator('.sheet .forge-detail-stats .forge-detail-stat').count(),6);
+      assert.ok(await page.locator('.sheet .forge-detail-summary .forge-detail-metric').count()===1);
+      assert.ok(await page.locator('.sheet .forge-detail-tags .forge-detail-tag').count()>=1);
+      if(width===390) await shot(page,'390-forge-card-detail');
       await page.keyboard.press('Escape');await page.locator('.sheet-mask').waitFor({state:'detached'});
       await shot(page,`${width}-forge-preview`);
       const stage=await page.locator('#forgeStage').boundingBox();
