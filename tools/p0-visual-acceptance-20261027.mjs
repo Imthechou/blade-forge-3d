@@ -36,30 +36,6 @@ const getState=()=>page.evaluate(async()=>{
     canvasH:v?.renderer?.domElement?.height,
     effect:!!v?._effect,compile:!!(v?._compiling||v?._compilePromise),
     coverAll:st?._coverAll,
-    s3Geom:(()=> {
-      if(r?.stageId!=='S3')return null;
-      const info=st?.engine?.loaded?.get(st?.modelId);
-      const ns=info?.meshData?.normals, basis=info?.bladeFrame?.basis?.elements;
-      if(!ns||!basis)return {ready:false,model:st?.modelId};
-      let x=0,y=0,z=0,front=0,side=0,nonzero=0;
-      const n=ns.length/3;
-      for(let i=0;i<n;i++){
-        const nx=ns[i*3],ny=ns[i*3+1],nz=ns[i*3+2];
-        const bx=Math.abs(basis[0]*nx+basis[3]*ny+basis[6]*nz);
-        const by=Math.abs(basis[1]*nx+basis[4]*ny+basis[7]*nz);
-        const bz=Math.abs(basis[2]*nx+basis[5]*ny+basis[8]*nz);
-        x+=bx;y+=by;z+=bz;
-        if(bz>.8)front++;
-        if(bz<.3)side++;
-        if(bz>.05)nonzero++;
-      }
-      const skin=g.resolveVisual(g.preview,{preview:!!g.preview})?.skin;
-      const u=skin?st?._composePack(skin)?.uniforms:null;
-      return {ready:true,n,meanAbsNormal:[x/n,y/n,z/n],
-        frontRatio:front/n,sideRatio:side/n,nonzeroRatio:nonzero/n,
-        s3On:u?.uS3On,alpha:u?.uS3Alpha,texStrength:u?.uSkinTexStrength,
-        mapId:skin?.textureId,model:st?.modelId};
-    })(),
     skin:(()=>{
       const v=g.resolveVisual(g.preview,{preview:!!g.preview}),skin=v?.skin;
       if(!skin)return null;
@@ -118,7 +94,6 @@ for(let pass=0;pass<32;pass++){
       await page.locator('.page.is-active .cards .dcard').nth(i).click({timeout:12000});
       await settle(900);
       const selected=await getState();
-      if(st.stage==='S3')console.log('S3_FACE_DIAG',JSON.stringify(selected.s3Geom));
       entry.previews.push({i,card:pre.cards[i],state:selected});
       await shot(st.stage+'-0'+(i+1)+'-'+(pre.cards[i]?.id||i));
     }
