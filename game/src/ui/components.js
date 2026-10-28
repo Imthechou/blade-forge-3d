@@ -453,7 +453,7 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
     role: 'button', tabindex: '0', 'aria-pressed': String(picked),
     'aria-label': `预览${card.name}，${card.rarityCn || RARITY_CN[card.rarity] || '普通'}，${tagTitle}路线，${tierText}`,
     dataset: { cardId: card.id, stage: card.stage },
-    style: `--dcard-art-tint:${art.palette.field};`,
+    style: `--dcard-art-tint:${art.palette.field};--dcard-ink:${art.palette.ink};--dcard-color:${art.palette.main};`,
     onclick: () => onPick && onPick(card),
     onkeydown: event => {
       if (event.target !== event.currentTarget) return;
@@ -469,8 +469,10 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
       cardDoodle(card),
     ]),
     el('div', { class: 'dcard-title', text: card.name }),
-    el('div', { class: 'dcard-build-title', text: tagTitle }),
-    el('div', { class: 'dcard-build-result' + (tierHint?.isTierUp ? ' is-up' : ''), text: tierText }),
+    el('div', { class: 'dcard-plan' }, [
+      el('div', { class: 'dcard-build-title', text: tagTitle }),
+      el('div', { class: 'dcard-build-result' + (tierHint?.isTierUp ? ' is-up' : ''), text: tierText }),
+    ]),
     tierHint ? el('div', { class: 'dcard-tier', title: `${tierHint.name} ${tierHint.from} → ${tierHint.to} 层，${tierText}` }, [
       el('span', { text: `${tierHint.from} → ${tierHint.to} / 6` }),
       el('span', { class: 'dcard-layer-dots', 'aria-hidden': 'true' }, Array.from({ length: 6 }, (_, i) => el('i', {
@@ -478,7 +480,7 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
       }))),
     ]) : null,
     el('div', { class: 'dcard-meta' }, [
-      el('span', { class: 'grow', text: picked ? '预览中' : card.role || '查看预览' }),
+      el('span', { class: 'grow', text: picked ? '已选中' : card.role || '点击预览' }),
       onDetail ? el('button', {
         class: 'dcard-detail', text: '详情', 'aria-label': `${card.name}详情`,
         onclick: e => { e.stopPropagation(); onDetail(card); },
