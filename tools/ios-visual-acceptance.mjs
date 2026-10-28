@@ -50,15 +50,18 @@ async function capture(label,url,viewport,check) {
       actualPage:document.querySelector(sel)?.dataset.page,
       mobileDevice:matchMedia('(pointer:coarse)').matches,
       bodyScrolling:document.querySelector(sel+' .forge-body')?.scrollHeight>document.querySelector(sel+' .forge-body')?.clientHeight+3,
-      cardFooterOverflowPx:[...document.querySelectorAll(sel+' .dcard')].map(card=>{
-        const foot=card.querySelector('.dcard-meta')?.getBoundingClientRect();
-        const bounds=card.getBoundingClientRect();
-        return foot ? +(foot.bottom-bounds.bottom).toFixed(2) : 999;
-      }),
-      cardFootersVisible:[...document.querySelectorAll(sel+' .dcard')].every(card=>{
-        const foot=card.querySelector('.dcard-meta')?.getBoundingClientRect();
-        const bounds=card.getBoundingClientRect();
-        return !!foot && foot.bottom<=bounds.bottom+.5 && foot.top>=bounds.top;
+      cardLayoutFits:[...document.querySelectorAll(sel+' .dcard')].every(card=>{
+        const rect=card.getBoundingClientRect();
+        const name=card.querySelector('.dcard-title')?.getBoundingClientRect();
+        const plan=card.querySelector('.dcard-plan')?.getBoundingClientRect();
+        const art=card.querySelector('.dcard-visual')?.getBoundingClientRect();
+        const menu=card.querySelector('.dcard-more')?.getBoundingClientRect();
+        return !!(name&&plan&&art&&menu)
+          && card.querySelector('.dcard-meta,.dcard-stage-mark')===null
+          && !!card.querySelector('.dcard-more svg')
+          && menu.right<=rect.right+.5 && menu.top>=rect.top-.5
+          && name.top>=art.bottom+4
+          && plan.bottom<=rect.bottom+1;
       })
     };
   });
@@ -93,7 +96,7 @@ async function capture(label,url,viewport,check) {
       beforeSelect.rail?.top>=beforeSelect.stage?.bottom-1 &&
       beforeSelect.actions?.top>=beforeSelect.cards?.bottom-1 &&
       !beforeSelect.horizontalOverflow && !beforeSelect.bodyScrolling &&
-      beforeSelect.cardFootersVisible && state.cardFootersVisible;
+      beforeSelect.cardLayoutFits && state.cardLayoutFits;
     record.oneScreen=fit;
     if(!fit || !selected || (viewport.height>=680&&!progressed))
       report.failures.push({label,viewport,fit,selected,progressed});
