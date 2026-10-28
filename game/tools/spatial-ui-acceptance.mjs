@@ -86,7 +86,7 @@ try {
         svg:!!n.querySelector('.dcard-visual svg.dcard-doodle'),
         stageArt:getComputedStyle(n.querySelector('.dcard-visual'),'::before').content,
       })));
-      assert.ok(art.every(a => a.svg && a.paths>=3 && a.family && a.signature && a.stageArt==='none'),
+      assert.ok(art.every(a => a.svg && a.paths>=3 && a.family && a.signature && (a.stageArt==='none'||a.stageArt==='normal')),
         'doodle stickers must be real name-led vectors, without old steel pseudo art: '+JSON.stringify(art));
       assert.equal(new Set(art.map(a=>a.signature)).size,3);
       if(width===390) await shot(page,'390-doodle-choice');
