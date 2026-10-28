@@ -45,7 +45,7 @@ export function buildNormalFragment() {
        Never modify subsequent knife stages or bevels/edges. */
     float s3FrontBoost = 0.0;
     if ( uV2Preserve > 0.5 && uV2Proc.x > 1.5 && uV2Proc.x < 2.5 && uS3On > 0.5 ) {
-      float planar = smoothstep( 0.52, 0.88, clamp( vS3PlanarFace, 0.0, 1.0 ) );
+      float planar = smoothstep( 0.20, 0.72, clamp( vS3PlanarFace, 0.0, 1.0 ) );
       float facing = 1.0 - smoothstep( 0.25, 0.72, nFres );
       s3FrontBoost = planar * facing;
     }
@@ -79,7 +79,7 @@ export function buildNormalFragment() {
                           * mix( 1.0, 0.34, quenched );
       /* Prefer the already-sampled card height over unrelated stage motifs
          on the front-facing S3 billet: 0.26 -> at most 0.34. No extra sample. */
-      patternWeight = min( 0.34, patternWeight + 0.08 * s3FrontBoost );
+      patternWeight = min( 0.38, patternWeight + 0.12 * s3FrontBoost );
       /* The selected S3 height currently shares its normal with seven
          unrelated card motifs, hiding the forged relief in flat reflections.
          Strengthen its weight before quenching; the existing relief clamp,
@@ -214,7 +214,7 @@ export function buildNormalFragment() {
 
     /* 刃口/折面保护：刃线附近不要起伏（否则看起来"毛"而不是"利"）
        —— 与 k3dS3SurfaceMask 同一思路，复用它的几何判断量。 */
-    float reliefMask = clamp( vS3PlanarFace, 0.0, 1.0 );
+    float reliefMask = clamp( vS3PlanarFace + 0.16 * s3FrontBoost, 0.0, 1.0 );
     reliefMask *= 1.0 - 0.92 * smoothstep( 0.16, 0.66, clamp( vBladeEdge, 0.0, 1.0 ) );
     /* S7 之后（uV2Surf.w = 刃面折面强化）把折面本身当成大尺度结构：
        凸起（vEdge 高）更亮更平，凹面保留颗粒 —— 这正是开刃后的真实观感。 */
@@ -250,7 +250,7 @@ export function buildNormalFragment() {
            bounded +0.18 to face-on S3 only, using the existing height
            gradient and geometry/bevel protection. Never over-tilt normals. */
         float blend = clamp( 0.30 + 0.50 * clamp( nFres, 0.0, 1.0 ), 0.0, 0.90 ) * reliefMask;
-        blend = min( 0.75, blend + 0.18 * s3FrontBoost * reliefMask );
+        blend = min( 0.78, blend + 0.24 * s3FrontBoost * reliefMask );
         normal = normalize( mix( normal, bumped, blend ) );
       }
     }
