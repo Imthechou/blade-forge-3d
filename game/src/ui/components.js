@@ -7,8 +7,8 @@
 
 import { el } from './dom.js';
 import { STAT_KEYS, STAT_META, STAT_SOFT_CAP, RARITY_THRESHOLDS, tagTierOf } from '../data/balance.js';
-import { RARITY_CN } from '../data/cards.js';
-import { tagName } from '../data/tags.js';
+import { RARITY_CN, stageRankOf } from '../data/cards.js';
+import { tagName, isBaseTag, isSpecialTag } from '../data/tags.js';
 
 /* ── 六边形图标：外环统一，内圈按旋转/半径/色差异化 ── */
 
@@ -66,13 +66,13 @@ const MARK = { safe: '▲', warn: '▲▲', danger: '▲▲▲' };
 const TONE_ALIAS = { risk: 'danger' };
 const normTone = (t) => (TONE_ALIAS[t]) || (MARK[t] !== undefined ? t : 'safe');
 
-export function riskBar({ current, peak, chance, band, nextChance = null }) {
+export function riskBar({ current, peak, chance, band, nextChance = null, priorCurrent = null }) {
   const tone = normTone(band?.tone);
   const pct = Math.max(0, Math.min(100, current || 0));
   const node = el('div', { class: `risk risk--${tone}` }, [
     el('div', { class: 'risk-head' }, [
       el('span', { class: 'risk-mark', text: MARK[tone] || '' }),
-      el('b', { class: 'risk-value', text: String(Math.round(pct)) }),
+      el('b', { class: 'risk-value', text: priorCurrent == null ? String(Math.round(pct)) : `${Math.round(priorCurrent)} → ${Math.round(pct)}` }),
       el('span', { class: 'risk-band', text: band?.name || '' }),
       el('span', { class: 'muted tiny', text: `峰值 ${Math.round(peak || 0)}` }),
     ]),
@@ -134,27 +134,33 @@ export function statRail(stats, directions = null, showValues = false) {
 
 /* 六维横排（锻造页紧凑头）：6 列，只显示强弱分档，选中卡时叠加方向箭头。
  * 为什么锻造页不用竖向 rail：竖向 6 行约 200px，会把 3D 舞台挤到 40% 硬下限以下。 */
-export function statGrid(stats, directions = null, showValues = false) {
-  return el('div', { class: 'stat-grid', 'aria-label': showValues ? '六维属性' : '六维趋势，精确值在 S10 鉴定揭晓' }, STAT_KEYS.map((k) => {
-    const v = Math.max(0, Math.min(STAT_SOFT_CAP, Number(stats?.[k]) || 0));
-    const d = directions && directions[k];
-    const down = d && String(d.key).startsWith('down');
-    const strong = d && String(d.key).endsWith('2');
-    const flat = !d || d.key === 'flat';
-    const arrow = flat ? '—' : (down ? (strong ? '↓↓' : '↓') : (strong ? '↑↑' : '↑'));
-    const trend = statTrend(v);
-    return el('div', { class: `stat-cell u-st-${k}`, 'aria-label': `${STAT_META[k].name}：${showValues ? Math.round(v) : trend.label}${d ? '，' + d.label : ''}` }, [
-      el('div', { class: 'stat-cell-name', text: STAT_META[k].name }),
-      el('div', { class: 'stat-cell-meter', 'aria-hidden': 'true' }, [el('i', { style: { width: (showValues ? v / STAT_SOFT_CAP * 100 : trend.width) + '%' } })]),
-      el('div', { class: 'stat-cell-val', text: showValues ? String(Math.round(v)) : trend.label }),
-      d ? el('div', {
-        // 只有"牺牲"才加修饰类（.is-down 有对应样式；.is-up 没有，别凭空造）
-        class: 'stat-cell-dir' + (down ? ' is-down' : ''),
-        title: d.label || '',
-        text: arrow,
-      }) : null,
-    ]);
-  }));
+export function statGrid(stats, directions = null, showValues = false, preview = null) {
+  const comparing = !!preview;
+  return el('div', { class: 'stat-grid' + (comparing ? ' is-comparing' : ''),
+    'aria-label': comparing ? '选中卡后的六维真实预览与增量' : showValues ? '六维属性' : '六维趋势' },
+    STAT_KEYS.map((k) => {
+      const v = Math.max(0, Math.min(STAT_SOFT_CAP, Number(stats?.[k]) || 0));
+      const d = directions && directions[k];
+      const down = d && String(d.key).startsWith('down');
+      const strong = d && String(d.key).endsWith('2');
+      const flat = !d || d.key === 'flat';
+      const arrow = flat ? '—' : (down ? (strong ? '↓↓' : '↓') : (strong ? '↑↑' : '↑'));
+      const trend = statTrend(v);
+      const old = Math.max(0, Math.min(STAT_SOFT_CAP, Number(preview?.before?.[k]) || 0));
+      const delta = Number(preview?.delta?.[k]) || 0;
+      const deltaLabel = delta === 0 ? '—' : `${delta > 0 ? '+' : ''}${Math.round(delta)}`;
+      return el('div', { class: `stat-cell u-st-${k}`,
+        'aria-label': `${STAT_META[k].name}：${comparing ? `${Math.round(old)} 到 ${Math.round(v)}（${deltaLabel}）` : showValues ? Math.round(v) : trend.label}` }, [
+        el('div', { class: 'stat-cell-name', text: STAT_META[k].name }),
+        el('div', { class: 'stat-cell-meter', 'aria-hidden': 'true' }, [
+          comparing ? el('span', { class: 'stat-meter-before', style: { width: (old / STAT_SOFT_CAP * 100) + '%' } }) : null,
+          el('i', { style: { width: (showValues ? v / STAT_SOFT_CAP * 100 : trend.width) + '%' } }),
+        ]),
+        el('div', { class: 'stat-cell-val', text: showValues ? String(Math.round(v)) : trend.label }),
+        comparing ? el('div', { class: 'stat-cell-dir' + (delta < 0 ? ' is-down' : ''), text: deltaLabel })
+          : d ? el('div', { class: 'stat-cell-dir' + (down ? ' is-down' : ''), title: d.label || '', text: arrow }) : null,
+      ]);
+    }));
 }
 
 /* ── 稀有度 ── */
@@ -428,38 +434,24 @@ function tagTierHint(tags, counts) {
 /* ── 决策卡 ── */
 
 export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts = null } = {}) {
-  /* 属性方向 chip：主属性用满色相、牺牲项降饱和降明度（§7.6）。
-     ★ V2.1 §7 明确「不显示精确数字，只显示方向与强弱」——
-       所以这里出 ↑↑/↑/↓↓/↓ 而不是原型的 "韧性 +9"。 */
-  const dirs = Object.entries(card.directions || {}).map(([k, d]) => {
-    const down = String(d.key).startsWith('down');
-    const strong = String(d.key).endsWith('2');
-    const arrow = down ? (strong ? '↓↓' : '↓') : (strong ? '↑↑' : '↑');
-    return el('span', {
-      // ★ 写成字符串拼接（而不是模板串里的三元），让 tools/audit-classes.mjs
-      //   能抽到 chip--stat / chip--stat-sub —— 否则它们会被报成"死样式"。
-      class: 'chip ' + (down ? 'chip--stat-sub' : 'chip--stat') + ' u-st-' + k,
-      title: d.label || '',
-      text: `${STAT_META[k].name} ${arrow}`,
-    });
-  });
-  // 卡底 meta：池 + 定位（focus 是英文槽位串，对玩家无意义，不上卡面）
-  const metaBits = [card.pool, card.role].filter(Boolean);
-  /* ★ rework T14：标签补档提示 */
-  const tierHint = tagTierHint(card.tags, tagCounts);
+  // 候选小卡只承载决策身份：卡面不再复制风险数字与六维箭头。
+  // 精确数值统一交给选中后的六维/风险预览条（预览为纯函数，不写存档）。
+  const base = (card.tags || []).filter(isBaseTag);
+  const special = (card.tags || []).filter(isSpecialTag);
+  const tierHint = tagTierHint(base, tagCounts);
+  const tagTitle = tierHint ? tierHint.name : special.length ? tagName(special[0]) : '工艺';
   const tierText = tierHint
-    ? (tierHint.isTierUp
-      ? `${tierHint.name} ${tierHint.from}→${tierHint.to} · ${tierHint.tierName || '升档'}`
-      : tierHint.toNext
-        ? `${tierHint.name} ${tierHint.from}→${tierHint.to} · 再${tierHint.toNext - tierHint.to}层升档`
-        : `${tierHint.name} ${tierHint.from}→${tierHint.to} 层 · 已满档`)
-    : null;
+    ? tierHint.isTierUp ? `晋升 · ${tierHint.tierName}`
+      : tierHint.toNext ? `距离升阶 ${tierHint.toNext - tierHint.to} 层`
+        : '已达最高档'
+    : special.length ? '稀有工艺 · 即刻激活' : (card.role || '独立工艺');
+  const rank = stageRankOf(card);
+  const artHue = ((rank * 31 + (card.stageIndex + 1) * 41) % 275 + 200) % 360;
 
   const node = el('div', {
     class: `dcard dcard--r-${card.rarity || 'common'}${picked ? ' is-picked' : ''}`,
-    role: 'button', tabindex: '0',
-    'aria-pressed': String(picked),
-    'aria-label': `预览${card.name}，${card.rarityCn || RARITY_CN[card.rarity] || '普通'}，风险${card.riskDeltaPoints > 0 ? '+' : ''}${card.riskDeltaPoints || 0}`,
+    role: 'button', tabindex: '0', 'aria-pressed': String(picked),
+    'aria-label': `预览${card.name}，${card.rarityCn || RARITY_CN[card.rarity] || '普通'}，${tagTitle}路线，${tierText}`,
     dataset: { cardId: card.id, stage: card.stage },
     onclick: () => onPick && onPick(card),
     onkeydown: event => {
@@ -469,32 +461,26 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
   }, [
     el('div', { class: 'dcard-head' }, [
       rarityBadge(card.rarity, card.rarityCn),
-      riskChip(card.riskDeltaPoints),
+      el('span', { class: 'dcard-stage-mark', text: card.stage }),
+    ]),
+    el('div', { class: 'dcard-visual', style: { '--art-hue': String(artHue) }, 'aria-hidden': 'true' }, [
+      el('span', { class: 'dcard-visual-glint' }),
+      el('span', { class: 'dcard-visual-engrave', text: String(rank || '') }),
     ]),
     el('div', { class: 'dcard-title', text: card.name }),
-    el('div', { class: 'dcard-copy', text: card.copy }),
-    dirs.length ? el('div', { class: 'dcard-dirs' }, dirs) : null,
-    /* ★ rework T14：标签补档行 —— “这张卡让我离哪个特性更近” */
-    tierText ? el('div', {
-      class: 'dcard-tier' + (tierHint.isTierUp ? ' is-up' : ''),
-      title: tierText, role: 'img', 'aria-label': tierText,
-    }, [
-      el('span', { text: `${tierHint.name} ${tierHint.from}→${tierHint.to}` }),
+    el('div', { class: 'dcard-build-title', text: tagTitle }),
+    el('div', { class: 'dcard-build-result' + (tierHint?.isTierUp ? ' is-up' : ''), text: tierText }),
+    tierHint ? el('div', { class: 'dcard-tier', title: `${tierHint.name} ${tierHint.from} → ${tierHint.to} 层，${tierText}` }, [
+      el('span', { text: `${tierHint.from} → ${tierHint.to} / 6` }),
       el('span', { class: 'dcard-layer-dots', 'aria-hidden': 'true' }, Array.from({ length: 6 }, (_, i) => el('i', {
         class: i < tierHint.from ? 'is-owned' : i < tierHint.to ? 'is-added' : '',
       }))),
     ]) : null,
-    (card.tags && card.tags.length)
-      ? el('div', { class: 'dcard-tags' }, card.tags.map((t) => el('span', { class: 'chip', text: tagName(t) })))
-      : null,
     el('div', { class: 'dcard-meta' }, [
-      el('span', { class: 'grow', text: picked ? '预览中' : card.role || '点击预览', title: metaBits.join(' · ') }),
-      // ★ 详情做成文字链接而不是按钮：卡宽只有 ~110px，放一个 .btn 会换行成两行。
+      el('span', { class: 'grow', text: picked ? '预览中' : card.role || '查看预览' }),
       onDetail ? el('button', {
-        class: 'dcard-detail',
-        text: '详情',
-        'aria-label': `${card.name}详情`,
-        onclick: (e) => { e.stopPropagation(); onDetail(card); },
+        class: 'dcard-detail', text: '详情', 'aria-label': `${card.name}详情`,
+        onclick: e => { e.stopPropagation(); onDetail(card); },
       }) : null,
     ]),
   ]);
