@@ -122,7 +122,7 @@ test('full forged blade clamps accumulated albedo energy and retires excessive S
   assert.match(shader,/col \*= compressedLum \/ finalLum/);
   assert.match(shader,/float haloCarry = 1\.0 - 0\.48 \* postS5 - 0\.12 \* postS6/);
   assert.match(shader,/float s4e =[\s\S]*?\* haloCarry/);
-  assert.match(shader,/bladeV2:62/);
+  assert.match(shader,/bladeV2:63/);
 });
 
 test('S3 billet card engraving stays legible while the entire forging chain has a bounded reflection budget',()=>{
@@ -139,4 +139,15 @@ test('S3 billet card engraving stays legible while the entire forging chain has 
   assert.match(viewer,/Math\.min\(1\.48, M\.envIntensity \* stageEnvGain\)/);
   assert.doesNotMatch(viewer,/0\.90 \+ 0\.1025 \* \(g - 1\)/);
   assert.match(lights,/toneMappingExposure = 0\.90/);
+});
+
+test('S3 selected cards retain the billet dark substrate instead of whitening flat steel',()=>{
+  const shader=readFileSync(new URL('../src/render/v2/programFamilies.js',import.meta.url),'utf8');
+  assert.match(shader,/processBlend = max\( processBlend, mix\( 0\.44, 0\.58, billetFace \) \)/);
+  assert.match(shader,/float billetLum = dot\( tinted,/);
+  assert.match(shader,/float billetCeiling = max\( 0\.060, billetLum \* 1\.08 \)/);
+  assert.match(shader,/col \*= \( forgedLum - 0\.90 \* excess \) \/ forgedLum/);
+  assert.match(shader,/0\.13 \* max\( 0\.0, -sig \) \* billetFace \* s3Surface/);
+  assert.match(shader,/uV2Proc\.x > 1\.5 && uV2Proc\.x < 2\.5 && uS3On > 0\.5/);
+  assert.ok(!shader.includes('processBlend, mix( 0.68, 0.84, billetFace )'));
 });
