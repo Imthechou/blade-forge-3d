@@ -460,10 +460,11 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
       : tierHint.toNext ? `距离升阶 ${tierHint.toNext - tierHint.to} 层`
         : '已达最高档'
     : special.length ? '稀有工艺 · 即刻激活' : (card.role || '独立工艺');
+  const isInstant = !tierHint && special.length > 0;
   const art = doodleSpec(card);
 
   const node = el('div', {
-    class: `dcard dcard--r-${card.rarity || 'common'}${picked ? ' is-picked' : ''}`,
+    class: `dcard dcard--r-${card.rarity || 'common'}${picked ? ' is-picked' : ''}${isInstant ? ' dcard--instant' : ''}`,
     role: 'button', tabindex: '0', 'aria-pressed': String(picked),
     'aria-label': `预览${card.name}，${card.rarityCn || RARITY_CN[card.rarity] || '普通'}，${tagTitle}路线，${tierText}`,
     dataset: { cardId: card.id, stage: card.stage },
@@ -489,8 +490,14 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
     el('div', { class: 'dcard-title', text: card.name }),
     el('div', { class: 'dcard-plan' }, [
       el('div', { class: 'dcard-build-title', text: tagTitle }),
-      el('div', { class: 'dcard-build-result' + (tierHint?.isTierUp ? ' is-up' : ''), text: tierText }),
+      isInstant ? null : el('div', { class: 'dcard-build-result' + (tierHint?.isTierUp ? ' is-up' : ''), text: tierText }),
     ]),
+    // Rare, immediately activated techniques have no 2/4/6 progress rail.
+    // Give their activation copy the otherwise-empty lower area instead.
+    isInstant ? el('div', { class: 'dcard-instant', 'aria-label': '稀有工艺，即刻激活' }, [
+      el('span', { class: 'dcard-instant-eyebrow', text: '稀有工艺' }),
+      el('strong', { class: 'dcard-instant-action', text: '即刻激活' }),
+    ]) : null,
     tierHint ? el('div', { class: 'dcard-tier', title: `${tierHint.name} ${tierHint.from} → ${tierHint.to} 层，${tierText}` }, [
       el('span', { text: `${tierHint.from} → ${tierHint.to} / 6` }),
       el('span', { class: 'dcard-layer-dots', 'aria-hidden': 'true' }, Array.from({ length: 6 }, (_, i) => el('i', {
