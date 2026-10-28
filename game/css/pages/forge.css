@@ -25,7 +25,7 @@
 @keyframes stageAdvanceToast { 0%{opacity:0;transform:translate(-50%,-40%) scale(.96)} 20%,70%{opacity:1;transform:translate(-50%,-50%)} 100%{opacity:0;transform:translate(-50%,-65%)} }
 .stage-advance .stage-badge { animation:stageBadgeIn .35s var(--ease); }
 @keyframes stageBadgeIn { from{opacity:.3;transform:translateY(-6px)} to{opacity:1;transform:none} }
-.page[data-page="forge"] { padding:10px 0 0; overflow:hidden; min-height:0; height:100%; --card-h:194px; }
+.page[data-page="forge"] { padding:10px 0 0; overflow:hidden; min-height:0; height:100%; --card-h:202px; }
 .page[data-page="forge"] .stage { flex:1 1 0; min-height:0; margin:0 12px 9px; border:1px solid var(--glass-border); border-radius:27px; overflow:hidden; box-shadow:var(--shadow-2); }
 .page[data-page="forge"] .stage-progress { padding:10px 8px; background:linear-gradient(0deg,rgba(246,247,255,.8),rgba(246,247,255,0)); backdrop-filter:none; -webkit-backdrop-filter:none; }
 .page[data-page="forge"] .sp-num { border-color:var(--line-firm); background:rgba(255,255,255,.6); }
@@ -47,7 +47,26 @@
 .stat-cell-meter i { display:block; height:100%; border-radius:inherit; background:var(--st); transition:width var(--dur-base) var(--ease); }
 .cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:stretch; gap:8px; }
 .page[data-page="forge"] .cards { flex:0 0 auto; height:var(--card-h); padding:9px 12px 5px; }
-.page[data-page="forge"] .dcard { height:100%; min-height:0; padding:8px 8px 0; gap:5px; overflow:hidden; border:1px solid var(--glass-border); border-radius:19px; background:var(--surface-glass); box-shadow:var(--shadow-1),inset 0 1px #fff; }
+.page[data-page="forge"] .dcard {
+  --card-rarity:#b6bed1;
+  position:relative; isolation:isolate; height:100%; min-height:0;
+  padding:8px 8px 0; gap:5px; overflow:hidden; border-radius:19px;
+  border:1px solid rgba(255,255,255,.84);
+  background:linear-gradient(155deg,rgba(255,255,255,.90) 0%,
+    color-mix(in srgb,var(--dcard-art-tint,#dfe6f6) 9%,rgba(241,245,254,.76)) 72%,
+    rgba(252,253,255,.82) 100%);
+  box-shadow:0 4px 13px rgba(44,58,109,.075),inset 0 0 0 1px rgba(135,147,185,.12),inset 0 1px rgba(255,255,255,.75);
+  transition:transform .19s var(--ease),box-shadow .19s var(--ease),opacity .16s;
+}
+.page[data-page="forge"] .dcard::before {
+  content:'';position:absolute;z-index:1;top:0;left:19%;right:19%;height:2px;
+  background:linear-gradient(90deg,transparent,var(--card-rarity),transparent);
+  opacity:.65;pointer-events:none;
+}
+.page[data-page="forge"] .dcard:focus-visible { outline:2px solid var(--accent);outline-offset:2px; }
+@media(hover:hover) and (pointer:fine) {
+  .page[data-page="forge"] .dcard:hover:not(.is-picked) { transform:translateY(-2px);box-shadow:0 7px 17px rgba(44,58,109,.11),inset 0 0 0 1px rgba(135,147,185,.15); }
+}
 .page[data-page="forge"] .dcard-head { min-height:19px; flex:0 0 auto; gap:2px; justify-content:space-between; }
 .page[data-page="forge"] .dcard-head .rarity { padding:0; border:0; background:transparent; font-size:11px; }
 .page[data-page="forge"] .dcard-head .chip { padding:0; border:0; background:transparent; font-size:11px; }
@@ -64,14 +83,19 @@
 .page[data-page="forge"] .dcard-meta { flex:0 0 44px; min-height:44px; margin-top:auto; border-top:1px solid var(--line-2); gap:0; }
 .page[data-page="forge"] .dcard-meta>.grow { font-size:11px; color:var(--face-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .page[data-page="forge"] .dcard-detail { display:inline-flex; align-items:center; justify-content:flex-end; min-width:44px; min-height:44px; padding:0; color:var(--accent); font-size:11px; text-decoration:none; }
-.page[data-page="forge"] .dcard.is-picked { transform:translateY(-4px); border-color:var(--accent); background:linear-gradient(145deg,#fff,rgba(233,227,255,.82)); box-shadow:0 0 0 1px var(--accent-line),0 8px 18px rgba(112,85,223,.16),inset 0 1px #fff; }
+.page[data-page="forge"] .dcard.is-picked {
+  transform:translateY(-2px);border-color:rgba(255,255,255,.97);
+  background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(240,236,255,.87));
+  box-shadow:0 0 0 1.5px var(--accent),0 0 0 4px rgba(112,90,232,.09),
+    0 8px 20px rgba(85,75,150,.14),inset 0 1px rgba(255,255,255,.98);
+}
 .page[data-page="forge"] .dcard.is-picked .dcard-meta>.grow { color:var(--accent); font-weight:700; }
-.cards.is-picking .dcard:not(.is-picked) { opacity:.8; }
-.page[data-page="forge"] .dcard--r-fine { background:linear-gradient(150deg,#FFFFFFD9,#E9F8F0C9); }
-.page[data-page="forge"] .dcard--r-rare { background:linear-gradient(150deg,#FFFFFFE6,#DFEBFFB8); }
-.page[data-page="forge"] .dcard--r-epic { background:linear-gradient(150deg,#FFFFFFE6,#EDDEFFC9); }
-.page[data-page="forge"] .dcard--r-legend { background:linear-gradient(150deg,#FFFFFFE6,#FFEBC4C9); }
-.page[data-page="forge"] .dcard--r-mythic { background:linear-gradient(150deg,#FFFFFFE6,#FFDEDEC9); }
+.cards.is-picking .dcard:not(.is-picked) { opacity:.92; }
+.page[data-page="forge"] .dcard--r-fine { --card-rarity:#36ad87; }
+.page[data-page="forge"] .dcard--r-rare { --card-rarity:#6488de; }
+.page[data-page="forge"] .dcard--r-epic { --card-rarity:#9867e2; }
+.page[data-page="forge"] .dcard--r-legend { --card-rarity:#dea44c; }
+.page[data-page="forge"] .dcard--r-mythic { --card-rarity:#de7ba5; }
 .actions { display:flex; gap:8px; }
 .actions .btn { flex:1 1 0; }
 .page[data-page="forge"] .actions { flex:0 0 auto; padding:5px 12px calc(9px + var(--safe-b)); }
@@ -181,22 +205,40 @@
 /* Flat marker-on-paper stickers, NOT simulated steel / gradients / blades.
    SVG is generated per card name by src/ui/cardDoodles.js. */
 .page[data-page="forge"] .dcard-visual {
-  position:relative; flex:0 0 40px; min-height:0; overflow:hidden; isolation:isolate;
-  border-radius:9px; background:#fbf7f1; border:1px solid rgba(46,51,75,.14);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.6);
+  position:relative; flex:0 0 45px; min-height:0; overflow:hidden; isolation:isolate;
+  border-radius:12px; border:0;
+  background:
+    radial-gradient(ellipse at 23% 40%,color-mix(in srgb,var(--dcard-art-tint,#d8e5fc) 39%,transparent),transparent 75%),
+    linear-gradient(132deg,rgba(255,255,255,.62),rgba(229,236,251,.34));
+  box-shadow:inset 0 1px rgba(255,255,255,.73),inset 0 -1px rgba(101,119,172,.09);
+}
+.page[data-page="forge"] .dcard-visual::after {
+  content:'';position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(120deg,rgba(255,255,255,.25),transparent 30%,transparent 78%,rgba(255,255,255,.18));
 }
 .page[data-page="forge"] .dcard-doodle {
   display:block; position:absolute; inset:0; width:100%;height:100%;
   pointer-events:none; overflow:hidden;
 }
 .page[data-page="forge"] .dcard-title { min-height:31px; max-height:31px; font-size:13px; line-height:16px; }
-.page[data-page="forge"] .dcard-build-title { font-size:11px; font-weight:750; line-height:13px; color:var(--face-2); }
+.page[data-page="forge"] .dcard-build-title {
+  display:flex;align-items:center;gap:5px;font-size:11px;font-weight:730;line-height:13px;color:var(--face-2);
+}
+.page[data-page="forge"] .dcard-build-title::before {
+  content:'';width:5px;height:5px;flex:0 0 5px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 2px rgba(111,92,226,.09);
+}
 .page[data-page="forge"] .dcard-build-result { min-height:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; line-height:12px; color:var(--face-3); }
 .page[data-page="forge"] .dcard-build-result.is-up { font-weight:750; color:var(--accent); }
 .page[data-page="forge"] .dcard-tier { flex:0 0 19px; max-height:19px; gap:4px; font-size:10px; line-height:11px; }
-.page[data-page="forge"] .dcard-meta { flex:0 0 32px; min-height:32px; }
-.page[data-page="forge"] .dcard-detail { min-height:34px; }
-.page[data-page="forge"] .dcard.is-picked .dcard-visual { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-line),inset 0 0 0 1px rgba(255,255,255,.7); }
+.page[data-page="forge"] .dcard-meta { flex:0 0 31px; min-height:31px; border-top-color:rgba(116,127,164,.12); }
+.page[data-page="forge"] .dcard-detail { min-height:31px; font-weight:700; }
+.page[data-page="forge"] .dcard.is-picked .dcard-visual {
+  background:
+    radial-gradient(ellipse at 25% 45%,color-mix(in srgb,var(--dcard-art-tint,#d8e5fc) 49%,transparent),transparent 77%),
+    linear-gradient(135deg,rgba(251,250,255,.82),rgba(228,225,254,.41));
+  box-shadow:inset 0 1px rgba(255,255,255,.9),inset 0 -1px rgba(112,94,218,.11);
+}
 .page[data-page="forge"] .stage-traits.has-build { border-color:var(--accent-line); color:var(--accent); background:color-mix(in srgb,var(--accent) 6%,var(--glass-bg)); }
 
 /* 预览有明确的旧值轨道与新值条、增量符号，保持六维一行与 3D 主舞台。 */
