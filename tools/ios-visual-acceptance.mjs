@@ -50,18 +50,32 @@ async function capture(label,url,viewport,check) {
       actualPage:document.querySelector(sel)?.dataset.page,
       mobileDevice:matchMedia('(pointer:coarse)').matches,
       bodyScrolling:document.querySelector(sel+' .forge-body')?.scrollHeight>document.querySelector(sel+' .forge-body')?.clientHeight+3,
+      cardSpacing:[...document.querySelectorAll(sel+' .dcard')].map(card=>{
+        const r=card.getBoundingClientRect();
+        const title=card.querySelector('.dcard-title')?.getBoundingClientRect();
+        const plan=card.querySelector('.dcard-plan')?.getBoundingClientRect();
+        const tier=card.querySelector('.dcard-tier')?.getBoundingClientRect();
+        return {name:card.querySelector('.dcard-title')?.textContent,
+          titleToBuild:plan&&title?+(plan.top-title.bottom).toFixed(1):null,
+          buildToTier:tier&&plan?+(tier.top-plan.bottom).toFixed(1):null,
+          bottomClearance:+(r.bottom-(tier?.bottom??plan?.bottom??r.bottom)).toFixed(1)};
+      }),
       cardLayoutFits:[...document.querySelectorAll(sel+' .dcard')].every(card=>{
         const rect=card.getBoundingClientRect();
         const name=card.querySelector('.dcard-title')?.getBoundingClientRect();
         const plan=card.querySelector('.dcard-plan')?.getBoundingClientRect();
         const art=card.querySelector('.dcard-visual')?.getBoundingClientRect();
         const menu=card.querySelector('.dcard-more')?.getBoundingClientRect();
+        const tier=card.querySelector('.dcard-tier')?.getBoundingClientRect();
+        const bottom=tier?.bottom??plan?.bottom;
         return !!(name&&plan&&art&&menu)
           && card.querySelector('.dcard-meta,.dcard-stage-mark')===null
           && !!card.querySelector('.dcard-more svg')
           && menu.right<=rect.right+.5 && menu.top>=rect.top-.5
           && name.top>=art.bottom+4
-          && plan.bottom<=rect.bottom+1;
+          && plan.top>=name.bottom && plan.top-name.bottom<=7
+          && (!tier || (tier.top>=plan.bottom && tier.top-plan.bottom<=8))
+          && bottom<=rect.bottom-5;
       })
     };
   });
