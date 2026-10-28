@@ -1,0 +1,49 @@
+name: Forge V4 S4 S7 real WebGL acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'game/src/core/**'
+      - 'game/src/data/**'
+      - 'game/src/ui/**'
+      - 'game/css/**'
+      - 'game/tools/forge-v4-live-qa.mjs'
+      - '.github/workflows/forge-v4-acceptance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Browser tools and Chinese fonts
+        working-directory: game
+        run: |
+          npm install --no-save --package-lock=false playwright
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-wqy-microhei
+          echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - name: Core regression and numerical rules
+        working-directory: game
+        run: npm run verify
+      - name: Start real game HTTP server
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > forge-v4-server.log 2>&1 &
+          sleep 3
+          curl -fsS http://127.0.0.1:8123/ > /dev/null
+      - name: Mobile 3D hammer and blade trace
+        working-directory: game
+        run: node tools/forge-v4-live-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: forge-v4-real-webgl-evidence
+          path: |
+            game/forge-v4-evidence/
+            forge-v4-server.log
+          retention-days: 14
