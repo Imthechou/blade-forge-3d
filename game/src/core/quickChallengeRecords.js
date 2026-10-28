@@ -9,7 +9,7 @@ import { CHALLENGE_SECONDS } from './arenaChallenge.js';
 
 export const makeQuickRecords = () => ({ version: 1, provisional: true, byChallenge: {} });
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
-const validKey = key => key === 'quick:free' || /^quick:daily:\d+$/.test(key);
+const validKey = key => /^quick:(v3:)?free$/.test(key) || /^quick:(v3:)?daily:\d+$/.test(key);
 
 /** 加法迁移：同版旧档缺字段/空字段补齐，不触碰其他存档数据，不捏造旧成绩。 */
 export function normalizeQuickRecords(raw) {
@@ -30,9 +30,10 @@ export function normalizeQuickRecords(raw) {
 
 export function quickChallengeKey(run) {
   if (!run || (run.mode != null && run.mode !== 'quick')) return null;
-  if (!run.daily) return 'quick:free';
+  const prefix=run.version==='arena-3'?'quick:v3:':'quick:';
+  if (!run.daily) return prefix+'free';
   return Number.isInteger(run.seed) && run.seed >= 0 && run.seed <= 0xffffffff
-    ? `quick:daily:${run.seed}` : null;
+    ? `${prefix}daily:${run.seed}` : null;
 }
 
 export function updateQuickRecord(records, run) {

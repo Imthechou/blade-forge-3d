@@ -4,6 +4,13 @@ on:
     branches: [main, test/arena-live-playtest-20261027]
     paths:
       - 'game/tools/arena-live-playtest.mjs'
+      - 'game/tools/arena-v3-playtest.mjs'
+      - 'game/tools/arena-v3-simulate.mjs'
+      - 'game/src/core/cutParams.js'
+      - 'game/src/core/arenaCutBridge.js'
+      - 'game/src/data/arena/**'
+      - 'game/src/data/balance.js'
+      - 'game/tests/arena-*.test.mjs'
       - 'game/tools/arena-prop-visual-qa.mjs'
       - '.github/workflows/arena-live-playtest.yml'
       - 'game/src/ui/pages/arena.js'
@@ -41,6 +48,7 @@ jobs:
         working-directory: game
         run: |
           npm install --no-save --package-lock=false playwright
+          npx playwright install ffmpeg
           CHROME_BIN="$(command -v google-chrome || command -v chromium || true)"
           test -n "$CHROME_BIN"
           echo "CHROME_PATH=$CHROME_BIN" >> "$GITHUB_ENV"
@@ -58,7 +66,9 @@ jobs:
           curl -fsS http://127.0.0.1:8123/ > /dev/null
       - name: Play all live arena entries and six-material visual gallery
         working-directory: game
-        run: node tools/arena-live-playtest.mjs
+        env:
+          FORGE_URL: http://127.0.0.1:8123/
+        run: node tools/arena-v3-playtest.mjs
       - name: Validate horizontal, diagonal and vertical fracture silhouettes
         working-directory: game
         run: node tools/arena-prop-visual-qa.mjs

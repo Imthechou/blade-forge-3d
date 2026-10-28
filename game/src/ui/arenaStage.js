@@ -11,7 +11,7 @@ const MAX_COUNTS = { trail: 64, hitLabels: 14, bursts: 20, debris: 12 };
 const MATERIAL_NAMES = {
   rope: '绳束', foam: '泡棉', wood: '木桩', plastic: '塑板', ice: '冰块', metal: '金属块',
 };
-const QUALITY_NAMES = { PERFECT: '完美', CLEAN: '利落', ANGLE: '弹刃', MISS: '未命中' };
+const QUALITY_NAMES = { PERFECT: '完美', CLEAN: '利落', ANGLE: '弹刃', MISS: '未命中', CHAIN:'连锁' };
 const backdropCaches = new WeakMap();
 const COLORS = {
   rope: ['#d8ad64', '#83bdc0', '#c68a91', '#81a98f', '#a894bd'],
@@ -67,6 +67,17 @@ export function drawArenaStage(ctx, run, w, h, effects = {}) {
     if (!d) continue;
     drawTarget(ctx, t, d, i, t.x * w, t.y * h, w, h, isGuideTarget(run.guide, t), now, bursts, reduced,
       Math.max(0,(Number(run.elapsed)||0)-(Number(t.createdAt)||0)));
+    if(run.version==='arena-3') {
+      const x=(t.x+(t.weakX||0))*w,y=(t.y+(t.weakY||0))*h;
+      const marked=t.markedUntil>=run.elapsed;
+      ctx.save();ctx.strokeStyle=marked?'#ffd275':'rgba(230,249,255,.72)';ctx.lineWidth=1.2;
+      ctx.setLineDash([3,4]);ctx.beginPath();
+      const angle=d.angle,dx=Math.cos(angle)*w*.055,dy=Math.sin(angle)*h*.055;
+      ctx.moveTo(x-dx,y-dy);ctx.lineTo(x+dx,y+dy);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=marked?'#ffd275':'#e7fdff';ctx.beginPath();ctx.arc(x,y,marked?4:2.7,0,TAU);ctx.fill();
+      if(marked){ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText('悬赏',x,y-15);}
+      ctx.restore();
+    }
   }
 
   drawDebris(ctx, debris, now, w, h);

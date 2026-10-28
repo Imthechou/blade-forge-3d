@@ -6,7 +6,7 @@ const blade={id:'solid-block-acceptance',bladeName:'检验唐刀',knifeTypeId:'t
   canEnterArena:true,fractured:false,score:300,tags:{},traits:[],combos:[],
   stats:{strength:120,toughness:120,sharpness:120,craft:120,design:120,spirit:120}};
 
-test('solid metal block replaces pipe without changing material power, score, or health',()=>{
+test('V3 solid metal block retains its solid silhouette and high-risk material identity',()=>{
   const m=MATERIALS.metal;
   assert.equal(m.name,'金属块');
   assert.equal(m.short,'金属块');
@@ -14,9 +14,9 @@ test('solid metal block replaces pipe without changing material power, score, or
   assert.equal(m.tubular,undefined);
   assert.equal(m.hard,1);
   assert.equal(m.armor,1);
-  assert.equal(m.health,1.3);
+  assert.equal(m.health,6.4);
   assert.equal(m.damage,0.72);
-  assert.equal(m.points,160);
+  assert.equal(m.points,460);
 });
 
 test('manual early end returns partial viewing report but earns no CR or completion',()=>{

@@ -126,9 +126,11 @@
   },
   {
     "file": "src/core/arenaChallenge.js",
-    "bytes": 42815,
-    "lines": 702,
+    "bytes": 45224,
+    "lines": 770,
     "imports": [
+      "src/data/arena/buffs.js",
+      "src/data/balance.js",
       "src/platform/bus.js",
       "src/core/arenaEncounters.js",
       "src/core/bladeAdapter.js",
@@ -142,6 +144,7 @@
       "FINALES",
       "createChallenge",
       "restartChallenge",
+      "chooseAugment",
       "tick",
       "chooseRoute",
       "chooseFinale",
@@ -165,8 +168,8 @@
   },
   {
     "file": "src/core/arenaCutBridge.js",
-    "bytes": 1903,
-    "lines": 44,
+    "bytes": 2360,
+    "lines": 48,
     "imports": [],
     "exports": [
       "advanceArenaClock",
@@ -178,8 +181,8 @@
   },
   {
     "file": "src/core/arenaEncounters.js",
-    "bytes": 4444,
-    "lines": 88,
+    "bytes": 4740,
+    "lines": 92,
     "imports": [],
     "exports": [
       "MATERIAL_ORDER",
@@ -198,11 +201,12 @@
   },
   {
     "file": "src/core/arenaFormal.js",
-    "bytes": 25788,
-    "lines": 632,
+    "bytes": 27817,
+    "lines": 658,
     "imports": [
       "src/data/arena/branches.js",
       "src/data/arena/formalTests.js",
+      "src/data/balance.js",
       "src/platform/rng.js",
       "src/core/bladeAdapter.js",
       "src/core/testScoring.js"
@@ -441,8 +445,8 @@
   },
   {
     "file": "src/core/cutParams.js",
-    "bytes": 6538,
-    "lines": 157,
+    "bytes": 6625,
+    "lines": 156,
     "imports": [
       "src/data/arena/buffs.js",
       "src/data/balance.js",
@@ -770,8 +774,8 @@
   },
   {
     "file": "src/core/quickChallengeRecords.js",
-    "bytes": 2913,
-    "lines": 55,
+    "bytes": 2994,
+    "lines": 56,
     "imports": [
       "src/core/arenaChallenge.js"
     ],
@@ -1005,17 +1009,20 @@
   },
   {
     "file": "src/data/arena/buffs.js",
-    "bytes": 6143,
-    "lines": 110,
+    "bytes": 8724,
+    "lines": 131,
     "imports": [],
     "exports": [
       "BUFF_TIERS",
       "BUFF_FAMILIES",
       "BUFFS",
+      "BUILD_TAGS",
+      "resonanceOf",
       "BUFF_BY_ID",
       "rollBuffChoices"
     ],
     "importedBy": [
+      "src/core/arenaChallenge.js",
       "src/core/arenaSlice.js",
       "src/core/cutParams.js",
       "src/ui/pages/arena.js"
@@ -1042,8 +1049,8 @@
   },
   {
     "file": "src/data/arena/formalTests.js",
-    "bytes": 9220,
-    "lines": 216,
+    "bytes": 3349,
+    "lines": 43,
     "imports": [
       "src/data/balance.js"
     ],
@@ -1121,13 +1128,19 @@
   },
   {
     "file": "src/data/balance.js",
-    "bytes": 29651,
-    "lines": 546,
+    "bytes": 31828,
+    "lines": 584,
     "imports": [],
     "exports": [
       "STAT_KEYS",
       "STAT_META",
       "STAT_SOFT_CAP",
+      "ARENA_V3",
+      "ARENA_STAT_CEILING",
+      "arenaStat",
+      "arenaGrowth",
+      "ARENA_POWER",
+      "ARENA_MATERIALS",
       "STAT_CURVE",
       "applyStatCurve",
       "STAT_CURVE_CEILING",
@@ -1183,6 +1196,8 @@
     ],
     "importedBy": [
       "src/core/arena.js",
+      "src/core/arenaChallenge.js",
+      "src/core/arenaFormal.js",
       "src/core/attributes.js",
       "src/core/bladeAdapter.js",
       "src/core/cards.js",
@@ -2139,8 +2154,8 @@
   },
   {
     "file": "src/render/legacy/bladeViewer.js",
-    "bytes": 88959,
-    "lines": 1576,
+    "bytes": 89410,
+    "lines": 1582,
     "imports": [
       "src/render/v2/handleLookBake.js",
       "src/render/v2/programFamilies.js",
@@ -2471,7 +2486,7 @@
   },
   {
     "file": "src/render/legacy/viewer.js",
-    "bytes": 80161,
+    "bytes": 80137,
     "lines": 1450,
     "imports": [
       "src/render/gpuPreparation.js",
@@ -2613,8 +2628,8 @@
   },
   {
     "file": "src/render/v2/programFamilies.js",
-    "bytes": 84764,
-    "lines": 1410,
+    "bytes": 86918,
+    "lines": 1446,
     "imports": [
       "src/render/v2/finishRecipe.js",
       "src/render/v2/glslSlices.js",
@@ -2670,8 +2685,8 @@
   },
   {
     "file": "src/render/v2/surfaceDetail.js",
-    "bytes": 23308,
-    "lines": 425,
+    "bytes": 23606,
+    "lines": 429,
     "imports": [],
     "exports": [
       "buildNormalFragment",
@@ -2744,8 +2759,8 @@
   },
   {
     "file": "src/ui/arenaStage.js",
-    "bytes": 54148,
-    "lines": 1102,
+    "bytes": 54843,
+    "lines": 1113,
     "imports": [
       "src/core/arenaChallenge.js",
       "src/ui/arenaImpact.js",
@@ -2923,8 +2938,8 @@
   },
   {
     "file": "src/ui/pages/arena.js",
-    "bytes": 171898,
-    "lines": 2634,
+    "bytes": 172237,
+    "lines": 2630,
     "imports": [
       "src/app/game.js",
       "src/core/arenaChallenge.js",
