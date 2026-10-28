@@ -410,8 +410,8 @@ class Session {
     const s = r.strike || {};
     const danger = Number(s.breakChance) >= 0.30;   // 与 Risk 60 锚点同量级
     if (!r.fractured) {
-      if (s.tierUp) { audio.play('trait'); haptics.feedback('trait'); }
-      else if (danger) { audio.play('riskUp'); haptics.feedback('tap'); }
+      if (s.tierUp) { audio.play('hammerTier'); haptics.feedback('trait'); }
+      else if (danger) { audio.play('hammerRisk'); haptics.feedback('hammer'); }
       else { audio.play('hammer'); haptics.feedback('hammer'); }
     } else {
       audio.play('hammer'); haptics.feedback('hammer');
@@ -445,7 +445,7 @@ class Session {
     if (!this.run) return null;
     const r = Core.forge.submitEdge(this.run, path || null, opts);
     bus.emit(EVENTS.EDGE_DONE, r.edge);
-    audio.play(r.edge && r.edge.tier === 'perfect' ? 'win' : 'tap');
+    audio.play(r.edge?.sharp > 0 ? 'select' : 'tap');
     this.syncStage();
     this.prewarmCandidates();
     return r;

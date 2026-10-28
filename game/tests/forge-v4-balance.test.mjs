@@ -19,33 +19,42 @@ test('rarity budgets grow and cards leave specialist stats to S4/S7',()=>{
    if(c.stage==='S7')assert.ok(c.statDelta.sharpness>0,c.id);
  }
 });
-test('the first ten hammer strikes are safe, then gains and risk grow',()=>{
+
+test('n-th hammer grants +n, ten safe strikes then steep risk',()=>{
  const r=createRun({seed:124});r.stageIndex=3;r.stageId='S4';r.phase='select';
- const card=CARDS.find(c=>c.stage==='S4');confirmCard(r,card);
- r.rng=()=>0;
- for(let i=0;i<10;i++){
-   const a=hammerStrike(r);assert.equal(a.fractured,false,'strike '+(i+1));
-   assert.equal(a.strike.breakChance,0);
+ confirmCard(r,CARDS.find(c=>c.stage==='S4'));r.rng=()=>.999999;
+ const risks=[0,0,0,1,2,3,5,7,9,11,15,21,29,39,51,65,81,99];
+ const p=[0,0,0,0,0,0,0,0,0,0,.02,.02,.05,.10,.18,.30,.45,.60];
+ for(let i=0;i<18;i++){
+  const hit=hammerStrike(r);
+  assert.equal(hit.strike.statGain,i+1);
+  assert.equal(hit.strike.breakChance,p[i]);
+  assert.equal(r.risk.current,risks[i]);
+  assert.equal(r.hammer.statGained,(i+1)*(i+2)/2);
  }
- assert.equal(r.hammer.count,10);
- assert.ok(r.stats.strength>=50 && r.stats.strength<=85);
- assert.ok(Hammer.progressOf(11)>Hammer.progressOf(10));
- assert.ok(Hammer.progressOf(19)>=Hammer.progressOf(18),'late risky hammers cannot earn less Strength');
- assert.ok(Hammer.progressOf(30)>=Hammer.progressOf(19),'late cap never reverses the gamble');
- assert.ok(Hammer.progressOf(30)<=15,'late payout stays bounded');
- assert.ok(Hammer.nextRiskDelta(10)>Hammer.nextRiskDelta(9));
- assert.ok(breakChance(20)<breakChance(60));
+ assert.equal(Hammer.progressOf(30),30);
+ assert.equal(breakChance(12),0);
+ assert.equal(breakChance(13),.02);
+ assert.equal(breakChance(25),.05);
+ assert.equal(breakChance(99),.60);
 });
-test('3D projected sharpening uses only coverage and proximity',()=>{
- assert.equal(Edge.tierOf(Edge.projectedQuality(.99,.30)).id,'miss');
- assert.equal(Edge.tierOf(Edge.projectedQuality(.47,.65)).id,'good');
- assert.equal(Edge.tierOf(Edge.projectedQuality(.70,.83)).id,'great');
- assert.equal(Edge.tierOf(Edge.projectedQuality(.95,.98)).id,'perfect');
- const r=createRun({seed:324});r.stageIndex=6;r.stageId='S7';r.phase='select';
- confirmCard(r,CARDS.find(c=>c.stage==='S7'));r.rng=()=>.9999;
- const samples=Array.from({length:24},(_,i)=>({index:i,value:.5}));
- const before=r.stats.sharpness;
- const result=submitEdge(r,samples,{projected:true});
- assert.equal(result.edge.tier,'perfect');
- assert.ok(r.stats.sharpness-before>=128);
+test('S7 is continuous fit only, 3 attempts with early bonus',()=>{
+ const results=[];
+ for(const attempt of [1,2,3]){
+  const r=createRun({seed:324});r.stageIndex=6;r.stageId='S7';r.phase='select';
+  confirmCard(r,CARDS.find(c=>c.stage==='S7'));r.rng=()=>.999999;
+  const before=r.stats.sharpness;
+  const samples=Array.from({length:48},(_,i)=>({index:i,value:.5}));
+  const out=submitEdge(r,samples,{projected:true,attemptsUsed:attempt});
+  assert.equal(out.edge.fit,1);
+  assert.equal(out.edge.attempts,attempt);
+  assert.equal(out.edge.sharp,r.stats.sharpness-before);
+  results.push(out.edge);
+ }
+ assert.deepEqual(results.map(x=>x.sharp),[134,127,120]);
+ assert.deepEqual(results.map(x=>x.multiplier),[1.12,1.06,1]);
+ const inaccurate=Edge.contourPreview(Array.from({length:48},(_,index)=>({index,value:.65})),1);
+ assert.ok(inaccurate.fit>.65&&inaccurate.fit<.75);
+ assert.ok(inaccurate.sharp>0&&inaccurate.sharp<134);
+ assert.equal(Edge.contourPreview(Array.from({length:10},(_,index)=>({index,value:.5})),1).sharp,0);
 });

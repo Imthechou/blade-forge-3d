@@ -115,15 +115,15 @@ try {
             await page.waitForTimeout(850);
             const points=await page.evaluate(async()=>{
               const s=(await import('/src/render/index.js')).getStage();
-              return (await import('/src/ui/bladeEdgeProjection.js')).bladeEdgeProjection(
+              return (await import('/src/ui/bladeEdgeProjection.js')).bladeContourProjection(
                 s,document.querySelector('#forgeStage').clientWidth,document.querySelector('#forgeStage').clientHeight);
             });
-            assert.ok(points?.length===24,'actual 3D blade projection required');
+            assert.ok(points?.length===48,'actual 3D blade projection required');
             const b=await page.locator('.edge-stage-canvas').boundingBox();
-            await page.mouse.move(b.x+points.at(-1).x,b.y+points.at(-1).y);
+            await page.mouse.move(b.x+points[0].x,b.y+points[0].y);
             await page.mouse.down();
-            for(let j=points.length-2;j>=0;j--)
-              await page.mouse.move(b.x+points[j].x,b.y+points[j].y,{steps:2});
+            for(let j=1;j<points.length;j++)
+              await page.mouse.move(b.x+points[j].x,b.y+points[j].y,{steps:3});
             await page.mouse.up();await shot(page,'flow-edge');
             await page.getByRole('button',{name:'完成开刃'}).click();
           }
