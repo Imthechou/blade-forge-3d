@@ -7,6 +7,7 @@
 import { emit, EVENTS } from '../platform/bus.js';
 import { deriveCutParams } from './cutParams.js';
 import { adaptBlade } from './bladeAdapter.js';
+import { applyForgeCutTraits } from './forgeTraitCuts.js';
 import { createEncounter, selectEncounterMaterial, phaseQuota, stageSpawnInterval } from './arenaEncounters.js';
 
 import { ARENA_V3, ARENA_MATERIALS, ARENA_STAT_CEILING, arenaStat } from '../data/balance.js';
@@ -59,7 +60,7 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
   const adaptation = adaptBlade(blade);
   const stats = Object.fromEntries(Object.entries(adaptation.permanentStats).map(([k,v])=>[k,arenaStat(v)]));
   const actualSeed = seed == null ? (Date.now() >>> 0) : Number(seed) >>> 0;
-  const params = deriveCutParams(stats, buffs);
+  const params = applyForgeCutTraits(deriveCutParams(stats, buffs), blade);
   params.adaptation = {
     version: adaptation.version,
     effectVersion: adaptation.effectVersion,
