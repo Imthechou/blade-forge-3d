@@ -8,15 +8,6 @@
  * Each motif uses the same hand-drawn rounded strokes and flat 3-color palette.
  */
 const NS = 'http://www.w3.org/2000/svg';
-const palettes = Object.freeze([
-  { paper:'#FBF6EB', field:'#FFE0C0', main:'#FF7248', pop:'#3A6DF0', ink:'#222740' },
-  { paper:'#F6F4FF', field:'#DDD5FF', main:'#8462F5', pop:'#FCBA46', ink:'#2B2549' },
-  { paper:'#F0FBF9', field:'#B9F0DF', main:'#20B6A2', pop:'#FF7A70', ink:'#213C48' },
-  { paper:'#FFF5FA', field:'#FFD0DF', main:'#FE609C', pop:'#6F59E8', ink:'#33263D' },
-  { paper:'#F5F9FF', field:'#CDE2FF', main:'#4D87F5', pop:'#FFC35C', ink:'#233550' },
-  { paper:'#FBFCEB', field:'#E9F4A9', main:'#A9C735', pop:'#F67378', ink:'#303649' },
-]);
-
 // Ordered by position in a card's name; secondary matched semantics form a
 // small supporting glyph. This is not an arbitrary palette swap by rarity.
 const rules = Object.freeze([
@@ -36,6 +27,59 @@ const rules = Object.freeze([
   { id:'grid', re:/六边|构|控|定|匀|准|轴|工|机|模块|制|衡/g },
   { id:'organic', re:/木|竹|皮|翡|琥珀|柔|兽|爪|蝶|胶|节/g },
 ]);
+/**
+ * Narrative colour direction, in priority order. The name is authoritative:
+ * a crimson alloy must not become lime green just because its ID hash changes.
+ * These are studio screen-print palettes, not physically shaded metal textures.
+ */
+const themes=Object.freeze([
+  {key:'spectrum',match:/虹|幻彩|流光|彩|极光|偏振/,paper:'#F7F4FF',field:'#E8D8FF',main:'#7860E9',pop:'#FF9A73',ink:'#303054',label:'幻彩'},
+  {key:'electric',match:/电|雷|等离子|电浆/,paper:'#F1F8FF',field:'#D5E8FF',main:'#5C70F8',pop:'#50D5E9',ink:'#26315B',label:'电光'},
+  {key:'crimson',match:/赤|红|灼|焰|玄火|火|血/,paper:'#FFF7EF',field:'#FFE0C6',main:'#EC634E',pop:'#FFB654',ink:'#46304A',label:'赤焰'},
+  {key:'violet',match:/紫|错相|紫晶/,paper:'#FAF5FF',field:'#E8D8FF',main:'#9362DA',pop:'#E89BD5',ink:'#342B58',label:'幽紫'},
+  {key:'cobalt',match:/蓝|寒|冰|冷|冻|零|雪|霜|液氮/,paper:'#F4F9FF',field:'#CEE9FF',main:'#4D8FDE',pop:'#88DBEB',ink:'#243A5B',label:'霜蓝'},
+  {key:'gold',match:/曙|金|辉|昼|日|天工/,paper:'#FFFAF0',field:'#FFE8B9',main:'#DFA044',pop:'#F7CE6D',ink:'#44374B',label:'鎏金'},
+  {key:'verdant',match:/翡|翠|绿|青|玉|苔/,paper:'#F2FCF6',field:'#CFF0DB',main:'#3BAE87',pop:'#ADD96E',ink:'#254B4A',label:'翡翠'},
+  {key:'obsidian',match:/玄|噬|暗|蚀|夜|黑|影|幽|雾/,paper:'#F5F5FC',field:'#DCDDF5',main:'#6575AB',pop:'#AB97D5',ink:'#27334A',label:'深蚀'},
+  {key:'pearl',match:/白|珠|镜|银|瓷|净|透|素面/,paper:'#F6FCFD',field:'#DCECF3',main:'#6BAEBB',pop:'#A6CADB',ink:'#34516B',label:'珠光'},
+  {key:'timber',match:/木|竹|皮|琥珀|温|暖/,paper:'#FFF9EF',field:'#F8DFBF',main:'#C88F62',pop:'#DBB474',ink:'#59403F',label:'温木'},
+  {key:'celestial',match:/星|月|神|灵|共鸣|天坠|陨/,paper:'#F6F6FF',field:'#DADCF7',main:'#777CE6',pop:'#F6C57E',ink:'#293458',label:'星辉'},
+  {key:'forge',match:/熔|炉|热|锤|回火|淬/,paper:'#FFF8F3',field:'#F7D6C5',main:'#D77E5B',pop:'#F4BE7F',ink:'#513B4B',label:'熔火'},
+  {key:'stream',match:/流|波|液|云|水|渐染|雾界/,paper:'#F2FCFC',field:'#D1F2EF',main:'#34ABAF',pop:'#92D7D2',ink:'#284B5C',label:'潮汐'},
+  {key:'lattice',match:/晶|格|层|丝|纹|碳|织|铁|钢|刃|锋|刀|剑/,paper:'#F6F8FD',field:'#DAE2F6',main:'#778AB9',pop:'#E7B77A',ink:'#34405B',label:'锻纹'},
+  {key:'balance',match:/.*/,paper:'#F8F7FF',field:'#E8E2FA',main:'#9B87CB',pop:'#E5BA8D',ink:'#3E3A5C',label:'工艺'},
+]);
+function paletteFor(name){
+  const rule=themes.find(t=>t.match.test(name))||themes.at(-1);
+  // Blended dual-colour phrasing gets a deliberately paired secondary pigment.
+  const pop=/蓝紫|紫蓝/.test(name)?'#AC85EB'
+    :/赤金|金赤/.test(name)?'#F4CB74'
+    :/冷辉|冰光/.test(name)?'#C5DAFB'
+    :rule.pop;
+  return {theme:rule.key,palette:{paper:rule.paper,field:rule.field,main:rule.main,pop,ink:rule.ink},label:rule.label};
+}
+const motions=Object.freeze([
+  {id:'scatter',re:/星屑|星尘|碎|砂|颗粒|微|屑|点/g,label:'星屑散落'},
+  {id:'fractured',re:/裂|断|残|错|破|战|剥/g,label:'裂片冲突'},
+  {id:'orbit',re:/星|月|天|神|灵|虹|幻|辉/g,label:'环绕轨迹'},
+  {id:'ribbon',re:/流|波|液|云|顺|渐|彩|熔/g,label:'流线回旋'},
+  {id:'crystal',re:/晶|格|矿|钛|石|玉|瓷|金|铁/g,label:'晶面折线'},
+  {id:'mirror',re:/镜|净|抛|光|白|亮|透|偏/g,label:'对映亮斑'},
+  {id:'stitch',re:/纹|丝|层|叠|织|编|线|缠/g,label:'交错针脚'},
+  {id:'slash',re:/刃|锋|刀|剑|磨|切|尖|脊/g,label:'斜刃速线'},
+  {id:'spark',re:/焰|火|电|雷|热|锤|冲|震/g,label:'能量飞溅'},
+  {id:'root',re:/木|竹|皮|翠|翡|生|柔/g,label:'生长曲线'},
+  {id:'stable',re:/匀|稳|控|定|校|准|衡|均/g,label:'校准刻度'},
+]);
+function motionFor(name,primary,seed){
+  const match=motions.find(m=>m.re.test(name));
+  // If a name has no secondary modifier, main glyph semantics still guide ink.
+  const fallback={frost:'crystal',flame:'spark',flow:'ribbon',shard:'crystal',
+    star:'orbit',void:'orbit',echo:'orbit',electric:'spark',fracture:'fractured',
+    weave:'stitch',mirror:'mirror',strike:'spark',edge:'slash',grid:'stable',organic:'root'};
+  return match || motions.find(m=>m.id===(fallback[primary]||'stable'))||motions[seed%motions.length];
+}
+
 const tagFallback = Object.freeze({
   cold:'frost',heat:'flame',flow:'flow',layer:'weave',edge:'edge',
   oxide:'mirror',precision:'grid',stable:'grid',mirror:'mirror',
@@ -64,9 +108,11 @@ export function doodleSpec(card) {
     || rules[(seed>>>9)%rules.length].id;
   // Deterministic by name/id: two identical names in different stages do not
   // accidentally clone one entire sticker; all 218 card IDs stay distinct.
-  const palette=palettes[(seed>>>3)%palettes.length];
+  const theme=paletteFor(name);
+  const motion=motionFor(name,primary,seed);
   return {
-    primary,secondary,seed,palette,
+    primary,secondary,seed,palette:theme.palette,theme:theme.theme,colorName:theme.label,
+    motion:motion.id,motionName:motion.label,
     tilt:(seed%23)-11,
     offset:(seed>>>15)%13-6,
     variant:(seed>>>22)%7,
