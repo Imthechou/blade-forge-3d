@@ -296,8 +296,17 @@ function submitContour(run,samples,{skipped=false,attemptsUsed=1}={}) {
     grind:{glow:.22*mastery,sharpen:.45*mastery,heat:.08*(1-mastery)}};
   run.edge={...score,quality:score.fit,acc:Math.round(score.fit*100)/100,
     fidelity:score.fit,coverage:score.coverage,sharp:score.sharp,craft:0,
-    tier:score.eligible?'contour':'miss',tierName:'',done:true,skipped:!!skipped};
+    tier:score.eligible?'contour':'miss',tierName:score.eligible?'轮廓开刃':'失误',done:true,skipped:!!skipped};
   return run.edge;
+}
+
+/** Read-only labels shared by appraisal and old archived blades. Does not regrade the operation. */
+export function resultView(edge) {
+  if (!edge) return null;
+  const names = {miss:'失误',good:'良好',great:'优异',perfect:'完美',contour:'轮廓开刃'};
+  const label = names[edge.tier] || edge.tierName || '已开刃';
+  const fit = clamp01(edge.fit ?? edge.acc ?? edge.quality);
+  return { label, fitText: `${Math.round(fit * 100)}%`, sharp: Number(edge.sharp) || 0 };
 }
 
 export function submit(run, samples, { skipped = false, projected = false, attemptsUsed = 1 } = {}) {

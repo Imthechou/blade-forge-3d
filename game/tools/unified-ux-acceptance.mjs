@@ -14,10 +14,10 @@ async function fit(selector){const n=page.locator(selector);const b=await n.boun
 async function dialog(){await page.locator('.sheet-mask.is-in').last().waitFor();await fit('.sheet-mask:last-child .sheet');}
 async function close(){await page.locator('.sheet-mask').last().getByRole('button',{name:'关闭',exact:true}).click();await page.locator('.sheet-mask').waitFor({state:'detached'});}
 async function cabinet(tab){await page.evaluate(async tab=>(await import('/src/ui/pages/workshop.js')).openTab(tab),tab);}
-async function readyThumbs(selector){await page.waitForFunction(selector=>{const ns=[...document.querySelectorAll(selector)];return ns.length&&ns.every(n=>n.dataset.state==='ready'&&n.querySelector('img')?.complete&&n.querySelector('img')?.naturalWidth>0);},selector,{timeout:90000});}
+async function readyThumbs(selector){await page.waitForFunction(selector=>{const ns=[...document.querySelectorAll(selector)].slice(0,2);return ns.length&&ns.every(n=>n.dataset.state==='ready'&&n.querySelector('img')?.complete&&n.querySelector('img')?.naturalWidth>0);},selector,{timeout:90000});}
 try {
  for(const [width,height] of [[375,667],[320,568]]) {
-  const identity={knifeType:'knife_tangdao',knifeTypeId:'tangdao',rarity:'rare',rarityName:'稀有',qualityName:'精制',history:[],seed:123};
+  const identity={knifeType:'knife_tangdao',knifeTypeId:'tangdao',rarity:'rare',rarityName:'稀有',qualityName:'精制',history:[],seed:123,edge:{tier:'contour',tierName:'',fit:.97,acc:.97,sharp:128}};
   const blades=[{...sampleBlade(150),...identity,score:320,bladeName:'冷镜唐刀',tags:{cold:4,precision:2}},{...sampleBlade(100),...identity,id:'second',score:220,bladeName:'流光唐刀'},{...sampleBlade(120),...identity,id:'third',score:250,bladeName:'夜幕唐刀'}];
   const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:2,isMobile:true,hasTouch:true,locale:'zh-CN',reducedMotion:'reduce'});
   await context.addInitScript(blades=>{if(!localStorage.getItem('bladeforge.save'))localStorage.setItem('bladeforge.save',JSON.stringify({version:1,cr:2000,collection:blades,fractured:[{...blades[1],id:'fractured-qa',bladeName:'断裂的流光唐刀',fractured:true,canEnterArena:false,fractureInfo:{stageId:'S4',stageName:'定型',risk:42,chance:.15}}],settings:{tutorialSeen:true,sound:false,motion:'reduced'}}));},blades);
@@ -37,7 +37,7 @@ try {
   });
   await test(`${width} card buttons, archive preview and rename`,async()=>{
    await cabinet('collection');await readyThumbs('.ws-collection-grid .blade-thumb');assert.equal(await page.locator('button button').count(),0);await shot(`${width}-collection`);
-   await page.locator('.bcv-open').first().click();await dialog();await page.locator('.blade-detail-stage-status').waitFor({state:'detached',timeout:90000});await fit('.blade-detail-actions');await shot(`${width}-blade-detail`);
+   await page.locator('.bcv-open').first().click();await dialog();await page.locator('.blade-detail-stage-status').waitFor({state:'detached',timeout:90000});await fit('.blade-detail-actions');assert.ok((await page.locator('.blade-detail-sheet').innerText()).includes('轮廓开刃（贴合 97%'));await shot(`${width}-blade-detail`);
    await page.getByRole('button',{name:'重命名',exact:true}).click();await page.getByRole('textbox',{name:'新的刀名'}).fill('霜镜 · 唐刀');await page.getByRole('button',{name:'保存刀名'}).click();await page.waitForFunction(()=>document.querySelectorAll('.sheet-mask').length===1);
    assert.equal(await page.locator('.blade-detail-sheet .sheet-title').innerText(),'霜镜 · 唐刀');await close();
    assert.equal(await page.locator('.bcv-name').first().innerText(),'霜镜 · 唐刀');
@@ -65,6 +65,8 @@ try {
   await test(`${width} loadout preview + pause focus + real cutting input`,async()=>{
    await page.evaluate(async()=>(await import('/src/ui/pages/arena.js')).openTournament());await readyThumbs('.arena-loadout .blade-thumb');await shot(`${width}-arena`);
    await page.getByRole('button',{name:'更换参赛刀'}).click();await dialog();await shot(`${width}-loadout`);await close();
+   await page.getByRole('button',{name:'全国大赛',exact:true}).click();await shot(`${width}-national`);
+   await page.getByRole('button',{name:'全球巅峰赛',exact:true}).click();await shot(`${width}-apex`);
    await page.getByRole('button',{name:'快速挑战',exact:true}).click();await page.getByRole('button',{name:'开始自由快赛',exact:true}).click();await page.locator('[data-augment-id]').first().waitFor();await shot(`${width}-augment`);await page.locator('[data-augment-id]').first().click();
    await page.locator('.quick-canvas').waitFor();await page.waitForTimeout(500);await page.getByRole('button',{name:'暂停',exact:true}).click();await page.locator('.quick-pause-overlay').waitFor();
    const time=await page.evaluate(()=>__FORGE_ARENA.run.elapsed);await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>__FORGE_ARENA.run.elapsed),time);

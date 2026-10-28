@@ -23,6 +23,7 @@ import { STAT_KEYS, STAT_META } from '../data/balance.js';
 import { KNIFE_BY_ID, KNIFE_BY_MODEL } from '../data/knifeTypes.js';
 import { getTrait } from '../data/traits.js';
 import { COMBOS } from '../data/combos.js';
+import { resultView as edgeResultView } from '../core/edge.js';
 import { tagName } from '../data/tags.js';
 
 /**
@@ -256,6 +257,7 @@ export function bladeCard(model, {
  */
 export function bladeCardDetail(model) {
   const line = (label, value) => el('div', { class: 'report-line', text: `${label}：${value ?? '未记录'}` });
+  const edgeView = edgeResultView(model.edge);
   const date = model.createdAt ? new Date(model.createdAt).toLocaleDateString() : '未记录';
 
   const honorRows = model.honors.length
@@ -297,7 +299,7 @@ export function bladeCardDetail(model) {
     line('工艺路线', model.history.length ? model.history.join(' → ') : '未记录'),
     line('Risk 峰值 / 收尾', `${model.riskPeak} / ${model.riskCurrent}`),
     line('S4 锻打', `${model.hammerCount} 锤${model.hammerTierName ? ` · ${model.hammerTierName}` : ''}`),
-    line('S7 刃线', model.edge ? `${model.edge.tierName}（贴合 ${model.edge.acc}）` : '未记录'),
+    line('S7 刃线', edgeView ? `${edgeView.label}（贴合 ${edgeView.fitText} · 锋利 +${edgeView.sharp}）` : '未记录'),
 
     el('div', { class: 'section-title', text: '档案' }),
     line('档案编号', model.id),

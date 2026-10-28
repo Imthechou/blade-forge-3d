@@ -58,3 +58,14 @@ test('S7 is continuous fit only, 3 attempts with early bonus',()=>{
  assert.ok(inaccurate.sharp>0&&inaccurate.sharp<134);
  assert.equal(Edge.contourPreview(Array.from({length:10},(_,index)=>({index,value:.5})),1).sharp,0);
 });
+
+
+test('S7 contour and legacy archives have readable, non-mutating result labels',()=>{
+ const legacy={tier:'contour',tierName:'',acc:.97,fit:.97,sharp:128};
+ const original=JSON.stringify(legacy);
+ assert.deepEqual(Edge.resultView(legacy),{label:'轮廓开刃',fitText:'97%',sharp:128});
+ assert.equal(JSON.stringify(legacy),original);
+ assert.equal(Edge.resultView({tier:'perfect',acc:1}).fitText,'100%');
+ assert.equal(Edge.resultView({tier:'miss',acc:0}).label,'失误');
+ assert.equal(Edge.resultView(null),null);
+});

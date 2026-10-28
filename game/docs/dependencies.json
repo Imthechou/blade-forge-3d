@@ -69,8 +69,8 @@
   },
   {
     "file": "src/core/appraise.js",
-    "bytes": 7725,
-    "lines": 203,
+    "bytes": 7823,
+    "lines": 205,
     "imports": [
       "src/data/knifeTypes.js",
       "src/data/stages.js",
@@ -78,6 +78,7 @@
       "src/data/traits.js",
       "src/core/attributes.js",
       "src/core/combos.js",
+      "src/core/edge.js",
       "src/core/hammer.js",
       "src/core/scoring.js",
       "src/core/tags.js",
@@ -514,8 +515,8 @@
   },
   {
     "file": "src/core/edge.js",
-    "bytes": 16054,
-    "lines": 370,
+    "bytes": 16574,
+    "lines": 379,
     "imports": [
       "src/data/balance.js",
       "src/data/bladeEffects.js",
@@ -531,13 +532,17 @@
       "projectedQuality",
       "tierOf",
       "contourPreview",
+      "resultView",
       "submit",
       "autoPlay"
     ],
     "importedBy": [
+      "src/core/appraise.js",
       "src/core/forge.js",
       "src/core/index.js",
+      "src/ui/bladeCard.js",
       "src/ui/minigameV4.js",
+      "src/ui/pages/appraise.js",
       "src/ui/pages/forge.js"
     ]
   },
@@ -2823,9 +2828,10 @@
   },
   {
     "file": "src/ui/bladeCard.js",
-    "bytes": 15011,
-    "lines": 356,
+    "bytes": 15146,
+    "lines": 358,
     "imports": [
+      "src/core/edge.js",
       "src/data/balance.js",
       "src/data/combos.js",
       "src/data/knifeTypes.js",
@@ -3013,6 +3019,7 @@
       "src/ui/pages/arena.js",
       "src/ui/pages/forge.js",
       "src/ui/pages/workshop.js",
+      "src/ui/settingsSheet.js",
       "src/ui/shell.js"
     ]
   },
@@ -3039,10 +3046,11 @@
   },
   {
     "file": "src/ui/pages/appraise.js",
-    "bytes": 29597,
+    "bytes": 29565,
     "lines": 649,
     "imports": [
       "src/app/game.js",
+      "src/core/edge.js",
       "src/core/index.js",
       "src/data/cards.js",
       "src/data/combos.js",
@@ -3245,12 +3253,13 @@
   },
   {
     "file": "src/ui/settingsSheet.js",
-    "bytes": 5598,
-    "lines": 136,
+    "bytes": 5684,
+    "lines": 137,
     "imports": [
       "src/app/settings.js",
       "src/platform/index.js",
       "src/ui/dom.js",
+      "src/ui/icons.js",
       "src/ui/tutorial.js"
     ],
     "exports": [

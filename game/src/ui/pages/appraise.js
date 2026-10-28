@@ -11,6 +11,7 @@ import { el, $, clear, mount, countUp, sheet, toast } from '../dom.js';
 import { qualitySeal, statRail, traitItem } from '../components.js';
 /* ★ rework T13.1：鉴定页也读**同一份**成刀展示模型与卡片，
    不再自己拼一套（否则同一把刀在鉴定页与藏刀阁长得不一样）。 */
+import { resultView as edgeResultView } from '../../core/edge.js';
 import { icon } from '../icons.js';
 import { motion } from '../../platform/index.js';
 import { getTrait } from '../../data/traits.js';
@@ -158,7 +159,7 @@ function renderReveal(rec) {
   /* ★ 分数初始显示占位符：它必须**最后**才揭晓（T13.3），不能在六维和特性之前先亮出来。 */
   scoreEl = el('div', { class: 'ap-stat-v is-score', text: '—' });
   const riskBand = Core.risk.band(rec.riskPeak);
-  const edgeCn = EDGE_CN[(rec.edge && rec.edge.tier) || ''] || null;
+  const edgeView = edgeResultView(rec.edge);
   mount(body, [
     sec('top', [
       el('div', { class: 'ap-head' }, [
@@ -175,7 +176,7 @@ function renderReveal(rec) {
       el('div', { class: 'ap-stats ap-stats--three' }, [
         stat(1, '峰值风险', riskValue(rec.riskPeak, riskBand)),
         stat(2, '永久特性', value(`${rec.traits.length} 条`)),
-        stat(3, 'S7 开刃', value(edgeCn || '未开刃', rec.edge ? `贴合度 ${rec.edge.acc}` : null)),
+        stat(3, 'S7 开刃', value(edgeView?.label || '未开刃', edgeView ? `贴合度 ${edgeView.fitText}` : null)),
       ]),
     ]),
     /* ★★ rework T13.3：揭晓顺序按基线 2.4 ——
@@ -613,7 +614,6 @@ function reportLine(k, v) {
   ]);
 }
 
-const EDGE_CN = { miss: '失误', good: '良好', great: '优异', perfect: '完美' };
 const CAT_CN = { knife: '刀型', trait: '特性', combo: '隐藏组合', tag: '工艺标签', card: '决策卡', fracture: '断刀' };
 
 function knifeTypeName(rec) {

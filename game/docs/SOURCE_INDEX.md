@@ -7,7 +7,7 @@
 | [src/app/bootstrap.js](../src/app/bootstrap.js) | 312 | 15491 | — |
 | [src/app/game.js](../src/app/game.js) | 1437 | 65174 | Game |
 | [src/app/settings.js](../src/app/settings.js) | 54 | 1916 | applyAll, update, get, preview |
-| [src/core/appraise.js](../src/core/appraise.js) | 203 | 7725 | appraise, revealSteps |
+| [src/core/appraise.js](../src/core/appraise.js) | 205 | 7823 | appraise, revealSteps |
 | [src/core/arena.js](../src/core/arena.js) | 386 | 17011 | baseFaces, createMatch, currentEvent, choose, fieldTestTask, submitFieldTest, submitFieldTestChallenge, skipFieldTest, finalFaces, momentumName |
 | [src/core/arenaChallenge.js](../src/core/arenaChallenge.js) | 777 | 45839 | FORMAL_RISK_TBD, CHALLENGE_SECONDS, MATERIALS, ROUTES, FINALES, createChallenge, restartChallenge, chooseAugment, tick, chooseRoute, chooseFinale, beginSwipe, hasStructuralFailure, swipe, finish, setPaused |
 | [src/core/arenaCutBridge.js](../src/core/arenaCutBridge.js) | 48 | 2360 | advanceArenaClock, formalCutPayload |
@@ -24,7 +24,7 @@
 | [src/core/cutParams.js](../src/core/cutParams.js) | 157 | 6712 | foldBuffMods, deriveCutParams, deriveCutParamsForBlade, describeParams |
 | [src/core/daily.js](../src/core/daily.js) | 107 | 4001 | dayKey, seedOfDay, modifierOfDay, dailyPayload, makeTaskState, completeTask, allDone, recordScore |
 | [src/core/economy.js](../src/core/economy.js) | 38 | 1372 | startCr, addCr, canAfford, forgeReward, matchReward, rerollPrice |
-| [src/core/edge.js](../src/core/edge.js) | 370 | 16054 | shapeOf, baseline, makeTask, normalizeSamples, evaluate, accuracy, projectedQuality, tierOf, contourPreview, submit, autoPlay |
+| [src/core/edge.js](../src/core/edge.js) | 379 | 16574 | shapeOf, baseline, makeTask, normalizeSamples, evaluate, accuracy, projectedQuality, tierOf, contourPreview, resultView, submit, autoPlay |
 | [src/core/events.js](../src/core/events.js) | 213 | 8193 | EVENT, makeEventLedger, eventIdOf, settle, bumpDailyStreak, applyUnlockToken |
 | [src/core/forge.js](../src/core/forge.js) | 286 | 10093 | PHASE, createRun, stageDef, confirmCard, hammerStrike, endHammer, submitEdge, snapshot |
 | [src/core/forgeBonuses.js](../src/core/forgeBonuses.js) | 152 | 5470 | makeRunBonus, unlockStateOf, bonusListFor, equipBonus, lockBonus, canUse, use, effectOf, snapshot |
@@ -135,7 +135,7 @@
 | [src/ui/arenaReportParts.js](../src/ui/arenaReportParts.js) | 117 | 4353 | momentumChip, momentumLadder, momentumHint, momentumTrail, FACE_CN, STAT_CN, FACE_STATS, faceOfStat, faceCompareRow |
 | [src/ui/arenaSprites.js](../src/ui/arenaSprites.js) | 136 | 5988 | TYPES, STATES, CELL, spriteStatus, prepareArenaSprites, spriteReady, drawWholeSprite, drawSplitSprite, drawShardSprite, drawFlashSprite |
 | [src/ui/arenaStage.js](../src/ui/arenaStage.js) | 1113 | 54857 | drawArenaStage |
-| [src/ui/bladeCard.js](../src/ui/bladeCard.js) | 356 | 15011 | bladeCardModel, bladeCard, bladeCardDetail, compareModels |
+| [src/ui/bladeCard.js](../src/ui/bladeCard.js) | 358 | 15146 | bladeCardModel, bladeCard, bladeCardDetail, compareModels |
 | [src/ui/bladeEdgeProjection.js](../src/ui/bladeEdgeProjection.js) | 79 | 3844 | bladeEdgeProjection, bladeContourProjection |
 | [src/ui/cardDoodles.js](../src/ui/cardDoodles.js) | 353 | 19290 | doodleSpec, cardDoodle |
 | [src/ui/components.js](../src/ui/components.js) | 523 | 26191 | ICONS, riskBar, riskChip, statRail, statGrid, rarityBadge, qualitySeal, decisionCard, traitItem |
@@ -145,14 +145,14 @@
 | [src/ui/formalTestStage.js](../src/ui/formalTestStage.js) | 571 | 24166 | disposeFormalTestStage, renderFormalTest |
 | [src/ui/icons.js](../src/ui/icons.js) | 25 | 1257 | icon |
 | [src/ui/minigameV4.js](../src/ui/minigameV4.js) | 254 | 13151 | renderHammerV4, renderEdgeV4 |
-| [src/ui/pages/appraise.js](../src/ui/pages/appraise.js) | 649 | 29597 | create, render, enter, leave |
+| [src/ui/pages/appraise.js](../src/ui/pages/appraise.js) | 649 | 29565 | create, render, enter, leave |
 | [src/ui/pages/arena.js](../src/ui/pages/arena.js) | 2673 | 175840 | create, leave, openDailyChallenge, openQuickChallenge, openTournament, render |
 | [src/ui/pages/daily.js](../src/ui/pages/daily.js) | 34 | 1200 | create, render |
 | [src/ui/pages/forge.js](../src/ui/pages/forge.js) | 528 | 25466 | create, render, syncInspect, leave |
 | [src/ui/pages/home.js](../src/ui/pages/home.js) | 120 | 4920 | create, render, syncInspect |
 | [src/ui/pages/workshop.js](../src/ui/pages/workshop.js) | 566 | 28391 | create, render, openTab |
 | [src/ui/router.js](../src/ui/router.js) | 77 | 2618 | PAGES, register, onNavigate, go, currentKey, start |
-| [src/ui/settingsSheet.js](../src/ui/settingsSheet.js) | 136 | 5598 | open |
+| [src/ui/settingsSheet.js](../src/ui/settingsSheet.js) | 137 | 5684 | open |
 | [src/ui/shell.js](../src/ui/shell.js) | 72 | 2244 | create, sync |
 | [src/ui/stageControls.js](../src/ui/stageControls.js) | 131 | 4985 | createStageInspect |
 | [src/ui/tutorial.js](../src/ui/tutorial.js) | 91 | 3742 | GUIDE, guideSheet, helpSheet, maybeShowFirstRun, hint, hasSeenHint |

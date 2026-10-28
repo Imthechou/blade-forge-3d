@@ -26,6 +26,7 @@ import * as Tags from './tags.js';
 import * as Traits from './traits.js';
 import * as Combos from './combos.js';
 import * as Hammer from './hammer.js';
+import { resultView as edgeResultView } from './edge.js';
 import * as Scoring from './scoring.js';
 
 let sequence = 0;
@@ -194,7 +195,8 @@ function explain(record) {
   }
   lines.push(`S4 收锤：${record.hammerCount} 锤，强化档位「${record.hammerTierName}」`);
   lines.push(`Risk 经营：峰值 ${record.riskPeak}（峰值倍率 ×${record.scoreDetail.peakMult}），收尾 ${record.riskCurrent}`);
-  if (record.edge) lines.push(`S7 刃线：${record.edge.tierName}（贴合度 ${record.edge.acc}）`);
+  const edgeView = edgeResultView(record.edge);
+  if (edgeView) lines.push(`S7 刃线：${edgeView.label}（贴合度 ${edgeView.fitText}）`);
   if (record.combos.length) lines.push(`隐藏组合：${record.combos.join('、')}`);
   return lines;
 }

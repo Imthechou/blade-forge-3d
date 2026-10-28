@@ -10,6 +10,7 @@
  */
 
 import { el, mount, sheet } from './dom.js';
+import { icon } from './icons.js';
 import { env, motion } from '../platform/index.js';
 import * as Settings from '../app/settings.js';
 import * as Tutorial from './tutorial.js';
@@ -111,12 +112,12 @@ export function open() {
       el('div', { class: 'set-head' }, [
         el('div', { class: 'set-main' }, [
           el('div', { class: 'set-label', text: '新手说明' }),
-          el('div', { class: 'set-hint', text: '重看引导：选卡、方向与 Risk、S4 锻打、鉴定去向' }),
+          el('div', { class: 'set-hint', text: '重看选卡构筑、数值预览、自由锻打和鉴定说明' }),
         ]),
         el('button', {
-          class: 'btn btn--sm', text: '重看',
+          class: 'btn btn--icon', 'aria-label':'重看', title:'重看新手说明',
           onclick: () => Tutorial.helpSheet(),
-        }),
+        }, [icon('help')]),
       ]),
     ]));
 
