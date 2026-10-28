@@ -33,6 +33,10 @@ jobs:
       - name: WebGL, mobile layouts, complete forge and modals
         working-directory: game
         run: node tools/spatial-ui-acceptance.mjs
+      - name: 54 card-name doodle stickers, gallery screenshot and uniqueness
+        if: always()
+        working-directory: game
+        run: node tools/card-doodle-gallery.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

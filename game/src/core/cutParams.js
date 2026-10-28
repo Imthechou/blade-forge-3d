@@ -2,6 +2,7 @@
 import { BUFF_BY_ID, resonanceOf } from '../data/arena/buffs.js';
 import { ARENA_STAT_CEILING as STAT_CURVE_CEILING, arenaStat, arenaGrowth, ARENA_POWER } from '../data/balance.js';
 import { adaptBlade } from './bladeAdapter.js';
+import { applyForgeCutTraits } from './forgeTraitCuts.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -127,7 +128,7 @@ export function deriveCutParamsForBlade(blade, buffs = []) {
   const view = blade && blade.version && blade.capabilities
     ? blade                 // 已经是适配视图，不重复换算
     : adaptBlade(blade);
-  const params = deriveCutParams(Object.fromEntries(Object.entries(view.permanentStats).map(([k,v])=>[k,arenaStat(v)])), buffs);
+  const params = applyForgeCutTraits(deriveCutParams(Object.fromEntries(Object.entries(view.permanentStats).map(([k,v])=>[k,arenaStat(v)])), buffs), blade);
   // 把适配结果挂在参数上，供 UI 展示「为什么这把刀在这项更强」
   params.adaptation = {
     version: view.version,

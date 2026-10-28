@@ -757,6 +757,39 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
      不参与任何玩法判定；与 __FORGE_PREP 同一约定。 */
   globalThis.__FORGE_ARENA = { run, canvas, effects: null };
   const stage = canvas.closest('.quick-match');
+  // 永久工艺特性与赛事临时强化分开；持续展示，命中时反馈真实对应行为。
+  const forgeSkills = Array.isArray(run.params?.forgeTraits) ? run.params.forgeTraits : [];
+  const forgedIds = new Set(forgeSkills.map(item => item.id));
+  const forgeRibbon = forgeSkills.length ? el('div', { class: 'quick-forge-skills', 'aria-label': '本刀永久工艺特性' }, [
+    el('span', { class: 'quick-forge-kicker', text: '刀技' }),
+    ...forgeSkills.slice(0, 2).map(t => el('span', { class: 'quick-forge-skill', text: t.name })),
+    forgeSkills.length > 2 ? el('span', { class: 'quick-forge-extra', text: '+' + (forgeSkills.length - 2) }) : null,
+    el('span', { class: 'quick-forge-activated', 'aria-live': 'polite' }),
+  ]) : null;
+  if (forgeRibbon) stage.appendChild(forgeRibbon);
+  let lastForgeBurst = -Infinity;
+  const pulseForgeSkill = (hit, now) => {
+    if (!forgeRibbon || now - lastForgeBurst < 950) return;
+    const material = hit.target?.type;
+    let id = '';
+    if (hit.weak && forgedIds.has('precision')) id = 'precision';
+    else if (hit.complete && material === 'ice' && forgedIds.has('cold')) id = 'cold';
+    else if (hit.crossedIce && forgedIds.has('layer')) id = 'layer';
+    else if (hit.contactEvent === 'armor' && forgedIds.has('layer')) id = 'layer';
+    else if (hit.combo >= 2 && forgedIds.has('flow')) id = 'flow';
+    else if (hit.complete && (material === 'foam' || material === 'rope') && forgedIds.has('edge')) id = 'edge';
+    else if (hit.target && material !== 'foam' && material !== 'rope' && forgedIds.has('heat')) id = 'heat';
+    else if (hit.target && material !== 'foam' && material !== 'rope' && forgedIds.has('stable')) id = 'stable';
+    else if (hit.quality === 'PERFECT' && forgedIds.has('oxide')) id = 'oxide';
+    else if (hit.quality === 'PERFECT' && forgedIds.has('ST_mirror')) id = 'ST_mirror';
+    if (!id) return;
+    lastForgeBurst = now;
+    const activated = forgeRibbon.querySelector('.quick-forge-activated');
+    const label = forgeSkills.find(t => t.id === id)?.name || '工艺特性';
+    activated.textContent = label + ' 生效';
+    forgeRibbon.classList.remove('is-activated'); void forgeRibbon.offsetWidth;
+    forgeRibbon.classList.add('is-activated');
+  };
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   const trail = [], hitLabels = [], bursts = [], debris = [];
@@ -821,6 +854,7 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
       // 六层参数在一个地方绑定，不更改玩法刀损、强度或原生计分。
       Object.assign(marker,cutImpact({...marker,target:hit.target},{reducedMotion:motion.reduced()}));
       hitLabels.push(marker);bursts.push({...marker});
+      pulseForgeSkill(hit, next.time);
       /* 斩断的一瞬间留一份"碎块"记录：arenaStage 据此把靶具画成两半飞开。
          只加视觉事件，不改 run —— 判定与计分仍全部由 core 完成。 */
       if (hit.complete) debris.push({ x: hit.target.x, y: hit.target.y, type: hit.target.type,

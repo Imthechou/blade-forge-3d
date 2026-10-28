@@ -7,6 +7,7 @@
 import { emit, EVENTS } from '../platform/bus.js';
 import { deriveCutParams } from './cutParams.js';
 import { adaptBlade } from './bladeAdapter.js';
+import { applyForgeCutTraits } from './forgeTraitCuts.js';
 import { createEncounter, selectEncounterMaterial, phaseQuota, stageSpawnInterval } from './arenaEncounters.js';
 
 import { ARENA_V3, ARENA_MATERIALS, ARENA_STAT_CEILING, arenaStat } from '../data/balance.js';
@@ -59,7 +60,7 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
   const adaptation = adaptBlade(blade);
   const stats = Object.fromEntries(Object.entries(adaptation.permanentStats).map(([k,v])=>[k,arenaStat(v)]));
   const actualSeed = seed == null ? (Date.now() >>> 0) : Number(seed) >>> 0;
-  const params = deriveCutParams(stats, buffs);
+  const params = applyForgeCutTraits(deriveCutParams(stats, buffs), blade);
   params.adaptation = {
     version: adaptation.version,
     effectVersion: adaptation.effectVersion,
@@ -84,6 +85,11 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
       projectFactor: { ...adaptation.projectFactor },
       effectSummary: adaptation.effectSummary.map((e) => ({ ...e })),
       effects: Object.fromEntries(Object.entries(blade.effects || {}).map(([k,v]) => [k, clamp(Number(v)||0,0,.5)])),
+      // 局内抽取强化或重开需要重新计算临时参数：保留工艺来源，
+      // 避免首次建局的刀技在第 0 秒选牌后被 deriveCutParams 覆盖丢失。
+      tags: blade.tags && typeof blade.tags === 'object' && !Array.isArray(blade.tags) ? { ...blade.tags } : {},
+      tagTiers: Array.isArray(blade.tagTiers) ? blade.tagTiers.map(t => ({ ...t })) : [],
+      traits: Array.isArray(blade.traits) ? [...blade.traits] : [],
     },
     adaptation, buffs: [...buffs], params, ghost, matchId, winStreak,
     version: ARENA_V3.version, styleId: styleId || encounter?.styleId || 'composite', targetScore,
@@ -299,7 +305,7 @@ export function chooseAugment(run, id) {
   if (!run || run.done || run.phase !== 'buff-choice' || !run.offers.includes(id)) return {ok:false,reason:'强化不在本次候选中'};
   const oldMax=run.maxHealth;
   run.buffs.push(id);
-  run.params=deriveCutParams(run.blade.stats,run.buffs);
+  run.params=applyForgeCutTraits(deriveCutParams(run.blade.stats,run.buffs), run.blade);
   run.maxHealth=run.params.healthMax;
   run.health=clamp(run.health + run.maxHealth - oldMax, 0, run.maxHealth);
   run.resonances=resonanceOf(run.buffs);

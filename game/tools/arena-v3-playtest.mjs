@@ -26,7 +26,13 @@ async function newGame(name,{width=390,height=844,virtual=true}={}) {
   await page.goto(base,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>{const boot=document.querySelector('#boot');return document.querySelector('.page[data-page="home"]')&&(!boot||boot.classList.contains('is-gone'));},null,{timeout:60000});
   await page.evaluate(async()=> (await import('/src/ui/router.js')).go('arena'));
-  if(virtual){await page.clock.install({time:new Date('2026-10-28T00:00:00Z')});await page.clock.pauseAt(new Date('2026-10-28T00:00:00.200Z'));}
+  if(virtual){
+    // pauseAt must be in the FUTURE relative to Playwright's installed clock.
+    // A fixed +200ms target can already be in the past on SwiftShader CI.
+    await page.clock.install({time:new Date('2026-10-28T00:00:00Z')});
+    const clockNow = await page.evaluate(()=>Date.now());
+    await page.clock.pauseAt(new Date(clockNow+2000));
+  }
   return {page,context,virtual};
 }
 async function choose(page,virtual) {

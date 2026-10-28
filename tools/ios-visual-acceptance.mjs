@@ -4,13 +4,16 @@ import { chromium } from 'playwright';
 
 const root = path.resolve(process.cwd(), 'visual-acceptance');
 await fs.mkdir(root, {recursive:true});
-const browser = await chromium.launch({headless:true, executablePath:'/usr/bin/google-chrome',
-  args:['--no-sandbox','--disable-dev-shm-usage','--enable-unsafe-swiftshader','--use-angle=swiftshader']});
+
 const report={date:new Date().toISOString(),checks:[],consoleErrors:[],failedRequests:[],failures:[],screenshots:[]};
 const candidate='http://127.0.0.1:8123/';
 const before='https://imthechou.github.io/blade-forge-3d/';
 const sizes=[{width:390,height:844},{width:390,height:740},{width:390,height:680},{width:375,height:667},{width:1280,height:900}];
 async function capture(label,url,viewport,check) {
+  // One Chromium/SwiftShader process per viewport; a single long-lived GPU context
+  // can stall WebGL shader preparation after several mobile profiles.
+  const browser = await chromium.launch({headless:true, executablePath:'/usr/bin/google-chrome',
+    args:['--no-sandbox','--disable-dev-shm-usage','--enable-unsafe-swiftshader','--use-angle=swiftshader']});
   const mobile=viewport.width<600;
   const context=await browser.newContext({viewport,deviceScaleFactor:mobile?2:1,isMobile:mobile,hasTouch:mobile,locale:'zh-CN',reducedMotion:'reduce'});
   const page=await context.newPage();
@@ -46,7 +49,34 @@ async function capture(label,url,viewport,check) {
       canvasVisible:[...document.querySelectorAll(sel+' canvas')].some(x=>x.getClientRects().length&&x.width>10&&x.height>10),
       actualPage:document.querySelector(sel)?.dataset.page,
       mobileDevice:matchMedia('(pointer:coarse)').matches,
-      bodyScrolling:document.querySelector(sel+' .forge-body')?.scrollHeight>document.querySelector(sel+' .forge-body')?.clientHeight+3
+      bodyScrolling:document.querySelector(sel+' .forge-body')?.scrollHeight>document.querySelector(sel+' .forge-body')?.clientHeight+3,
+      cardSpacing:[...document.querySelectorAll(sel+' .dcard')].map(card=>{
+        const r=card.getBoundingClientRect();
+        const title=card.querySelector('.dcard-title')?.getBoundingClientRect();
+        const plan=card.querySelector('.dcard-plan')?.getBoundingClientRect();
+        const tier=card.querySelector('.dcard-tier')?.getBoundingClientRect();
+        return {name:card.querySelector('.dcard-title')?.textContent,
+          titleToBuild:plan&&title?+(plan.top-title.bottom).toFixed(1):null,
+          buildToTier:tier&&plan?+(tier.top-plan.bottom).toFixed(1):null,
+          bottomClearance:+(r.bottom-(tier?.bottom??plan?.bottom??r.bottom)).toFixed(1)};
+      }),
+      cardLayoutFits:[...document.querySelectorAll(sel+' .dcard')].every(card=>{
+        const rect=card.getBoundingClientRect();
+        const name=card.querySelector('.dcard-title')?.getBoundingClientRect();
+        const plan=card.querySelector('.dcard-plan')?.getBoundingClientRect();
+        const art=card.querySelector('.dcard-visual')?.getBoundingClientRect();
+        const menu=card.querySelector('.dcard-more')?.getBoundingClientRect();
+        const tier=card.querySelector('.dcard-tier')?.getBoundingClientRect();
+        const bottom=tier?.bottom??plan?.bottom;
+        return !!(name&&plan&&art&&menu)
+          && card.querySelector('.dcard-meta,.dcard-stage-mark')===null
+          && !!card.querySelector('.dcard-more svg')
+          && menu.right<=rect.right+.5 && menu.top>=rect.top-.5
+          && name.top>=art.bottom+4
+          && plan.top>=name.bottom && plan.top-name.bottom<=7
+          && (!tier || (tier.top>=plan.bottom && tier.top-plan.bottom<=8))
+          && bottom<=rect.bottom-5;
+      })
     };
   });
   const prefix=label+'-'+viewport.width+'x'+viewport.height;
@@ -79,19 +109,20 @@ async function capture(label,url,viewport,check) {
       beforeSelect.actions?.top>=0 && beforeSelect.stage?.height>=165 &&
       beforeSelect.rail?.top>=beforeSelect.stage?.bottom-1 &&
       beforeSelect.actions?.top>=beforeSelect.cards?.bottom-1 &&
-      !beforeSelect.horizontalOverflow && !beforeSelect.bodyScrolling;
+      !beforeSelect.horizontalOverflow && !beforeSelect.bodyScrolling &&
+      beforeSelect.cardLayoutFits && state.cardLayoutFits;
     record.oneScreen=fit;
     if(!fit || !selected || (viewport.height>=680&&!progressed))
       report.failures.push({label,viewport,fit,selected,progressed});
   }
   console.log('CASE',JSON.stringify(record));
   await context.close();
+  await browser.close();
 }
 for(const viewport of sizes) {
   if(viewport.width===390&&viewport.height===740) await capture('BEFORE',before,viewport,false);
   await capture('AFTER',candidate,viewport,true);
 }
-await browser.close();
 await fs.writeFile(path.join(root,'report.json'),JSON.stringify(report,null,2));
 console.log('SUMMARY',JSON.stringify({passed:report.failures.length===0,failures:report.failures,errors:report.consoleErrors.length,failedRequests:report.failedRequests.length,screenshots:report.screenshots.length}));
 if(report.failures.length>0 || report.consoleErrors.length>0 || report.failedRequests.length>0) process.exitCode=1;
