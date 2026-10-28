@@ -7,6 +7,7 @@
  *
  * Each motif uses the same hand-drawn rounded strokes and flat 3-color palette.
  */
+import { knifeFormOf, paintS4Knife } from './forgeKnifeStickers.js';
 const NS = 'http://www.w3.org/2000/svg';
 // Ordered by position in a card's name; secondary matched semantics form a
 // small supporting glyph. This is not an arbitrary palette swap by rarity.
@@ -111,7 +112,20 @@ export function doodleSpec(card) {
     || rules[(seed>>>9)%rules.length].id;
   // Deterministic by name/id: two identical names in different stages do not
   // accidentally clone one entire sticker; all 218 card IDs stay distinct.
-  const theme=paletteFor(name);
+  const knifeType=knifeFormOf(card);
+  // S4 begins with the knife silhouette, not a generic "knife" semantic.
+  // Glow-name variants retain their named light treatment (虹/辉/微光).
+  const knifeBaseTheme={
+    balisong:'verdant',bayonet:'cobalt',folding:'timber',gladius:'gold',
+    karambit:'crimson',kris:'violet',machete:'forge',saber:'stream',
+    skull:'obsidian',straight:'lattice',survival:'verdant',tangdao:'cobalt',
+  }[knifeType];
+  const defaultTheme=paletteFor(name);
+  const base=knifeBaseTheme && !/流光|辉光|微光/.test(name)
+    ? themes.find(t=>t.key===knifeBaseTheme) : null;
+  const theme=base ? {theme:base.key,palette:{
+    paper:base.paper,field:base.field,main:base.main,pop:base.pop,ink:base.ink
+  },label:base.label} : defaultTheme;
   const motion=motionFor(name,primary,seed);
   return {
     primary,secondary,seed,palette:theme.palette,theme:theme.theme,colorName:theme.label,
@@ -291,6 +305,9 @@ export function cardDoodle(card) {
   svg.setAttribute('class','dcard-doodle');
   svg.setAttribute('aria-hidden','true');
   svg.setAttribute('focusable','false');
+  // S4 gets genuinely distinct drawn knife geometry (12 forms × base/glow),
+  // while S1-S3/S5-S9 keep the established semantic doodle family.
+  if(paintS4Knife(svg,s,card)) return svg;
   // A translucent color wash lets the surrounding glass card remain visible.
   e(svg,'rect',{x:0,y:0,width:160,height:64,fill:p.paper,opacity:'.26'});
   const brush=s.motion==='ribbon'
