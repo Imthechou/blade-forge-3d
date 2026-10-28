@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applyForgeCutTraits, resolveForgeCutTraits } from '../src/core/forgeTraitCuts.js';
 import { deriveCutParams, deriveCutParamsForBlade } from '../src/core/cutParams.js';
-import { createChallenge } from '../src/core/arenaChallenge.js';
+import { createChallenge, chooseAugment, restartChallenge } from '../src/core/arenaChallenge.js';
 
 const stats = { strength: 80, toughness: 80, sharpness: 80, craft: 80, design: 80, spirit: 80 };
 const base = () => deriveCutParams(stats, []);
@@ -54,4 +54,19 @@ test('45s live challenge actually consumes forged trait effects from archived bl
   assert.ok(forged.run.params.iceChain > plain.run.params.iceChain);
   assert.ok(forged.run.params.hardPowerMult > plain.run.params.hardPowerMult);
   assert.ok(forged.run.params.forgeTraits.some(t=>t.id==='cold'));
+});
+
+test('forging powers survive all three rounds of live augment picks and a restart', () => {
+  const created = createChallenge({ id:'persistent', stats, tags:{ cold:6, precision:2 }, traits:['ST_mirror'] }, { seed:456, augments:true });
+  assert.ok(created.ok);
+  const run = created.run;
+  const ids = x => x.params.forgeTraits.map(t => t.id).sort();
+  const expected = ['ST_mirror','cold','precision'].sort();
+  assert.deepEqual(ids(run),expected);
+  assert.ok(chooseAugment(run,run.offers[0]).ok);
+  assert.deepEqual(ids(run),expected);
+  assert.ok(run.params.iceChain > 0 && run.params.weakMap);
+  const second = restartChallenge(run);
+  assert.ok(second.ok);
+  assert.deepEqual(ids(second.run),expected);
 });
