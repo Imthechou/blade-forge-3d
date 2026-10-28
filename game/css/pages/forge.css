@@ -267,3 +267,147 @@
 .build-earned { padding:7px 10px; background:var(--base-2); border-radius:10px; font-size:12px; line-height:1.5; color:var(--face-2); }
 @media(max-height:740px) { .page[data-page="forge"]{--card-h:201px} .page[data-page="forge"] .dcard-visual{flex-basis:27px} .page[data-page="forge"] .dcard-meta{flex-basis:31px;min-height:31px} .page[data-page="forge"] .dcard-detail{min-height:31px} }
 @media(max-height:660px) { .page[data-page="forge"] .dcard-visual{flex-basis:21px} .page[data-page="forge"] .dcard-title{min-height:27px;max-height:27px;font-size:12px;line-height:13px} .page[data-page="forge"] .dcard-tier{flex-basis:15px;max-height:15px;gap:2px} .page[data-page="forge"] .dcard-build-result{font-size:9px;line-height:10px;min-height:10px} .page[data-page="forge"] .dcard-meta{flex-basis:28px;min-height:28px} .page[data-page="forge"] .dcard-detail{min-height:28px} }
+
+
+/* ── 工艺卡精修 V6 · name-painted graphic, restrained editorial layout ── */
+.page[data-page="forge"] .dcard {
+  --rarity-glow:#9ea9bc;
+  background:
+    linear-gradient(150deg,rgba(255,255,255,.94),
+      color-mix(in srgb,var(--dcard-art-tint,#dfe6f6) 13%,rgba(242,245,255,.83)) 72%,
+      rgba(255,255,255,.90));
+}
+.page[data-page="forge"] .dcard--r-common { --rarity-glow:#a0adbd; --card-rarity:#a0adbd; }
+.page[data-page="forge"] .dcard--r-fine { --rarity-glow:#33b794; --card-rarity:#33b794; }
+.page[data-page="forge"] .dcard--r-rare { --rarity-glow:#5a95ef; --card-rarity:#5a95ef; }
+.page[data-page="forge"] .dcard--r-epic { --rarity-glow:#9e71ee; --card-rarity:#9e71ee; }
+.page[data-page="forge"] .dcard--r-legend { --rarity-glow:#e9ab48; --card-rarity:#e9ab48; }
+.page[data-page="forge"] .dcard--r-mythic { --rarity-glow:#e96ca8; --card-rarity:#e96ca8; }
+.page[data-page="forge"] .dcard.is-picked {
+  transform:translateY(-2px);
+  border-color:color-mix(in srgb,var(--rarity-glow) 35%,white);
+  background:linear-gradient(145deg,rgba(255,255,255,.98),
+    color-mix(in srgb,var(--dcard-art-tint,#f3f0ff) 17%,rgba(250,251,255,.94)));
+  box-shadow:
+    0 0 0 1.5px color-mix(in srgb,var(--rarity-glow) 61%,white),
+    0 0 12px 1px color-mix(in srgb,var(--rarity-glow) 29%,transparent),
+    0 0 28px 3px color-mix(in srgb,var(--rarity-glow) 17%,transparent),
+    0 8px 19px rgba(39,49,96,.085),
+    inset 0 0 14px color-mix(in srgb,var(--rarity-glow) 7%,transparent);
+}
+.page[data-page="forge"] .dcard.is-picked::before {
+  opacity:.95;height:2px;left:12%;right:12%;
+  box-shadow:0 0 10px color-mix(in srgb,var(--rarity-glow) 55%,transparent);
+}
+.page[data-page="forge"] .dcard-visual {
+  background:
+    radial-gradient(ellipse at 24% 43%,color-mix(in srgb,var(--dcard-art-tint,#dfe6f6) 30%,transparent),transparent 76%),
+    linear-gradient(139deg,rgba(255,255,255,.63),rgba(236,240,251,.31));
+}
+.page[data-page="forge"] .dcard-title {
+  font-size:13.5px;font-weight:790;line-height:16px;letter-spacing:-.035em;
+  color:var(--face);
+}
+.page[data-page="forge"] .dcard-plan {
+  display:grid;grid-template-rows:13px 12px;gap:1px;min-height:26px;max-height:26px;
+}
+.page[data-page="forge"] .dcard-build-title {
+  font-weight:750;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:color-mix(in srgb,var(--dcard-ink,#394564) 84%,var(--face));
+}
+.page[data-page="forge"] .dcard-build-title::before {
+  flex-shrink:0;background:var(--dcard-color,var(--accent));box-shadow:none;
+}
+.page[data-page="forge"] .dcard-build-result { letter-spacing:-.01em; }
+.page[data-page="forge"] .dcard-build-result.is-up {
+  color:var(--accent);font-weight:780;
+}
+.page[data-page="forge"] .dcard-tier {
+  padding-top:1px;color:var(--face-3);
+}
+.page[data-page="forge"] .dcard-layer-dots {height:4px;gap:3px}
+.page[data-page="forge"] .dcard-layer-dots i.is-added {
+  box-shadow:0 0 4px color-mix(in srgb,var(--accent) 22%,transparent);
+}
+.page[data-page="forge"] .dcard-meta {border-top-color:rgba(102,119,159,.12);gap:3px;}
+.page[data-page="forge"] .dcard-detail {
+  display:inline-flex;align-items:center;justify-content:flex-end;
+  white-space:nowrap;gap:2px;letter-spacing:-.01em;font-weight:740;
+}
+.page[data-page="forge"] .dcard-detail::after {
+  content:'›';font:750 18px/1 var(--font-num);transform:translateY(-1px);
+}
+.page[data-page="forge"] .dcard.is-picked .dcard-meta>.grow {
+  color:color-mix(in srgb,var(--rarity-glow) 70%,#394568);
+  font-weight:760;
+}
+
+/* Card-detail sheet: large art first, airy grid second, factual copy last.
+   All colours are derived from the card's own named illustration. */
+.sheet.forge-card-detail-dialog {width:min(440px,calc(100vw - 28px));}
+.forge-card-detail {display:grid;gap:13px;min-width:0}
+.forge-detail-art {
+  position:relative;overflow:hidden;height:118px;border-radius:17px;
+  background:radial-gradient(ellipse at 26% 40%,
+    color-mix(in srgb,var(--dcard-art-tint,#e1e6f8) 45%,transparent),transparent 75%),
+    linear-gradient(140deg,rgba(255,255,255,.95),rgba(230,235,249,.70));
+  border:1px solid rgba(110,129,175,.15);
+  box-shadow:inset 0 1px rgba(255,255,255,.95);
+}
+.forge-detail-art .dcard-doodle {position:absolute;inset:0;width:100%;height:100%;display:block}
+.forge-detail-identity {display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0}
+.forge-detail-role {
+  color:var(--face-2);font-size:12px;font-weight:730;
+}
+.forge-detail-stage {margin-left:auto;min-width:0;color:var(--face-3);font:620 10px/1.35 var(--font-num)}
+.forge-detail-description {
+  margin:0;color:var(--face-2);font-size:13px;font-weight:480;
+  line-height:1.7;letter-spacing:.005em;
+}
+.forge-detail-section {display:grid;gap:9px;min-width:0}
+.forge-detail-section-head {display:flex;justify-content:space-between;align-items:baseline;gap:6px;}
+.forge-detail-section-head strong {font-size:13px;font-weight:790;color:var(--face);}
+.forge-detail-section-head>span {color:var(--face-4);font-size:10px;text-align:right}
+.forge-detail-stats {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.forge-detail-stat {
+  min-width:0;min-height:44px;display:flex;align-items:center;
+  justify-content:space-between;gap:5px;padding:9px 11px;
+  border:1px solid rgba(125,138,179,.13);border-radius:11px;
+  background:rgba(242,245,252,.61);
+}
+.forge-detail-stat-name {color:var(--face-3);font-size:11px;white-space:nowrap}
+.forge-detail-stat-value {font-size:11px;font-weight:740;white-space:nowrap;color:var(--face-2)}
+.forge-detail-stat.is-positive .forge-detail-stat-value {color:var(--accent)}
+.forge-detail-stat.is-negative .forge-detail-stat-value {color:#c26c6a}
+.forge-detail-tags {display:flex;flex-wrap:wrap;gap:6px}
+.forge-detail-tag {
+  padding:6px 10px;border-radius:9px;border:1px solid var(--glass-border);
+  background:color-mix(in srgb,var(--accent) 6%,rgba(255,255,255,.77));
+  color:var(--face-2);font-size:11px;font-weight:680;
+}
+.forge-detail-empty {color:var(--face-3);font-size:12px}
+.forge-detail-summary {
+  display:grid;gap:9px;padding:12px;border-radius:13px;
+  background:rgba(237,242,251,.66);border:1px solid rgba(119,135,172,.1);
+}
+.forge-detail-metric {display:flex;justify-content:space-between;align-items:baseline;gap:9px}
+.forge-detail-metric span,.forge-detail-result span {font-size:11px;color:var(--face-3)}
+.forge-detail-metric strong {font:750 13px/1.3 var(--font-num);color:var(--face-2)}
+.forge-detail-metric strong.is-risky {color:#b9754c}
+.forge-detail-metric strong.is-safe {color:#309881}
+.forge-detail-result {display:grid;gap:5px;padding-top:9px;border-top:1px solid rgba(126,137,170,.13)}
+.forge-detail-result p {font-size:12px;line-height:1.6;color:var(--face-2);margin:0}
+@media(max-width:390px) {
+  .forge-detail-art {height:98px}
+  .forge-card-detail {gap:11px}
+  .forge-detail-stat {padding:8px;min-height:40px}
+  .forge-detail-stage {width:100%;margin-left:0}
+}
+@media(max-height:660px) {
+  .page[data-page="forge"] .dcard-plan {grid-template-rows:12px 10px;gap:1px;min-height:23px;max-height:23px}
+  .page[data-page="forge"] .dcard-visual {flex-basis:21px}
+  .forge-detail-art {height:86px}
+}
+@media(prefers-reduced-motion:reduce) {
+  .page[data-page="forge"] .dcard {transition:none}
+}
