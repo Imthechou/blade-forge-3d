@@ -41,7 +41,7 @@ let sourceCache = null;
    版本号进 three 的 program cache key（customProgramCacheKey），源码变了必须跟着变，
    否则同会话里可能命中上一版的 program。 */
 /* v5：补回 temper / tune / edgeGlow 三个叠加层（见下方调用点注释），改源码必须 bump */
-export const FAMILY_VERSION = 'bladeV2:63';
+export const FAMILY_VERSION = 'bladeV2:64';
 
 /** 刀身上真正会用到阶段效果函数的阶段（S8 只作用于柄，不在其中）。 */
 export const STAGE_FX = [1, 2, 3, 4, 5, 6, 7, 9];
@@ -942,10 +942,14 @@ const MAP_FRAGMENT = `
         float billetCeiling = max( 0.060, billetLum * 1.08 );
         float excess = max( 0.0, forgedLum - billetCeiling );
         col *= ( forgedLum - 0.90 * excess ) / forgedLum;
-        /* Dark hammered troughs should read as relief, never as fresh
-           white stripes. S3 is grayscale/roughness, not self-illumination. */
+        /* The selected card already has grayscale grooves, but they were
+           too subtle at mobile zoom while broad front faces were flat.
+           Deepen *only dark grooves*, strongest when viewed front-on.
+           Never lift highlights, alter steel hue, or change later stages. */
         float billetFace = smoothstep( 0.25, 0.80, clamp( vS3PlanarFace, 0.0, 1.0 ) );
-        col *= 1.0 - 0.13 * max( 0.0, -sig ) * billetFace * s3Surface;
+        float billetFacing = 1.0 - smoothstep( 0.25, 0.72, k3dFres );
+        float grooveDepth = mix( 0.13, 0.27, billetFacing );
+        col *= 1.0 - grooveDepth * max( 0.0, -sig ) * billetFace * s3Surface;
       }
     }
 
