@@ -218,3 +218,8 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 
 /* PC 端：不是桌面版布局，是同一套移动端 UI 居中，两侧用阶段色极浅纯色撑住 */
 @media (min-width: 560px) { body { background: var(--base-0); } }
+
+/* Quiet icon-only dialog dismissal; screen reader gets aria-label="关闭". */
+.sheet-x-icon {width:19px;height:19px;display:block;pointer-events:none}
+.sheet-x {background:rgba(255,255,255,.55);transition:background .15s,color .15s}
+.sheet-x:hover {background:rgba(234,236,250,.9);color:var(--accent)}
