@@ -163,8 +163,8 @@ test('S3 front-on microrelief is stronger without affecting later stages or brig
   assert.match(detail,/reliefMask \*= 1\.0 - 0\.92 \* smoothstep/);
   assert.match(shader,/float billetFacing = 1\.0 - smoothstep\( 0\.25, 0\.72, k3dFres \)/);
   assert.match(shader,/float grooveDepth = mix\( 0\.10, 0\.24, billetFacing \)/);
-  assert.match(shader,/float grooveSignal = smoothstep\\( 0\\.03, 0\\.34, max\\( 0\\.0, -sig \\) \\)/);
-  assert.match(shader,/float grooveAA = 1\\.0 - smoothstep\\( 0\\.35, 0\\.80, fwidth\\( sig \\) \\)/);
+  assert.match(shader,/float grooveSignal = smoothstep\( 0\.03, 0\.34, max\( 0\.0, -sig \) \)/);
+  assert.match(shader,/float grooveAA = 1\.0 - smoothstep\( 0\.35, 0\.80, fwidth\( sig \) \)/);
   assert.match(shader,/grooveDepth \* grooveSignal \* grooveAA \* billetFace \* s3Surface/);
   assert.match(shader,/float billetCeiling = max\( 0\.060, billetLum \* 1\.08 \)/);
   assert.match(shader,/bladeV2:64/);
