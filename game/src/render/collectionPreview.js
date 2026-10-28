@@ -24,6 +24,8 @@ function showState(host, message, kind = 'loading') {
   host.dataset.state = kind;
   const label = document.createElement('span');
   label.className = 'blade-thumb-state';
+  label.setAttribute('role', 'status');
+  label.setAttribute('aria-live', 'polite');
   label.textContent = message;
   host.appendChild(label);
 }
@@ -124,7 +126,7 @@ export function collectionStageStats() {
     return;
   }
   const key = fingerprint(record);
-  const paint = dataUrl => {
+  const paint = async dataUrl => {
     if (!host.isConnected) return;
     if (!dataUrl?.dataUrl) {
       showState(host, '档案外观暂不可预览', 'unavailable');
@@ -137,6 +139,14 @@ export function collectionStageStats() {
     image.alt = `${record.bladeName || '成刀'}的档案外观`;
     image.decoding = 'async';
     image.src = dataUrl.dataUrl;
+    // Keep the loading placeholder until the actual PNG is decoded; never flash an empty frame.
+    try {
+      if (typeof image.decode === 'function') await image.decode();
+    } catch (_) {
+      if (host.isConnected) showState(host, '档案外观暂不可预览', 'unavailable');
+      return;
+    }
+    if (!host.isConnected) return;
     host.replaceChildren(image);
     host.dataset.state = 'ready';
   };

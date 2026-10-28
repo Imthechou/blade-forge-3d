@@ -426,3 +426,18 @@ button.blade-card-v2 { cursor: pointer; width: 100%; }
 .ws-collection-grid .bcv-compare-btn[aria-pressed="true"] { background:var(--accent-soft); border-color:var(--accent-line); }
 .ws-fracture-entry { background:var(--surface-glass); border-color:var(--glass-border); }
 @media (max-width:360px) { .ws-collection-grid{gap:8px} .ws-collection-grid .blade-card-v2{padding:8px} .ws-collection-grid .bcv-art,.ws-collection-grid .bcv-art>.blade-thumb{min-height:130px;height:130px} }
+
+/* Collection thumbnails: show an honest loading state until real PBR snapshots decode. */
+.ws-collection-grid .bcv-art {
+  border: 1px solid rgba(95, 105, 170, .11);
+  background: radial-gradient(ellipse 65% 15% at 50% 87%, rgba(96, 116, 195, .16), transparent 80%),
+    linear-gradient(155deg, rgba(255,255,255,.70), rgba(219,229,251,.45));
+}
+.blade-thumb[data-state="loading"] { display: grid; place-items: center; overflow: hidden; }
+.blade-thumb[data-state="loading"] .blade-thumb-state { display: grid; justify-items: center; gap: 10px; color: var(--face-2); font-size: 11px; }
+.blade-thumb[data-state="loading"] .blade-thumb-state::before {
+  content: ''; width: 25px; height: 25px; border: 2px solid rgba(112,85,223,.15);
+  border-top-color: var(--accent); border-radius: 50%; animation: thumb-loading 1.1s linear infinite;
+}
+@keyframes thumb-loading { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .blade-thumb[data-state="loading"] .blade-thumb-state::before { animation: none; } }

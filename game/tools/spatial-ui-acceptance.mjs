@@ -132,9 +132,20 @@ try {
     await check(`${width}: collection cards, compare selection, modal`,async()=>{
       await page.evaluate(async()=>(await import('/src/ui/pages/workshop.js')).openTab('collection'));
       await page.locator('.ws-collection-grid').waitFor();
+      // A green test must show real archived PBR knives, not unfinished loading labels.
+      await page.waitForFunction(() => {
+        const thumbs = [...document.querySelectorAll('.ws-collection-grid .blade-thumb')].slice(0, 2);
+        return thumbs.length === 2 && thumbs.every(n => n.dataset.state === 'ready'
+          && n.querySelector('img.blade-thumb-image')?.complete
+          && n.querySelector('img.blade-thumb-image')?.naturalWidth > 0);
+      }, null, { timeout: 70000 });
+      const readyThumbnails = await page.locator('.ws-collection-grid .blade-thumb[data-state="ready"] img').count();
+      assert.ok(readyThumbnails >= 2, 'two real collection thumbnails must render before visual acceptance');
       await shot(page,`${width}-collection`);
       const columns=await page.locator('.ws-collection-grid').evaluate(n=>getComputedStyle(n).gridTemplateColumns.split(' ').length);
       assert.equal(columns,2);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+      assert.equal(overflow, false, 'collection must not overflow the viewport');
       await page.getByRole('button',{name:'加入比较',exact:true}).first().click();
       await page.getByRole('button',{name:'加入比较',exact:true}).first().click();
       await page.getByRole('button',{name:'比较这两把',exact:true}).click();
