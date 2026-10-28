@@ -39,6 +39,16 @@ export function buildNormalFragment() {
     #ifndef FLAT_SHADED
       nFres = 1.0 - clamp( abs( dot( normalize( vNormal ), normalize( vViewPosition ) ) ), 0.0, 1.0 );
     #endif
+    /* S3 billet front-on readability: the face-on view normally receives
+       only 30% of the physical bump; grazing sides receive up to 80%.
+       Compensate on the broad front/back *only* while S3 card is selected.
+       Never modify subsequent knife stages or bevels/edges. */
+    float s3FrontBoost = 0.0;
+    if ( uV2Preserve > 0.5 && uV2Proc.x > 1.5 && uV2Proc.x < 2.5 && uS3On > 0.5 ) {
+      float planar = smoothstep( 0.52, 0.88, clamp( vS3PlanarFace, 0.0, 1.0 ) );
+      float facing = 1.0 - smoothstep( 0.25, 0.72, nFres );
+      s3FrontBoost = planar * facing;
+    }
 
     /* ── ① 高度场：纹样亮度 + 方向性微脊 ──
        纹样来自烘焙图集 / S3 图（已在 mapFragment 算好），这里直接复用 k3dPat[]，
@@ -67,6 +77,9 @@ export function buildNormalFragment() {
       float quenched = step( 0.001, uCardFx[4].y );
       float patternWeight = mix( 0.16, 0.26, step( uV2Preserve, 0.5 ) )
                           * mix( 1.0, 0.34, quenched );
+      /* Prefer the already-sampled card height over unrelated stage motifs
+         on the front-facing S3 billet: 0.26 -> at most 0.34. No extra sample. */
+      patternWeight = min( 0.34, patternWeight + 0.08 * s3FrontBoost );
       /* The selected S3 height currently shares its normal with seven
          unrelated card motifs, hiding the forged relief in flat reflections.
          Strengthen its weight before quenching; the existing relief clamp,
@@ -233,8 +246,11 @@ export function buildNormalFragment() {
         vec3 surfGrad = sign( det ) * ( dFdx( h ) * r1 + dFdy( h ) * r2 );
         /* ① 先归一化（关键）—— 只留方向，丢掉 1e-5 的量级 */
         vec3 bumped = normalize( abs( det ) * normal - surfGrad * clamp( uV2Surf.x, 0.0, 1.0 ) );
-        /* ② 斜看时更明显（与金属直觉一致），再与几何法线按角度插值 */
+        /* Grazing angles already show the forge relief strongly; add a
+           bounded +0.18 to face-on S3 only, using the existing height
+           gradient and geometry/bevel protection. Never over-tilt normals. */
         float blend = clamp( 0.30 + 0.50 * clamp( nFres, 0.0, 1.0 ), 0.0, 0.90 ) * reliefMask;
+        blend = min( 0.75, blend + 0.18 * s3FrontBoost * reliefMask );
         normal = normalize( mix( normal, bumped, blend ) );
       }
     }
