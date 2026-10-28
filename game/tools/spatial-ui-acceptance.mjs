@@ -78,6 +78,18 @@ try {
       await fit(page,'.page.is-active .actions .btn--primary');
       const cards = page.locator('.page.is-active .dcard');
       for(let i=0;i<3;i++) await fit(page,`.page.is-active .dcard:nth-child(${i+1})`);
+      const art = await cards.evaluateAll(nodes => nodes.map(n => ({
+        name:n.querySelector('.dcard-title')?.textContent,
+        family:n.querySelector('.dcard-visual')?.dataset.doodleFamily,
+        signature:n.querySelector('.dcard-visual')?.dataset.doodleSignature,
+        paths:n.querySelectorAll('.dcard-visual svg path').length,
+        svg:!!n.querySelector('.dcard-visual svg.dcard-doodle'),
+        stageArt:getComputedStyle(n.querySelector('.dcard-visual'),'::before').content,
+      })));
+      assert.ok(art.every(a => a.svg && a.paths>=3 && a.family && a.signature && a.stageArt==='none'),
+        'doodle stickers must be real name-led vectors, without old steel pseudo art: '+JSON.stringify(art));
+      assert.equal(new Set(art.map(a=>a.signature)).size,3);
+      if(width===390) await shot(page,'390-doodle-choice');
       const before = await page.evaluate(async()=>JSON.stringify((await import('/src/app/game.js')).default.run.ledger));
       await cards.first().click();
       await page.locator('.stage-preview:not([hidden])').waitFor();
