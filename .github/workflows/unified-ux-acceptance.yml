@@ -1,0 +1,56 @@
+name: Whole-game mobile UX acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths: ['game/**', '.github/workflows/unified-ux-acceptance.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: whole-game-ux-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  mobile-ux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Browser and Chinese text
+        working-directory: game
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install ffmpeg
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-wqy-microhei
+          echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - name: Static and core checks
+        working-directory: game
+        run: npm run verify
+      - name: Run original WebGL game
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > ux-server.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:8123/ > /dev/null
+      - name: Narrow-phone interactions and all workshop dialogs
+        working-directory: game
+        run: node tools/unified-ux-acceptance.mjs
+      - name: Full 45 seconds with real pointer input and real wall clock
+        if: always()
+        working-directory: game
+        env:
+          FORGE_URL: http://127.0.0.1:8123/
+          ARENA_REALTIME: '1'
+          ARENA_CASE: quick-45s-real-pointer
+          ARENA_QA_OUT: unified-ux-evidence/realtime
+        run: node tools/arena-v3-playtest.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unified-ux-evidence
+          path: |
+            game/unified-ux-evidence/
+            ux-server.log
+          retention-days: 14

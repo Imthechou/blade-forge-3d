@@ -3070,8 +3070,8 @@
   },
   {
     "file": "src/ui/pages/arena.js",
-    "bytes": 175708,
-    "lines": 2672,
+    "bytes": 175840,
+    "lines": 2673,
     "imports": [
       "src/app/game.js",
       "src/core/arenaChallenge.js",
@@ -3188,8 +3188,8 @@
   },
   {
     "file": "src/ui/pages/workshop.js",
-    "bytes": 27726,
-    "lines": 559,
+    "bytes": 28391,
+    "lines": 566,
     "imports": [
       "src/app/game.js",
       "src/core/index.js",

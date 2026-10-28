@@ -146,11 +146,11 @@
 | [src/ui/icons.js](../src/ui/icons.js) | 25 | 1257 | icon |
 | [src/ui/minigameV4.js](../src/ui/minigameV4.js) | 254 | 13151 | renderHammerV4, renderEdgeV4 |
 | [src/ui/pages/appraise.js](../src/ui/pages/appraise.js) | 649 | 29597 | create, render, enter, leave |
-| [src/ui/pages/arena.js](../src/ui/pages/arena.js) | 2672 | 175708 | create, leave, openDailyChallenge, openQuickChallenge, openTournament, render |
+| [src/ui/pages/arena.js](../src/ui/pages/arena.js) | 2673 | 175840 | create, leave, openDailyChallenge, openQuickChallenge, openTournament, render |
 | [src/ui/pages/daily.js](../src/ui/pages/daily.js) | 34 | 1200 | create, render |
 | [src/ui/pages/forge.js](../src/ui/pages/forge.js) | 528 | 25466 | create, render, syncInspect, leave |
 | [src/ui/pages/home.js](../src/ui/pages/home.js) | 120 | 4920 | create, render, syncInspect |
-| [src/ui/pages/workshop.js](../src/ui/pages/workshop.js) | 559 | 27726 | create, render, openTab |
+| [src/ui/pages/workshop.js](../src/ui/pages/workshop.js) | 566 | 28391 | create, render, openTab |
 | [src/ui/router.js](../src/ui/router.js) | 77 | 2618 | PAGES, register, onNavigate, go, currentKey, start |
 | [src/ui/settingsSheet.js](../src/ui/settingsSheet.js) | 136 | 5598 | open |
 | [src/ui/shell.js](../src/ui/shell.js) | 72 | 2244 | create, sync |

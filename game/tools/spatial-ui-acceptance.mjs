@@ -216,6 +216,9 @@ try {
         const rec=await page.evaluate(async()=>(await import('/src/app/game.js')).default.record);
         assert.ok(rec&&!rec.fractured,'seed must complete a real blade');
         await fit(page,'.ap-try');await shot(page,'390-appraise');
+        await page.getByRole('button',{name:'作品操作'}).click();
+        await centered(page,'.sheet');await shot(page,'390-appraise-actions');
+        await page.keyboard.press('Escape');await page.locator('.sheet-mask').waitFor({state:'detached'});
         assert.equal(await page.locator('.ap-sec[data-step="top"] .ap-final-score').count(),1);
         assert.equal(await page.locator('.ap-stat-v.is-score').innerText(),String(rec.score));
         await page.reload();await page.waitForFunction(()=>window.__FORGE_PREP?.ready,null,{timeout:120000});

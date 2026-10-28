@@ -914,7 +914,8 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
       ? (run.risk?.status === 'failed' ? '结构失效' : run.risk?.status === 'warning' ? '⚠ 高负荷' : '刀况')
       : run.mode === 'formal' ? (run.risk?.status === 'failed' ? '结构失效' : '临时刀况') : '模拟刀况');
     phaseBar.style.transform=`scaleX(${Math.max(0,run.remaining)/(run.total || Challenge.CHALLENGE_SECONDS)})`;
-    if (pauseNode) { pauseNode.setAttribute('aria-label',run.paused?'继续':'暂停'); pauseNode.title=run.paused?'继续':'暂停'; }
+    const pauseLabel=run.paused?'继续':'暂停';
+    if (pauseNode && pauseNode.getAttribute('aria-label')!==pauseLabel) { pauseNode.setAttribute('aria-label',pauseLabel); pauseNode.title=pauseLabel; }
     updateMission();
     if(run.version==='arena-3') {
       const span=mission.querySelector('span');
