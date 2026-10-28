@@ -26,14 +26,14 @@ const rules = Object.freeze([
   { id:'star', re:/星|月|天|日|曜|辉|极光|光/g },
   { id:'frost', re:/冷|冰|寒|雪|霜|冻|零|蓝/g },
   { id:'flame', re:/热|焰|火|赤|灼|熔|炉|温/g },
-  { id:'flow', re:/流|波|液|水|虹|彩|渐|染|云/g },
+  { id:'flow', re:/流|波|液|水|虹|彩|渐|染|云|幕/g },
   { id:'shard', re:/晶|玉|矿|钛|金|银|钢|铁|铜|砂|瓷|石/g },
   { id:'fracture', re:/断|裂|碎|残|破|战痕|错/g },
   { id:'weave', re:/层|叠|丝|织|纹|格|线|缠|密/g },
   { id:'mirror', re:/镜|净|面|白|亮|抛|透|偏|哑/g },
   { id:'strike', re:/锤|压|击|受力|冲|疾|速|快/g },
   { id:'edge', re:/刃|锋|刀|剑|脊|尖|刻|切|磨/g },
-  { id:'grid', re:/构|控|定|匀|准|轴|工|机|模块|制|衡/g },
+  { id:'grid', re:/六边|构|控|定|匀|准|轴|工|机|模块|制|衡/g },
   { id:'organic', re:/木|竹|皮|翡|琥珀|柔|兽|爪|蝶|胶|节/g },
 ]);
 const tagFallback = Object.freeze({
