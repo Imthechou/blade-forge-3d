@@ -41,7 +41,7 @@ let sourceCache = null;
    版本号进 three 的 program cache key（customProgramCacheKey），源码变了必须跟着变，
    否则同会话里可能命中上一版的 program。 */
 /* v5：补回 temper / tune / edgeGlow 三个叠加层（见下方调用点注释），改源码必须 bump */
-export const FAMILY_VERSION = 'bladeV2:62';
+export const FAMILY_VERSION = 'bladeV2:66';
 
 /** 刀身上真正会用到阶段效果函数的阶段（S8 只作用于柄，不在其中）。 */
 export const STAGE_FX = [1, 2, 3, 4, 5, 6, 7, 9];
@@ -916,19 +916,23 @@ const MAP_FRAGMENT = `
       vec3 tinted = diffuseColor.rgb * ( uBladeBaseColor / max( 0.18, dot( uBladeBaseColor, vec3( 0.33 ) ) ) );
       float processBlend = clamp( uSkinTexStrength * 0.22
         + ( uCardFx[0].y + uCardFx[1].y ) * 0.10, 0.22, 0.62 );
-      /* The billet's baked orange model texture previously dominated 60%+
-         of the surface, obscuring which S3 forging card the player chose.
-         Only after S3 is actually selected, reveal the existing card-derived
-         metal grain; preserve the original hot forging character otherwise. */
-      if ( uV2Proc.x > 1.5 && uV2Proc.x < 2.5 && uS3On > 0.5 )
-        {
-          float billetFace = smoothstep( 0.25, 0.80, clamp( vS3PlanarFace, 0.0, 1.0 ) );
-          /* Prior 0.59 left 41% of the orange baked GLB color across the
-             whole face; reflection then masked the S3 card's imprint.
-             Reuse the S3 sample already fetched; no texture or program. */
-          processBlend = max( processBlend, mix( 0.68, 0.84, billetFace ) );
-        }
-      col = mix( tinted, col, processBlend );
+      /* S3 selected billet: engrave the original hot steel, don't replace
+         the authored GLB albedo with a bright, flat S1 colour. The selected
+         S3 texture has already been sampled as sig; only its dark troughs
+         remove albedo, while roughness/normal use the unchanged PBR chain.
+         No added fetch, derivative, Fresnel, or per-card shader program. */
+      if ( uV2Proc.x > 1.5 && uV2Proc.x < 2.5 && uS3On > 0.5 ) {
+        float billetFace = smoothstep( 0.25, 0.80, clamp( vS3PlanarFace, 0.0, 1.0 ) );
+        float darkGroove = max( 0.0, -sig ) * s3Surface;
+        float grooveDepth = mix( 0.26, 0.48, billetFace );
+        /* Keep every RGB component no brighter than its baked substrate.
+           Front-facing grain is now contrast from real dark hammer marks,
+           not extra specular energy or a whitening steel overlay. */
+        col = mix( tinted, min( tinted, col ), 0.30 );
+        col *= 1.0 - darkGroove * grooveDepth;
+      } else {
+        col = mix( tinted, col, processBlend );
+      }
       col *= mix( 1.0, 0.72 + 0.56 * tl, 0.55 );
     }
 
