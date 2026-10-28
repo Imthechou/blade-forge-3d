@@ -42,7 +42,7 @@ try {
     const context = await browser.newContext({ viewport: {width,height}, locale:'zh-CN', deviceScaleFactor:1,
       isMobile:width<500, hasTouch:true });
     const identity = {knifeType:'knife_tangdao',knifeTypeId:'tangdao',rarity:'rare',rarityName:'稀有',qualityName:'精制',history:[],seed:123};
-    const blades = [{...sampleBlade(150),...identity,score:320,bladeName:'冷镜唐刀'}, {...sampleBlade(100),...identity,id:'spatial-b',score:220,bladeName:'拉丝唐刀'}];
+    const blades = [{...sampleBlade(150),...identity,tags:{cold:4,precision:2},score:320,bladeName:'冷镜唐刀'}, {...sampleBlade(100),...identity,id:'spatial-b',score:220,bladeName:'拉丝唐刀'}];
     await context.addInitScript(blades => { if (!localStorage.getItem('bladeforge.save')) localStorage.setItem('bladeforge.save', JSON.stringify({version:1,cr:2000,collection:blades,settings:{tutorialSeen:true,sound:false,motion:'reduced'}})); }, blades);
     const page = current = await context.newPage();
     page.on('pageerror', e => report.errors.push({width,error:String(e)}));
@@ -194,7 +194,9 @@ try {
       assert.equal(await page.evaluate(()=>window.__FORGE_ARENA.run.elapsed),before);
       await page.locator('[data-augment-id]').first().click();
       await page.locator('.quick-choice-overlay').waitFor({state:'detached'});
-      await fit(page,'.quick-hud');await shot(page,`${width}-cutting`);
+      await fit(page,'.quick-hud');
+      assert.ok(await page.locator('.quick-forge-skills').count()===1,'cutting arena must show activated forged traits');
+      await shot(page,`${width}-cutting`);
       await page.getByRole('button',{name:'暂停',exact:true}).click();
       await centered(page,'.quick-choice-panel');
       await page.getByRole('button',{name:/继续挑战/}).click();
