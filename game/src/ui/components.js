@@ -453,6 +453,7 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
     role: 'button', tabindex: '0', 'aria-pressed': String(picked),
     'aria-label': `预览${card.name}，${card.rarityCn || RARITY_CN[card.rarity] || '普通'}，${tagTitle}路线，${tierText}`,
     dataset: { cardId: card.id, stage: card.stage },
+    style: `--dcard-art-tint:${art.palette.field};`,
     onclick: () => onPick && onPick(card),
     onkeydown: event => {
       if (event.target !== event.currentTarget) return;
