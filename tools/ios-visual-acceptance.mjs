@@ -50,6 +50,11 @@ async function capture(label,url,viewport,check) {
       actualPage:document.querySelector(sel)?.dataset.page,
       mobileDevice:matchMedia('(pointer:coarse)').matches,
       bodyScrolling:document.querySelector(sel+' .forge-body')?.scrollHeight>document.querySelector(sel+' .forge-body')?.clientHeight+3,
+      cardFooterOverflowPx:[...document.querySelectorAll(sel+' .dcard')].map(card=>{
+        const foot=card.querySelector('.dcard-meta')?.getBoundingClientRect();
+        const bounds=card.getBoundingClientRect();
+        return foot ? +(foot.bottom-bounds.bottom).toFixed(2) : 999;
+      }),
       cardFootersVisible:[...document.querySelectorAll(sel+' .dcard')].every(card=>{
         const foot=card.querySelector('.dcard-meta')?.getBoundingClientRect();
         const bounds=card.getBoundingClientRect();
