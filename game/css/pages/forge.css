@@ -496,3 +496,33 @@
   .page[data-page="forge"] .dcard-plan {min-height:24px;max-height:24px}
   .page[data-page="forge"] .dcard-tier {flex-basis:15px;max-height:15px}
 }
+
+
+/* Rare/SPECIAL cards have no layer track. Use that free area as a centered
+   activation state; keep the route label next to the title like normal cards. */
+.page[data-page="forge"] .dcard--instant .dcard-plan {
+  display:flex; flex-direction:column; justify-content:flex-start;
+  min-height:13px;max-height:13px;flex:0 0 13px;
+  gap:0;margin:0;
+}
+.page[data-page="forge"] .dcard--instant .dcard-instant {
+  display:flex;flex:1 1 0;min-height:28px;flex-direction:column;
+  align-items:center;justify-content:center;gap:3px;
+  text-align:center;padding:0 1px;
+}
+.page[data-page="forge"] .dcard-instant-eyebrow {
+  display:block;color:var(--face-3);
+  font-size:10px;line-height:12px;letter-spacing:.015em;
+}
+.page[data-page="forge"] .dcard-instant-action {
+  display:block;color:color-mix(in srgb,var(--dcard-color,var(--accent)) 73%,var(--face-2));
+  font-size:11px;font-weight:780;line-height:13px;white-space:nowrap;
+}
+@media(max-height:740px){
+  .page[data-page="forge"] .dcard--instant .dcard-plan {
+    min-height:13px;max-height:13px;flex-basis:13px;
+  }
+}
+@media(max-height:660px){
+  .page[data-page="forge"] .dcard--instant .dcard-instant {gap:2px}
+}
