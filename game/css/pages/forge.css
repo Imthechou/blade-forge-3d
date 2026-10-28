@@ -102,3 +102,41 @@
 @media (max-height:660px) { .page[data-page="forge"]{--card-h:162px;padding-top:6px} .page[data-page="forge"] .forge-rail{padding:4px 8px;gap:3px} .page[data-page="forge"] .dcard-title{min-height:30px;max-height:30px;font-size:13px;line-height:15px} .page[data-page="forge"] .dcard-dirs{flex-basis:28px;max-height:28px} .page[data-page="forge"] .dcard-dirs .chip{line-height:12px;padding:1px 2px} .page[data-page="forge"] .dcard-tier{font-size:11px;line-height:13px;max-height:26px} .page[data-page="forge"] .actions{padding-top:3px;padding-bottom:6px} .page[data-page="forge"] .actions .btn{min-height:44px} .stage-question{max-width:78%;font-size:11px} .forge-pad{gap:6px;padding-top:6px} }
 @media (max-height:500px) { .page[data-page="forge"]{overflow-y:auto} .page[data-page="forge"] .stage{flex:0 0 190px} }
 @media (prefers-reduced-motion:reduce) { .stage-advance-toast{animation:none;transform:translate(-50%,-50%)} .stage-advance .stage-badge,.hammer-stage-hit.is-striking .hammer-stage-cue,.hammer-hit.is-striking{animation:none} }
+
+/* Interactive 3D forge V4 — finger interaction stays on the existing GLB/PBR stage. */
+.page[data-page="forge"].is-hammer .stage{flex:1 1 0;min-height:40%}
+.page[data-page="forge"].is-hammer .forge-pad{max-height:none;overflow:visible;padding:8px 14px 5px;gap:6px}
+.page[data-page="forge"]:has(.edge-stage-canvas) .stage{flex:1 1 0;min-height:40%}
+.page[data-page="forge"]:has(.edge-stage-canvas) .forge-pad{max-height:none;overflow:visible;padding:8px 14px 5px;gap:6px}
+.hammer-stage-hit{overflow:hidden;align-items:flex-end;padding-bottom:45px}
+.hammer-stage-cue{font-size:12px;letter-spacing:.025em;padding:7px 15px;background:rgba(255,255,255,.73)}
+.forge-hammer-burst,.forge-hammer-float{position:absolute;left:var(--hit-x,50%);top:var(--hit-y,48%);pointer-events:none;opacity:0}
+.forge-hammer-burst{width:90px;height:90px;border-radius:50%;border:2px solid #ffd79b;transform:translate(-50%,-50%) scale(.3);box-shadow:0 0 28px #ffbb754d,inset 0 0 25px #ffc99488}
+.forge-hammer-burst::before,.forge-hammer-burst::after{content:'';position:absolute;inset:-30px;background:conic-gradient(from 35deg,transparent 0 12%,#efb26d 13% 14%,transparent 15% 25%,#fff1b2 27% 28%,transparent 30% 46%,#f5a861 47% 48%,transparent 49% 70%,#fff3d4 72% 73%,transparent 75%);clip-path:circle(43%)}
+.forge-hammer-burst::after{transform:rotate(40deg) scale(.8)}
+.forge-hammer-float{color:#6448d8;font:750 25px/1 var(--font-num);text-shadow:0 2px 8px white;transform:translate(-50%,-30px)}
+.hammer-stage-hit.is-striking .forge-hammer-burst{animation:hammerShock .38s ease-out forwards}
+.hammer-stage-hit.is-striking .forge-hammer-float{animation:hammerNumber .65s ease-out forwards}
+@keyframes hammerShock{0%{opacity:1;transform:translate(-50%,-50%) scale(.2)}80%{opacity:.7}100%{opacity:0;transform:translate(-50%,-50%) scale(1.35)}}
+@keyframes hammerNumber{0%{opacity:0;transform:translate(-50%,-10px)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-74px)}}
+.hammer-simple-hud,.edge-simple-hud{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.hammer-hud-value,.edge-simple-hud>div{display:grid;gap:2px;text-align:center;padding:8px 4px;background:var(--surface-glass);border:1px solid var(--glass-border);border-radius:15px}
+.hammer-hud-value small,.edge-simple-hud small{color:var(--face-3);font-size:10px}
+.hammer-hud-value b,.edge-simple-hud b{font:750 23px/1.3 var(--font-num);color:var(--accent)}
+.hammer-hud-value:first-child b{color:var(--stat-strength)}
+.hammer-hud-value.is-danger b,.hammer-risk-hot{color:var(--risk-danger)}
+.hammer-meter{display:grid;gap:5px}
+.hammer-meter-top,.hammer-next{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12px;color:var(--face-2)}
+.hammer-meter-top b{color:var(--accent)}
+.hammer-meter-rail,.edge-simple-rail{height:6px;overflow:hidden;background:rgba(107,99,172,.14);border-radius:10px}
+.hammer-meter-rail i,.edge-simple-rail i{display:block;height:100%;width:0;border-radius:inherit;background:var(--metal-grad);transition:width .16s ease-out}
+.hammer-footer,.edge-simple-hint{text-align:center;font-size:11px;line-height:1.35;color:var(--face-3);min-height:14px}
+.page[data-page="forge"] .stage.hammer-is-risky{box-shadow:0 10px 28px rgba(177,67,40,.16)}
+.edge-stage-canvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:6!important;touch-action:none;background:transparent!important;cursor:crosshair}
+.edge-simple-hud .edge-hud-result b{color:var(--stat-sharpness)}
+.edge-simple-rail{margin-top:3px}
+.edge-simple-actions{display:grid;grid-template-columns:80px minmax(0,1fr) 45px;gap:7px;align-items:center}
+.edge-simple-actions .btn{min-height:46px}
+.edge-skip{background:none;border:0;color:var(--face-3);font:500 12px var(--font);min-height:44px;cursor:pointer}
+@media(max-height:660px){.page[data-page="forge"].is-hammer .forge-pad,.page[data-page="forge"]:has(.edge-stage-canvas) .forge-pad{gap:3px;padding:5px 12px 3px}.hammer-hud-value,.edge-simple-hud>div{padding:4px 2px}.hammer-hud-value b,.edge-simple-hud b{font-size:19px}.hammer-footer,.edge-simple-hint{min-height:0}}
+@media(prefers-reduced-motion:reduce){.hammer-stage-hit.is-striking .forge-hammer-burst,.hammer-stage-hit.is-striking .forge-hammer-float{animation-duration:.01ms}}

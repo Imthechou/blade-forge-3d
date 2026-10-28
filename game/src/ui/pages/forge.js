@@ -20,6 +20,7 @@ import router from '../router.js';
 import { getStage } from '../../render/index.js';
 import { env } from '../../platform/env.js';
 import { createStageInspect } from '../stageControls.js';
+import { renderHammerV4, renderEdgeV4 } from '../minigameV4.js';
 
 let root = null;
 let pickedCard = null;
@@ -62,6 +63,7 @@ export function render() {
   const body = $('#forgeBody', root);
   // 每次重绘先移除旧热区，防止阶段推进/重新进入后残留挥锤接线。
   $('#forgeStage .hammer-stage-hit', root)?.remove();
+  $('#forgeStage .edge-stage-canvas', root)?.remove();
   root.classList.toggle('is-hammer', run?.phase === 'hammer');
   if (!run) {
     /* ★ 2026-10-14：空态**必须也往舞台上放一把刀**。
@@ -443,328 +445,19 @@ function statCn(k) {
   return { strength: '强度', toughness: '韧性', sharpness: '锋利', craft: '工艺', design: '设计', spirit: '灵性' }[k] || k;
 }
 
-/* ── S4 自由锻打 ─────────────────────────────────────── */
-
-function renderHammer(body, run) {
-  // 首遇 S4：说明"可连续锤、可随时收手"（V2.1 §27 第 3 条）
-  const info = Hammer.traitFor(run);
-  body.classList.add('hammer-panel');
-  const question = $('#forgeStage .stage-question', root);
-  if (question) question.textContent = '自由锻打 · 继续强化或随时收手';
-
-  /* ★ 修复：这行文案与舞台内的热区提示（hammer-stage-cue「点击此区域挥锤 · 无需瞄准」）
-     完全重复，且多占一行高度（一屏纵向预算很紧）。只保留贴着手势热区的那一个。 */
-
-  const hud = el('div', { class: 'hammer-stat', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
-  body.appendChild(hud);
-
-  const riskNode = el('div', {});
-  body.appendChild(riskNode);
-
-  // 透明的原生按钮覆盖中央舞台：点击、触摸、Enter/Space 共用一次提交。
-  // 不监听 pointerdown，避免同一次触摸再触发 click 导致双锤。
-  const hit = el('button', { class: 'hammer-stage-hit', type: 'button', 'aria-label': '中央锻打区，点击挥锤', 'aria-describedby': 'hammerHelp' }, [
-    el('span', { class: 'hammer-stage-cue', id: 'hammerHelp', text: '点击此区域挥锤 · 无需瞄准' }),
-  ]);
-  $('#forgeStage', root).appendChild(hit);
-
-  const progNode = el('div', {});
-  body.appendChild(progNode);
-
-  // 独立于热区与可滚动 HUD；短屏和放大字体也不会把收手操作挤出视口。
-  body.parentNode.appendChild(el('div', { class: 'hammer-actions' }, [el('button', {
-    class: 'btn btn--primary btn--block', type: 'button', text: '结束锻打',
-    onclick: () => {
-      if (Game.run !== run || run.phase !== 'hammer') return;
-      Game.endHammer(); render();
-    },
-  })]));
-
-  function refresh(tierUpNotice = null) {
-    const h = run.hammer;
-    mount(hud, [
-      el('div', {}, [el('b', { text: String(h.count) }), el('span', { text: '锤数' })]),
-      el('div', {}, [el('b', { text: String(h.tier) }), el('span', { text: '强化档' })]),
-      el('div', {}, [el('b', { text: String(Math.round(run.risk.current)) }), el('span', { text: '当前风险' })]),
-    ]);
-    const band = riskBandOf(run.risk.current);
-    const scale = run.daily?.breakScale || 1;
-    const nextDelta = Hammer.nextRiskDelta(h.count);
-    const nextChance = breakChance(Math.min(100, run.risk.current + nextDelta), scale);
-    mount(riskNode, riskBar({
-      current: run.risk.current, peak: run.risk.peak,
-      chance: breakChance(run.risk.current, scale), band, nextChance,
-    }));
-
-    const nt = Hammer.toNextTier(h.progress);
-    /* ★ rework T04.4 / T04 修复：进度条分母必须用**真实最高门槛**。
-       改造前这里写的是 `/ 126` —— 那是旧的四档门槛。
-       门槛已重标为 12/30/54/82，写死 126 会让进度条到 65% 就再也不动。 */
-    const maxNeed = HAMMER_TIERS[HAMMER_TIERS.length - 1].need;
-    const keep = Hammer.tierReward(h.tier);
-
-    mount(progNode, [
-      el('div', { class: 'section-title', text: `额外锻打特性：${info.name}${info.mixed ? '（混合路线）' : ''}` }),
-      el('div', { class: 'bar' }, [el('i', { style: { width: Math.min(100, (h.progress / maxNeed) * 100) + '%' } })]),
-      el('div', { class: 'tiny muted', text: nt ? `距「${nt.name}」还差 ${nt.remain} 成果` : '已达最高强化档' }),
-      /* 逐锤成果：让玩家看到“中间锤不是白冒风险” */
-      el('div', { class: 'hammer-gain', role: 'status', 'aria-live': 'polite' }, [
-        el('span', { text: `已得六维成果 ${h.statGained || 0}` }),
-        el('span', { text: `已落 ${h.count} 锤` }),
-      ]),
-      /* ★ 修复：上游 riskBar 已经同时显示“本次断裂概率”与“下一锤 3.8%”，
-         这里再写一遍「下一锤：Risk +2 → 单次断裂 3.8%」就是同一信息两次，
-         所以只保留 riskBar 没给的**增量部分**。 */
-      el('div', { class: 'tiny muted', text: h.ended ? '' : `下一锤 Risk 增量 +${nextDelta}` }),
-      /* 收手保留内容（不泄露隐藏精确六维，只给档位与倍率） */
-      el('div', { class: 'tiny muted', text: `现在收手：档位「${Hammer.tierName(h.tier)}」×${keep.scoreMult}，保留全部已得成果` }),
-      /* 升档回执：就近写在 HUD，**不再**用覆盖舞台的 toast */
-      tierUpNotice ? el('div', { class: 'hammer-tierup', role: 'status', 'aria-live': 'polite', text: tierUpNotice }) : null,
-    ].filter(Boolean));
-  }
-
-  hit.addEventListener('click', () => {
-    if (router.currentKey() !== 'forge' || Game.run !== run || run.phase !== 'hammer') return;
-    const r = Game.hammerStrike();
-    if (!r || !r.ok) return;
-    hit.classList.remove('is-striking');
-    void hit.offsetWidth;
-    hit.classList.add('is-striking');
-    getStage()?.effect('hammer');
-    if (r.fractured || run.fractured) { render(); return; }
-    /* ★ 修复：原先用 toast 报“强化达到第 N 档”，而 toast 在手机上固定在
-       `bottom: calc(50dvh + safe-b)`，正好压在舞台底部的热区提示上
-       （实测重叠 overlapY=35 / overlapX=116，两层文字叠印都读不清）。
-       升档信息改为写进 HUD 自己的状态行，不再浮在舞台上。 */
-    refresh(r.strike && r.strike.tierUp ? `强化达到第 ${r.strike.tierUp} 档` : null);
-  });
-
-  refresh();
+/* S4/S7 minigame surfaces live in the same WebGL stage. */
+function renderHammer(body,run) {
+  renderHammerV4({body,run,stage:$('#forgeStage',root),Game,getStage,router,render});
 }
-
-/* ── S7 刃线模拟 ─────────────────────────────────────── */
-
-function renderEdge(body, run) {
-  // 首遇 S7：说明操作方式与影响范围
-  const task = Edge.makeTask(run);
-  body.appendChild(el('div', { class: 'forge-question' }, [
-    document.createTextNode('刃线模拟'),
-    el('span', { text: `沿深灰虚线滑动 · ${task.shape?.label || '刃线'} · 青色实线为当前刃线` }),
-  ]));
-
-  const canvas = el('canvas', {
-    class: 'edge-canvas',
-    'aria-label': '刃线绘制区：沿深灰虚线滑动，青色实线为当前轨迹',
-  });
-  body.appendChild(canvas);
-
-  const info = el('div', { class: 'row row--between' });
-  body.appendChild(info);
-
-  /* ★ rework T05：允许跳过（记 MISS），不用强制描画卡住流程。 */
-  const actions = el('div', { class: 'row' });
-  actions.appendChild(el('button', {
-    class: 'btn', text: '跳过描线（MISS）',
-    onclick: () => submit({ skipped: true }),
-  }));
-  actions.appendChild(el('button', {
-    class: 'btn btn--primary btn--block', text: '提交刃线',
-    onclick: () => submit({}),
-  }));
-  body.appendChild(actions);
-
-  const N = task.points.length;
-
-  /* ★★ rework T05 ★★
-     改造前这里 `new Array(N).fill(0.5)` 预填整条轨迹 ——
-     于是“不操作”会被当作一条真实的 0.5 直线参与评分（实测 497/1000 得到 GOOD）。
-     现在用**显式采样表**：只有玩家真正画过的 index 才有值，
-     未画过的一律不在表里，submit 走 normalizeSamples 区分「未绘制 / 已绘制」。 */
-  /** @type {Map<number, number>} */
-  const samples = new Map();
-  /* 用于每帧重绘的定长视图：null = 未绘制 */
-  const view = new Array(N).fill(null);
-  function syncView() {
-    for (let i = 0; i < N; i++) view[i] = samples.has(i) ? samples.get(i) : null;
-  }
-
-  const ctx = canvas.getContext('2d');
-  const accuracyLabel = el('span', { class: 'dim tiny' });
-  info.append(accuracyLabel, el('span', { class: 'muted tiny', text: '失误 · 良好 · 优异 · 完美' }));
-  let drawFrame = 0;
-  let disposed = false;
-  let displayedAccuracy = '';
-  function scheduleDraw() {
-    if (drawFrame || disposed) return;
-    drawFrame = requestAnimationFrame(() => {
-      drawFrame = 0;
-      if (!disposed && canvas.isConnected) draw();
-    });
-  }
-  function draw() {
-    const r = canvas.getBoundingClientRect();
-    const w = r.width; const h = r.height;
-    if (!ctx || w <= 0 || h <= 0) return;
-    // CSS 坐标仍是原来的输入/评分坐标；只提高显示采样密度，最高 2x 控制填充开销。
-    const dpr = Math.min(2, Math.max(1, globalThis.devicePixelRatio || 1));
-    const bw = Math.max(1, Math.round(w * dpr));
-    const bh = Math.max(1, Math.round(h * dpr));
-    if (canvas.width !== bw) canvas.width = bw;
-    if (canvas.height !== bh) canvas.height = bh;
-    ctx.setTransform(bw / w, 0, 0, bh / h, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    const px = (i) => (i / (N - 1)) * (w - 16) + 8;
-    const py = (v) => h * 0.5 - (v - 0.5) * (h - 30);
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    // 基准线：浅底画布上用深墨（旧值 #F2F5F8 是深色主题遗留，浅底下完全看不见）
-    ctx.setLineDash([5, 4]);
-    ctx.strokeStyle = '#3F4A55'; ctx.lineWidth = 2; ctx.beginPath();
-    task.points.forEach((v, i) => (i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(i), py(v))));
-    ctx.stroke();
-    /* 玩家轨迹：只画**已绘制**的连续段。
-       改造前把所有格都当已绘制，于是未描画的区段也被画成一条“完美贴合的直线”。 */
-    ctx.setLineDash([]);
-    ctx.strokeStyle = '#227A87'; ctx.lineWidth = 2.5;
-    let pen = false;
-    for (let i = 0; i < N; i++) {
-      const v = view[i];
-      if (v === null) { pen = false; continue; }
-      if (pen) ctx.lineTo(px(i), py(v));
-      else { ctx.beginPath(); ctx.moveTo(px(i), py(v)); pen = true; }
-    }
-    if (pen) ctx.stroke();
-    updateInfo();
-  }
-  function updateInfo() {
-    /* 展示与提交共用同一套评价（T05：配置、面板与实际结算同源）。 */
-    const normalized = Edge.normalizeSamples(samplesToArray(), N);
-    const ev = Edge.evaluate(task.points, normalized);
-    const text = ev.drawn === 0
-      ? '尚未描线'
-      : `贴合 ${(ev.fidelity * 100).toFixed(0)}% · 完成 ${(ev.coverage * 100).toFixed(0)}% · 稳定 ${(ev.stability * 100).toFixed(0)}%`;
-    if (displayedAccuracy !== text) { accuracyLabel.textContent = text; displayedAccuracy = text; }
-  }
-  /** 采样表 → submit/normalizeSamples 需要的数组 */
-  function samplesToArray() {
-    const out = [];
-    for (const [index, value] of samples) out.push({ index, value });
-    return out;
-  }
-  /* 稀疏采样补齐：触摸事件的点间距较大时，在两点之间线性插值写入中间 index，
-     避免“手指划过但采样点稀疏”被误判为完成度不足（T05 要求的触摸稀疏采样处理）。 */
-  let lastIndex = null;
-  function writeAt(index, value) {
-    samples.set(index, value);
-    if (lastIndex !== null && Math.abs(index - lastIndex) > 1) {
-      const from = Math.min(lastIndex, index);
-      const to = Math.max(lastIndex, index);
-      const vFrom = samples.get(from) ?? value;
-      const vTo = samples.get(to) ?? value;
-      for (let i = from + 1; i < to; i++) {
-        if (samples.has(i)) continue;
-        const t = (i - from) / (to - from);
-        samples.set(i, vFrom + (vTo - vFrom) * t);
-      }
-    }
-    lastIndex = index;
-    syncView();
-  }
-  function setAt(clientX, clientY) {
-    const r = canvas.getBoundingClientRect();
-    const x = (clientX - r.left - 8) / Math.max(1, r.width - 16);
-    const y = (clientY - r.top) / Math.max(1, r.height);
-    const i = Math.max(0, Math.min(N - 1, Math.round(x * (N - 1))));
-    const v = 0.5 - (y - 0.5) * (r.height / Math.max(1, r.height - 30));
-    writeAt(i, Math.max(0, Math.min(1, v)));
-    // 仅把可见重绘合并到下一帧。
-    scheduleDraw();
-  }
-  let activePointer = null;
-  function inside(e) {
-    const r = canvas.getBoundingClientRect();
-    return e.clientX >= r.left && e.clientX < r.right
-      && e.clientY >= r.top && e.clientY < r.bottom;
-  }
-  function endStroke(e) {
-    if (activePointer === null || e.pointerId !== activePointer) return;
-    const id = activePointer;
-    activePointer = null; // 先结束状态，释放捕获引发的事件不能恢复本笔。
-    lastIndex = null;     // ★ 抬笔后断开插值链，下一次落笔不会跨笔画补线
-    if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
-    updateInfo();
-  }
-  function onPointerDown(e) {
-    if (disposed) return;
-    if (activePointer !== null || e.button !== 0 || e.isPrimary === false || !inside(e)) return;
-    activePointer = e.pointerId;
-    lastIndex = null;     // ★ 新笔画起点：不跨笔画插值
-    canvas.setPointerCapture(e.pointerId);
-    setAt(e.clientX, e.clientY);
-  }
-  function onPointerMove(e) {
-    if (disposed) return;
-    if (e.pointerId !== activePointer) return;
-    // 捕获保证收到松手；边界检查仍让离开画布立即收笔，不夹到边缘续画。
-    if (!(e.buttons & 1) || !inside(e)) { endStroke(e); return; }
-    setAt(e.clientX, e.clientY);
-  }
-  canvas.addEventListener('pointerdown', onPointerDown);
-  canvas.addEventListener('pointermove', onPointerMove);
-  const strokeEndTypes = ['pointerup', 'pointercancel', 'lostpointercapture', 'pointerleave'];
-  for (const type of strokeEndTypes) {
-    canvas.addEventListener(type, endStroke);
-  }
-
-  /* ★ T05：暂停 / 失焦 / 页面隐藏都应清理输入状态，避免“离开后仍在续画”或卡住本笔。 */
-  function onVisibility() { if (document.hidden) cancelStroke(); }
-  function onBlur() { cancelStroke(); }
-  function cancelStroke() {
-    const id = activePointer;
-    activePointer = null;
-    lastIndex = null;
-    if (id !== null) { try { if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id); } catch (_) { /* released */ } }
-    scheduleDraw();
-  }
-  document.addEventListener('visibilitychange', onVisibility);
-  globalThis.addEventListener('blur', onBlur);
-
-  const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(scheduleDraw) : null;
-  resizeObserver?.observe(canvas);
-  globalThis.addEventListener('resize', scheduleDraw, { passive: true });
-  disposeInteraction = () => {
-    if (disposed) return;
-    disposed = true;
-    canvas.removeEventListener('pointerdown', onPointerDown);
-    canvas.removeEventListener('pointermove', onPointerMove);
-    for (const type of strokeEndTypes) canvas.removeEventListener(type, endStroke);
-    document.removeEventListener('visibilitychange', onVisibility);
-    globalThis.removeEventListener('blur', onBlur);
-    if (drawFrame) cancelAnimationFrame(drawFrame);
-    drawFrame = 0;
-    resizeObserver?.disconnect();
-    globalThis.removeEventListener('resize', scheduleDraw);
-    const id = activePointer;
-    activePointer = null;
-    // A detached surface or a browser-side cancellation may already have released it.
-    try { if (id !== null && canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id); } catch (_) { /* released */ }
-  };
-  scheduleDraw();
-
-  function submit({ skipped = false } = {}) {
-    /* ★ T05：把**真实采样**交给 core 评价；未绘制区段不会被当成有效轨迹。 */
-    const r = Game.submitEdge(skipped ? null : samplesToArray(), { skipped });
-    if (!r || !r.ok) { toast('提交失败', 'warn'); return; }
-    const e = r.edge || {};
-    toast(`刃线 ${e.tierName || '完成'}`,
-      e.tier === 'perfect' ? 'good' : e.tier === 'miss' ? 'warn' : 'info');
-    render();
-  }
+function renderEdge(body,run) {
+  disposeInteraction=renderEdgeV4({body,run,stage:$('#forgeStage',root),Game,getStage,render,toast});
 }
 
 export function leave() {
   disposeInteraction?.();
   disposeInteraction = null;
   $('#forgeStage .hammer-stage-hit', root)?.remove();
+  $('#forgeStage .edge-stage-canvas', root)?.remove();
 }
 
 export default { create, render, leave };
