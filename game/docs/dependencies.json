@@ -2977,8 +2977,8 @@
   },
   {
     "file": "src/ui/pages/daily.js",
-    "bytes": 1460,
-    "lines": 36,
+    "bytes": 1200,
+    "lines": 34,
     "imports": [
       "src/core/index.js",
       "src/ui/dom.js",

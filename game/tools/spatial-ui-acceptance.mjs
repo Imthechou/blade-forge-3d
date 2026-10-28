@@ -24,6 +24,7 @@ async function fit(page, selector) {
   return b;
 }
 async function centered(page, selector) {
+  await page.waitForFunction(selector => { const n=document.querySelector(selector); if(!n)return false; const b=n.getBoundingClientRect(); return Math.abs(b.x+b.width/2-innerWidth/2)<3 && Math.abs(b.y+b.height/2-innerHeight/2)<3; },selector,{timeout:4000});
   const b = await fit(page, selector), v = page.viewportSize();
   assert.ok(Math.abs(b.x + b.width / 2 - v.width / 2) < 3, 'dialog horizontal center');
   assert.ok(Math.abs(b.y + b.height / 2 - v.height / 2) < 3, 'dialog vertical center');

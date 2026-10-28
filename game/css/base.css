@@ -160,7 +160,7 @@ body::after {
   background: var(--dialog-glass);
   backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-3), inset 0 1px rgba(255,255,255,.9);
-  transform: translateY(8px) scale(.97); transition: transform .24s var(--ease);
+  transform: scale(.97); transition: transform .24s var(--ease);
   overflow: hidden;
 }
 .sheet-mask.is-in .sheet { transform: none; }
