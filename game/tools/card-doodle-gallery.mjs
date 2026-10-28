@@ -1,4 +1,4 @@
-/** Browser-only visual proof: a real rendered gallery of 54 name-driven card doodles. */
+/** Browser-only visual proof: a real rendered gallery of all 218 name-driven card doodles. */
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -20,7 +20,7 @@ try{
     const gallery=document.createElement('div');
     gallery.setAttribute('id','doodle-gallery-qa');
     gallery.style.cssText='position:relative;z-index:99999;background:#f3f4f8;color:#262b41;padding:28px 24px 44px;min-height:100vh;font:14px system-ui,sans-serif;';
-    const head=document.createElement('h1');head.textContent='FORGE / 工艺涂鸦卡面 · 9 STAGES / 54 DECALS';
+    const head=document.createElement('h1');head.textContent='FORGE / 工艺涂鸦卡面 · 9 STAGES / ALL 218 DECALS';
     head.style.cssText='font-size:21px;margin:0 0 22px;letter-spacing:.06em;';
     gallery.append(head);
     const signatures=new Set(),shapes=new Set();
@@ -31,9 +31,9 @@ try{
       title.style.cssText='font-size:14px;letter-spacing:.16em;color:#6b6e82;margin:0 0 10px';
       section.append(title);
       const grid=document.createElement('div');
-      grid.style.cssText='display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:11px';
+      grid.style.cssText='display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:11px';
       const pool=BY_STAGE[stage]||[];
-      for(const i of [...new Set([0,3,7,11,17,pool.length-1])]){
+      for(let i=0;i<pool.length;i++){
         const card=pool[i]; if(!card)continue;
         const tile=document.createElement('div');
         tile.style.cssText='border:1px solid #dadce5;border-radius:12px;padding:9px;background:#fff;overflow:hidden;';
@@ -48,7 +48,7 @@ try{
         const meta=document.createElement('div');
         meta.style.cssText='font-size:10px;color:#777;margin-top:4px;';
         const info=doodleSpec(card);
-        meta.textContent=info.primary+' / '+info.secondary;
+        meta.textContent=info.colorName+' · '+info.motionName;
         tile.append(art,label,meta);grid.append(tile);
         signatures.add(info.signature);
         shapes.add(svg.outerHTML);
@@ -61,12 +61,12 @@ try{
       width:document.documentElement.scrollWidth,viewportWidth:innerWidth,
       galleryHeight:gallery.getBoundingClientRect().height};
   });
-  assert.equal(result.cards,54);
-  assert.equal(result.uniqueSVG,54);
+  assert.equal(result.cards,218);
+  assert.equal(result.uniqueSVG,218);
   assert.equal(result.sections,9);
-  assert.equal(result.images,54);
+  assert.equal(result.images,218);
   assert.ok(result.width<=result.viewportWidth+1,'gallery must have no horizontal overflow');
-  await page.screenshot({path:path.join(out,'doodle-gallery-54-cards.png'),fullPage:true,timeout:30000});
+  await page.screenshot({path:path.join(out,'doodle-gallery-all-218-cards.png'),fullPage:true,timeout:30000});
   assert.deepEqual(issues,[]);
   fs.writeFileSync(path.join(out,'doodle-gallery-report.json'),JSON.stringify({ok:true,...result,errors:issues},null,2));
   console.log('PASS doodle gallery:',JSON.stringify(result));
