@@ -107,12 +107,14 @@ export function riskChip(deltaPoints) {
 
 // 仅用于呈现的粗粒度趋势，不暴露尚未鉴定的数值或精确条长。
 function statTrend(value) {
-  const ratio = (Number(value) || 0) / STAT_SOFT_CAP;
-  if (ratio <= 0) return { label: '未成', width: 0 };
-  if (ratio < .25) return { label: '偏弱', width: 25 };
-  if (ratio < .5) return { label: '渐强', width: 50 };
-  if (ratio < .75) return { label: '较强', width: 75 };
-  return { label: '强劲', width: 100 };
+  const v = Math.max(0, Number(value) || 0);
+  // Continuous visible movement without revealing precise pre-appraisal numbers.
+  const width = v ? Math.max(5, Math.min(100, v / 160 * 100)) : 0;
+  if (!v) return { label: '未成', width };
+  if (v < 40) return { label: '蓄势', width };
+  if (v < 75) return { label: '渐强', width };
+  if (v < 115) return { label: '出色', width };
+  return { label: '强劲', width };
 }
 
 export function statRail(stats, directions = null, showValues = false) {

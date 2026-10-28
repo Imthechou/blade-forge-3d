@@ -14,6 +14,7 @@
  */
 
 import { CARD_STAT_SCALE, STAT_KEYS } from './balance.js';
+import { normalizeForgeCardStats } from './forgeStatBalance.js';
 import { cardWrites } from './legacy/cardWrites.js';
 import { cardsV11 } from './legacy/cardsV11.js';
 
@@ -51,7 +52,7 @@ function scaleStats(statDelta) {
 
 function normalizeCard(raw) {
   const write = cardWrites.get ? cardWrites.get(raw.id) : null;
-  const statDelta = scaleStats(raw.statDelta);
+  const statDelta = normalizeForgeCardStats(raw, scaleStats(raw.statDelta));
   const directions = {};
   for (const k of STAT_KEYS) {
     const d = directionOf(statDelta[k]);
