@@ -41,7 +41,7 @@ let sourceCache = null;
    版本号进 three 的 program cache key（customProgramCacheKey），源码变了必须跟着变，
    否则同会话里可能命中上一版的 program。 */
 /* v5：补回 temper / tune / edgeGlow 三个叠加层（见下方调用点注释），改源码必须 bump */
-export const FAMILY_VERSION = 'bladeV2:65';
+export const FAMILY_VERSION = 'bladeV2:63';
 
 /** 刀身上真正会用到阶段效果函数的阶段（S8 只作用于柄，不在其中）。 */
 export const STAGE_FX = [1, 2, 3, 4, 5, 6, 7, 9];
@@ -628,7 +628,7 @@ const MAP_FRAGMENT = `
        engraving on the planar front/back steel. Preserve the bevel and
        side faces so no broad hard sticker appears on the geometry. */
     if ( uV2Proc.x > 1.5 && uV2Proc.x < 2.5 && uS3On > 0.5 ) {
-      float billetFace = smoothstep( 0.20, 0.72, clamp( vS3PlanarFace, 0.0, 1.0 ) );
+      float billetFace = smoothstep( 0.25, 0.80, clamp( vS3PlanarFace, 0.0, 1.0 ) );
       amp *= mix( 0.84, 1.18, billetFace );
     }
     float textureMix = ( uS3On > 0.5 ) ? clamp( uSkinTexStrength, 0.0, 1.0 ) * s3Surface : 0.0;
@@ -942,20 +942,10 @@ const MAP_FRAGMENT = `
         float billetCeiling = max( 0.060, billetLum * 1.08 );
         float excess = max( 0.0, forgedLum - billetCeiling );
         col *= ( forgedLum - 0.90 * excess ) / forgedLum;
-        /* The selected card already has grayscale grooves, but they were
-           too subtle at mobile zoom while broad front faces were flat.
-           Deepen *only dark grooves*, strongest when viewed front-on.
-           Never lift highlights, alter steel hue, or change later stages. */
-        float billetFace = smoothstep( 0.20, 0.72, clamp( vS3PlanarFace, 0.0, 1.0 ) );
-        float billetFacing = 1.0 - smoothstep( 0.25, 0.72, k3dFres );
-        /* Bring the selected grayscale engravings above the mobile-size
-           visibility threshold without a pale positive lobe. Shape the
-           darker troughs instead of simply scaling a tiny centered signal.
-           Derivative fade avoids unresolved high-frequency pepper noise. */
-        float grooveSignal = smoothstep( 0.03, 0.34, max( 0.0, -sig ) );
-        float grooveAA = 1.0 - smoothstep( 0.35, 0.80, fwidth( sig ) );
-        float grooveDepth = mix( 0.10, 0.30, billetFacing );
-        col *= 1.0 - grooveDepth * grooveSignal * grooveAA * billetFace * s3Surface;
+        /* Dark hammered troughs should read as relief, never as fresh
+           white stripes. S3 is grayscale/roughness, not self-illumination. */
+        float billetFace = smoothstep( 0.25, 0.80, clamp( vS3PlanarFace, 0.0, 1.0 ) );
+        col *= 1.0 - 0.13 * max( 0.0, -sig ) * billetFace * s3Surface;
       }
     }
 
