@@ -199,3 +199,33 @@
 @media(max-height:740px) { .page[data-page="forge"] .dcard-visual{flex-basis:27px} .page[data-page="forge"] .dcard-meta{flex-basis:31px;min-height:31px} .page[data-page="forge"] .dcard-detail{min-height:31px} }
 @media(max-height:660px) { .page[data-page="forge"] .dcard-visual{flex-basis:21px} .page[data-page="forge"] .dcard-title{min-height:27px;max-height:27px;font-size:12px;line-height:13px} .page[data-page="forge"] .dcard-tier{flex-basis:15px;max-height:15px;gap:2px} .page[data-page="forge"] .dcard-build-result{font-size:9px;line-height:10px;min-height:10px} .page[data-page="forge"] .dcard-meta{flex-basis:28px;min-height:28px} .page[data-page="forge"] .dcard-detail{min-height:28px} }
 @media(prefers-reduced-motion:reduce) { .page[data-page="forge"] .dcard-visual-glint{display:none} }
+
+
+/* 同一工艺画幅随阶段切换真实语义：原材是金属块、熔炼是钢液、锻打是刀胚，
+   S4-S7 为刃身、S8-S9 带刀柄，不出现「原矿卡却画了一把成刀」。 */
+.page[data-page="forge"] .dcard-visual--S1::before{
+  width:52%;height:66%;left:24%;top:18%;transform:rotate(-8deg);
+  clip-path:polygon(10% 2%,77% 0,100% 26%,93% 88%,57% 100%,5% 72%,0 25%);
+  background:linear-gradient(142deg,#f2f7fa 0%,#8eabc2 13%,#1d354d 35%,#8295a6 51%,#111f37 70%,#c1d0dd 100%);
+  box-shadow:inset 0 1px #fff;
+}
+.page[data-page="forge"] .dcard-visual--S2::before{
+  width:34%;height:83%;left:33%;top:8%;transform:rotate(-15deg);clip-path:none;border-radius:50% 46% 44% 50%;
+  background:radial-gradient(circle at 30% 25%,#fff4c8 0%,#f3b97f 14%,#9f5865 40%,#21364f 70%,#121a31 100%);
+  box-shadow:inset 1px 0 5px #fff1bc,0 0 7px rgba(252,176,107,.34);
+}
+.page[data-page="forge"] .dcard-visual--S3::before{
+  width:67%;height:44%;left:16%;top:29%;transform:rotate(-12deg);
+  clip-path:polygon(0 0,93% 0,100% 21%,100% 100%,5% 100%,0 82%);
+  background:repeating-linear-gradient(165deg,transparent 0 5px,rgba(230,247,255,.30) 6px 7px,transparent 8px 10px),linear-gradient(140deg,#d7e8f3,#304767 41%,#94b0c8 57%,#17233d);
+}
+.page[data-page="forge"] .dcard-visual--S8::after,
+.page[data-page="forge"] .dcard-visual--S9::after{
+  content:'';position:absolute;left:8%;top:46%;width:27%;height:13%;
+  transform:rotate(-15deg);border-radius:3px;
+  background:linear-gradient(180deg,#f9ebcd,#78583c 48%,#1c263e 50%,#6d7592);
+  box-shadow:0 2px 4px rgba(4,13,27,.22);
+}
+.page[data-page="forge"] .dcard-visual--S7::before{
+  background:linear-gradient(180deg,#fbfdff 0%,#c9eafb 13%,#284e7d 37%,#f9ffff 46%,#607bb4 65%,#0f2949 100%);
+}
