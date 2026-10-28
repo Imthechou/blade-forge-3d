@@ -260,6 +260,7 @@ function spawnTarget(run) {
   target.baseX=target.x;target.baseY=target.y;
   target.moving=(run.encounter?.rank || 0)>=3 && run.targetSerial%4===0;
   run.targets.push(target);
+  if(run.metrics)run.metrics.emptyGap=0;
   if (run.targets.length > 24) run.targets = run.targets.filter((t) => t.alive).slice(-24);
   return target;
 }
