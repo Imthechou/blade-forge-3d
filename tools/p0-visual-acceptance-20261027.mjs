@@ -38,7 +38,7 @@ const getState=()=>page.evaluate(async()=>{
     coverAll:st?._coverAll,
     s3Geom:(()=> {
       if(r?.stageId!=='S3')return null;
-      const info=v?.loaded?.get(st?.modelId);
+      const info=st?.engine?.loaded?.get(st?.modelId);
       const ns=info?.meshData?.normals, basis=info?.bladeFrame?.basis?.elements;
       if(!ns||!basis)return {ready:false,model:st?.modelId};
       let x=0,y=0,z=0,front=0,side=0,nonzero=0;
