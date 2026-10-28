@@ -140,3 +140,62 @@
 .edge-skip{background:none;border:0;color:var(--face-3);font:500 12px var(--font);min-height:44px;cursor:pointer}
 @media(max-height:660px){.page[data-page="forge"].is-hammer .forge-pad,.page[data-page="forge"]:has(.edge-stage-canvas) .forge-pad{gap:3px;padding:5px 12px 3px}.hammer-hud-value,.edge-simple-hud>div{padding:4px 2px}.hammer-hud-value b,.edge-simple-hud b{font-size:19px}.hammer-footer,.edge-simple-hint{min-height:0}}
 @media(prefers-reduced-motion:reduce){.hammer-stage-hit.is-striking .forge-hammer-burst,.hammer-stage-hit.is-striking .forge-hammer-float{animation-duration:.01ms}}
+
+
+/* ── 工艺构筑 V5 · 卡面只展示身份、工艺视觉与路径，不重复预览数值 ── */
+.page[data-page="forge"] .dcard { gap:3px; padding:7px 7px 0; }
+.page[data-page="forge"] .dcard-head { min-height:17px; }
+.page[data-page="forge"] .dcard-stage-mark { font:650 10px/1 var(--font-num); color:var(--face-4); letter-spacing:.08em; }
+.page[data-page="forge"] .dcard-visual {
+  position:relative; flex:0 0 34px; min-height:0; overflow:hidden; border-radius:10px;
+  background:linear-gradient(146deg,rgba(255,255,255,.92) 0%,transparent 28%),
+             linear-gradient(128deg,hsl(var(--art-hue,220) 42% 22%) 0%,hsl(var(--art-hue,220) 36% 43%) 29%,#edf4fb 46%,hsl(var(--art-hue,220) 34% 25%) 70%,#131c35 100%);
+  border:1px solid rgba(128,155,194,.26);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.54),inset 0 -7px 16px rgba(7,19,42,.21);
+}
+.page[data-page="forge"] .dcard-visual::before {
+  content:''; position:absolute; left:8%; top:33%; width:83%; height:18%;
+  transform:rotate(-15deg); transform-origin:center;
+  clip-path:polygon(0 0,94% 0,100% 50%,94% 100%,0 100%,4% 48%);
+  background:linear-gradient(180deg,#f8fdff 0%,#a3bad3 16%,#1e3b64 46%,#d3eaf8 63%,#344a68 100%);
+  box-shadow:0 4px 7px rgba(3,13,42,.25);
+}
+.page[data-page="forge"] .dcard-visual-glint { position:absolute; top:-40%; left:35%; width:18%; height:180%; transform:rotate(23deg); background:rgba(255,255,255,.18); filter:blur(4px); }
+.page[data-page="forge"] .dcard-visual-engrave { position:absolute; right:5px; bottom:2px; color:rgba(255,255,255,.7); font:600 9px/1 var(--font-num); }
+.page[data-page="forge"] .dcard-title { min-height:33px; max-height:33px; font-size:13px; line-height:16px; }
+.page[data-page="forge"] .dcard-build-title { font-size:11px; font-weight:750; line-height:13px; color:var(--face-2); }
+.page[data-page="forge"] .dcard-build-result { min-height:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; line-height:12px; color:var(--face-3); }
+.page[data-page="forge"] .dcard-build-result.is-up { font-weight:750; color:var(--accent); }
+.page[data-page="forge"] .dcard-tier { flex:0 0 19px; max-height:19px; gap:4px; font-size:10px; line-height:11px; }
+.page[data-page="forge"] .dcard-meta { flex:0 0 34px; min-height:34px; }
+.page[data-page="forge"] .dcard-detail { min-height:34px; }
+.page[data-page="forge"] .dcard.is-picked .dcard-visual { border-color:var(--accent); box-shadow:inset 0 1px rgba(255,255,255,.7),0 0 0 1px var(--accent-line); }
+.page[data-page="forge"] .stage-traits.has-build { border-color:var(--accent-line); color:var(--accent); background:color-mix(in srgb,var(--accent) 6%,var(--glass-bg)); }
+
+/* 预览有明确的旧值轨道与新值条、增量符号，保持六维一行与 3D 主舞台。 */
+.page[data-page="forge"] .stat-grid.is-comparing .stat-cell { grid-template-columns:1fr auto; }
+.page[data-page="forge"] .stat-grid.is-comparing .stat-cell-name { grid-column:1; grid-row:1; }
+.page[data-page="forge"] .stat-grid.is-comparing .stat-cell-dir { grid-column:2; grid-row:1; font:750 11px/16px var(--font-num); white-space:nowrap; }
+.page[data-page="forge"] .stat-grid.is-comparing .stat-cell-val { display:block; grid-column:1/-1; grid-row:2; color:var(--face); text-align:right; font:750 12px/15px var(--font-num); }
+.page[data-page="forge"] .stat-grid.is-comparing .stat-cell-meter { grid-column:1/-1; grid-row:3; position:relative; height:5px; }
+.page[data-page="forge"] .stat-meter-before { position:absolute; inset:0 auto 0 0; height:100%; background:color-mix(in srgb,var(--st, var(--face-3)) 35%,transparent); border-radius:inherit; }
+.page[data-page="forge"] .stat-grid.is-comparing .stat-cell-meter i { position:relative; background:var(--st); z-index:1; }
+.page[data-page="forge"] .risk:has(.risk-value) { min-width:0; }
+.page[data-page="forge"] .risk-value { white-space:nowrap; font-variant-numeric:tabular-nums; }
+
+/* 构筑中心：两步内看清当前、下一档与切割规则，低开销 CSS 轨道。 */
+.build-sheet { display:grid; gap:12px; }
+.build-entry { display:grid; gap:7px; border:1px solid var(--glass-border); border-radius:15px; background:var(--surface-glass); padding:11px; }
+.build-entry.is-rising { border-color:var(--accent-line); background:color-mix(in srgb,var(--accent) 7%,var(--surface-glass)); }
+.build-entry-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.build-entry-head b { font-size:14px; }
+.build-entry-head span { font:650 11px/1.3 var(--font-num); color:var(--face-3); }
+.build-track { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:5px; }
+.build-track i { height:7px; border-radius:9px; background:var(--base-3); }
+.build-track i.is-owned { background:var(--accent-cool); }
+.build-track i.is-preview { background:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+.build-effect { font-size:12px; color:var(--face-2); line-height:1.5; }
+.build-earned { padding:7px 10px; background:var(--base-2); border-radius:10px; font-size:12px; line-height:1.5; color:var(--face-2); }
+@media(max-height:740px) { .page[data-page="forge"] .dcard-visual{flex-basis:27px} .page[data-page="forge"] .dcard-meta{flex-basis:31px;min-height:31px} .page[data-page="forge"] .dcard-detail{min-height:31px} }
+@media(max-height:660px) { .page[data-page="forge"] .dcard-visual{flex-basis:21px} .page[data-page="forge"] .dcard-title{min-height:27px;max-height:27px;font-size:12px;line-height:13px} .page[data-page="forge"] .dcard-tier{flex-basis:15px;max-height:15px;gap:2px} .page[data-page="forge"] .dcard-build-result{font-size:9px;line-height:10px;min-height:10px} .page[data-page="forge"] .dcard-meta{flex-basis:28px;min-height:28px} .page[data-page="forge"] .dcard-detail{min-height:28px} }
+@media(prefers-reduced-motion:reduce) { .page[data-page="forge"] .dcard-visual-glint{display:none} }
