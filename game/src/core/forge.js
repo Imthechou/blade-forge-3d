@@ -198,7 +198,7 @@ export function endHammer(run) {
  */
 export function submitEdge(run, path, opts = {}) {
   if (run.phase !== PHASE.EDGE) return { ok: false, reason: '当前不在开刃阶段' };
-  const edge = Edge.submit(run, path, { skipped: !!opts.skipped, projected: !!opts.projected });
+  const edge = Edge.submit(run, path, { skipped: !!opts.skipped, projected: !!opts.projected, attemptsUsed: opts.attemptsUsed });
   run.peakRisk = run.risk.peak;
   const check = checkRisk(run, 'S7');
   if (check.fractured) {

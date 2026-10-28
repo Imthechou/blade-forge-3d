@@ -86,7 +86,7 @@ export function render() {
   renderStageHead(run);
   /* ★ 锻造页的鉴赏图标：S4 锻打阶段直接禁用拖动开关（热区铺满舞台，
      拖动会与挥锤打架）；其余阶段允许开拖动。 */
-  const hammering = run.phase === 'hammer';
+  const hammering = run.phase === 'hammer' || run.phase === 'edge';
   root.classList.toggle('is-no-drag', hammering);
   inspectCtl?.setBlocked?.(hammering);
   pickedCard = null;

@@ -86,7 +86,22 @@ const SFX = {
   select: () => tone({ freq: 660, dur: 0.07, type: 'triangle', gain: 0.16 }),
   confirm: () => { tone({ freq: 523, dur: 0.09, type: 'triangle', gain: 0.2 }); tone({ freq: 784, dur: 0.12, type: 'triangle', gain: 0.16, delay: 0.07 }); },
   reroll: () => tone({ freq: 300, dur: 0.16, type: 'sawtooth', gain: 0.12, sweepTo: 620 }),
-  hammer: () => { noise({ dur: 0.14, gain: 0.4, lowpass: 2400 }); tone({ freq: 150, dur: 0.1, type: 'square', gain: 0.16, sweepTo: 80 }); },
+  // A dry steel-on-anvil "tak" with a very short ringing body; no celebratory chime.
+  hammer: () => {
+    noise({dur:.035,gain:.13,lowpass:3800});
+    tone({freq:172,dur:.086,type:'triangle',gain:.115,sweepTo:117});
+    tone({freq:515,dur:.055,type:'sine',gain:.038,sweepTo:410,delay:.009});
+  },
+  hammerRisk: () => {
+    noise({dur:.055,gain:.17,lowpass:2750});
+    tone({freq:142,dur:.12,type:'triangle',gain:.16,sweepTo:82});
+    tone({freq:348,dur:.08,type:'sine',gain:.044,delay:.014});
+  },
+  hammerTier: () => {
+    noise({dur:.045,gain:.14,lowpass:3900});
+    tone({freq:178,dur:.09,type:'triangle',gain:.12,sweepTo:118});
+    tone({freq:610,dur:.18,type:'sine',gain:.058,delay:.014});
+  },
   spark: () => noise({ dur: 0.1, gain: 0.22, lowpass: 5200 }),
   riskUp: () => tone({ freq: 220, dur: 0.14, type: 'sawtooth', gain: 0.12, sweepTo: 160 }),
   riskSafe: () => tone({ freq: 440, dur: 0.12, type: 'sine', gain: 0.16, sweepTo: 560 }),

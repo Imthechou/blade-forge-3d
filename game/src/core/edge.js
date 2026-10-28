@@ -29,6 +29,7 @@
 
 import {
   EDGE_TIERS, EDGE_SHARP_CAP, EDGE_TOLERANCE, EDGE_SAMPLES,
+  CONTOUR_SAMPLES, CONTOUR_ATTEMPT_MULTIPLIERS,
   EDGE_COVERAGE_MIN, EDGE_STABILITY_TOLERANCE,
 } from '../data/balance.js';
 import { EDGE_SHAPES, EDGE_SHAPE_FALLBACK } from '../data/bladeEffects.js';
@@ -262,7 +263,45 @@ export function tierOf(quality) {
  *
  * ★ 多次提交取**最优**（不累加），防止反复提交刷分，也守住「小游戏不逆转构筑」。
  */
-export function submit(run, samples, { skipped = false, projected = false } = {}) {
+/**
+ * S7 contour: one number (fit %) drives the entire award.
+ * Coverage is only an eligibility guard; it never adds score.
+ * Each sample encodes the shortest on-screen distance to the ACTUAL contour:
+ * .5 means perfect contact, 1 means outside the 28 px soft band.
+ */
+export function contourPreview(samples, attemptsUsed = 1) {
+  const normalized = normalizeSamples(samples, CONTOUR_SAMPLES);
+  const coverage = normalized.coverage;
+  const deviations = [];
+  for(let i = 0;i < CONTOUR_SAMPLES;i++){
+    if(normalized.covered[i]) deviations.push(Math.min(1, Math.abs(normalized.values[i] - 0.5) * 2));
+  }
+  const fit = deviations.length ? clamp01(1 - deviations.reduce((a,b)=>a+b,0) / deviations.length) : 0;
+  const eligible = coverage >= .78 && normalized.gaps <= 2;
+  const attempts = Math.max(1,Math.min(3,Math.round(Number(attemptsUsed)||1)));
+  const multiplier = CONTOUR_ATTEMPT_MULTIPLIERS[attempts-1];
+  const baseSharp = eligible ? Math.round(120 * fit) : 0;
+  const sharp = Math.min(EDGE_SHARP_CAP, Math.round(baseSharp * multiplier));
+  return {fit,coverage,eligible,attempts,multiplier,baseSharp,bonus:sharp-baseSharp,sharp};
+}
+function submitContour(run,samples,{skipped=false,attemptsUsed=1}={}) {
+  const score = contourPreview(skipped?[]:samples,attemptsUsed);
+  const prev = run.edge || {sharp:0,craft:0};
+  const delta = score.sharp - (prev.sharp||0);
+  if(delta>0) run.stats.sharpness = Math.max(0,(run.stats.sharpness||0)+delta);
+  const mastery=score.sharp/EDGE_SHARP_CAP;
+  const skin=run.pendingSkin||(run.pendingSkin={});
+  const variants=skin.variants||(skin.variants={});
+  variants.edge={...(variants.edge||{}),
+    grind:{glow:.22*mastery,sharpen:.45*mastery,heat:.08*(1-mastery)}};
+  run.edge={...score,quality:score.fit,acc:Math.round(score.fit*100)/100,
+    fidelity:score.fit,coverage:score.coverage,sharp:score.sharp,craft:0,
+    tier:score.eligible?'contour':'miss',tierName:'',done:true,skipped:!!skipped};
+  return run.edge;
+}
+
+export function submit(run, samples, { skipped = false, projected = false, attemptsUsed = 1 } = {}) {
+  if(projected) return submitContour(run,samples,{skipped,attemptsUsed});
   const base = projected ? new Array(EDGE_SAMPLES).fill(0.5) : baseline(run.seed, run.knifeTypeId);
   const n = base.length;
   const normalized = normalizeSamples(skipped ? [] : samples, n);
@@ -325,6 +364,6 @@ export function autoPlay(run, quality = 0.7) {
 }
 
 export default {
-  baseline, makeTask, shapeOf, normalizeSamples, evaluate, accuracy, tierOf, submit, autoPlay,
+  baseline, makeTask, shapeOf, normalizeSamples, evaluate, accuracy, tierOf, contourPreview, submit, autoPlay,
   EDGE_COVERAGE_MIN,
 };

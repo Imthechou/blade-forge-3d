@@ -217,12 +217,13 @@ export const RISK_BANDS = Object.freeze([
  * ⚠ 卡面预览、风险条、正式判定必须共用 breakChance()，不允许各写一份。
  */
 export const BREAK_ANCHORS = Object.freeze([
-  { risk: 0, p: 0 },
-  { risk: 20, p: 0.005 },
-  { risk: 40, p: 0.03 },
-  { risk: 60, p: 0.15 },
-  { risk: 80, p: 0.35 },
-  { risk: 95, p: 0.55 },
+  { risk: 12, p: 0 },
+  { risk: 24, p: 0.02 },
+  { risk: 36, p: 0.05 },
+  { risk: 48, p: 0.10 },
+  { risk: 60, p: 0.18 },
+  { risk: 72, p: 0.30 },
+  { risk: 84, p: 0.45 },
   { risk: 100, p: 0.60 },
 ]);
 
@@ -235,12 +236,17 @@ export const BREAK_ANCHORS = Object.freeze([
  * 表中为 [本局已尝试锤数上限, 该档增量]；第 13 锤起恒为 +8，Risk 最高 100。
  */
 export const HAMMER_RISK_STEPS = Object.freeze([
-  { upTo: 10, delta: 1 },
-  { upTo: 11, delta: 6 },
-  { upTo: 12, delta: 8 },
-  { upTo: 13, delta: 10 },
-  { upTo: 14, delta: 12 },
-  { upTo: Infinity, delta: 14 },
+  { upTo: 3, delta: 0 },
+  { upTo: 6, delta: 1 },
+  { upTo: 10, delta: 2 },
+  { upTo: 11, delta: 4 },
+  { upTo: 12, delta: 6 },
+  { upTo: 13, delta: 8 },
+  { upTo: 14, delta: 10 },
+  { upTo: 15, delta: 12 },
+  { upTo: 16, delta: 14 },
+  { upTo: 17, delta: 16 },
+  { upTo: Infinity, delta: 18 },
 ]);
 
 /** 第 n 锤（1-based）的 Risk 增量 */
@@ -255,7 +261,7 @@ export function hammerRiskDelta(hammerCount) {
  *
  * 累计：1→10, 2→19.2, 3→28.9, 5→45.6, 7→59.7, 8→65.9, 12→86.2, 17→94.8，之后每锤 +2.5。
  */
-export const HAMMER_PROGRESS = Object.freeze({ BASE: 5.5, DECAY: 1, FLOOR: 1.5 });
+export const HAMMER_PROGRESS = Object.freeze({ BASE: 1, DECAY: 1, FLOOR: 1 });
 
 /**
  * 累计成果 → 强化档位（V2.1 §8.4「强化等级由累计有效锤击成果决定」）。
@@ -322,7 +328,9 @@ export const EDGE_TIERS = Object.freeze([
   { id: 'great', name: 'GREAT', min: 0.62, sharp: 92, craft: 0 },
   { id: 'perfect', name: 'PERFECT', min: 0.85, sharp: 128, craft: 0 },
 ]);
-export const EDGE_SHARP_CAP = 128;
+export const EDGE_SHARP_CAP = 136;
+export const CONTOUR_SAMPLES = 48;
+export const CONTOUR_ATTEMPT_MULTIPLIERS = Object.freeze([1.12, 1.06, 1]);
 /** 贴合度计算：平均偏差 → 分数（偏差 0 → 1，偏差 ≥TOLERANCE → 0） */
 export const EDGE_TOLERANCE = 0.35;
 export const EDGE_SAMPLES = 24;

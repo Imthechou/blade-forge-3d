@@ -13,6 +13,7 @@ const shot=async name=>page.screenshot({path:path.join(out,name+'.png'),timeout:
 try{
  for(const [width,height] of [[390,844],[360,640]]){
    const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:1,isMobile:true,hasTouch:true,locale:'zh-CN'});
+
    // Deterministic isolated save: avoid bootstrap's delayed (360ms) first-run
    // modal masking the whole forge stage after the initial dismissal check.
    // The UI test suite covers that dialog separately.
@@ -61,22 +62,36 @@ try{
    await page.waitForTimeout(1100);
    const points=await page.evaluate(async()=>{
      const s=(await import('/src/render/index.js')).getStage();
-     const {bladeEdgeProjection}=await import('/src/ui/bladeEdgeProjection.js');
-     return {model:s.modelId,path:bladeEdgeProjection(s,document.querySelector('#forgeStage').clientWidth,document.querySelector('#forgeStage').clientHeight)};
+     const {bladeContourProjection}=await import('/src/ui/bladeEdgeProjection.js');
+     return {model:s.modelId,path:bladeContourProjection(s,document.querySelector('#forgeStage').clientWidth,document.querySelector('#forgeStage').clientHeight)};
    });
-   assert.ok(points.model&&points.path?.length===24,'actual GLB blade projection required');
+   assert.ok(points.model&&points.path?.length===48,'actual GLB blade projection required');
    await shot(width+'-edge-before');
    const b=await page.locator('.edge-stage-canvas').boundingBox();
    assert.ok(b.height>=240&&b.width>=300);
-   await page.mouse.move(b.x+points.path.at(-1).x,b.y+points.path.at(-1).y);
-   await page.mouse.down();
-   for(let i=22;i>=0;i--)await page.mouse.move(b.x+points.path[i].x,b.y+points.path[i].y,{steps:2});
-   await page.mouse.up();await shot(width+'-edge-traced');
-   assert.ok(await page.getByRole('button',{name:'完成开刃'}).isEnabled(),'must accept a full 3D trace');
+
+   async function trace(){
+     await page.mouse.move(b.x+points.path[0].x,b.y+points.path[0].y);
+     await page.mouse.down();
+     for(let i=1;i<points.path.length;i++)await page.mouse.move(b.x+points.path[i].x,b.y+points.path[i].y,{steps:3});
+     await page.mouse.up();
+   }
+   await trace();await shot(width+'-edge-attempt-1');
+   assert.ok((await page.locator('.edge-simple-hint').innerText()).includes('×1.12'));
+   const used=width===360?3:1;
+   for(let i=2;i<=used;i++){
+     await page.getByRole('button',{name:/再描一次/}).click();
+     await trace();await shot(width+'-edge-attempt-'+i);
+   }
+   assert.ok(await page.getByRole('button',{name:'完成开刃'}).isEnabled());
    await page.getByRole('button',{name:'完成开刃'}).click();
-   const edge=await page.evaluate(async()=>{const r=(await import('/src/app/game.js')).default.run;
-     return {tier:r.edge?.tier,sharpness:r.stats.sharpness,phase:r.phase};});
-   assert.equal(edge.tier,'perfect');assert.ok(edge.sharpness>=128);
+   const edge=await page.evaluate(async()=>{
+     const r=(await import('/src/app/game.js')).default.run;
+     return {fit:r.edge?.fit,sharp:r.edge?.sharp,multiplier:r.edge?.multiplier,attempts:r.edge?.attempts};
+   });
+   assert.ok(edge.fit>.8,'real contour must be traceable with mouse/touch');
+   assert.equal(edge.attempts,used);assert.equal(edge.multiplier,used===1?1.12:1);
+   assert.ok(edge.sharp>75);
    report.cases.push({width,model:points.model,edge});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    await context.close();
