@@ -52,10 +52,11 @@ export function statGainOf(gain, directionTagId) {
 
 /** 第 n 锤（1-based）的成果：前期明确、后期递减（V2.1 §10.4） */
 export function progressOf(strikeIndex) {
+  // Ten protected strikes build the foundation. Beyond them, every extra hammer
+  // adds more Strength until the high-risk per-strike payout caps at 15.
+  // Unlimited hits remain possible; fracture probability provides the limit.
   if (strikeIndex <= 10) return 5.5;
-  if (strikeIndex <= 18) return 6.5 + (strikeIndex - 11) * 0.9;
-  // Still infinite, with sharply diminishing late returns.
-  return Math.max(HAMMER_PROGRESS.FLOOR, 13 * Math.pow(0.77, strikeIndex - 18));
+  return Math.min(15, 6.5 + (strikeIndex - 11) * 0.9);
 }
 
 /** 下一锤的 Risk 增量（UI 提示用，与 strike() 用同一函数） */

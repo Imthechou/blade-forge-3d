@@ -30,6 +30,9 @@ test('the first ten hammer strikes are safe, then gains and risk grow',()=>{
  assert.equal(r.hammer.count,10);
  assert.ok(r.stats.strength>=50 && r.stats.strength<=85);
  assert.ok(Hammer.progressOf(11)>Hammer.progressOf(10));
+ assert.ok(Hammer.progressOf(19)>=Hammer.progressOf(18),'late risky hammers cannot earn less Strength');
+ assert.ok(Hammer.progressOf(30)>=Hammer.progressOf(19),'late cap never reverses the gamble');
+ assert.ok(Hammer.progressOf(30)<=15,'late payout stays bounded');
  assert.ok(Hammer.nextRiskDelta(10)>Hammer.nextRiskDelta(9));
  assert.ok(breakChance(20)<breakChance(60));
 });
