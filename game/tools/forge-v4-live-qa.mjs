@@ -13,6 +13,15 @@ const shot=async name=>page.screenshot({path:path.join(out,name+'.png'),timeout:
 try{
  for(const [width,height] of [[390,844],[360,640]]){
    const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:1,isMobile:true,hasTouch:true,locale:'zh-CN'});
+   // Deterministic isolated save: avoid bootstrap's delayed (360ms) first-run
+   // modal masking the whole forge stage after the initial dismissal check.
+   // The UI test suite covers that dialog separately.
+   await context.addInitScript(() => {
+     if (!localStorage.getItem('bladeforge.save'))
+       localStorage.setItem('bladeforge.save',JSON.stringify({
+         version:1,cr:0,collection:[],settings:{tutorialSeen:true,sound:false,motion:'reduced'}
+       }));
+   });
    page=await context.newPage();
    page.on('pageerror',e=>report.errors.push(String(e)));
    page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('favicon'))report.errors.push(m.text());});
