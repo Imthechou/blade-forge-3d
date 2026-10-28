@@ -7,6 +7,7 @@
 
 import { el, $, clear, mount, toast, sheet } from '../dom.js';
 import { riskBar, statGrid, decisionCard, traitItem, rarityBadge } from '../components.js';
+import { cardDoodle, doodleSpec } from '../cardDoodles.js';
 import { STAGES } from '../../data/stages.js';
 import { HAMMER_TIERS } from '../../data/balance.js';
 import { tagName, BASE_TAGS, SPECIAL_TAGS } from '../../data/tags.js';
@@ -449,26 +450,60 @@ function previewChance() {
 }
 
 function showDetail(card) {
-  const tags = (card.tags || []).map((t) => el('span', { class: 'chip', text: tagName(t) }));
-  const dirs = Object.entries(card.directions || {})
-    .map(([k, d]) => el('div', { class: 'report-line', text: `${statCn(k)}：${d.label}` }));
-  sheet({
-    title: card.name,
-    body: el('div', { class: 'stack' }, [
-      // ★ 走 rarityBadge() 而不是手建 .rarity —— 神话档的记号是内联 SVG，
-      //   手建的话这里的徽标会缺记号（全站唯一会漏的点就是它）。
-      el('div', { class: 'row' }, [rarityBadge(card.rarity, card.rarityCn), el('span', { class: 'muted tiny', text: card.role })]),
-      el('div', { class: 'dim', text: card.copy }),
-      el('div', { class: 'section-title', text: '属性方向' }),
-      ...(dirs.length ? dirs : [el('div', { class: 'muted tiny', text: '无显著变化' })]),
-      el('div', { class: 'section-title', text: '工艺标签' }),
-      el('div', { class: 'row row--wrap' }, tags),
-      el('div', { class: 'section-title', text: '风险代价' }),
-      el('div', { class: 'report-line', text: `风险点 ${card.riskDeltaPoints > 0 ? '+' : ''}${card.riskDeltaPoints}` }),
-      card.visual?.targetDescription ? el('div', { class: 'section-title', text: '工艺结果' }) : null,
-      card.visual?.targetDescription ? el('div', { class: 'report-line', text: card.visual.targetDescription }) : null,
-    ]),
+  const art = doodleSpec(card);
+  const stats = ['strength', 'toughness', 'sharpness', 'craft', 'design', 'spirit'];
+  const statNodes = stats.map(key => {
+    const direction = card.directions?.[key];
+    const dirKey = direction?.key || 'flat';
+    const type = dirKey.startsWith('up') ? 'is-positive' : dirKey.startsWith('down') ? 'is-negative' : 'is-neutral';
+    const symbol = type === 'is-positive' ? '↗' : type === 'is-negative' ? '↘' : '—';
+    return el('div', { class: 'forge-detail-stat ' + type }, [
+      el('span', { class: 'forge-detail-stat-name', text: statCn(key) }),
+      el('span', { class: 'forge-detail-stat-value', text: symbol + ' ' + (direction?.label || '基本保持') }),
+    ]);
   });
+  const tags = [...new Set(card.tags || [])].map(tag =>
+    el('span', { class: 'forge-detail-tag', text: tagName(tag) }));
+  const risk = Number(card.riskDeltaPoints) || 0;
+  const body = el('div', { class: 'forge-card-detail' }, [
+    el('div', { class: 'forge-detail-art', style: `--dcard-art-tint:${art.palette.field};--dcard-color:${art.palette.main};` }, [
+      cardDoodle(card),
+    ]),
+    el('div', { class: 'forge-detail-identity' }, [
+      rarityBadge(card.rarity, card.rarityCn),
+      el('span', { class: 'forge-detail-role', text: card.role || '工艺抉择' }),
+      el('span', { class: 'forge-detail-stage', text: card.stage + ' · ' + art.colorName + ' / ' + art.motionName }),
+    ]),
+    card.copy ? el('p', { class: 'forge-detail-description', text: card.copy }) : null,
+    el('div', { class: 'forge-detail-section' }, [
+      el('div', { class: 'forge-detail-section-head' }, [
+        el('strong', { text: '六维倾向' }),
+        el('span', { text: '实际增量见选中预览' }),
+      ]),
+      el('div', { class: 'forge-detail-stats' }, statNodes),
+    ]),
+    el('div', { class: 'forge-detail-section' }, [
+      el('div', { class: 'forge-detail-section-head' }, [
+        el('strong', { text: '工艺构筑' }),
+        el('span', { text: '累积标签强化赛事能力' }),
+      ]),
+      el('div', { class: 'forge-detail-tags' }, tags.length ? tags :
+        [el('span', { class: 'forge-detail-empty', text: '独立工艺 · 无标签' })]),
+    ]),
+    el('div', { class: 'forge-detail-summary' }, [
+      el('div', { class: 'forge-detail-metric' }, [
+        el('span', { text: '风险变化' }),
+        el('strong', { class: risk > 0 ? 'is-risky' : 'is-safe',
+          text: (risk > 0 ? '+' : '') + risk + ' 点' }),
+      ]),
+      card.visual?.targetDescription ? el('div', { class: 'forge-detail-result' }, [
+        el('span', { text: '视觉效果' }),
+        el('p', { text: card.visual.targetDescription }),
+      ]) : null,
+    ]),
+  ]);
+  const dialog = sheet({ title: card.name, body });
+  dialog.panel.classList.add('forge-card-detail-dialog');
 }
 
 function statCn(k) {
