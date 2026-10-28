@@ -265,5 +265,5 @@
 .build-track i.is-preview { background:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
 .build-effect { font-size:12px; color:var(--face-2); line-height:1.5; }
 .build-earned { padding:7px 10px; background:var(--base-2); border-radius:10px; font-size:12px; line-height:1.5; color:var(--face-2); }
-@media(max-height:740px) { .page[data-page="forge"] .dcard-visual{flex-basis:27px} .page[data-page="forge"] .dcard-meta{flex-basis:31px;min-height:31px} .page[data-page="forge"] .dcard-detail{min-height:31px} }
+@media(max-height:740px) { .page[data-page="forge"]{--card-h:188px} .page[data-page="forge"] .dcard-visual{flex-basis:27px} .page[data-page="forge"] .dcard-meta{flex-basis:31px;min-height:31px} .page[data-page="forge"] .dcard-detail{min-height:31px} }
 @media(max-height:660px) { .page[data-page="forge"] .dcard-visual{flex-basis:21px} .page[data-page="forge"] .dcard-title{min-height:27px;max-height:27px;font-size:12px;line-height:13px} .page[data-page="forge"] .dcard-tier{flex-basis:15px;max-height:15px;gap:2px} .page[data-page="forge"] .dcard-build-result{font-size:9px;line-height:10px;min-height:10px} .page[data-page="forge"] .dcard-meta{flex-basis:28px;min-height:28px} .page[data-page="forge"] .dcard-detail{min-height:28px} }
