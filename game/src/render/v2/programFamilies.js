@@ -948,8 +948,14 @@ const MAP_FRAGMENT = `
            Never lift highlights, alter steel hue, or change later stages. */
         float billetFace = smoothstep( 0.25, 0.80, clamp( vS3PlanarFace, 0.0, 1.0 ) );
         float billetFacing = 1.0 - smoothstep( 0.25, 0.72, k3dFres );
-        float grooveDepth = mix( 0.13, 0.27, billetFacing );
-        col *= 1.0 - grooveDepth * max( 0.0, -sig ) * billetFace * s3Surface;
+        /* Bring the selected grayscale engravings above the mobile-size
+           visibility threshold without a pale positive lobe. Shape the
+           darker troughs instead of simply scaling a tiny centered signal.
+           Derivative fade avoids unresolved high-frequency pepper noise. */
+        float grooveSignal = smoothstep( 0.03, 0.34, max( 0.0, -sig ) );
+        float grooveAA = 1.0 - smoothstep( 0.35, 0.80, fwidth( sig ) );
+        float grooveDepth = mix( 0.10, 0.24, billetFacing );
+        col *= 1.0 - grooveDepth * grooveSignal * grooveAA * billetFace * s3Surface;
       }
     }
 
