@@ -126,8 +126,10 @@ export function collectionStageStats() {
     return;
   }
   const key = fingerprint(record);
-  const paint = async dataUrl => {
-    if (!host.isConnected) return;
+  const paint = async (dataUrl, isCached = false) => {
+    // Cached previews may be painted while their card is still detached during render().
+    // Keep that synchronous path: otherwise every sort/compare redraw leaves blank cards.
+    if (!host.isConnected && !isCached) return;
     if (!dataUrl?.dataUrl) {
       showState(host, '档案外观暂不可预览', 'unavailable');
       return;
@@ -141,17 +143,17 @@ export function collectionStageStats() {
     image.src = dataUrl.dataUrl;
     // Keep the loading placeholder until the actual PNG is decoded; never flash an empty frame.
     try {
-      if (typeof image.decode === 'function') await image.decode();
+      if (!isCached && typeof image.decode === 'function') await image.decode();
     } catch (_) {
       if (host.isConnected) showState(host, '档案外观暂不可预览', 'unavailable');
       return;
     }
-    if (!host.isConnected) return;
+    if (!host.isConnected && !isCached) return;
     host.replaceChildren(image);
     host.dataset.state = 'ready';
   };
   const cached = imageCache.get(key);
-  if (cached) { imageCache.delete(key); imageCache.set(key, cached); paint(cached); return; }
+  if (cached) { imageCache.delete(key); imageCache.set(key, cached); paint(cached, true); return; }
   showState(host, '档案外观生成中', 'loading');
   const run = () => {
     observer?.unobserve(host);

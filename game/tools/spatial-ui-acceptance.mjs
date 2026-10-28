@@ -25,6 +25,12 @@ async function fit(page, selector) {
 }
 async function centered(page, selector) {
   await page.waitForFunction(selector => { const n=document.querySelector(selector); if(!n)return false; const b=n.getBoundingClientRect(); return Math.abs(b.x+b.width/2-innerWidth/2)<3 && Math.abs(b.y+b.height/2-innerHeight/2)<3; },selector,{timeout:4000});
+  // Geometry alone passes while the 220ms modal entrance is still transparent.
+  await page.waitForFunction(selector => {
+    const node = document.querySelector(selector);
+    const overlay = node?.closest('.sheet-mask, .quick-choice-overlay');
+    return overlay && Number(getComputedStyle(overlay).opacity) >= .95;
+  }, selector, {timeout:4000});
   const b = await fit(page, selector), v = page.viewportSize();
   assert.ok(Math.abs(b.x + b.width / 2 - v.width / 2) < 3, 'dialog horizontal center');
   assert.ok(Math.abs(b.y + b.height / 2 - v.height / 2) < 3, 'dialog vertical center');
@@ -148,6 +154,13 @@ try {
       assert.equal(overflow, false, 'collection must not overflow the viewport');
       await page.getByRole('button',{name:'加入比较',exact:true}).first().click();
       await page.getByRole('button',{name:'加入比较',exact:true}).first().click();
+      // Compare selection re-renders every card; cached thumbnails must survive detached DOM mounting.
+      await page.waitForFunction(() => {
+        const thumbs = [...document.querySelectorAll('.ws-collection-grid .blade-thumb')].slice(0, 2);
+        return thumbs.length === 2 && thumbs.every(n => n.dataset.state === 'ready'
+          && n.querySelector('img.blade-thumb-image')?.complete
+          && n.querySelector('img.blade-thumb-image')?.naturalWidth > 0);
+      }, null, {timeout:8000});
       await page.getByRole('button',{name:'比较这两把',exact:true}).click();
       await centered(page,'.sheet');await shot(page,`${width}-compare`);
       await page.keyboard.press('Escape');await page.locator('.sheet-mask').waitFor({state:'detached'});
