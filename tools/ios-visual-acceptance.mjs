@@ -49,7 +49,12 @@ async function capture(label,url,viewport,check) {
       canvasVisible:[...document.querySelectorAll(sel+' canvas')].some(x=>x.getClientRects().length&&x.width>10&&x.height>10),
       actualPage:document.querySelector(sel)?.dataset.page,
       mobileDevice:matchMedia('(pointer:coarse)').matches,
-      bodyScrolling:document.querySelector(sel+' .forge-body')?.scrollHeight>document.querySelector(sel+' .forge-body')?.clientHeight+3
+      bodyScrolling:document.querySelector(sel+' .forge-body')?.scrollHeight>document.querySelector(sel+' .forge-body')?.clientHeight+3,
+      cardFootersVisible:[...document.querySelectorAll(sel+' .dcard')].every(card=>{
+        const foot=card.querySelector('.dcard-meta')?.getBoundingClientRect();
+        const bounds=card.getBoundingClientRect();
+        return !!foot && foot.bottom<=bounds.bottom+.5 && foot.top>=bounds.top;
+      })
     };
   });
   const prefix=label+'-'+viewport.width+'x'+viewport.height;
@@ -82,7 +87,8 @@ async function capture(label,url,viewport,check) {
       beforeSelect.actions?.top>=0 && beforeSelect.stage?.height>=165 &&
       beforeSelect.rail?.top>=beforeSelect.stage?.bottom-1 &&
       beforeSelect.actions?.top>=beforeSelect.cards?.bottom-1 &&
-      !beforeSelect.horizontalOverflow && !beforeSelect.bodyScrolling;
+      !beforeSelect.horizontalOverflow && !beforeSelect.bodyScrolling &&
+      beforeSelect.cardFootersVisible && state.cardFootersVisible;
     record.oneScreen=fit;
     if(!fit || !selected || (viewport.height>=680&&!progressed))
       report.failures.push({label,viewport,fit,selected,progressed});
