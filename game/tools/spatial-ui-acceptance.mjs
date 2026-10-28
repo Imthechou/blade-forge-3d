@@ -110,16 +110,22 @@ try {
           } else if(state.phase==='hammer') {
             await page.locator('.hammer-stage-hit').click({position:{x:100,y:130}});
             await shot(page,'flow-hammer');
-            await page.getByRole('button',{name:'结束锻打',exact:true}).click();
+            await page.getByRole('button',{name:/收手/}).click();
           } else if(state.phase==='edge') {
-            const points=await page.evaluate(async()=>{const G=(await import('/src/app/game.js')).default;return (await import('/src/core/edge.js')).makeTask(G.run).points;});
-            const b=await page.locator('.edge-canvas').boundingBox();
-            for(let j=0;j<points.length;j++) {
-              const x=b.x+8+j/(points.length-1)*(b.width-16),y=b.y+b.height*.5-(points[j]-.5)*(b.height-30);
-              await page.mouse.move(x,y);if(j===0)await page.mouse.down();
-            }
+            await page.waitForTimeout(850);
+            const points=await page.evaluate(async()=>{
+              const s=(await import('/src/render/index.js')).getStage();
+              return (await import('/src/ui/bladeEdgeProjection.js')).bladeEdgeProjection(
+                s,document.querySelector('#forgeStage').clientWidth,document.querySelector('#forgeStage').clientHeight);
+            });
+            assert.ok(points?.length===24,'actual 3D blade projection required');
+            const b=await page.locator('.edge-stage-canvas').boundingBox();
+            await page.mouse.move(b.x+points.at(-1).x,b.y+points.at(-1).y);
+            await page.mouse.down();
+            for(let j=points.length-2;j>=0;j--)
+              await page.mouse.move(b.x+points[j].x,b.y+points[j].y,{steps:2});
             await page.mouse.up();await shot(page,'flow-edge');
-            await page.getByRole('button',{name:/提交/}).click();
+            await page.getByRole('button',{name:'完成开刃'}).click();
           }
         }
         await page.locator('.page[data-page="appraise"].is-active').waitFor({timeout:45000});

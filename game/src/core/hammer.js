@@ -44,20 +44,19 @@ export function makeState() {
  * @returns {{delta:object, total:number, vector:object}}
  */
 export function statGainOf(gain, directionTagId) {
-  const vector = hammerDirectionVector(directionTagId);
+  const vector = { strength: 1 }; // S4 minigame specializes in Strength.
   const total = Math.max(0, Number(gain) || 0) * HAMMER_GAIN_SCALE;
-  const delta = {};
-  for (const [k, share] of Object.entries(vector)) {
-    const v = Math.round(total * share * 100) / 100;
-    if (v > 0) delta[k] = v;
-  }
+  const delta = { strength: Math.round(total * 100) / 100 };
   return { delta, total: Math.round(total * 100) / 100, vector };
 }
 
 /** 第 n 锤（1-based）的成果：前期明确、后期递减（V2.1 §10.4） */
 export function progressOf(strikeIndex) {
-  const raw = HAMMER_PROGRESS.BASE * Math.pow(HAMMER_PROGRESS.DECAY, Math.max(0, strikeIndex - 1));
-  return Math.max(HAMMER_PROGRESS.FLOOR, raw);
+  // Ten protected strikes build the foundation. Beyond them, every extra hammer
+  // adds more Strength until the high-risk per-strike payout caps at 15.
+  // Unlimited hits remain possible; fracture probability provides the limit.
+  if (strikeIndex <= 10) return 5.5;
+  return Math.min(15, 6.5 + (strikeIndex - 11) * 0.9);
 }
 
 /** 下一锤的 Risk 增量（UI 提示用，与 strike() 用同一函数） */
@@ -94,7 +93,10 @@ export function strike(run, rng) {
   run.hammer.statGained = Math.round((run.hammer.statGained + statGain.total) * 100) / 100;
 
   // ★ Risk 增加后立即判定（V2.1 §10.2）
-  const check = Risk.check(run.risk.current, rng, run.daily?.breakScale || 1);
+  // Ten safe strikes even when prior-stage card risk is nonzero.
+  const check = index <= 10
+    ? { risk: run.risk.current, chance: 0, roll: null, fractured: false, protected: true }
+    : Risk.check(run.risk.current, rng, run.daily?.breakScale || 1);
 
   const tierBefore = run.hammer.tier;
   run.hammer.tier = hammerTierOf(run.hammer.progress).id;
@@ -119,7 +121,7 @@ export function strike(run, rng) {
       direction: run.hammer.direction,
       /** 下一锤的风险提示（V2.1 §10.2 第 4 条） */
       nextRiskDelta: nextRiskDelta(run.hammer.count),
-      nextBreakChance: Risk.breakChance(
+      nextBreakChance: run.hammer.count < 10 ? 0 : Risk.breakChance(
         Math.min(100, run.risk.current + nextRiskDelta(run.hammer.count)),
         run.daily?.breakScale || 1,
       ),

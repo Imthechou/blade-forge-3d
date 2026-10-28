@@ -240,6 +240,13 @@ export function accuracy(base, path) {
   return Math.max(0, Math.min(1, 1 - m / EDGE_TOLERANCE));
 }
 
+/** Mobile 3D projected edge: only coverage and proximity, no speed/stability penalty. */
+export function projectedQuality(fidelity, coverage) {
+  if (coverage >= .90 && fidelity >= .84) return .90;
+  if (coverage >= .80 && fidelity >= .65) return .70;
+  if (coverage >= .60 && fidelity >= .45) return .45;
+  return 0;
+}
 export function tierOf(quality) {
   for (let i = EDGE_TIERS.length - 1; i >= 0; i--) if (quality >= EDGE_TIERS[i].min) return EDGE_TIERS[i];
   return EDGE_TIERS[0];
@@ -255,13 +262,14 @@ export function tierOf(quality) {
  *
  * ★ 多次提交取**最优**（不累加），防止反复提交刷分，也守住「小游戏不逆转构筑」。
  */
-export function submit(run, samples, { skipped = false } = {}) {
-  const base = baseline(run.seed, run.knifeTypeId);
+export function submit(run, samples, { skipped = false, projected = false } = {}) {
+  const base = projected ? new Array(EDGE_SAMPLES).fill(0.5) : baseline(run.seed, run.knifeTypeId);
   const n = base.length;
   const normalized = normalizeSamples(skipped ? [] : samples, n);
   const ev = skipped
     ? { fidelity: 0, coverage: 0, stability: 0, quality: 0, drawn: 0, gaps: 0 }
     : evaluate(base, normalized);
+  if (projected && !skipped) ev.quality = projectedQuality(ev.fidelity, ev.coverage);
   const tier = tierOf(ev.quality);
 
   const prev = run.edge || { tier: null, acc: 0, sharp: 0, craft: 0 };
