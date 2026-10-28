@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applyForgeCutTraits, resolveForgeCutTraits } from '../src/core/forgeTraitCuts.js';
 import { deriveCutParams, deriveCutParamsForBlade } from '../src/core/cutParams.js';
+import { createChallenge } from '../src/core/arenaChallenge.js';
 
 const stats = { strength: 80, toughness: 80, sharpness: 80, craft: 80, design: 80, spirit: 80 };
 const base = () => deriveCutParams(stats, []);
@@ -44,4 +45,13 @@ test('standalone blade params uses same active effects', () => {
   assert.ok(p.comboWindow > base().comboWindow);
   assert.equal(p.forgeTraits.length, 2);
   assert.ok(p.emergencyHeal > 0);
+});
+
+test('45s live challenge actually consumes forged trait effects from archived blade', () => {
+  const plain = createChallenge({ id:'plain', stats, traits:[], tags:{} }, { seed:123, augments:false });
+  const forged = createChallenge({ id:'forged', stats, traits:[], tags:{ cold:4, heat:4 } }, { seed:123, augments:false });
+  assert.ok(plain.ok && forged.ok);
+  assert.ok(forged.run.params.iceChain > plain.run.params.iceChain);
+  assert.ok(forged.run.params.hardPowerMult > plain.run.params.hardPowerMult);
+  assert.ok(forged.run.params.forgeTraits.some(t=>t.id==='cold'));
 });
