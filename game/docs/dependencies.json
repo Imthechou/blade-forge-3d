@@ -2906,8 +2906,8 @@
   },
   {
     "file": "src/ui/pages/appraise.js",
-    "bytes": 29005,
-    "lines": 642,
+    "bytes": 29538,
+    "lines": 648,
     "imports": [
       "src/app/game.js",
       "src/core/index.js",
@@ -2994,7 +2994,7 @@
   },
   {
     "file": "src/ui/pages/forge.js",
-    "bytes": 36726,
+    "bytes": 36702,
     "lines": 771,
     "imports": [
       "src/app/game.js",

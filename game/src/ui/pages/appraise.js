@@ -66,12 +66,18 @@ export function render() {
 
   const rec = Game.record || (Game.run ? Game.appraise() : null);
   if (!rec) {
-    mount(body, [
-      el('div', { class: 'ap-sec is-in' }, [
-        el('div', { class: 'card' }, [el('div', { text: '没有待鉴定的刀。' })]),
-      ]),
+    // A refreshed result has no live run. Show the saved work without re-awarding it,
+    // and keep a real model mounted so startup can complete its normal GPU preparation.
+    const saved = Core.progress.collection().slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+    if (saved) Game.showRecord(saved);
+    else Game.showDefault();
+    mount(body, [el('div', { class: 'ap-sec is-in' }, [
+      el('div', { class: 'card', text: saved ? '作品已保存至藏刀阁' : '开始锻造你的第一把刀' }),
+    ])]);
+    mount(actions, [
+      saved ? el('button', { class: 'btn btn--primary', text: '查看收藏', onclick: () => Workshop.openTab('collection') }) : null,
+      el('button', { class: saved ? 'btn' : 'btn btn--primary', text: '回首页', onclick: () => router.go('home') }),
     ]);
-    mount(actions, [el('button', { class: 'btn btn--primary', text: '回首页', onclick: () => router.go('home') })]);
     return;
   }
 

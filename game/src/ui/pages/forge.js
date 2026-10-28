@@ -564,7 +564,7 @@ function renderEdge(body, run) {
   /* ★ rework T05：允许跳过（记 MISS），不用强制描画卡住流程。 */
   const actions = el('div', { class: 'row' });
   actions.appendChild(el('button', {
-    class: 'btn btn--primary btn--ghost', text: '跳过描线（MISS）',
+    class: 'btn', text: '跳过描线（MISS）',
     onclick: () => submit({ skipped: true }),
   }));
   actions.appendChild(el('button', {
