@@ -59,17 +59,17 @@ function paletteFor(name){
   return {theme:rule.key,palette:{paper:rule.paper,field:rule.field,main:rule.main,pop,ink:rule.ink},label:rule.label};
 }
 const motions=Object.freeze([
-  {id:'scatter',re:/星屑|星尘|碎|砂|颗粒|微|屑|点/g,label:'星屑散落'},
-  {id:'fractured',re:/裂|断|残|错|破|战|剥/g,label:'裂片冲突'},
-  {id:'orbit',re:/星|月|天|神|灵|虹|幻|辉/g,label:'环绕轨迹'},
-  {id:'ribbon',re:/流|波|液|云|顺|渐|彩|熔/g,label:'流线回旋'},
-  {id:'crystal',re:/晶|格|矿|钛|石|玉|瓷|金|铁/g,label:'晶面折线'},
-  {id:'mirror',re:/镜|净|抛|光|白|亮|透|偏/g,label:'对映亮斑'},
-  {id:'stitch',re:/纹|丝|层|叠|织|编|线|缠/g,label:'交错针脚'},
-  {id:'slash',re:/刃|锋|刀|剑|磨|切|尖|脊/g,label:'斜刃速线'},
-  {id:'spark',re:/焰|火|电|雷|热|锤|冲|震/g,label:'能量飞溅'},
-  {id:'root',re:/木|竹|皮|翠|翡|生|柔/g,label:'生长曲线'},
-  {id:'stable',re:/匀|稳|控|定|校|准|衡|均/g,label:'校准刻度'},
+  {id:'scatter',re:/星屑|星尘|碎|砂|颗粒|微|屑|点/,label:'星屑散落'},
+  {id:'fractured',re:/裂|断|残|错|破|战|剥/,label:'裂片冲突'},
+  {id:'orbit',re:/星|月|天|神|灵|虹|幻|辉/,label:'环绕轨迹'},
+  {id:'ribbon',re:/流|波|液|云|顺|渐|彩|熔/,label:'流线回旋'},
+  {id:'crystal',re:/晶|格|矿|钛|石|玉|瓷|金|铁/,label:'晶面折线'},
+  {id:'mirror',re:/镜|净|抛|光|白|亮|透|偏/,label:'对映亮斑'},
+  {id:'stitch',re:/纹|丝|层|叠|织|编|线|缠/,label:'交错针脚'},
+  {id:'slash',re:/刃|锋|刀|剑|磨|切|尖|脊/,label:'斜刃速线'},
+  {id:'spark',re:/焰|火|电|雷|热|锤|冲|震/,label:'能量飞溅'},
+  {id:'root',re:/木|竹|皮|翠|翡|生|柔/,label:'生长曲线'},
+  {id:'stable',re:/匀|稳|控|定|校|准|衡|均/,label:'校准刻度'},
 ]);
 function motionFor(name,primary,seed){
   const match=motions.find(m=>m.re.test(name));
