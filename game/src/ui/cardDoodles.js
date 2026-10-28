@@ -38,7 +38,7 @@ const themes=Object.freeze([
   {key:'crimson',match:/赤|红|灼|焰|玄火|火|血/,paper:'#FFF7EF',field:'#FFE0C6',main:'#EC634E',pop:'#FFB654',ink:'#46304A',label:'赤焰'},
   {key:'violet',match:/紫|错相|紫晶/,paper:'#FAF5FF',field:'#E8D8FF',main:'#9362DA',pop:'#E89BD5',ink:'#342B58',label:'幽紫'},
   {key:'cobalt',match:/蓝|寒|冰|冷|冻|零|雪|霜|液氮/,paper:'#F4F9FF',field:'#CEE9FF',main:'#4D8FDE',pop:'#88DBEB',ink:'#243A5B',label:'霜蓝'},
-  {key:'gold',match:/曙|金|辉|昼|日|天工/,paper:'#FFFAF0',field:'#FFE8B9',main:'#DFA044',pop:'#F7CE6D',ink:'#44374B',label:'鎏金'},
+  {key:'gold',match:/曙|金|辉|日|天工/,paper:'#FFFAF0',field:'#FFE8B9',main:'#DFA044',pop:'#F7CE6D',ink:'#44374B',label:'鎏金'},
   {key:'verdant',match:/翡|翠|绿|青|玉|苔/,paper:'#F2FCF6',field:'#CFF0DB',main:'#3BAE87',pop:'#ADD96E',ink:'#254B4A',label:'翡翠'},
   {key:'obsidian',match:/玄|噬|暗|蚀|夜|黑|影|幽|雾/,paper:'#F5F5FC',field:'#DCDDF5',main:'#6575AB',pop:'#AB97D5',ink:'#27334A',label:'深蚀'},
   {key:'pearl',match:/白|珠|镜|银|瓷|净|透|素面/,paper:'#F6FCFD',field:'#DCECF3',main:'#6BAEBB',pop:'#A6CADB',ink:'#34516B',label:'珠光'},
