@@ -212,6 +212,71 @@ function motif(g,id,p,v) {
 }
 
 /**
+ * Name-derived line treatment. These are not generic sparkles: a cracked
+ * mineral gets splintering hatch-marks, liquid gets sweeping ink, a blade gets
+ * an oblique cut, and calibrated work gets technical registration ticks.
+ * All marks live outside the central glyph, at readable mobile-card scale.
+ */
+function addNameMarks(svg,s,p) {
+  const g=e(svg,'g',{'aria-hidden':'true'});
+  const thin=(d,c=p.ink,w=2.3)=>stroke(g,d,c,w);
+  const x=s.offset/2;
+  switch(s.motion){
+    case 'scatter':
+      [[14,13,3],[29,37,2.4],[36,10,2],[112,12,2.5],[142,48,3.2],[153,22,1.7]]
+        .forEach(([cx,cy,r],i)=>dot(g,cx+x,cy,r,i%2?p.main:p.pop));
+      thin('M22 45 l7 -7 M134 10 l8 -5',p.ink,1.8);break;
+    case 'fractured':
+      thin('M6 18 l20 -8 -5 12 18 -6 M124 45 l9 -16 12 8 9 -13',p.ink,2.8);
+      poly(g,'27,36 40,30 34,50',p.pop,p.ink,1.3);
+      thin('M140 57 l9 -7',p.main,3);break;
+    case 'orbit':
+      thin('M10 39 C18 5 45 2 55 4 M105 55 C133 56 148 43 152 20',p.pop,3.1);
+      dot(g,14+x,14,2.8,p.main);dot(g,145-x,20,2.2,p.ink);
+      thin('M119 13 l5 -7 M124 20 l8 -1',p.ink,1.7);break;
+    case 'ribbon':
+      thin('M-4 48 C21 27 25 49 48 28',p.pop,4);
+      thin('M105 18 C126 -6 132 18 164 2',p.main,4.4);
+      thin('M133 53 Q145 43 160 49',p.ink,1.8);break;
+    case 'crystal':
+      poly(g,'9,19 21,4 33,20 23,34',p.field,p.ink,1.8);
+      thin('M21 4 l2 30 M9 19 l24 1 M134 6 l14 18 -16 5',p.pop,2.5);
+      dot(g,149,42,3,p.main);break;
+    case 'mirror':
+      thin('M8 11 l22 0 M9 17 l14 0 M124 49 l28 0 M136 44 l17 0',p.ink,1.9);
+      poly(g,'27,8 32,1 35,8 43,12 35,15 31,23 28,15 19,11',p.pop,p.ink,1.3);
+      dot(g,129,12,3,p.main);break;
+    case 'stitch':
+      for(let i=0;i<4;i++){
+        thin('M'+(9+i*7)+' 6 l5 8',i%2?p.main:p.ink,2);
+        thin('M'+(123+i*7)+' 47 l-4 9',i%2?p.pop:p.ink,2);
+      }
+      thin('M8 23 Q25 32 44 25 M115 39 Q139 32 156 39',p.pop,2.5);break;
+    case 'slash':
+      thin('M6 56 L43 3',p.ink,3.6);
+      thin('M15 54 L45 14 M110 56 L152 12',p.pop,2.8);
+      thin('M122 55 l7 -3',p.main,3);break;
+    case 'spark':
+      thin('M17 2 l9 9 M5 26 l11 3 M39 4 l-2 11',p.ink,2.3);
+      poly(g,'139,4 133,20 146,20 137,38 158,16 146,15 152,2',p.pop,p.ink,1.8);
+      dot(g,22,50,3,p.main);break;
+    case 'root':
+      thin('M11 56 Q2 28 31 16 Q43 9 47 3',p.ink,2.9);
+      path(g,'M16 37 Q4 16 4 11 Q24 16 24 27Z',{fill:p.pop,stroke:p.ink,'stroke-width':1.7});
+      path(g,'M119 41 Q133 22 153 29 Q145 44 119 41Z',{fill:p.field,stroke:p.ink,'stroke-width':1.7});
+      break;
+    case 'stable':
+    default:
+      thin('M15 9 V21 M8 15 H22 M137 43 V56 M130 50 H144',p.ink,2.4);
+      thin('M24 6 H44 M117 58 H136',p.pop,3);
+      dot(g,150,15,2.5,p.main);break;
+  }
+  // Stable variations of pen structure — never random frame-to-frame effects.
+  if(s.variant%2===0) thin('M'+(17+s.variant)+' 57 q9 -5 15 -1',p.pop,1.6);
+  if(s.variant%3===1) dot(g,149,54,2.4,p.main);
+}
+
+/**
  * Compose one 160×64 editorial sticker; no external graphic assets.
  * On narrow cards this remains recognisable as one bold glyph + one mini glyph.
  */
@@ -225,17 +290,31 @@ export function cardDoodle(card) {
   svg.setAttribute('focusable','false');
   // A translucent color wash lets the surrounding glass card remain visible.
   e(svg,'rect',{x:0,y:0,width:160,height:64,fill:p.paper,opacity:'.26'});
-  const brush=s.variant%2===0
-    ? 'M-6 10 Q34 -13 72 10 Q95 22 167 -7 L167 31 Q115 18 80 48 Q35 74 -6 43Z'
-    : 'M-5 37 Q28 2 78 11 T166 15 L166 46 Q104 63 64 47 Q23 39 -5 68Z';
+  const brush=s.motion==='ribbon'
+    ? 'M-5 25 Q30 -20 70 15 T165 8 L166 37 Q107 57 64 37 Q20 13 -5 55Z'
+    : s.motion==='fractured'
+      ? 'M-5 14 L35 0 52 24 84 1 112 30 167 12 167 47 115 55 74 39 31 62 -5 38Z'
+      : s.motion==='orbit'
+        ? 'M-5 42 Q20 -4 77 1 T166 28 L166 50 Q116 62 71 44 Q23 18 -5 63Z'
+        : s.variant%2===0
+          ? 'M-6 10 Q34 -13 72 10 Q95 22 167 -7 L167 31 Q115 18 80 48 Q35 74 -6 43Z'
+          : 'M-5 37 Q28 2 78 11 T166 15 L166 46 Q104 63 64 47 Q23 39 -5 68Z';
   path(svg,brush,{fill:p.field,opacity:'.57'});
+  addNameMarks(svg,s,p);
   // Decal backing: hand-cut capsule shape, flat screen-print look.
-  const x=61+s.offset;
+  const x=59+s.offset+(s.motion==='slash'?5:s.motion==='orbit'?-3:0);
   const back=e(svg,'g',{transform:'translate('+x+' 33) rotate('+s.tilt+')'});
-  path(back,'M-30 -17 Q-19 -31 6 -25 Q31 -23 33 -5 Q37 13 13 27 Q-14 33 -30 13 Q-37 -5 -30 -17Z',{fill:p.main,opacity:'.16'});
-  const main=e(svg,'g',{transform:'translate('+x+' 32) rotate('+s.tilt+') scale(.79)'});
+  const halo=s.motion==='crystal'
+    ? 'M-29 -7 L-8 -27 25 -19 32 13 8 29 -28 17Z'
+    : s.motion==='fractured'
+      ? 'M-28 -24 L0 -16 23 -28 31 3 15 28 -26 17Z'
+      : 'M-30 -17 Q-19 -31 6 -25 Q31 -23 33 -5 Q37 13 13 27 Q-14 33 -30 13 Q-37 -5 -30 -17Z';
+  path(back,halo,{fill:p.main,opacity:'.16'});
+  const scale=s.motion==='slash'?'.87':s.motion==='stitch'?'.75':'.82';
+  const main=e(svg,'g',{transform:'translate('+x+' 32) rotate('+s.tilt+') scale('+scale+')'});
   motif(main,s.primary,p,s.variant);
-  const mini=e(svg,'g',{transform:'translate('+(127-s.offset/2)+' '+(31+(s.variant%3-1)*3)+') rotate('+(-s.tilt*1.3)+') scale(.45)'});
+  const smallX=s.motion==='fractured'?126:s.motion==='ribbon'?131:123;
+  const mini=e(svg,'g',{transform:'translate('+(smallX-s.offset/2)+' '+(31+(s.variant%3-1)*3)+') rotate('+(-s.tilt*1.3)+') scale(.44)'});
   // Mini glyph has its own hue hierarchy while sharing the same motif grammar.
   motif(mini,s.secondary,{...p,main:p.pop,pop:p.main},s.variant+2);
   // Small hand-drawn noise marks: intentional and cheap, not random particles.
