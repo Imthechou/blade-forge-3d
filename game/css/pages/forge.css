@@ -417,8 +417,9 @@
 .page[data-page="forge"] {--card-h:208px}
 .page[data-page="forge"] .dcard {
   gap:5px;
-  padding:8px 8px 9px;
+  padding:8px 8px 12px;
   overflow:hidden;
+  justify-content:flex-start;
 }
 .page[data-page="forge"] .dcard-head {
   min-height:23px;
@@ -454,27 +455,27 @@
 }
 .page[data-page="forge"] .dcard-visual {
   flex:0 0 49px;
-  margin:3px 0 8px;
+  margin:2px 0 6px;
   border-radius:12px;
 }
 .page[data-page="forge"] .dcard-title {
-  min-height:32px;max-height:32px;
+  min-height:0;max-height:32px;
   margin:0;font-size:13px;line-height:16px;
 }
 .page[data-page="forge"] .dcard-plan {
-  margin-top:3px;
-  gap:3px;
+  margin-top:0;
+  gap:2px;
   grid-template-rows:13px 12px;
-  min-height:28px;max-height:28px;
+  min-height:27px;max-height:27px;
 }
 .page[data-page="forge"] .dcard-tier {
-  margin-top:auto;
-  padding-bottom:1px;
+  margin-top:1px;
+  padding-bottom:0;
   flex:0 0 18px;
   max-height:18px;
 }
 .page[data-page="forge"] .dcard:not(:has(.dcard-tier)) .dcard-plan {
-  margin-top:auto;margin-bottom:6px;
+  margin-top:0;margin-bottom:0;
 }
 .page[data-page="forge"] .dcard-meta,
 .page[data-page="forge"] .dcard-detail,
@@ -483,15 +484,15 @@
 }
 @media(max-height:740px){
   .page[data-page="forge"]{--card-h:190px}
-  .page[data-page="forge"] .dcard {padding:6px 7px 7px;gap:3px}
+  .page[data-page="forge"] .dcard {padding:6px 7px 9px;gap:3px}
   .page[data-page="forge"] .dcard-head {min-height:21px;flex-basis:21px}
-  .page[data-page="forge"] .dcard-visual {flex-basis:38px;margin:2px 0 7px}
-  .page[data-page="forge"] .dcard-plan {margin-top:2px;gap:1px;min-height:26px;max-height:26px}
+  .page[data-page="forge"] .dcard-visual {flex-basis:38px;margin:2px 0 5px}
+  .page[data-page="forge"] .dcard-plan {margin-top:0;gap:1px;min-height:26px;max-height:26px}
 }
 @media(max-height:660px){
   .page[data-page="forge"]{--card-h:182px}
-  .page[data-page="forge"] .dcard-visual {flex-basis:29px;margin:1px 0 5px}
-  .page[data-page="forge"] .dcard-title {min-height:27px;max-height:27px;font-size:12px;line-height:13px}
+  .page[data-page="forge"] .dcard-visual {flex-basis:29px;margin:1px 0 4px}
+  .page[data-page="forge"] .dcard-title {min-height:0;max-height:26px;font-size:12px;line-height:13px}
   .page[data-page="forge"] .dcard-plan {min-height:24px;max-height:24px}
   .page[data-page="forge"] .dcard-tier {flex-basis:15px;max-height:15px}
 }
