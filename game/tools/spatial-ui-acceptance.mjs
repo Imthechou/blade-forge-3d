@@ -184,7 +184,7 @@ try {
     await check(`${width}: arena modes and centered augment`,async()=>{
       await page.evaluate(async()=>(await import('/src/ui/pages/arena.js')).openTournament());
       await shot(page,`${width}-arena`);
-      await page.evaluate(async()=>(await import('/src/ui/pages/arena.js')).openQuickChallenge());
+      await page.evaluate(async()=>(await import('/src/ui/pages/arena.js')).openQuickChallenge('mean-150'));
       await page.getByRole('button',{name:'开始自由快赛',exact:true}).click();
       await page.locator('[data-augment-id]').first().waitFor();
       await centered(page,'.quick-choice-panel');
@@ -195,7 +195,13 @@ try {
       await page.locator('[data-augment-id]').first().click();
       await page.locator('.quick-choice-overlay').waitFor({state:'detached'});
       await fit(page,'.quick-hud');
-      assert.ok(await page.locator('.quick-forge-skills').count()===1,'cutting arena must show activated forged traits');
+      const traitsView = await page.evaluate(() => ({
+        id: window.__FORGE_ARENA?.run?.blade?.id,
+        params: window.__FORGE_ARENA?.run?.params?.forgeTraits,
+        ribbon: !!document.querySelector('.quick-forge-skills'),
+      }));
+      assert.ok(traitsView.ribbon && traitsView.params?.length >= 2,
+        'cutting arena must show acquired forging traits: ' + JSON.stringify(traitsView));
       await shot(page,`${width}-cutting`);
       await page.getByRole('button',{name:'暂停',exact:true}).click();
       await centered(page,'.quick-choice-panel');
