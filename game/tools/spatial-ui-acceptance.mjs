@@ -37,7 +37,7 @@ try {
       isMobile:width<500, hasTouch:true });
     const identity = {knifeType:'knife_tangdao',knifeTypeId:'tangdao',rarity:'rare',rarityName:'稀有',qualityName:'精制',history:[],seed:123};
     const blades = [{...sampleBlade(150),...identity,score:320,bladeName:'冷镜唐刀'}, {...sampleBlade(100),...identity,id:'spatial-b',score:220,bladeName:'拉丝唐刀'}];
-    await context.addInitScript(blades => localStorage.setItem('bladeforge.save', JSON.stringify({version:1,cr:2000,collection:blades,settings:{tutorialSeen:true,sound:false,motion:'reduced'}})), blades);
+    await context.addInitScript(blades => { if (!localStorage.getItem('bladeforge.save')) localStorage.setItem('bladeforge.save', JSON.stringify({version:1,cr:2000,collection:blades,settings:{tutorialSeen:true,sound:false,motion:'reduced'}})); }, blades);
     const page = current = await context.newPage();
     page.on('pageerror', e => report.errors.push({width,error:String(e)}));
     page.on('console', m => { if(m.type()==='error' && !m.text().includes('favicon')) report.errors.push({width,error:m.text()}); });

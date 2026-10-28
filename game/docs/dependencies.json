@@ -2798,8 +2798,8 @@
   },
   {
     "file": "src/ui/components.js",
-    "bytes": 24946,
-    "lines": 510,
+    "bytes": 25264,
+    "lines": 514,
     "imports": [
       "src/data/balance.js",
       "src/data/cards.js",
@@ -2906,8 +2906,8 @@
   },
   {
     "file": "src/ui/pages/appraise.js",
-    "bytes": 29784,
-    "lines": 653,
+    "bytes": 29005,
+    "lines": 642,
     "imports": [
       "src/app/game.js",
       "src/core/index.js",

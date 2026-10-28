@@ -203,18 +203,7 @@ function renderReveal(rec) {
        玩家在鉴定页看到的卡，与入藏后在藏刀阁看到的是同一个组件、同一份数据。 */
     sec('archive', [el('div', { class: 'ap-archive-receipt', text: rec.canEnterArena ? '✓ 已收录藏刀阁' : '✓ 已保存鉴定记录' })]),
     freshSection(rec),
-    /* 详细资料分页：主链信息已在上面完整呈现，这里不再是“唯一可见处” */
-    tabs([['overview', '概览'], ['six', '六维'], ['craft', '工艺'], ['score', '评分']]),
-    el('div', { class: 'ap-panels' }, [
-      panel('overview', [el('div', { class: 'muted tiny', text: '已收录藏刀阁' })]),
-      panel('six', [sec('six-detail', [el('div', { class: 'section-title', text: `六维精确值（均值 ${rec.statMean}）` }), statRail(rec.stats, null, true)])]),
-      panel('craft', [sec('craft-detail', [craftSection(rec)])]),
-      panel('score', [sec('bd-detail', [
-        el('div', { class: 'section-title', text: '评分构成明细' }),
-        el('div', { class: 'ap-bd' }, bdRows(d)),
-        ...bdSrcRows(d),
-      ])]),
-    ]),
+
   ]);
   bindTabs(body);
   bindStatDetails(body);

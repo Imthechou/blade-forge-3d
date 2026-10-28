@@ -55,7 +55,11 @@
 .page[data-page="forge"] .dcard-copy,.page[data-page="forge"] .dcard-tags { display:none; }
 .page[data-page="forge"] .dcard-dirs { display:flex; flex:1 0 29px; max-height:32px; min-height:0; align-content:flex-start; flex-wrap:wrap; gap:2px; overflow:hidden; }
 .page[data-page="forge"] .dcard-dirs .chip { padding:1px 4px; border:0; font-size:11px; line-height:14px; }
-.page[data-page="forge"] .dcard-tier { flex:0 0 auto; max-height:30px; overflow:hidden; font-size:11px; line-height:15px; color:var(--face-3); }
+.page[data-page="forge"] .dcard-tier { display:flex; flex-direction:column; gap:4px; flex:0 0 26px; max-height:26px; overflow:hidden; font-size:11px; line-height:14px; color:var(--face-3); }
+.dcard-layer-dots { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; height:3px; }
+.dcard-layer-dots i { border-radius:3px; background:var(--base-3); }
+.dcard-layer-dots .is-owned { background:var(--accent-cool); }
+.dcard-layer-dots .is-added { background:var(--accent); }
 .page[data-page="forge"] .dcard-tier.is-up { color:var(--accent); font-weight:650; }
 .page[data-page="forge"] .dcard-meta { flex:0 0 44px; min-height:44px; margin-top:auto; border-top:1px solid var(--line-2); gap:0; }
 .page[data-page="forge"] .dcard-meta>.grow { font-size:11px; color:var(--face-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

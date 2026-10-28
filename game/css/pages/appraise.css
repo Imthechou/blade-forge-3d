@@ -190,3 +190,7 @@
 .ap-tab.is-active { background:rgba(255,255,255,.9); color:var(--accent); border-color:var(--glass-border); }
 @media (max-height:660px) { .ap-body{gap:8px;padding-inline:12px} .ap-actions{padding-inline:12px;padding-block:6px} .ap-title{font-size:22px} .ap-stat{min-height:52px;padding:7px} }
 .ap-archive-receipt { padding:8px 12px; border-radius:12px; background:var(--accent-soft); color:var(--accent); font-size:12px; }
+
+/* Detail tabs use the same body scroll area at every screen height. */
+.ap-panels { flex:0 0 auto; min-height:100px; overflow:visible; }
+.ap-panel { height:auto; min-height:100px; overflow:visible; }

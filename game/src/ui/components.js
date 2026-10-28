@@ -475,9 +475,13 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
     /* ★ rework T14：标签补档行 —— “这张卡让我离哪个特性更近” */
     tierText ? el('div', {
       class: 'dcard-tier' + (tierHint.isTierUp ? ' is-up' : ''),
-      text: tierText,
-      title: tierText,
-    }) : null,
+      title: tierText, role: 'img', 'aria-label': tierText,
+    }, [
+      el('span', { text: `${tierHint.name} ${tierHint.from}→${tierHint.to}` }),
+      el('span', { class: 'dcard-layer-dots', 'aria-hidden': 'true' }, Array.from({ length: 6 }, (_, i) => el('i', {
+        class: i < tierHint.from ? 'is-owned' : i < tierHint.to ? 'is-added' : '',
+      }))),
+    ]) : null,
     (card.tags && card.tags.length)
       ? el('div', { class: 'dcard-tags' }, card.tags.map((t) => el('span', { class: 'chip', text: tagName(t) })))
       : null,

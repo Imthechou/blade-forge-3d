@@ -134,11 +134,11 @@
 | [src/ui/arenaSprites.js](../src/ui/arenaSprites.js) | 136 | 5988 | TYPES, STATES, CELL, spriteStatus, prepareArenaSprites, spriteReady, drawWholeSprite, drawSplitSprite, drawShardSprite, drawFlashSprite |
 | [src/ui/arenaStage.js](../src/ui/arenaStage.js) | 1113 | 54857 | drawArenaStage |
 | [src/ui/bladeCard.js](../src/ui/bladeCard.js) | 354 | 14785 | bladeCardModel, bladeCard, bladeCardDetail, compareModels |
-| [src/ui/components.js](../src/ui/components.js) | 510 | 24946 | ICONS, riskBar, riskChip, statRail, statGrid, rarityBadge, qualitySeal, decisionCard, traitItem |
+| [src/ui/components.js](../src/ui/components.js) | 514 | 25264 | ICONS, riskBar, riskChip, statRail, statGrid, rarityBadge, qualitySeal, decisionCard, traitItem |
 | [src/ui/dom.js](../src/ui/dom.js) | 149 | 6592 | el, clear, mount, on, countUp, toast, sheet |
 | [src/ui/formalPerformance.js](../src/ui/formalPerformance.js) | 285 | 23126 | disposeFormalStage, pauseFormalStage, renderFormalSuite, completeFormalCut, abandonFormalSuite, drawFormalCutGuides, noteCutStroke, renderSuiteDiagnostics |
 | [src/ui/formalTestStage.js](../src/ui/formalTestStage.js) | 571 | 24166 | disposeFormalTestStage, renderFormalTest |
-| [src/ui/pages/appraise.js](../src/ui/pages/appraise.js) | 653 | 29784 | create, render, enter, leave |
+| [src/ui/pages/appraise.js](../src/ui/pages/appraise.js) | 642 | 29005 | create, render, enter, leave |
 | [src/ui/pages/arena.js](../src/ui/pages/arena.js) | 2633 | 172434 | create, leave, openDailyChallenge, openQuickChallenge, openTournament, render |
 | [src/ui/pages/daily.js](../src/ui/pages/daily.js) | 34 | 1200 | create, render |
 | [src/ui/pages/forge.js](../src/ui/pages/forge.js) | 771 | 36726 | create, render, syncInspect, leave |
