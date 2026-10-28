@@ -19,6 +19,10 @@ try{
    page.on('response',r=>{if(r.status()>=400)report.requests.push({status:r.status(),url:r.url()});});
    await page.goto(baseUrl,{waitUntil:'domcontentloaded',timeout:45000});
    await page.waitForFunction(()=>window.__FORGE_PREP?.ready,null,{timeout:120000});
+   // Onboarding is a real modal and intercepts taps; close it before playtesting.
+   const guide=page.getByRole('dialog',{name:'新手引导'});
+   if(await guide.count())await guide.getByRole('button',{name:'关闭'}).click();
+   await page.locator('.sheet-mask').waitFor({state:'detached',timeout:5000}).catch(()=>{});
    await page.evaluate(async()=>{
      const G=(await import('/src/app/game.js')).default;
      const F=await import('/src/core/forge.js');
