@@ -53,18 +53,12 @@ export const after = (risk, deltaPoints) => clamp((Number(risk?.current) || 0) +
 export function breakChance(risk, scale = 1) {
   const v = clamp(risk);
   const A = BREAK_ANCHORS;
-  // 末端：≥95 恒为最后一档
-  if (v >= A[A.length - 2].risk) return Math.min(1, A[A.length - 1].p * (Number(scale) || 1));
-  for (let i = 0; i < A.length - 1; i++) {
-    const a = A[i];
-    const b = A[i + 1];
-    if (v >= a.risk && v <= b.risk) {
-      const span = b.risk - a.risk;
-      const t = span === 0 ? 0 : (v - a.risk) / span;
-      return Math.min(1, (a.p + (b.p - a.p) * t) * (Number(scale) || 1));
-    }
+  // Discrete bands make the exact danger of the NEXT strike readable.
+  // Keep the same central function for cards, S4 previews and actual rolls.
+  for (const band of A) {
+    if (v <= band.risk) return Math.min(1, band.p * (Number(scale) || 1));
   }
-  return A[0].p;
+  return Math.min(1, A[A.length - 1].p * (Number(scale) || 1));
 }
 
 /** 百分比形式（UI 展示用，与 breakChance 同源） */
