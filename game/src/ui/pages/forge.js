@@ -9,11 +9,13 @@ import { el, $, clear, mount, toast, sheet } from '../dom.js';
 import { riskBar, statGrid, decisionCard, traitItem, rarityBadge } from '../components.js';
 import { STAGES } from '../../data/stages.js';
 import { HAMMER_TIERS } from '../../data/balance.js';
-import { tagName } from '../../data/tags.js';
+import { tagName, BASE_TAGS, SPECIAL_TAGS } from '../../data/tags.js';
+import { CUT_TRAIT_STYLES } from '../../core/forgeTraitCuts.js';
+import { getTrait } from '../../data/traits.js';
 import * as Hammer from '../../core/hammer.js';
 import * as Tags from '../../core/tags.js';
 import * as Edge from '../../core/edge.js';
-import { nextRerollCost } from '../../core/cards.js';
+import { nextRerollCost, previewPick } from '../../core/cards.js';
 import { breakChance, band as riskBandOf } from '../../core/risk.js';
 import Game from '../../app/game.js';
 import router from '../router.js';
@@ -224,18 +226,58 @@ function renderStageHead(run) {
  * ★ 为什么必须有这一手：标签层数到门槛时最多会同时出现好几条，每条两行 ≈ 50px；
  *   放进一屏预算里就是"要么挤掉 3D，要么挤掉卡区"，两者都是错的。
  */
-function renderStageTraits(items) {
+function renderStageTraits(run, previewCard = null) {
   const stage = $('#forgeStage', root);
   const bar = stage && $('.stage-chipbar', stage);
   if (!bar) return;
   let chip = $('.stage-traits', bar);
-  if (!items.length) { if (chip) chip.remove(); return; }
   if (!chip) {
     chip = el('button', { class: 'chip stage-traits', type: 'button' });
     bar.appendChild(chip);
   }
-  chip.textContent = `构筑进度 ${items.length} 项`;
-  chip.onclick = () => sheet({ title: '构筑进度（待鉴定结算）', body: el('div', { class: 'stack' }, items) });
+  const counts = Tags.counts(run.ledger);
+  const projected = { ...counts };
+  if (previewCard) for (const tag of new Set(previewCard.tags || [])) projected[tag] = (projected[tag] || 0) + 1;
+  const sorted = BASE_TAGS.map(tag => ({
+    id: tag.id, name: tag.name, before: counts[tag.id] || 0,
+    after: projected[tag.id] || 0, style: CUT_TRAIT_STYLES[tag.id],
+  })).filter(t => t.after || t.before)
+    .sort((a, b) => b.after - a.after || (b.after - b.before) - (a.after - a.before));
+  const main = sorted[0] || null;
+  const upcoming = main ? nextNeed(main.after) : 2;
+  chip.textContent = main ? `构筑 · ${main.name} ${main.after}/6` : '构筑 · 选择路线';
+  chip.classList.toggle('has-build', !!main);
+  chip.onclick = () => {
+    const nodes = sorted.map(t => {
+      const currentTier = t.after >= 6 ? 'Ⅲ 高阶' : t.after >= 4 ? 'Ⅱ 强化' : t.after >= 2 ? 'Ⅰ 基础' : '尚未激活';
+      const isLevelUp = [2, 4, 6].includes(t.after) && t.after > t.before;
+      const dots = el('div', { class: 'build-track' }, Array.from({ length: 6 }, (_, i) => el('i', {
+        class: i < t.before ? 'is-owned' : i < t.after ? 'is-preview' : '',
+      })));
+      return el('div', { class: 'build-entry' + (isLevelUp ? ' is-rising' : '') }, [
+        el('div', { class: 'build-entry-head' }, [
+          el('b', { text: t.name }),
+          el('span', { text: `${t.before}${t.after !== t.before ? ' → ' + t.after : ''} / 6 · ${currentTier}` }),
+        ]),
+        dots,
+        el('div', { class: 'build-effect', text: `${t.style?.name || '工艺专精'} · ${t.style?.text || ''}` }),
+      ]);
+    });
+    const special = SPECIAL_TAGS.filter(tag => projected[tag.id] > 0).map(tag =>
+      el('div', { class: 'build-earned', text: `${tag.name} · 已获得稀有工艺` }));
+    const earned = [...new Set(run.traits || [])].map(id => getTrait(id))
+      .filter(Boolean).slice(0, 12).map(t =>
+        el('div', { class: 'build-earned', text: `${t.name} · ${t.desc || '已激活'}` }));
+    sheet({
+      title: '工艺构筑',
+      body: el('div', { class: 'build-sheet' }, [
+        el('div', { class: 'muted tiny', text: '累积相同工艺标签达到 2 / 4 / 6 层可强化特性。点卡仅预览，确认后才会累积。特性将影响最终属性与赛事切割。' }),
+        ...(nodes.length ? nodes : [el('div', { class: 'build-entry', text: '尚未形成路线：尝试连续选择同一种工艺标签。' })]),
+        ...(special.length ? [el('div', { class: 'section-title', text: '特殊工艺' }), ...special] : []),
+        ...(earned.length ? [el('div', { class: 'section-title', text: '已获得特性' }), ...earned] : []),
+      ]),
+    });
+  };
 }
 
 /* ── 选卡阶段 ─────────────────────────────────────────── */
@@ -285,15 +327,19 @@ function renderSelect(body, run) {
 
   function refresh() {
     // 风险：档位与概率都取自 core/risk（唯一真源，禁止 UI 自己重算）
-    const band = riskBandOf(Game.run.risk.current);
+    const projected = pickedCard ? previewPick(Game.run, pickedCard) : null;
+    const riskNow = projected ? projected.riskAfter : Game.run.risk.current;
+    const band = riskBandOf(riskNow);
     mount(riskNode, riskBar({
-      current: Game.run.risk.current,
-      peak: Game.run.risk.peak,
-      chance: previewChance(),
+      current: riskNow,
+      priorCurrent: projected ? Game.run.risk.current : null,
+      peak: Math.max(Game.run.risk.peak, riskNow),
+      chance: projected ? projected.breakChanceAfter : breakChance(riskNow, Game.run.daily?.breakScale || 1),
       band,
     }));
-    // 六维：只展示粗粒度强弱与候选卡方向，精确值留到 S10 揭晓。
-    mount(statsNode, statGrid(Game.run.stats, pickedCard ? pickedCard.directions : null));
+    // 选中后即时显示准确的六维增量/目标值，非选中保持紧凑趋势。
+    mount(statsNode, statGrid(projected?.stats || Game.run.stats, pickedCard?.directions || null,
+      !!projected, projected ? { before: Game.run.stats, delta: pickedCard.statDelta } : null));
     // 卡（选中时另两张降权，把注意力收到选中那张）
     cardsRow.classList.toggle('is-picking', !!pickedCard);
     const previewStage = $('#forgeStage', root);
@@ -336,24 +382,8 @@ function renderSelect(body, run) {
     selectionStatus.textContent = pickedCard
       ? `预览：${pickedCard.name} · 尚未生效，确认后写入`
       : '';
-    /* 待结算特性 → **舞台上缘的 chip**（原来是 body 里一个实吃高度的块：
-       最多会同时出现好几条、每条两行 ≈ 50px，放进一屏预算里必然挤掉 3D 或卡区）。
-       明细点开看，信息一点没少。 */
-    const pending = Game.run.tagTiersCache || [];
-    const items = [];
-    for (const t of pending) {
-      if (!t.tier || !t.tier.grantsTrait) continue;
-      items.push(el('div', { class: 'trait trait--legacy' }, [
-        el('div', {}, [
-          el('div', { class: 'trait-name', text: `${tagName(t.tagId)} ${t.effectiveLayers} 层 · 待鉴定结算` }),
-          el('div', { class: 'trait-desc', text: t.tier.name + (t.effectiveLayers < 6 ? `（下一档 ${nextNeed(t.effectiveLayers)} 层）` : '（已达最高档）') }),
-        ]),
-      ]));
-    }
-    renderStageTraits(items);
-    if (items.length) {
-      // 首次出现"待鉴定结算"的特性档位：解释为什么还不能看到效果
-    }
+    // 从首张卡开始常驻可见；选卡时构筑进度与六维一起预览。
+    renderStageTraits(Game.run, pickedCard);
 
     // 后续阶段准备不再静默：只展示真实任务状态，不遮模型、不用计时器假装完成。
     const stageHost = $('#forgeStage', root);
