@@ -1,3 +1,4 @@
+import { icon } from './icons.js';
 /** Forge V4: one visible 3D stage, two distinct touch minigames. */
 import { el, mount } from './dom.js';
 import { bladeContourProjection } from './bladeEdgeProjection.js';
@@ -117,7 +118,8 @@ export function renderEdgeV4({body,run,stage,Game,getStage,render,toast}) {
     else if(!locked)hint.textContent='沿轮廓继续描画';
     else hint.textContent='贴合 '+percentage+'%  ·  基础 +'+data.baseSharp
       +'  ×'+mult.toFixed(2)+'  ·  奖励 +'+data.bonus+'  =  +'+earned;
-    again.textContent=attempts<3?'再描一次 ('+(3-attempts)+')':'次数已用完';
+    again.setAttribute('aria-label',attempts<3?'再描一次 ('+(3-attempts)+')':'次数已用完');
+    again.replaceChildren(icon('refresh'),el('span',{text:attempts<3?String(3-attempts):'0'}));
   }
   function setup(){
     const b=canvas.getBoundingClientRect();

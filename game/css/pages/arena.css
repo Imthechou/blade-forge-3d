@@ -260,3 +260,29 @@
 @keyframes forgeSkillProc { 0%{opacity:0;transform:translateY(4px)} 25%{opacity:1;transform:translateY(0)} 85%{opacity:1} 100%{opacity:.75} }
 @media(max-width:374px) { .quick-forge-skills {left:10px; bottom:53px; padding:5px 7px; gap:3px} .quick-forge-skill{padding:2px 3px;} }
 @media(prefers-reduced-motion:reduce){.quick-forge-skills.is-activated .quick-forge-activated{animation:none}}
+
+/* Real archived blade and quiet live-play controls. */
+.arena-loadout .arena-blade-symbol.blade-thumb { display:block; flex:0 0 64px; width:64px; height:82px; overflow:hidden; background:var(--surface-inset); }
+.arena-blade-symbol .blade-thumb-image { display:block; width:100%; height:100%; object-fit:contain; }
+.arena-loadout-change { display:grid; place-items:center; width:28px; }
+.arena-loadout-copy small { line-height:1.5; }
+.quick-pause { display:inline-grid; place-items:center; min-width:44px; min-height:44px; border-radius:var(--r-pill); border-color:var(--glass-border); background:var(--surface-glass); color:var(--face-2); }
+.quick-footer { border-top:1px solid var(--glass-border); background:var(--surface-glass); }
+.quick-stage-label b { color:var(--face); }
+.quick-stage-label span { color:var(--face-3); }
+.quick-choice-overlay,.quick-choice-overlay.is-inline { backdrop-filter:var(--overlay-blur); -webkit-backdrop-filter:var(--overlay-blur); }
+.quick-choice-panel,.quick-choice-overlay.is-inline .quick-choice-panel { backdrop-filter:none; -webkit-backdrop-filter:none; border-radius:var(--r-xl); }
+.quick-choice-panel h2,.quick-choice-overlay.is-inline .quick-choice-panel h2 { font-size:22px; letter-spacing:-.025em; }
+.quick-choice-card,.quick-choice-overlay.is-inline .quick-choice-card { padding:15px; border-radius:var(--r-md); }
+.quick-choice-card:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.quick-choice-card:active { transform:scale(.985); }
+.quick-forge-skills { background:var(--control-face); font-size:11px; }
+.arena-view-team .arena-team-target,.arena-view-team .arena-team-score,.national-progress li { background:var(--surface-glass); border-color:var(--glass-border); }
+.arena-view-team .arena-team-footer,.circuit-report-actions { background:var(--control-face); border-color:var(--glass-border); }
+.circuit-verdict { border:1px solid var(--glass-border); background:var(--surface-glass); color:var(--face); box-shadow:var(--shadow-2); }
+.circuit-verdict .quick-kicker,.circuit-scoreline small,.circuit-scoreline>span,.circuit-opponent-name { color:var(--face-3); }
+.circuit-verdict.is-win .circuit-verdict-title { color:var(--accent); }
+.circuit-verdict-title { font-size:25px; }
+.formal-field-intro { color:var(--face-3); }
+.formal-field-intro b { color:var(--face); }
+@media(max-height:600px) { .quick-choice-card,.quick-choice-overlay.is-inline .quick-choice-card{padding:11px 12px;min-height:64px} .quick-choice-panel,.quick-choice-overlay.is-inline .quick-choice-panel{padding:16px} }

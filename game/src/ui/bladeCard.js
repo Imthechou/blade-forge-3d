@@ -214,7 +214,7 @@ export function bladeCard(model, {
     ? el('span', { class: 'bcv-honor', text: '冠军' })
     : model.arenaWins > 0 ? el('span', { class: 'bcv-honor', text: `${model.arenaWins} 胜` }) : null;
 
-  return el(tag, props, [
+  const face = el(tag, onOpen ? {...props, class:'bcv-open'} : props, [
     el('div', { class: 'bcv-top' }, [
       rarityBadge(model.rarity, model.rarityName),
       honorChip,
@@ -246,6 +246,8 @@ export function bladeCard(model, {
         title: `${STAT_META[key]?.name || key} ${model.stats[key]}`,
       }))),
   ].filter(Boolean));
+  // The comparison control is a sibling of the real open button, never a button nested inside another button.
+  return onOpen ? el('article', {class:props.class}, [face]) : face;
 }
 
 /**

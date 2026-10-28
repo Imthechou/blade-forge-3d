@@ -86,7 +86,7 @@ body::after {
   min-height: var(--tap); touch-action: manipulation;
   transition: transform .12s ease, filter .12s ease, background .12s ease;
 }
-.btn:active { transform: scale(.97); }
+.btn:not(:disabled):active { transform: scale(.97); }
 .btn[disabled] { opacity: .45; cursor: not-allowed; }
 /* 主 CTA 使用钢蓝；金色仅表达稀有度与奖励。 */
 .btn--primary {
@@ -147,7 +147,7 @@ body::after {
   display: flex; align-items: center; justify-content: center;
   padding: max(18px, var(--safe-t)) 18px max(18px, var(--safe-b));
   background: var(--dialog-scrim);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: var(--overlay-blur); -webkit-backdrop-filter: var(--overlay-blur);
   opacity: 0; transition: opacity .22s ease;
   overscroll-behavior: contain;
 }
@@ -158,7 +158,6 @@ body::after {
   display: flex; flex-direction: column;
   border: 1px solid var(--glass-border); border-radius: var(--r-xl);
   background: var(--dialog-glass);
-  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-3), inset 0 1px rgba(255,255,255,.9);
   transform: scale(.97); transition: transform .24s var(--ease);
   overflow: hidden;
@@ -213,7 +212,7 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 
 @media (prefers-reduced-motion: reduce) {
   .boot-bar > i { animation: none; width: 100%; opacity: .5; }
-  .btn:active { transform: none; }
+  .btn:not(:disabled):active { transform: none; }
 }
 
 /* PC 端：不是桌面版布局，是同一套移动端 UI 居中，两侧用阶段色极浅纯色撑住 */
@@ -223,3 +222,23 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 .sheet-x-icon {width:19px;height:19px;display:block;pointer-events:none}
 .sheet-x {background:rgba(255,255,255,.55);transition:background .15s,color .15s}
 .sheet-x:hover {background:rgba(234,236,250,.9);color:var(--accent)}
+
+/* One toolbar language across navigation, result actions and live play. */
+.ui-icon { display:block; width:20px; height:20px; flex:0 0 auto; pointer-events:none; }
+.btn--icon,.ap-more { display:inline-grid; place-items:center; min-width:var(--tap); padding:8px; }
+button,input,select,textarea { font-family:var(--font); }
+button { touch-action:manipulation; }
+button:disabled { cursor:default; }
+.sheet-body > .stack { gap:var(--sp-4); }
+.sheet-body :where(p,h2,h3):first-child { margin-top:0; }
+.sheet-body :where(p):last-child { margin-bottom:0; }
+.sheet-body { scrollbar-width:thin; scrollbar-color:var(--line-firm) transparent; }
+.sheet-head { padding-block:14px; }
+.sheet-title { font-size:18px; letter-spacing:-.02em; }
+@media(max-width:350px) {
+  .sheet-mask { padding-inline:12px; }
+  .sheet-body { padding-inline:16px; }
+}
+@media(hover:hover) and (pointer:fine) {
+  .btn:not(:disabled):hover { filter:brightness(1.025); }
+}

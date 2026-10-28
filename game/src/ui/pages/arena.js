@@ -1,6 +1,7 @@
 import { momentumChip, momentumLadder, momentumHint, momentumTrail, FACE_CN, STAT_CN, FACE_STATS, faceOfStat, faceCompareRow } from '../arenaReportParts.js';
 /** 赛事 V3 页面：四类赛事共用切割输入、时钟、选卡与 Canvas 舞台。旧赛程保留恢复入口。 */
 
+import { icon } from '../icons.js';
 import { el, $, clear, mount, toast, countUp, sheet } from '../dom.js';
 import * as Core from '../../core/index.js';
 import { BRANCHES, GRADIENTS } from '../../data/arena/branches.js';
@@ -237,13 +238,15 @@ function renderSetup() {
  */
 
 function bladePicker(blades, selected) {
+  const art = el('span',{class:'arena-blade-symbol blade-thumb','aria-hidden':'true'});
+  if (selected) mountCollectionPreview(art, selected, Game.resolveVisualState(selected, {}, {modelId:resolveModelId(selected, selected.knifeTypeId),viewPreset:'forge'}));
   return el('button', { class: 'arena-loadout', 'aria-label': '更换参赛刀', onclick: () => {
     const list = el('div', { class: 'loadout-list' }, blades.map(b => el('button', {
       class: 'loadout-option' + (b.id === selectedBladeId ? ' is-selected' : ''),
       'aria-pressed': String(b.id === selectedBladeId), onclick: () => { selectedBladeId = b.id; handle.close(); render(); },
     }, [bladeSymbol(), el('span', {}, [el('b', {text:b.bladeName || b.name || b.id}), el('small', {text:`${b.rarityName || b.rarity || '成刀'} · 评分 ${b.score || 0}`})]), el('span', {text:b.id === selectedBladeId ? '已选' : '选择'})])));
     const handle = sheet({ title: '选择参赛刀', body: list });
-  } }, [bladeSymbol(), el('span', {class:'arena-loadout-copy'}, [el('small',{text:'参赛刀'}),el('b',{text:selected?.bladeName || selected?.name || '成刀'}),el('small',{text:`六维均值 ${Math.round(Object.values(selected?.stats || {}).reduce((a,b)=>a+(Number(b)||0),0)/6)} · 档案永久保留`})]), el('span',{class:'arena-loadout-score'},[el('b',{text:String(selected?.score || 0)}),el('small',{text:'评分'})]), el('span',{class:'arena-loadout-change',text:'更换'})]);
+  } }, [art, el('span', {class:'arena-loadout-copy'}, [el('small',{text:'参赛刀'}),el('b',{text:selected?.bladeName || selected?.name || '成刀'}),el('small',{text:`六维均值 ${Math.round(Object.values(selected?.stats || {}).reduce((a,b)=>a+(Number(b)||0),0)/6)} · 档案永久保留`})]), el('span',{class:'arena-loadout-score'},[el('b',{text:String(selected?.score || 0)}),el('small',{text:'评分'})]), el('span',{class:'arena-loadout-change'},[icon('next')])]);
 }
 function bladeSymbol() {
   const mark = el('span',{class:'arena-blade-symbol','aria-hidden':'true'});
@@ -255,7 +258,7 @@ function renderTournamentHub() {
   if (tier === 'national') return renderNationalEntry();
   const blades = Core.progress.collection().filter(b => b.canEnterArena !== false && !b.fractured);
   if (!blades.length) {
-    mount(body,[modeSwitch(),el('section',{class:'arena-empty-card'},[bladeSymbol(),el('h2',{text:'带上你的第一把刀'}),el('p',{text:'完成锻造，把锋芒带进赛场。'}),el('button',{class:'btn btn--primary btn--block',text:'去锻刀',onclick:async()=>{Game.startForge({});try{await Game.prewarmCandidates();}catch(e){console.warn('[forge] warmup',e);}router.go('forge');}})])]);return;
+    mount(body,[modeSwitch(),el('section',{class:'arena-empty-card'},[bladeSymbol(),el('h2',{text:'带上你的第一把刀'}),el('p',{text:'完成锻造，把锋芒带进赛场。'}),el('button',{class:'btn btn--primary btn--block',text:'去锻刀',onclick:async()=>{if(!Game.run||Game.run.finished)Game.startForge({});try{await Game.prewarmCandidates();}catch(e){console.warn('[forge] warmup',e);}router.go('forge');}})])]);return;
   }
   if (!blades.some(b => b.id === selectedBladeId)) selectedBladeId = blades[0].id;
   if (!BRANCHES.some(b => b.id === styleId)) styleId = BRANCHES[0].id;
@@ -492,7 +495,7 @@ function renderReport() {
 function renderChallengeSetup() {
   body.className='arena-body arena-view-quick-setup';
   const blades=Core.progress.collection().filter(b=>b.canEnterArena!==false&&!b.fractured);
-  if(!blades.length){mount(body,[modeSwitch(),el('section',{class:'arena-empty-card'},[bladeSymbol(),el('h2',{text:'先锻一把参赛刀'}),el('p',{text:'完整成刀可无限次参赛，收藏不会受损。'}),el('button',{class:'btn btn--primary',text:'去锻刀',onclick:async()=>{Game.startForge({});try{await Game.prewarmCandidates();}catch(e){console.warn(e);}router.go('forge');}})])]);return;}
+  if(!blades.length){mount(body,[modeSwitch(),el('section',{class:'arena-empty-card'},[bladeSymbol(),el('h2',{text:'先锻一把参赛刀'}),el('p',{text:'完整成刀可无限次参赛，收藏不会受损。'}),el('button',{class:'btn btn--primary',text:'去锻刀',onclick:async()=>{if(!Game.run||Game.run.finished)Game.startForge({});try{await Game.prewarmCandidates();}catch(e){console.warn(e);}router.go('forge');}})])]);return;}
   if(!blades.some(b=>b.id===selectedBladeId))selectedBladeId=blades[0].id;
   const selected=blades.find(b=>b.id===selectedBladeId);
   const stats=[['强度','strength'],['锋利','sharpness'],['韧性','toughness']];
@@ -538,8 +541,8 @@ function renderChallenge() {
   const footer = el('div', { class: 'quick-footer' }, [
     el('span', { class: 'quick-combo', text: `斩断 ${run.kills} · 连击 ×${run.combo}` }),
     el('span', { class: 'quick-time-label', text: run.blade.name }),
-    el('button', { class: 'quick-pause quick-pause-toggle', text: run.paused ? '继续' : '暂停', onclick: () => { Challenge.setPaused(run, !run.paused); render(); } }),
-    el('button', { class: 'quick-pause quick-help-toggle', text: '操作', 'aria-label': '查看切割操作说明', onclick: () => openChallengeHelp(stage, run) }),
+    el('button', { class: 'quick-pause quick-pause-toggle', 'aria-label': run.paused ? '继续' : '暂停', title: run.paused ? '继续' : '暂停', onclick: () => { Challenge.setPaused(run, !run.paused); render(); } }, [icon(run.paused ? 'play' : 'pause')]),
+    el('button', { class: 'quick-pause quick-help-toggle', 'aria-label': '查看切割操作说明', title: '操作说明', onclick: () => openChallengeHelp(stage, run) }, [icon('help')]),
   ]);
   stage.append(hud, mission, canvas, footer);
   if (run.paused) {
@@ -595,8 +598,8 @@ function renderFormalFieldTest(match) {
   const footer = el('div', { class: 'quick-footer' }, [
     el('span', { class: 'quick-combo', text: `切断 ${run.kills} · 连击 ×${run.combo}` }),
     el('span', { class: 'quick-time-label', text: run.blade.name }),
-    el('button', { class: 'quick-pause quick-pause-toggle', text: run.paused ? '继续' : '暂停', onclick: () => { Challenge.setPaused(run, !run.paused); render(); } }),
-    el('button', { class: 'quick-pause quick-help-toggle', text: '操作', 'aria-label': '查看切割操作说明', onclick: () => openChallengeHelp(stage, run) }),
+    el('button', { class: 'quick-pause quick-pause-toggle', 'aria-label': run.paused ? '继续' : '暂停', title: run.paused ? '继续' : '暂停', onclick: () => { Challenge.setPaused(run, !run.paused); render(); } }, [icon(run.paused ? 'play' : 'pause')]),
+    el('button', { class: 'quick-pause quick-help-toggle', 'aria-label': '查看切割操作说明', title: '操作说明', onclick: () => openChallengeHelp(stage, run) }, [icon('help')]),
   ]);
   stage.append(hud, mission, canvas, footer);
   if (run.paused) {
@@ -706,10 +709,10 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
   const footer = el('div', { class: 'quick-footer' }, [
     el('span', { class: 'quick-combo', text: `斩断 ${run.kills} · 连击 ×${run.combo}` }),
     el('span', { class: 'quick-time-label', text: match.blade.name }),
-    el('button', { class: 'quick-pause quick-pause-toggle', text: run.paused ? '继续' : '暂停',
-      onclick: () => { Challenge.setPaused(run, !run.paused); render(); } }),
-    el('button', { class: 'quick-pause quick-help-toggle', text: '操作',
-      onclick: () => openChallengeHelp(stage, run) }),
+    el('button', { class: 'quick-pause quick-pause-toggle', 'aria-label': run.paused ? '继续' : '暂停', title: run.paused ? '继续' : '暂停',
+      onclick: () => { Challenge.setPaused(run, !run.paused); render(); } }, [icon(run.paused ? 'play' : 'pause')]),
+    el('button', { class: 'quick-pause quick-help-toggle', 'aria-label':'查看切割操作说明', title:'操作说明',
+      onclick: () => openChallengeHelp(stage, run) }, [icon('help')]),
   ]);
   stage.append(hud, mission, canvas, footer);
   if (run.paused) {
@@ -757,6 +760,8 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
      不参与任何玩法判定；与 __FORGE_PREP 同一约定。 */
   globalThis.__FORGE_ARENA = { run, canvas, effects: null };
   const stage = canvas.closest('.quick-match');
+  const pausedMenu = stage.querySelector('.quick-pause-overlay');
+  if (pausedMenu) secureOverlay(pausedMenu);
   // 永久工艺特性与赛事临时强化分开；持续展示，命中时反馈真实对应行为。
   const forgeSkills = Array.isArray(run.params?.forgeTraits) ? run.params.forgeTraits : [];
   const forgedIds = new Set(forgeSkills.map(item => item.id));
@@ -909,7 +914,7 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
       ? (run.risk?.status === 'failed' ? '结构失效' : run.risk?.status === 'warning' ? '⚠ 高负荷' : '刀况')
       : run.mode === 'formal' ? (run.risk?.status === 'failed' ? '结构失效' : '临时刀况') : '模拟刀况');
     phaseBar.style.transform=`scaleX(${Math.max(0,run.remaining)/(run.total || Challenge.CHALLENGE_SECONDS)})`;
-    text(pauseNode,run.paused?'继续':'暂停');
+    if (pauseNode) { pauseNode.setAttribute('aria-label',run.paused?'继续':'暂停'); pauseNode.title=run.paused?'继续':'暂停'; }
     updateMission();
     if(run.version==='arena-3') {
       const span=mission.querySelector('span');
@@ -941,7 +946,7 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     }
     if (event.key === 'Escape') {
       event.preventDefault();
-      if (!run.paused) { Challenge.setPaused(run, true); render(); }
+      Challenge.setPaused(run, !run.paused); render();
     } else if (event.key.toLowerCase() === 'p') {
       event.preventDefault(); Challenge.setPaused(run, !run.paused); render();
     }
@@ -1145,8 +1150,8 @@ function secureOverlay(overlay){
     const buttons=[...overlay.querySelectorAll('button:not(:disabled)')];
     if(!buttons.length)return;
     const first=buttons[0],last=buttons[buttons.length-1];
-    if(event.shiftKey && document.activeElement===first){event.preventDefault();last.focus();}
-    else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus();}
+    if(event.shiftKey && (document.activeElement===first || !overlay.contains(document.activeElement))){event.preventDefault();last.focus();}
+    else if(!event.shiftKey && (document.activeElement===last || !overlay.contains(document.activeElement))){event.preventDefault();first.focus();}
   });
   overlay.querySelector('button')?.focus();
 }
@@ -1335,7 +1340,7 @@ function renderSliceRun() {
   const canvas = el('canvas', { class: 'quick-canvas', 'aria-label': '赛事切割场；按住划过材料完成切割' });
   const footer = el('div', { class: 'quick-footer' }, [
     el('span', { class: 'quick-combo', text: '切断 0 · 连击 ×1' }),
-    el('button', { class: 'quick-pause quick-pause-toggle', text: '暂停', onclick: () => { Challenge.setPaused(run, !run.paused); render(); } }),
+    el('button', { class: 'quick-pause quick-pause-toggle', 'aria-label': '暂停', title: '暂停', onclick: () => { Challenge.setPaused(run, !run.paused); render(); } }, [icon('pause')]),
   ]);
   stage.append(hud, mission, canvas, footer);
   body.appendChild(stage);

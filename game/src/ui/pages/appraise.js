@@ -11,6 +11,7 @@ import { el, $, clear, mount, countUp, sheet, toast } from '../dom.js';
 import { qualitySeal, statRail, traitItem } from '../components.js';
 /* ★ rework T13.1：鉴定页也读**同一份**成刀展示模型与卡片，
    不再自己拼一套（否则同一把刀在鉴定页与藏刀阁长得不一样）。 */
+import { icon } from '../icons.js';
 import { motion } from '../../platform/index.js';
 import { getTrait } from '../../data/traits.js';
 import { tagName } from '../../data/tags.js';
@@ -220,13 +221,13 @@ function renderReveal(rec) {
     el('button', { class: 'btn ap-skip', text: '跳过揭晓', onclick: () => skipReveal(rec) }),
     rec.canEnterArena ? el('button', { class: 'btn btn--primary ap-try', text: '带刀试炼 →', onclick: () => Arena.openQuickChallenge(rec.id) }) : null,
     reforgeButton(!rec.canEnterArena),
-    el('button', { class: 'btn ap-more', text: '更多', 'aria-label': '作品操作', onclick: () => {
+    el('button', { class: 'btn ap-more', 'aria-label': '作品操作', title: '作品操作', onclick: () => {
       let dialog;
       dialog = sheet({ title: rec.bladeName || '作品', body: el('div', { class: 'stack' }, [
         rec.canEnterArena ? el('button', { class: 'btn btn--primary', text: '正式赛事', onclick: () => { dialog.close(); Arena.openTournament(rec.id); } }) : null,
         el('button', { class: 'btn', text: '查看收藏', onclick: () => { dialog.close(); Workshop.openTab('collection'); } }),
       ]) });
-    } }),
+    } }, [icon('more')]),
   ]);
 }
 

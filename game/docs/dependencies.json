@@ -27,7 +27,7 @@
   },
   {
     "file": "src/app/game.js",
-    "bytes": 65177,
+    "bytes": 65174,
     "lines": 1437,
     "imports": [
       "src/core/index.js",
@@ -126,15 +126,16 @@
   },
   {
     "file": "src/core/arenaChallenge.js",
-    "bytes": 45265,
-    "lines": 771,
+    "bytes": 45839,
+    "lines": 777,
     "imports": [
       "src/data/arena/buffs.js",
       "src/data/balance.js",
       "src/platform/bus.js",
       "src/core/arenaEncounters.js",
       "src/core/bladeAdapter.js",
-      "src/core/cutParams.js"
+      "src/core/cutParams.js",
+      "src/core/forgeTraitCuts.js"
     ],
     "exports": [
       "FORMAL_RISK_TBD",
@@ -445,12 +446,13 @@
   },
   {
     "file": "src/core/cutParams.js",
-    "bytes": 6625,
-    "lines": 156,
+    "bytes": 6712,
+    "lines": 157,
     "imports": [
       "src/data/arena/buffs.js",
       "src/data/balance.js",
-      "src/core/bladeAdapter.js"
+      "src/core/bladeAdapter.js",
+      "src/core/forgeTraitCuts.js"
     ],
     "exports": [
       "foldBuffMods",
@@ -512,8 +514,8 @@
   },
   {
     "file": "src/core/edge.js",
-    "bytes": 13452,
-    "lines": 323,
+    "bytes": 16054,
+    "lines": 370,
     "imports": [
       "src/data/balance.js",
       "src/data/bladeEffects.js",
@@ -526,13 +528,16 @@
       "normalizeSamples",
       "evaluate",
       "accuracy",
+      "projectedQuality",
       "tierOf",
+      "contourPreview",
       "submit",
       "autoPlay"
     ],
     "importedBy": [
       "src/core/forge.js",
       "src/core/index.js",
+      "src/ui/minigameV4.js",
       "src/ui/pages/forge.js"
     ]
   },
@@ -559,7 +564,7 @@
   },
   {
     "file": "src/core/forge.js",
-    "bytes": 10031,
+    "bytes": 10093,
     "lines": 286,
     "imports": [
       "src/data/balance.js",
@@ -613,8 +618,26 @@
     ]
   },
   {
+    "file": "src/core/forgeTraitCuts.js",
+    "bytes": 4987,
+    "lines": 126,
+    "imports": [
+      "src/data/tags.js"
+    ],
+    "exports": [
+      "CUT_TRAIT_STYLES",
+      "resolveForgeCutTraits",
+      "applyForgeCutTraits"
+    ],
+    "importedBy": [
+      "src/core/arenaChallenge.js",
+      "src/core/cutParams.js",
+      "src/ui/pages/forge.js"
+    ]
+  },
+  {
     "file": "src/core/hammer.js",
-    "bytes": 7220,
+    "bytes": 7386,
     "lines": 174,
     "imports": [
       "src/data/balance.js",
@@ -639,6 +662,7 @@
       "src/core/appraise.js",
       "src/core/forge.js",
       "src/core/index.js",
+      "src/ui/minigameV4.js",
       "src/ui/pages/forge.js"
     ]
   },
@@ -811,8 +835,8 @@
   },
   {
     "file": "src/core/risk.js",
-    "bytes": 3879,
-    "lines": 102,
+    "bytes": 3746,
+    "lines": 96,
     "imports": [
       "src/data/balance.js"
     ],
@@ -832,6 +856,7 @@
       "src/core/forge.js",
       "src/core/hammer.js",
       "src/core/index.js",
+      "src/ui/minigameV4.js",
       "src/ui/pages/forge.js"
     ]
   },
@@ -1128,8 +1153,8 @@
   },
   {
     "file": "src/data/balance.js",
-    "bytes": 31828,
-    "lines": 584,
+    "bytes": 32067,
+    "lines": 591,
     "imports": [],
     "exports": [
       "STAT_KEYS",
@@ -1164,6 +1189,8 @@
       "HAMMER_TIER_REWARD",
       "EDGE_TIERS",
       "EDGE_SHARP_CAP",
+      "CONTOUR_SAMPLES",
+      "CONTOUR_ATTEMPT_MULTIPLIERS",
       "EDGE_TOLERANCE",
       "EDGE_SAMPLES",
       "EDGE_COVERAGE_MIN",
@@ -1215,11 +1242,13 @@
       "src/data/arena/formalTests.js",
       "src/data/arena/opponents.js",
       "src/data/cards.js",
+      "src/data/forgeStatBalance.js",
       "src/data/index.js",
       "src/data/traits.js",
       "src/ui/arenaReportParts.js",
       "src/ui/bladeCard.js",
       "src/ui/components.js",
+      "src/ui/minigameV4.js",
       "src/ui/pages/arena.js",
       "src/ui/pages/forge.js"
     ]
@@ -1248,10 +1277,11 @@
   },
   {
     "file": "src/data/cards.js",
-    "bytes": 5877,
-    "lines": 139,
+    "bytes": 5972,
+    "lines": 140,
     "imports": [
       "src/data/balance.js",
+      "src/data/forgeStatBalance.js",
       "src/data/legacy/cardWrites.js",
       "src/data/legacy/cardsV11.js"
     ],
@@ -1377,6 +1407,22 @@
     ],
     "importedBy": [
       "src/core/forgeBonuses.js"
+    ]
+  },
+  {
+    "file": "src/data/forgeStatBalance.js",
+    "bytes": 1568,
+    "lines": 30,
+    "imports": [
+      "src/data/balance.js"
+    ],
+    "exports": [
+      "RARITY_BUDGET",
+      "SPECIALIST_CARD",
+      "normalizeForgeCardStats"
+    ],
+    "importedBy": [
+      "src/data/cards.js"
     ]
   },
   {
@@ -1717,6 +1763,7 @@
     "importedBy": [
       "src/core/appraise.js",
       "src/core/bladeAdapter.js",
+      "src/core/forgeTraitCuts.js",
       "src/core/tags.js",
       "src/data/codexCatalog.js",
       "src/data/index.js",
@@ -1760,13 +1807,14 @@
       "src/data/index.js",
       "src/ui/bladeCard.js",
       "src/ui/pages/appraise.js",
+      "src/ui/pages/forge.js",
       "src/ui/pages/workshop.js"
     ]
   },
   {
     "file": "src/platform/audio.js",
-    "bytes": 6187,
-    "lines": 137,
+    "bytes": 6748,
+    "lines": 152,
     "imports": [
       "src/platform/env.js"
     ],
@@ -1973,8 +2021,8 @@
   },
   {
     "file": "src/render/collectionPreview.js",
-    "bytes": 6671,
-    "lines": 174,
+    "bytes": 7174,
+    "lines": 186,
     "imports": [
       "src/render/index.js"
     ],
@@ -2775,8 +2823,8 @@
   },
   {
     "file": "src/ui/bladeCard.js",
-    "bytes": 14785,
-    "lines": 354,
+    "bytes": 15011,
+    "lines": 356,
     "imports": [
       "src/data/balance.js",
       "src/data/combos.js",
@@ -2797,13 +2845,43 @@
     ]
   },
   {
+    "file": "src/ui/bladeEdgeProjection.js",
+    "bytes": 3844,
+    "lines": 79,
+    "imports": [],
+    "exports": [
+      "bladeEdgeProjection",
+      "bladeContourProjection"
+    ],
+    "importedBy": [
+      "src/ui/minigameV4.js"
+    ]
+  },
+  {
+    "file": "src/ui/cardDoodles.js",
+    "bytes": 19290,
+    "lines": 353,
+    "imports": [
+      "src/ui/forgeKnifeStickers.js"
+    ],
+    "exports": [
+      "doodleSpec",
+      "cardDoodle"
+    ],
+    "importedBy": [
+      "src/ui/components.js",
+      "src/ui/pages/forge.js"
+    ]
+  },
+  {
     "file": "src/ui/components.js",
-    "bytes": 25264,
-    "lines": 514,
+    "bytes": 26191,
+    "lines": 523,
     "imports": [
       "src/data/balance.js",
       "src/data/cards.js",
       "src/data/tags.js",
+      "src/ui/cardDoodles.js",
       "src/ui/dom.js"
     ],
     "exports": [
@@ -2822,16 +2900,16 @@
       "src/ui/pages/appraise.js",
       "src/ui/pages/forge.js",
       "src/ui/pages/home.js",
-      "src/ui/pages/workshop.js",
-      "src/ui/shell.js"
+      "src/ui/pages/workshop.js"
     ]
   },
   {
     "file": "src/ui/dom.js",
-    "bytes": 6592,
-    "lines": 149,
+    "bytes": 6730,
+    "lines": 152,
     "imports": [
-      "src/platform/index.js"
+      "src/platform/index.js",
+      "src/ui/icons.js"
     ],
     "exports": [
       "el",
@@ -2849,6 +2927,7 @@
       "src/ui/components.js",
       "src/ui/formalPerformance.js",
       "src/ui/formalTestStage.js",
+      "src/ui/minigameV4.js",
       "src/ui/pages/appraise.js",
       "src/ui/pages/arena.js",
       "src/ui/pages/daily.js",
@@ -2860,6 +2939,21 @@
       "src/ui/shell.js",
       "src/ui/stageControls.js",
       "src/ui/tutorial.js"
+    ]
+  },
+  {
+    "file": "src/ui/forgeKnifeStickers.js",
+    "bytes": 7125,
+    "lines": 177,
+    "imports": [],
+    "exports": [
+      "knifeFormOf",
+      "isKnifeGlow",
+      "KNIFE_FORM_COUNT",
+      "paintS4Knife"
+    ],
+    "importedBy": [
+      "src/ui/cardDoodles.js"
     ]
   },
   {
@@ -2905,9 +2999,48 @@
     ]
   },
   {
+    "file": "src/ui/icons.js",
+    "bytes": 1257,
+    "lines": 25,
+    "imports": [],
+    "exports": [
+      "icon"
+    ],
+    "importedBy": [
+      "src/ui/dom.js",
+      "src/ui/minigameV4.js",
+      "src/ui/pages/appraise.js",
+      "src/ui/pages/arena.js",
+      "src/ui/pages/forge.js",
+      "src/ui/pages/workshop.js",
+      "src/ui/shell.js"
+    ]
+  },
+  {
+    "file": "src/ui/minigameV4.js",
+    "bytes": 13151,
+    "lines": 254,
+    "imports": [
+      "src/core/edge.js",
+      "src/core/hammer.js",
+      "src/core/risk.js",
+      "src/data/balance.js",
+      "src/ui/bladeEdgeProjection.js",
+      "src/ui/dom.js",
+      "src/ui/icons.js"
+    ],
+    "exports": [
+      "renderHammerV4",
+      "renderEdgeV4"
+    ],
+    "importedBy": [
+      "src/ui/pages/forge.js"
+    ]
+  },
+  {
     "file": "src/ui/pages/appraise.js",
-    "bytes": 29538,
-    "lines": 648,
+    "bytes": 29597,
+    "lines": 649,
     "imports": [
       "src/app/game.js",
       "src/core/index.js",
@@ -2920,6 +3053,7 @@
       "src/render/index.js",
       "src/ui/components.js",
       "src/ui/dom.js",
+      "src/ui/icons.js",
       "src/ui/router.js",
       "src/ui/pages/arena.js",
       "src/ui/pages/workshop.js"
@@ -2936,8 +3070,8 @@
   },
   {
     "file": "src/ui/pages/arena.js",
-    "bytes": 172434,
-    "lines": 2633,
+    "bytes": 175708,
+    "lines": 2672,
     "imports": [
       "src/app/game.js",
       "src/core/arenaChallenge.js",
@@ -2959,6 +3093,7 @@
       "src/ui/dom.js",
       "src/ui/formalPerformance.js",
       "src/ui/formalTestStage.js",
+      "src/ui/icons.js",
       "src/ui/router.js"
     ],
     "exports": [
@@ -2994,22 +3129,27 @@
   },
   {
     "file": "src/ui/pages/forge.js",
-    "bytes": 36702,
-    "lines": 771,
+    "bytes": 25466,
+    "lines": 528,
     "imports": [
       "src/app/game.js",
       "src/core/cards.js",
       "src/core/edge.js",
+      "src/core/forgeTraitCuts.js",
       "src/core/hammer.js",
       "src/core/risk.js",
       "src/core/tags.js",
       "src/data/balance.js",
       "src/data/stages.js",
       "src/data/tags.js",
+      "src/data/traits.js",
       "src/platform/env.js",
       "src/render/index.js",
+      "src/ui/cardDoodles.js",
       "src/ui/components.js",
       "src/ui/dom.js",
+      "src/ui/icons.js",
+      "src/ui/minigameV4.js",
       "src/ui/router.js",
       "src/ui/stageControls.js"
     ],
@@ -3048,8 +3188,8 @@
   },
   {
     "file": "src/ui/pages/workshop.js",
-    "bytes": 27508,
-    "lines": 561,
+    "bytes": 27726,
+    "lines": 559,
     "imports": [
       "src/app/game.js",
       "src/core/index.js",
@@ -3064,6 +3204,7 @@
       "src/ui/bladeCard.js",
       "src/ui/components.js",
       "src/ui/dom.js",
+      "src/ui/icons.js",
       "src/ui/router.js"
     ],
     "exports": [
@@ -3104,8 +3245,8 @@
   },
   {
     "file": "src/ui/settingsSheet.js",
-    "bytes": 5156,
-    "lines": 134,
+    "bytes": 5598,
+    "lines": 136,
     "imports": [
       "src/app/settings.js",
       "src/platform/index.js",
@@ -3121,13 +3262,13 @@
   },
   {
     "file": "src/ui/shell.js",
-    "bytes": 2252,
+    "bytes": 2244,
     "lines": 72,
     "imports": [
       "src/core/progress.js",
       "src/platform/index.js",
-      "src/ui/components.js",
       "src/ui/dom.js",
+      "src/ui/icons.js",
       "src/ui/router.js",
       "src/ui/settingsSheet.js"
     ],
@@ -3157,7 +3298,7 @@
   },
   {
     "file": "src/ui/tutorial.js",
-    "bytes": 3753,
+    "bytes": 3742,
     "lines": 91,
     "imports": [
       "src/core/progress.js",

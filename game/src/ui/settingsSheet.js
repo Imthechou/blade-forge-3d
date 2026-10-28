@@ -24,7 +24,7 @@ function switchRow({ label, hint, on, disabled = false, onToggle }) {
   const sw = el('button', {
     class: 'switch' + (on ? ' is-on' : ''),
     role: 'switch',
-    'aria-checked': on ? 'true' : 'false',
+    'aria-checked': String(on), 'aria-label': label, 'data-setting': label,
     disabled: disabled || false,
     onclick: () => { if (!disabled) onToggle(!on); },
   });
@@ -44,6 +44,7 @@ export function open() {
   const api = sheet({ title: '设置', body });
 
   const draw = () => {
+    const focusKey = body.contains(document.activeElement) ? document.activeElement.dataset.setting : null;
     const s = Settings.get();
     const rows = [];
 
@@ -63,7 +64,7 @@ export function open() {
         el('b', { class: 'mono', text: `${vol}%` }),
       ]),
       el('input', {
-        class: 'range',
+        class: 'range', 'aria-label': '音量', 'data-setting': 'volume',
         type: 'range',
         min: '0',
         max: '100',
@@ -98,9 +99,9 @@ export function open() {
         ]),
         el('span', { class: 'chip', text: motion.reduced() ? '生效：减少' : '生效：完整' }),
       ]),
-      el('div', { class: 'seg' }, MOTION_OPTS.map((o) => el('button', {
+      el('div', { class: 'seg', role: 'group', 'aria-label': '动态效果' }, MOTION_OPTS.map((o) => el('button', {
         class: 'seg-btn' + (o.id === s.motion ? ' is-on' : ''),
-        text: o.name,
+        text: o.name, 'aria-pressed': String(o.id === s.motion), 'data-setting': o.id,
         onclick: () => { Settings.update({ motion: o.id }); draw(); },
       }))),
     ]));
@@ -124,6 +125,7 @@ export function open() {
     rows.push(el('div', { class: 'muted tiny', text: '没有账号等级、每日体力、商城货币，也不强制联网。' }));
 
     mount(body, rows);
+    if (focusKey) [...body.querySelectorAll('[data-setting]')].find(node => node.dataset.setting === focusKey)?.focus({preventScroll:true});
   };
 
   draw();
