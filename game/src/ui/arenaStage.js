@@ -126,10 +126,10 @@ function drawBackdrop(ctx, w, h, stream = false) {
 function paintBackdrop(ctx, w, h, stream = false) {
   /* 钢釉浅色底：与 app 的纸面同一套（白 → 冷灰），不再是深色测试舱 */
   const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0, '#FFFFFF');
-  bg.addColorStop(.42, '#F7FAFC');
-  bg.addColorStop(.78, '#EEF3F7');
-  bg.addColorStop(1, '#E3EBF1');
+  bg.addColorStop(0, '#F2EDFF');
+  bg.addColorStop(.42, '#F5F6FF');
+  bg.addColorStop(.78, '#E7F3FC');
+  bg.addColorStop(1, '#DFE7F8');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
 
@@ -139,7 +139,7 @@ function paintBackdrop(ctx, w, h, stream = false) {
   ctx.shadowColor = 'rgba(23,52,75,.10)';
   ctx.shadowBlur = Math.max(10, w * .035);
   ctx.shadowOffsetY = Math.max(2, h * .004);
-  ctx.fillStyle = '#FFFFFF';
+  ctx.fillStyle = 'rgba(255,255,255,.60)';
   roundedRect(ctx, panelX, panelY, panelW, panelH, w * .035); ctx.fill();
   ctx.restore();
 

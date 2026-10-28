@@ -126,8 +126,8 @@
   },
   {
     "file": "src/core/arenaChallenge.js",
-    "bytes": 45224,
-    "lines": 770,
+    "bytes": 45265,
+    "lines": 771,
     "imports": [
       "src/data/arena/buffs.js",
       "src/data/balance.js",
@@ -2759,7 +2759,7 @@
   },
   {
     "file": "src/ui/arenaStage.js",
-    "bytes": 54843,
+    "bytes": 54857,
     "lines": 1113,
     "imports": [
       "src/core/arenaChallenge.js",
@@ -2793,14 +2793,13 @@
       "compareModels"
     ],
     "importedBy": [
-      "src/ui/pages/appraise.js",
       "src/ui/pages/workshop.js"
     ]
   },
   {
     "file": "src/ui/components.js",
-    "bytes": 24977,
-    "lines": 512,
+    "bytes": 24946,
+    "lines": 510,
     "imports": [
       "src/data/balance.js",
       "src/data/cards.js",
@@ -2829,8 +2828,8 @@
   },
   {
     "file": "src/ui/dom.js",
-    "bytes": 6253,
-    "lines": 143,
+    "bytes": 6592,
+    "lines": 149,
     "imports": [
       "src/platform/index.js"
     ],
@@ -2907,8 +2906,8 @@
   },
   {
     "file": "src/ui/pages/appraise.js",
-    "bytes": 29699,
-    "lines": 651,
+    "bytes": 29784,
+    "lines": 653,
     "imports": [
       "src/app/game.js",
       "src/core/index.js",
@@ -2919,7 +2918,6 @@
       "src/data/traits.js",
       "src/platform/index.js",
       "src/render/index.js",
-      "src/ui/bladeCard.js",
       "src/ui/components.js",
       "src/ui/dom.js",
       "src/ui/router.js",
@@ -2938,8 +2936,8 @@
   },
   {
     "file": "src/ui/pages/arena.js",
-    "bytes": 172237,
-    "lines": 2630,
+    "bytes": 172434,
+    "lines": 2633,
     "imports": [
       "src/app/game.js",
       "src/core/arenaChallenge.js",
@@ -2996,8 +2994,8 @@
   },
   {
     "file": "src/ui/pages/forge.js",
-    "bytes": 36166,
-    "lines": 761,
+    "bytes": 36675,
+    "lines": 770,
     "imports": [
       "src/app/game.js",
       "src/core/cards.js",
@@ -3027,8 +3025,8 @@
   },
   {
     "file": "src/ui/pages/home.js",
-    "bytes": 7414,
-    "lines": 175,
+    "bytes": 4920,
+    "lines": 120,
     "imports": [
       "src/app/game.js",
       "src/core/progress.js",
@@ -3050,8 +3048,8 @@
   },
   {
     "file": "src/ui/pages/workshop.js",
-    "bytes": 27423,
-    "lines": 559,
+    "bytes": 27508,
+    "lines": 561,
     "imports": [
       "src/app/game.js",
       "src/core/index.js",

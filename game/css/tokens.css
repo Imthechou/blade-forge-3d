@@ -1,7 +1,7 @@
 /**
  * 样式层 · 设计令牌（唯一真源）
  *
- * 设计方向：瓷白界面、深钢蓝文字、竞技青状态与稀有度香槟金。
+ * 设计方向：冰透白、紫蓝与青色空间玻璃。稀有度、风险与六维保留独立语义。
  * 三层分工（勿打破）：
  *   底 / 面   → 瓷白与轻薄表面
  *   墨 / 线   → 深钢蓝与低对比分隔
@@ -34,37 +34,41 @@
  */
 
 :root {
+  --app-surface: radial-gradient(ellipse at 100% 0%, #F8DFEF88, transparent 44%), radial-gradient(ellipse at 0% 55%, #CDEFFA88, transparent 52%), linear-gradient(155deg, #F5F3FF, #EDF1FC 58%, #F6F2FC);
+  --surface-glass: linear-gradient(135deg, rgba(255,255,255,.84), rgba(255,255,255,.48));
+  --dialog-glass: linear-gradient(140deg, rgba(255,255,255,.88), rgba(242,244,255,.78));
+  --dialog-scrim: rgba(48,44,86,.24);
   /* ── 底层：钢青灰纸面（浅色） ────────────────────────── */
-  --base-0: #F4F7FA;
+  --base-0: #F1F3FC;
   --base-1: #FFFFFF;
-  --base-2: #EEF2F5;
-  --base-3: #DCE5EC;
+  --base-2: #EBEDF8;
+  --base-3: #DDE1F2;
   /* 浅色摄影棚只改变CSS背景，不改变金属HDR与曝光。 */
-  --showcase-base: #F4F7FA;
-  --showcase-ink: #17344B;
-  --showcase-muted: #526B7F;
-  --showcase-surface: radial-gradient(ellipse 42% 6% at 50% 85%, #6B819018, transparent 95%), linear-gradient(180deg, #FFFFFF 0%, #F4F7FA 100%);
-  --face:   #17344B;
-  --face-2: #385469;
-  --face-3: #526879;
-  --face-4: #6B7D8A;
-  --line:      rgba(23, 52, 75, .12);
-  --line-2:    rgba(23, 52, 75, .06);
-  --line-firm: rgba(23, 52, 75, .20);
+  --showcase-base: #EDF0FF;
+  --showcase-ink: #292B4B;
+  --showcase-muted: #69718F;
+  --showcase-surface: radial-gradient(ellipse 60% 13% at 50% 82%, #727EC323, transparent 90%), radial-gradient(ellipse at 90% 14%, #FAD7EB99, transparent 56%), radial-gradient(ellipse at 10% 68%, #BEEEF9AA, transparent 60%), linear-gradient(145deg, #E9E5FE, #F7F7FF 48%, #DCE9FC);
+  --face:   #292B4B;
+  --face-2: #4C5275;
+  --face-3: #69718F;
+  --face-4: #7A82A0;
+  --line:      rgba(89, 93, 153, .14);
+  --line-2:    rgba(89, 93, 153, .08);
+  --line-firm: rgba(89, 93, 153, .24);
 
   /* ── 纸面渐变（body::before 用） ─────────────────────── */
-  --paper-0: #F4F7FA;
-  --paper-1: #F4F7FA;
+  --paper-0: #F4F2FF;
+  --paper-1: #EAF4FD;
 
   /* ── 强调色 ─────────────────────────────────────────── */
-  --accent:            #227A87;
-  --accent-deep:       #195B65;
-  --accent-soft:       rgba(34, 122, 135, .10);
-  --accent-line:       rgba(34, 122, 135, .30);
-  --accent-cool:       #227A87;
-  --accent-cool-deep:  #195B65;
-  --accent-cool-soft:  rgba(34, 122, 135, .12);
-  --accent-cool-line:  rgba(34, 122, 135, .30);
+  --accent:            #7055DF;
+  --accent-deep:       #5540B4;
+  --accent-soft:       rgba(112, 85, 223, .10);
+  --accent-line:       rgba(112, 85, 223, .30);
+  --accent-cool:       #258DB6;
+  --accent-cool-deep:  #1F6D92;
+  --accent-cool-soft:  rgba(65, 159, 211, .12);
+  --accent-cool-line:  rgba(112, 85, 223, .30);
   --reward:            #A77B38;
   --side-me:  #1E6E9C;            /* 我方 */
   --side-opp: #C4402F;            /* 对手 */
@@ -95,22 +99,22 @@
 
   /* ── 金属渐变（**只给这三处用**，全都渐变会变塑料反光） ──
      ① 主 CTA  ② 决策卡 foil 底 + 选中卡描边  ③ 出炉品质印章 */
-  --metal-hi:  #284B64;
-  --metal-mid: #17344B;
-  --metal-lo:  #1E4058;
+  --metal-hi:  #8968EC;
+  --metal-mid: #7254DE;
+  --metal-lo:  #527CE8;
   --metal-grad: linear-gradient(155deg, var(--metal-hi) 0%, var(--metal-mid) 52%, var(--metal-lo) 100%);
   --metal-soft: linear-gradient(155deg, #93A2AE 0%, #6D7C89 54%, #8593A0 100%);
 
   /* ── 毛玻璃（吸顶状态栏） ───────────────────────────── */
-  --glass-bg:     rgba(255, 255, 255, .90);
+  --glass-bg:     rgba(255, 255, 255, .66);
   --glass-blur:   saturate(1.6) blur(16px);
-  --glass-border: rgba(22, 28, 35, .10);
+  --glass-border: rgba(255, 255, 255, .88);
 
   /* ── 阴影（冷灰蓝投影，**禁止纯黑投影**） ───────────── */
-  --shadow-1: 0 1px 2px rgba(23, 52, 75, .04);
-  --shadow-2: 0 2px 6px rgba(23, 52, 75, .07), 0 8px 24px rgba(23, 52, 75, .06);
-  --shadow-3: 0 8px 20px rgba(23, 52, 75, .12), 0 24px 60px rgba(23, 52, 75, .14);
-  --shadow-cta: 0 3px 8px rgba(23, 52, 75, .20);
+  --shadow-1: 0 4px 14px rgba(77, 82, 154, .06);
+  --shadow-2: 0 10px 28px rgba(77, 82, 154, .10), 0 2px 6px rgba(77, 82, 154, .04);
+  --shadow-3: 0 8px 20px rgba(89, 93, 153, .14), 0 24px 60px rgba(23, 52, 75, .14);
+  --shadow-cta: 0 8px 20px rgba(111, 83, 221, .26);
   /* 决策卡专用：内 hairline（inset 不触发 layout，替代双边框） */
   --card-hair:    inset 0 0 0 .5px rgba(22, 28, 35, .09);
   --card-hair-hi: inset 0 0 0 .5px rgba(22, 28, 35, .18);
@@ -135,11 +139,11 @@
   --stage-wash-flat: color-mix(in srgb, var(--stage-color) 8%, #EEF2F5);
 
   /* ── 尺寸 / 圆角 / 间距 ─────────────────────────────── */
-  --r-sm: 8px;
-  --r:    14px;
-  --r-md: 12px;
-  --r-lg: 18px;
-  --r-xl: 24px;
+  --r-sm: 10px;
+  --r:    18px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 28px;
   --r-pill: 999px;
   --sp-1: 4px;
   --sp-2: 8px;

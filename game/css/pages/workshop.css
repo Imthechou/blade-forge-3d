@@ -403,3 +403,26 @@ button.blade-card-v2 { cursor: pointer; width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   .blade-card-v2 { transition: none; }
 }
+
+/* Shared collection cabinet: two complete cards, original rarity seals and real thumbnails. */
+.ws-tabhost { margin:8px 12px 0; padding:4px; flex-shrink:0; border:1px solid var(--glass-border); border-radius:18px; background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); }
+.ws-tabhost .pill-tab { padding-inline:12px; border:0; background:transparent; }
+.ws-tabhost .pill-tab.is-on { color:var(--accent); background:rgba(255,255,255,.85); box-shadow:var(--shadow-1); }
+.ws-body { padding:12px 12px calc(20px + var(--safe-b)); gap:12px; }
+.ws-collection-controls { border:1px solid var(--glass-border); border-radius:18px; background:var(--surface-glass); }
+.ws-control-row { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+.ws-control-row>* { flex-shrink:0; }
+.ws-collection-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; align-items:start; }
+.ws-collection-grid .blade-card-v2 { min-width:0; padding:10px; border:1px solid var(--glass-border); border-radius:22px; box-shadow:var(--shadow-1),inset 0 1px #fff; }
+.ws-collection-grid .bcv-art { min-height:150px; border-radius:16px; background:rgba(255,255,255,.36); }
+.ws-collection-grid .bcv-art>.blade-thumb { height:150px; }
+.ws-collection-grid .bcv-art>* { max-height:150px; }
+.ws-collection-grid .bcv-name { font-size:14px; }
+.ws-collection-grid .bcv-score b { font-size:25px; color:var(--accent); }
+.ws-collection-grid .bcv-top { gap:4px; }
+.ws-collection-grid .bcv-traits { gap:3px; }
+.ws-collection-grid .bcv-trait { max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; }
+.ws-collection-grid .bcv-compare-btn { width:100%; min-height:44px; justify-content:center; border-color:var(--glass-border); background:rgba(255,255,255,.45); }
+.ws-collection-grid .bcv-compare-btn[aria-pressed="true"] { background:var(--accent-soft); border-color:var(--accent-line); }
+.ws-fracture-entry { background:var(--surface-glass); border-color:var(--glass-border); }
+@media (max-width:360px) { .ws-collection-grid{gap:8px} .ws-collection-grid .blade-card-v2{padding:8px} .ws-collection-grid .bcv-art,.ws-collection-grid .bcv-art>.blade-thumb{min-height:130px;height:130px} }

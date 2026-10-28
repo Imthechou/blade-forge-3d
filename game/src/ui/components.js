@@ -143,6 +143,7 @@ export function statGrid(stats, directions = null, showValues = false) {
     const trend = statTrend(v);
     return el('div', { class: `stat-cell u-st-${k}`, 'aria-label': `${STAT_META[k].name}：${showValues ? Math.round(v) : trend.label}${d ? '，' + d.label : ''}` }, [
       el('div', { class: 'stat-cell-name', text: STAT_META[k].name }),
+      el('div', { class: 'stat-cell-meter', 'aria-hidden': 'true' }, [el('i', { style: { width: (showValues ? v / STAT_SOFT_CAP * 100 : trend.width) + '%' } })]),
       el('div', { class: 'stat-cell-val', text: showValues ? String(Math.round(v)) : trend.label }),
       d ? el('div', {
         // 只有"牺牲"才加修饰类（.is-down 有对应样式；.is-up 没有，别凭空造）
@@ -446,9 +447,9 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
   const tierHint = tagTierHint(card.tags, tagCounts);
   const tierText = tierHint
     ? (tierHint.isTierUp
-      ? `${tierHint.name} ${tierHint.from}→${tierHint.to} 层 · 补到${tierHint.tierName || '新档'}`
+      ? `${tierHint.name} ${tierHint.from}→${tierHint.to} · ${tierHint.tierName || '升档'}`
       : tierHint.toNext
-        ? `${tierHint.name} ${tierHint.from}→${tierHint.to} 层 · 再 ${tierHint.toNext - tierHint.to} 层升档`
+        ? `${tierHint.name} ${tierHint.from}→${tierHint.to} · 再${tierHint.toNext - tierHint.to}层升档`
         : `${tierHint.name} ${tierHint.from}→${tierHint.to} 层 · 已满档`)
     : null;
 
@@ -467,9 +468,6 @@ export function decisionCard(card, { picked = false, onPick, onDetail, tagCounts
     el('div', { class: 'dcard-head' }, [
       rarityBadge(card.rarity, card.rarityCn),
       riskChip(card.riskDeltaPoints),
-    ]),
-    el('div', { class: 'dcard-ornament', 'aria-hidden': 'true' }, [
-      el('i'), el('span', { text: (card.stage || 'S1').replace('S', '').padStart(2, '0') }), el('i'),
     ]),
     el('div', { class: 'dcard-title', text: card.name }),
     el('div', { class: 'dcard-copy', text: card.copy }),

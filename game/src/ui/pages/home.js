@@ -34,17 +34,7 @@ export function create() {
   root.append(stageHost, body);
 }
 
-/* ★ 2026-10-24（用户：「今日目标那一块我感觉可以删掉」+「50 CR 全勤奖励也删了一起」）：
-   删掉了「今日目标」入口及其抽屉（含全勤奖励领取按钮）。
-   连带删除：Daily.claimAllBonus / Progress.claimDailyBonus / DAILY_ALL_BONUS /
-   save.daily.allBonusClaimed / .home-mission 样式 / .goal 样式。
-
-   为什么可以安全删（已核实）：
-   · 单项任务的 CR（40/40/50）由 core/events.settle **自动发放**，与这个 UI 无关；
-   · 全勤 50 CR 确实只能从这个抽屉领，所以按用户要求一并取消，
-     而不是删了界面、把奖励留成永远领不到的死数据。
-
-   首页现在只有：主 CTA → 4 个入口 → 「下一个目标」→ 长期统计。 */
+/** 首页只保留展台、开锻、四个入口和生涯统计。 */
 export function render() {
   if (!root || !body) create();
   if (!body) return;
@@ -93,9 +83,6 @@ export function render() {
       'aria-label': entry.label,
       onclick: entry.go,
     }, [ICONS[entry.icon](false), el('span', { text: entry.label })]))),
-    /* ★ rework T12：「下一个目标」——只给一件具体、可执行的事，并直接跳过去。
-       改造前首页只有静态数字，玩家锻完、打完也看不到下一步干什么。 */
-    goalCard(summary.nextGoal),
     el('div', { class: 'home-stats', 'aria-label': '长期进度' }, [
       summaryItem('最高评分', summary.bestScore),
       summaryItem('赛事胜场', summary.matchWins),
@@ -127,48 +114,6 @@ export function syncInspect() {
 
 function summaryItem(label, value) {
   return el('div', {}, [el('span', { text: label }), el('b', { text: String(value) })]);
-}
-
-/**
- * 「下一个目标」卡片。
- * ★ 目标由 Progress.nextGoal() 计算（core 侧单一真源），页面只负责展示与跳转。
- * ★ 跳转不要绕过 prepwarm：进锻造前仍要等候选资源就绪，否则首卡会白屏。
- */
-function goalCard(goal) {
-  if (!goal) return null;
-  return el('button', {
-    class: 'home-goal', type: 'button',
-    'aria-label': `下一个目标：${goal.title}`,
-    onclick: async (event) => {
-      const button = event.currentTarget;
-      if (button.disabled) return;
-      if (goal.route === 'forge') {
-        button.disabled = true;
-        button.setAttribute('aria-busy', 'true');
-        try {
-          if (!(Game.run && !Game.run.finished)) Game.startForge({ mode: 'normal' });
-          await Game.prewarmCandidates();
-          router.go('forge');
-        } catch (error) {
-          console.warn('[forge] preparation', error);
-          toast('工艺准备未完成，请重试', 'warn');
-          button.disabled = false;
-          button.removeAttribute('aria-busy');
-        }
-        return;
-      }
-      if (goal.route === 'workshop') {
-        Workshop.openTab(goal.tab || 'collection');
-        return;
-      }
-      router.go(goal.route || 'forge');
-    },
-  }, [
-    el('span', { class: 'home-goal-kicker', text: '下一个目标' }),
-    el('b', { class: 'home-goal-title', text: goal.title }),
-    el('span', { class: 'home-goal-desc', text: goal.desc || '' }),
-    el('span', { class: 'home-goal-action', text: `${goal.action || '前往'} →` }),
-  ]);
 }
 
 export default { create, render };

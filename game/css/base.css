@@ -24,7 +24,7 @@ body {
 /* ── 纯净底色：页面内容与刀具保持清晰 ── */
 body::before {
   content: ''; position: fixed; inset: 0; z-index: -2; pointer-events: none;
-  background: var(--base-0);
+  background: var(--app-surface);
 }
 
 /* 无全局网格或织纹，避免低对比装饰干扰可读性。 */
@@ -39,6 +39,8 @@ body::after {
   position: relative; overflow: hidden;
   container-type: inline-size;   /* 断点按真实可用宽度算，不按视口 */
   container-name: app;
+  background: var(--app-surface);
+  box-shadow: 0 0 80px rgba(86,81,151,.12);
 }
 /* ── 页面容器 ── */
 .pages { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }
@@ -60,7 +62,7 @@ body::after {
 .grow { flex: 1 1 auto; min-width: 0; }
 
 .card {
-  background: var(--base-1); border: 0;
+  background: var(--surface-glass); border: 1px solid var(--glass-border);
   border-radius: var(--r-md); padding: var(--sp-3);
   box-shadow: inset 0 0 0 1px var(--line-2), var(--shadow-1);
 }
@@ -78,7 +80,7 @@ body::after {
 /* ── 按钮 ── */
 .btn {
   appearance: none; border: 1px solid var(--line-firm);
-  background: var(--base-1); color: var(--face);
+  background: var(--surface-glass); color: var(--face);
   border-radius: var(--r); padding: 10px 14px;
   font: 600 var(--fs-md)/1.2 var(--font); cursor: pointer;
   min-height: var(--tap); touch-action: manipulation;
@@ -88,10 +90,10 @@ body::after {
 .btn[disabled] { opacity: .45; cursor: not-allowed; }
 /* 主 CTA 使用钢蓝；金色仅表达稀有度与奖励。 */
 .btn--primary {
-  border-color: #17344B;
-  background: #17344B;
-  color: #FFFFFF; font-weight: 650;
-  box-shadow: 0 3px 8px rgba(23, 52, 75, .18);
+  border-color: transparent;
+  background: var(--metal-grad);
+  color: #fff; font-weight: 650;
+  box-shadow: var(--shadow-cta), inset 0 1px 0 rgba(255,255,255,.45);
 }
 .btn--cool {
   border-color: transparent;
@@ -142,30 +144,40 @@ body::after {
 /* ── 抽屉 ── */
 .sheet-mask {
   position: fixed; inset: 0; z-index: var(--z-sheet);
-  background: rgba(22, 28, 35, .32); backdrop-filter: blur(2px);
-  display: flex; align-items: flex-end;
+  display: flex; align-items: center; justify-content: center;
+  padding: max(18px, var(--safe-t)) 18px max(18px, var(--safe-b));
+  background: var(--dialog-scrim);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   opacity: 0; transition: opacity .22s ease;
+  overscroll-behavior: contain;
 }
 .sheet-mask.is-in { opacity: 1; }
 .sheet {
-  width: 100%; max-width: var(--app-max); margin: 0 auto;
-  background: var(--base-1); border-top: 1px solid var(--line-firm);
-  border-radius: var(--r-xl) var(--r-xl) 0 0;
-  max-height: 78dvh; display: flex; flex-direction: column;
-  transform: translateY(12px); transition: transform .24s ease;
-  box-shadow: var(--shadow-3);
+  width: 100%; max-width: 410px; min-height: 0; margin: 0;
+  max-height: min(82dvh, 780px);
+  display: flex; flex-direction: column;
+  border: 1px solid var(--glass-border); border-radius: var(--r-xl);
+  background: var(--dialog-glass);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-3), inset 0 1px rgba(255,255,255,.9);
+  transform: translateY(8px) scale(.97); transition: transform .24s var(--ease);
+  overflow: hidden;
 }
 .sheet-mask.is-in .sheet { transform: none; }
 .sheet-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: var(--sp-4); border-bottom: 1px solid var(--line);
+  display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 12px 16px 10px 20px; border-bottom: 1px solid var(--line-2);
 }
-.sheet-title { font-size: var(--fs-lg); font-weight: 600; }
+.sheet-title { font-size: 19px; font-weight: 700; line-height: 1.3; }
 .sheet-x {
-  background: none; border: none; color: var(--face-2);
-  font-size: var(--fs-sm); cursor: pointer; min-width: 44px; min-height: 44px;
+  display: grid; place-items: center; flex: 0 0 44px; width: 44px; min-height: 44px;
+  border: 1px solid var(--glass-border); border-radius: 50%;
+  background: rgba(255,255,255,.55); color: var(--face-2);
+  font: 600 12px var(--font); cursor: pointer;
 }
-.sheet-body { padding: var(--sp-4); overflow-y: auto; padding-bottom: calc(var(--sp-4) + var(--safe-b)); }
+.sheet-body { min-height: 0; padding: 16px 20px 20px; overflow-y: auto; overscroll-behavior: contain; }
+body:has(.sheet-mask) #app { pointer-events: none; }
+@supports not (backdrop-filter: blur(1px)) { .sheet { background: #F7F7FE; } }
 
 :where(button,[role="button"],a):focus-visible { outline: 2px solid var(--accent-cool); outline-offset: 3px; }
 button { -webkit-user-select: none; user-select: none; }

@@ -86,6 +86,7 @@ export function render() {
   root.classList.toggle('is-no-drag', hammering);
   inspectCtl?.setBlocked?.(hammering);
   pickedCard = null;
+  $('#forgeStage', root)?.classList.remove('is-previewing');
   body.innerHTML = '';
 
   if (run.phase === 'appraise' || run.phase === 'fractured') {
@@ -292,6 +293,14 @@ function renderSelect(body, run) {
     mount(statsNode, statGrid(Game.run.stats, pickedCard ? pickedCard.directions : null));
     // 卡（选中时另两张降权，把注意力收到选中那张）
     cardsRow.classList.toggle('is-picking', !!pickedCard);
+    const previewStage = $('#forgeStage', root);
+    previewStage?.classList.toggle('is-previewing', !!pickedCard);
+    let preview = previewStage?.querySelector('.stage-preview');
+    if (previewStage && !preview) {
+      preview = el('div', { class: 'stage-preview', role: 'status', 'aria-live': 'polite' });
+      previewStage.appendChild(preview);
+    }
+    if (preview) { preview.hidden = !pickedCard; preview.textContent = pickedCard ? `${pickedCard.name} · 预览` : ''; }
     const cardKey = Game.run.candidates.map(c => c.id).join(',');
     if (mountedCards !== cardKey) {
       mountedCards = cardKey;
@@ -417,7 +426,7 @@ function showDetail(card) {
       //   手建的话这里的徽标会缺记号（全站唯一会漏的点就是它）。
       el('div', { class: 'row' }, [rarityBadge(card.rarity, card.rarityCn), el('span', { class: 'muted tiny', text: card.role })]),
       el('div', { class: 'dim', text: card.copy }),
-      el('div', { class: 'section-title', text: '属性方向（锻造期不显示精确值）' }),
+      el('div', { class: 'section-title', text: '属性方向' }),
       ...(dirs.length ? dirs : [el('div', { class: 'muted tiny', text: '无显著变化' })]),
       el('div', { class: 'section-title', text: '工艺标签' }),
       el('div', { class: 'row row--wrap' }, tags),

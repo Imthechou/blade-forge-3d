@@ -25,7 +25,7 @@ npm run verify        # check + test
 
 ## GitHub Pages 自动预览
 
-推送 `main` 分支的 `game/` 文件后，Actions 运行 9 项核心自动测试，通过后才部署；原 V3 发布包有 41 处缺失的旧脚本/文档引用，因此 `npm run check` 目前只作为非阻断诊断，日志会保留警告。预览网址通常为：
+推送 `main` 分支的 `game/` 文件后，Actions 运行核心自动测试，通过后才部署；UI 变更另有 Chromium / WebGL 流程与截图验收。已移除原发布包中指向缺失诊断脚本的 npm 命令和无效历史文档链接。预览网址通常为：
 
 https://imthechou.github.io/blade-forge-3d/
 
