@@ -307,7 +307,12 @@ export function cardDoodle(card) {
   svg.setAttribute('focusable','false');
   // S4 gets genuinely distinct drawn knife geometry (12 forms × base/glow),
   // while S1-S3/S5-S9 keep the established semantic doodle family.
-  if(paintS4Knife(svg,s,card)) return svg;
+  if(paintS4Knife(svg,s,card)) {
+    // Unlike abstract decals, a knife's complete point + handle must fit
+    // even in 110px phone cards. Don't crop them with xMidYMid slice.
+    svg.setAttribute('preserveAspectRatio','none');
+    return svg;
+  }
   // A translucent color wash lets the surrounding glass card remain visible.
   e(svg,'rect',{x:0,y:0,width:160,height:64,fill:p.paper,opacity:'.26'});
   const brush=s.motion==='ribbon'
