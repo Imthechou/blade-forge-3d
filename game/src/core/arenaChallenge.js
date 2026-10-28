@@ -461,7 +461,7 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
   const ordered = run.targets.filter((t) => {
     const last=run.contacts[t.id];
     return t.alive && (!run.hitIds.includes(t.id) || (last && run.elapsed-last.at>=ARENA_V3.repeatCooldown && run.travel-last.travel>=ARENA_V3.repeatTravel));
-  }).map((t) => ({ t, d: distanceToSegment(t.x,t.y,a,b) })).filter((x) => x.d < radius).sort((x,y) => x.d-y.d);
+  }).map((t) => ({ t, d: distanceToSegment(t.x,t.y,a,b) })).filter((x) => x.d < radius).sort((x,y) => ((x.t.x-a.x)*dx+(x.t.y-a.y)*dy)-((y.t.x-a.x)*dx+(y.t.y-a.y)*dy));
   let secondaryBudget=Math.max(0,ARENA_V3.secondaryLimit-(run.secondaryThisSwipe||0));
   const frenzy = run.elapsed < (run.frenzyUntil ?? -1);
   for (const {t,d} of ordered) {
@@ -470,7 +470,10 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
     run.contacts[t.id]={at:run.elapsed,travel:run.travel}; t.lastHitAt=run.elapsed;
     /* 「一刀必破」标记：每次接触独立重置，不能跨目标/跨手势泄漏 */
     let guaranteedBreak = false;
-    const mat=MATERIALS[t.type],stats=run.blade.stats,accuracy=clamp(1-d/.12,.25,1);
+    const mat=MATERIALS[t.type],stats=run.blade.stats;
+    // 指针分段会先接触刃长范围的前缘；质量按刀路横向偏差计算，避免帧率改变精准与切入。
+    const lineDistance=(x,y)=>Math.abs(dx*(y-a.y)-dy*(x-a.x))/dist;
+    const accuracy=clamp(1-lineDistance(t.x,t.y)/.12,.25,1);
     const tol = (P.tolerance ?? (.275+stats.design*.0028+stats.craft*.00075)) * (run.blade.projectFactor?.precision?.value || 1);
     const perfectTol = tol * (P.perfectMult ?? 1);
     let diff=angleDiff(direction,mat.angle),quality=diff<perfectTol?'PERFECT':diff<tol*2.1?'CLEAN':'ANGLE';
@@ -478,7 +481,7 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
     const speed=clamp(velocity*(P.speedBonus ?? 1.35),.55,1.35),center=.78+accuracy*.24;
     const prev=t.cuts.at(-1),cross=!!(t.type==='ice'&&prev&&angleDiff(direction,prev.angle)>.68&&angleDiff(direction,prev.angle)<1.4);
     if (cross) { diff=Math.min(diff,.10); quality=diff<perfectTol?'PERFECT':quality; precision=quality==='PERFECT'?1.2:quality==='CLEAN'?1:.76; }
-    const weak = distanceToSegment(t.x+(t.weakX||0),t.y+(t.weakY||0),a,b) < (P.weakMap ? .045 : .032) && quality==='PERFECT';
+    const weak = lineDistance(t.x+(t.weakX||0),t.y+(t.weakY||0)) < (P.weakMap ? .045 : .032) && quality==='PERFECT';
     if(weak && P.weakMap) precision*=1.12;
     if(quality==='PERFECT')run.perfects++;
     if(weak)run.weakHits++;
@@ -643,7 +646,8 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
     let secondaryPower=0, candidates=[];
     if(primaryComplete && weak && P.pierce) {
       secondaryPower=power*P.pierce;
-      candidates=run.targets.filter(n=>n.alive && n.id!==t.id && distanceToSegment(n.x,n.y,a,b)<radius);
+      candidates=run.targets.filter(n=>n.alive && n.id!==t.id && (n.x-t.x)*dx+(n.y-t.y)*dy>0 && lineDistance(n.x,n.y)<radius)
+        .sort((x,y)=>Math.hypot(x.x-t.x,x.y-t.y)-Math.hypot(y.x-t.x,y.y-t.y)).slice(0,1);
     }
     if(cross && P.crackSpread) {
       secondaryPower=Math.max(secondaryPower,power*P.crackSpread);

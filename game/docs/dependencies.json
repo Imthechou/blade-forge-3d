@@ -126,8 +126,8 @@
   },
   {
     "file": "src/core/arenaChallenge.js",
-    "bytes": 44709,
-    "lines": 763,
+    "bytes": 45094,
+    "lines": 767,
     "imports": [
       "src/data/arena/buffs.js",
       "src/data/balance.js",
@@ -201,8 +201,8 @@
   },
   {
     "file": "src/core/arenaFormal.js",
-    "bytes": 28843,
-    "lines": 677,
+    "bytes": 27817,
+    "lines": 658,
     "imports": [
       "src/data/arena/branches.js",
       "src/data/arena/formalTests.js",

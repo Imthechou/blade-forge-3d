@@ -153,3 +153,13 @@ test('新快赛纪录独立版本分组，旧纪录与未知存档内容保留',
   assert.equal(records.byChallenge['quick:v3:free'].bestScore,100);
   assert.equal(normalizeQuickRecords(records).byChallenge['quick:v3:free'].bestScore,100);
 });
+
+
+test('中心刀路分成高频 PointerEvent 后不因前缘先接触而降低切割质量',()=>{
+  const a=run([],60),b=run([],60),ta=target('foam'),tb=target('foam');
+  a.targets=[ta];b.targets=[tb];C.beginSwipe(a);C.beginSwipe(b);
+  const angle=C.MATERIALS.foam.angle,pt=d=>({x:.5+Math.cos(angle)*d,y:.5+Math.sin(angle)*d});
+  C.swipe(a,pt(-.13),pt(.13),{duration:.18});
+  for(let i=0;i<10;i++)C.swipe(b,pt(-.13+i*.026),pt(-.13+(i+1)*.026),{duration:.018});
+  assert.equal(tb.alive,ta.alive);assert.equal(tb.progress,ta.progress);assert.equal(b.weakHits,a.weakHits);assert.equal(b.perfects,a.perfects);
+});

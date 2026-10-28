@@ -35,7 +35,9 @@ async function choose(page,virtual) {
     const data=await page.evaluate(()=>({elapsed:__FORGE_ARENA.run.elapsed,health:__FORGE_ARENA.run.health,types:__FORGE_ARENA.run.offers}));
     if(virtual)await page.clock.fastForward(600);else await page.waitForTimeout(120);
     assert.equal(await page.evaluate(()=>__FORGE_ARENA.run.elapsed),data.elapsed);
-    await cards.first().click({force:true});
+    const preference=['sanmai','tempering','smithsoul','unbroken','cladsteel','pickings','whetstone','quenchheat','noself','layerbreak','weakmap','longblade','piercing'];
+    const selected=[...data.types].sort((a,b)=>(preference.indexOf(a)<0?99:preference.indexOf(a))-(preference.indexOf(b)<0?99:preference.indexOf(b)))[0];
+    await page.locator(`[data-augment-id="${selected}"]`).click({force:true});
     if(virtual)await page.clock.fastForward(20);
     return true;
   }
@@ -45,7 +47,7 @@ async function pointerCut(page) {
   const state=await page.evaluate(()=>{
     const r=globalThis.__FORGE_ARENA?.run;
     if(!r||r.done||r.phase.endsWith('-choice'))return null;
-    const t=r.targets.filter(t=>t.alive).sort((a,b)=>({foam:50,rope:70,wood:160,plastic:220,ice:250,metal:460}[b.type]-{foam:50,rope:70,wood:160,plastic:220,ice:250,metal:460}[a.type]))[0];
+    const t=r.targets.filter(t=>t.alive && (r.health>r.maxHealth*.45 || t.type==='foam'||t.type==='rope')).sort((a,b)=>({foam:50,rope:70,wood:160,plastic:220,ice:250,metal:460}[b.type]-{foam:50,rope:70,wood:160,plastic:220,ice:250,metal:460}[a.type]))[0];
     return t?{target:t,elapsed:r.elapsed}:null;
   });
   if(!state)return;
@@ -71,12 +73,13 @@ async function playRound(page,virtual,{capture=false}={}) {
     if(virtual)await page.clock.fastForward(220);
   }
   const r=await page.evaluate(()=>globalThis.__FORGE_ARENA?.run?.result);
-  assert.ok(r,'No settled round');assert.equal(r.total,45);assert.equal(r.choicesMade,3);assert.equal(r.reason,'time');
+  assert.ok(r,'No settled round');assert.equal(r.total,45);assert.equal(r.choicesMade,3);assert.equal(r.reason,'time',JSON.stringify({score:r.score,health:r.health,kills:r.kills,log:r.log.slice(-3)}));
   assert.ok(r.kills>20);assert.ok(r.metrics.emptySeconds<1);
   assert.equal(await page.locator('.quick-canvas').count(),0,'result still showing running canvas');
   return r;
 }
 async function scenario(name,fn,options) {
+  if(process.env.ARENA_CASE && !new RegExp(process.env.ARENA_CASE).test(name))return;
   const env=await newGame(name,options);
   try{const data=await fn(env);report.cases.push({name,status:'PASS',data});console.log('PASS',name,JSON.stringify(data));}
   catch(error){report.cases.push({name,status:'FAIL',error:String(error.stack)});await screenshot(env.page,name+'-failure').catch(()=>{});console.error('FAIL',name,String(error));}
@@ -142,7 +145,7 @@ try {
     await choose(page,virtual);
     await page.getByRole('button',{name:'暂停',exact:true}).click({force:true});
     const at=await page.evaluate(()=>__FORGE_ARENA.run.elapsed);await page.clock.fastForward(1500);assert.equal(await page.evaluate(()=>__FORGE_ARENA.run.elapsed),at);
-    await page.getByRole('button',{name:'继续挑战',exact:true}).click({force:true});await page.clock.fastForward(300);
+    await page.locator('.quick-pause-overlay .quick-choice-card').first().click({force:true});await page.clock.fastForward(300);
     assert.ok(await page.evaluate(()=>__FORGE_ARENA.run.elapsed)>at);
     return {overflow:false,pauseFreezes:true};
   },{width:320,height:568});

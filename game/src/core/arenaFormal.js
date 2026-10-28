@@ -1,23 +1,4 @@
-/**
- * 核心层 · 正式赛（单刀 / 全国 / 三刀）统一引擎（rework T06 / T09）
- *
- * ★ 要修什么（审计问题 4 / 5）：
- *   · 主入口走的是 `arenaSlice`（三次 35 秒切割 + 逐局 buff），
- *     六流派同刀同种子拿到完全相同的目标分与靶具指纹；
- *   · `arenaSuite` 有多项目编排但主入口没用，且 aggregation 为空（沿用旧切割桥接分）；
- *   · 三刀赛三轮仍全是切割，且普通 hub 允许单刀旁路进巅峰赛。
- *
- * ★ 本文件的职责：
- *   · 用 `data/arena/formalTests.buildFormalDefinition` 作为**唯一**赛事定义来源；
- *   · 每项测试 → `core/testScoring` 产出分项结果（原始测量/归一化/适配依据/临时损伤）；
- *   · 赛事合成只消费有效分项结果（不再用切割分冒充全部）；
- *   · 三刀赛**强制**三个不同 ID、可用、未断的刀，且每把本场一次。
- *
- * ★ 明确不做（沿用 FORMAL_RISK_TBD，见 arenaChallenge）：
- *   不套锻造 Risk 表，不补猜的永久断刀概率。这里只处理**临时**失效/损伤，
- *   且临时失效不等于永久断刀。
- */
-
+/** 正式赛事 V3 编排：一场 45 秒切割、全国一刀五轮、巅峰三刀轮换。旧分项会话保留兼容。 */
 import { buildFormalDefinition, gradientRule, FORMAL_RULES_VERSION } from '../data/arena/formalTests.js';
 import { ARENA_V3 } from '../data/balance.js';
 import { BRANCHES, GRADIENTS } from '../data/arena/branches.js';
@@ -65,7 +46,7 @@ export function createFormalMatch({ blade, tier = 'school', styleId = null, grad
   if (!blade || blade.fractured || blade.canEnterArena === false) {
     return { ok: false, reason: '只能使用完整成刀参赛' };
   }
-  /* 全国赛不绑定流派：用复合（三项）代表综合考核，梯度按轮次推进 */
+  // 风格只改变阵型、材料权重与得分条件，材料本体恒定。
   const branchId = styleId || 'composite';
   if (!BRANCHES.some((b) => b.id === branchId)) return { ok: false, reason: '未知流派' };
 
@@ -213,7 +194,7 @@ export function submitTest(match, { measure, detail = {}, temporaryDamage = 0, f
   if (!res.ok) return res;
   if(match.version===FORMAL_RULES_VERSION) {
     // 刀具属性已在切割/刀损中生效；真实分数不再乘第二遍能力分。
-    res.result.score=failed?0:Math.floor(detail.score);
+    res.result.score=Number.isFinite(detail.score)?Math.max(0,Math.floor(detail.score)):0;
     res.result.raw.score=res.result.score;
     res.result.version='cut-score-3';
   }
