@@ -23,7 +23,8 @@ try{
     const head=document.createElement('h1');head.textContent='FORGE / 工艺涂鸦卡面 · 9 STAGES / ALL 218 DECALS';
     head.style.cssText='font-size:21px;margin:0 0 22px;letter-spacing:.06em;';
     gallery.append(head);
-    const signatures=new Set(),shapes=new Set();
+    const signatures=new Set(),shapes=new Set(),s4Forms=new Set();
+    let s4Glow=0,s4Base=0;
     for(const stage of ['S1','S2','S3','S4','S5','S6','S7','S8','S9']){
       const section=document.createElement('section');
       section.style.cssText='margin-bottom:23px';
@@ -40,6 +41,11 @@ try{
         const art=document.createElement('div');
         art.style.cssText='height:70px;border-radius:9px;overflow:hidden;border:1px solid rgba(35,40,70,.1)';
         const svg=cardDoodle(card);
+        if(stage==='S4'){
+          const form=svg.getAttribute('data-knife-form');
+          if(form)s4Forms.add(form);
+          svg.getAttribute('data-knife-glow')==='true'?s4Glow++:s4Base++;
+        }
         svg.style.cssText='width:100%;height:100%;display:block;';
         art.append(svg);
         const label=document.createElement('div');
@@ -58,6 +64,7 @@ try{
     document.body.replaceChildren(gallery);
     return {cards:signatures.size,uniqueSVG:shapes.size,sections:gallery.querySelectorAll('section').length,
       images:gallery.querySelectorAll('svg.dcard-doodle').length,
+      s4Forms:s4Forms.size,s4Glow,s4Base,
       width:document.documentElement.scrollWidth,viewportWidth:innerWidth,
       galleryHeight:gallery.getBoundingClientRect().height};
   });
@@ -65,8 +72,12 @@ try{
   assert.equal(result.uniqueSVG,218);
   assert.equal(result.sections,9);
   assert.equal(result.images,218);
+  assert.equal(result.s4Forms,12);
+  assert.equal(result.s4Glow,12);
+  assert.equal(result.s4Base,12);
   assert.ok(result.width<=result.viewportWidth+1,'gallery must have no horizontal overflow');
   await page.screenshot({path:path.join(out,'doodle-gallery-all-218-cards.png'),fullPage:true,timeout:30000});
+  await page.locator('#doodle-gallery-qa section').nth(3).screenshot({path:path.join(out,'s4-knife-24-unique-stickers.png'),timeout:30000});
   assert.deepEqual(issues,[]);
   fs.writeFileSync(path.join(out,'doodle-gallery-report.json'),JSON.stringify({ok:true,...result,errors:issues},null,2));
   console.log('PASS doodle gallery:',JSON.stringify(result));
