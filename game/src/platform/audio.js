@@ -102,6 +102,16 @@ const SFX = {
     tone({freq:178,dur:.09,type:'triangle',gain:.12,sweepTo:118});
     tone({freq:610,dur:.18,type:'sine',gain:.058,delay:.014});
   },
+  // S7 honing: soft dry abrasive contact in short, sparse strokes. These are
+  // deliberately much quieter than hammer or cut impact, not bright jingles.
+  hone: () => {
+    noise({ dur: 0.025, gain: 0.042, lowpass: 2750 });
+    tone({ freq: 355, dur: 0.038, type: 'sine', gain: 0.015, sweepTo: 300 });
+  },
+  honeFinish: () => {
+    noise({ dur: 0.042, gain: 0.047, lowpass: 3400 });
+    tone({ freq: 590, dur: 0.12, type: 'sine', gain: 0.055, sweepTo: 720, delay: 0.012 });
+  },
   spark: () => noise({ dur: 0.1, gain: 0.22, lowpass: 5200 }),
   riskUp: () => tone({ freq: 220, dur: 0.14, type: 'sawtooth', gain: 0.12, sweepTo: 160 }),
   riskSafe: () => tone({ freq: 440, dur: 0.12, type: 'sine', gain: 0.16, sweepTo: 560 }),
