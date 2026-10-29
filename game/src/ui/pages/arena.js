@@ -499,7 +499,7 @@ function renderChallengeSetup() {
   if(!blades.some(b=>b.id===selectedBladeId))selectedBladeId=blades[0].id;
   const selected=blades.find(b=>b.id===selectedBladeId);
   const stats=[['强度','strength'],['锋利','sharpness'],['韧性','toughness']];
-  mount(body,[modeSwitch(),bladePicker(blades,selected),el('header',{class:'quick-hero'},[el('h2',{text:'45秒，尽展锋芒'}),el('p',{text:'划过材料，连切得分。收藏刀具不会受损。'})]),el('div',{class:'quick-stat-strip'},stats.map(([label,key])=>el('span',{},[el('small',{text:label}),el('b',{text:String(Math.round(selected.stats?.[key] || 0))})]))),el('div',{class:'quick-entry-list'},[el('section',{class:'quick-entry-card is-daily'},[el('div',{class:'quick-entry-copy'},[el('h3',{text:'每日挑战'}),el('p',{text:'相同靶序，磨练你的最佳刀路。'})]),el('span',{class:'quick-entry-duration',text:'45秒'}),el('button',{class:'btn btn--primary btn--block',text:'开始每日挑战',onclick:()=>startQuickChallenge(true,Core.daily.seedOfDay(Core.daily.dayKey()))})]),el('section',{class:'quick-entry-card'},[el('div',{class:'quick-entry-copy'},[el('h3',{text:'自由快赛'}),el('p',{text:'随机靶序，随时挑战新的高分。'})]),el('span',{class:'quick-entry-duration',text:'45秒'}),el('button',{class:'btn btn--block',text:'开始自由快赛',onclick:()=>startQuickChallenge(false)})])]),el('details',{class:'arena-rules'},[el('summary',{text:'赛道、刀况与奖励'}),el('p',{text:'开局、第15秒和第30秒各选一次强化；选卡时暂停。硬靶需要多次补刀；刀况仅在本局模拟，任何失败、失误或中途结束均不会断刀。完成后按得分与评级结算CR，不影响正式赛事晋级。'})])]);
+  mount(body,[modeSwitch(),bladePicker(blades,selected),el('header',{class:'quick-hero'},[el('h2',{text:'45秒，尽展锋芒'}),el('p',{text:'划过材料，连切得分。收藏刀具不会受损。'})]),el('div',{class:'quick-stat-strip'},stats.map(([label,key])=>el('span',{},[el('small',{text:label}),el('b',{text:String(Math.round(selected.stats?.[key] || 0))})]))),el('div',{class:'quick-entry-list'},[el('section',{class:'quick-entry-card is-daily'},[el('div',{class:'quick-entry-copy'},[el('h3',{text:'每日挑战'}),el('p',{text:'相同靶序，磨练你的最佳刀路。'})]),el('span',{class:'quick-entry-duration',text:'45秒'}),el('button',{class:'btn btn--primary btn--block',text:'开始每日挑战',onclick:()=>startQuickChallenge(true,Core.daily.seedOfDay(Core.daily.dayKey()))})]),el('section',{class:'quick-entry-card'},[el('div',{class:'quick-entry-copy'},[el('h3',{text:'自由快赛'}),el('p',{text:'随机靶序，随时挑战新的高分。'})]),el('span',{class:'quick-entry-duration',text:'45秒'}),el('button',{class:'btn btn--block',text:'开始自由快赛',onclick:()=>startQuickChallenge(false)})])]),el('details',{class:'arena-rules'},[el('summary',{text:'赛道、刀况与奖励'}),el('p',{text:'全程无随机强化弹窗。普通软靶流畅连切，硬靶可选择挑战或放过；不消耗收藏刀具刀况，完整体验45秒。完成后按得分与评级结算CR，不影响正式赛事晋级。'})])]);
 }
 
 function startQuickChallenge(daily, seed = null) {
@@ -534,7 +534,7 @@ function renderChallenge() {
   const hud = el('div', { class: 'quick-hud' }, [
     el('div', { class: 'quick-hud-time' }, [el('small', { text: '剩余时间' }), el('b', { class: 'mono', text: run.remaining.toFixed(1) }), el('span', { text: '秒' })]),
     el('div', { class: 'quick-hud-score' }, [el('small', { text: '当前得分' }), el('b', { class: 'mono', text: String(Math.floor(run.score)).padStart(4, '0') })]),
-    el('div', { class: 'quick-hud-vitals' }, [el('small', { text: '模拟刀况' }), el('b', { text: `${Math.round(run.health)}%` }), el('i', { style: { transform: `scaleX(${run.health / 100})` } })]),
+    el('div', { class: 'quick-hud-vitals' }, [el('small', { text: '快赛模式' }), el('b', { text: '无限试刀' }), el('i', { style: { transform: `scaleX(${run.health / 100})` } })]),
   ]);
   const canvas = el('canvas', { class: 'quick-canvas', 'aria-label': '2D 切割赛场；按住并划过材料靶完成切割' });
   const mission = el('div', { class: 'quick-stage-label' }, [el('b', { text: '热身连切' }), el('span', { text: '划过靶具，一笔连切' })]);
@@ -929,7 +929,7 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     const pauseLabel=run.paused?'继续':'暂停';
     if (pauseNode && pauseNode.getAttribute('aria-label')!==pauseLabel) { pauseNode.setAttribute('aria-label',pauseLabel); pauseNode.title=pauseLabel; }
     updateMission();
-    if(run.version==='arena-3') {
+    if(run.augments && run.version==='arena-3') {
       const span=mission.querySelector('span');
       if(span)span.textContent=`${run.buffs.map(id=>BUFF_BY_ID[id]?.name).join(' · ') || '等待强化'}${run.resonances.length?' | '+run.resonances.map(id=>BUILD_TAGS[id]+'共鸣').join(' '):''} · 可反向补刀`;
     }
