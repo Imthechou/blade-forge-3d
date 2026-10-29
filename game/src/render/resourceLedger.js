@@ -104,6 +104,15 @@ class ResourceLedger {
 
   untrack(id) { this.items.delete(id); }
 
+  /** Forget a destroyed GPU context without affecting other viewers. */
+  releaseRenderer(renderer) {
+    const ctx = this.contexts.get(renderer);
+    if (ctx == null) return false;
+    for (const [id, item] of this.items) if (item.ctx === ctx) this.items.delete(id);
+    this.contexts.delete(renderer);
+    return true;
+  }
+
   /** lease：+1。返回当前引用数。 */
   pin(id) {
     const it = this.items.get(id);
@@ -237,8 +246,6 @@ class ResourceLedger {
   }
 
   reset() { this.items.clear(); this.contexts.clear(); this._ctxId = 0; this.evicted = []; this.lastLevel = 0; }
-
-  reset() { this.items.clear(); this.contexts.clear(); this._ctxId = 0; }
 }
 
 /** 全局单例：渲染层各处共用一本账。 */
