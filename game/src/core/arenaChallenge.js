@@ -526,6 +526,16 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
       ? (P.softBase ?? (1.05+(stats.sharpness-50)*.0064+(stats.craft-50)*.0018))*mult
       : (P.hardBase ?? (.37+(stats.strength-50)*.0042+(stats.sharpness-50)*.0016+(stats.craft-50)*.0015))*(P.hardPowerMult ?? 1)*(1+.13*(1-mat.hard))*mult/targetDifficulty(t);
     if (P.frenzyHardBreak && frenzy && mat.hard > 0) { power = 2; guaranteedBreak = true; }   // 淬火余温
+    if (run.structure && t.coveredBy) {
+      const shield=run.targets.find(part=>part.key===t.coveredBy);
+      if (shield?.alive) {
+        // A living connector physically shields this component. Heavy/strong
+        // blades can force their way in, at substantial wear; precision paths
+        // can instead cut the cover first to expose the weak connector.
+        const strength=clamp(stats.strength/150,0,1);
+        power*=.28+.42*strength;
+      }
+    }
     if (t.type==='ice'&&cross) power*=1.35;
     if (t.type==='wood'&&prev) power*=angleDiff(direction,prev.angle)<.22&&Math.abs(b.y-(t.y+prev.y))<.046?1.27+(run.blade.effects.grooveFollow||0):.96;
     if (t.type==='plastic'&&prev&&angleDiff(direction,prev.angle)<.26&&Math.abs(b.y-(t.y+prev.y))<.045) power*=1.10+(run.blade.effects.grooveFollow||0);
