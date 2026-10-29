@@ -78,6 +78,21 @@ try {
   });
   await context.close();
  }
+ const emptyContext=await browser.newContext({viewport:{width:375,height:667},isMobile:true,hasTouch:true,deviceScaleFactor:2,locale:'zh-CN'});
+ await emptyContext.addInitScript(()=>localStorage.setItem('bladeforge.save',JSON.stringify({version:1,settings:{tutorialSeen:true,sound:false,motion:'reduced'}})));
+ page=await emptyContext.newPage();page.on('pageerror',e=>report.errors.push(String(e)));
+ await page.goto(baseUrl);await page.waitForFunction(()=>window.__FORGE_PREP?.ready&&!document.querySelector('#boot'),null,{timeout:120000});
+ await test('empty collection and arena preserve an unfinished forge',async()=>{
+  await page.getByRole('button',{name:'藏刀阁',exact:true}).click();await shot('375-empty-collection');
+  await page.getByRole('button',{name:'开始锻刀',exact:true}).click();await page.locator('.dcard').first().waitFor();
+  const cardId=await page.evaluate(async()=>[...(await import('/src/app/game.js')).default.run.candidates].sort((a,b)=>(a.riskDeltaPoints||0)-(b.riskDeltaPoints||0))[0].id);
+  await page.locator(`[data-card-id="${cardId}"]`).click();await page.getByRole('button',{name:'确认工艺 →',exact:true}).click();
+  const snapshot=()=>page.evaluate(async()=>{const r=(await import('/src/app/game.js')).default.run;return JSON.stringify({seed:r.seed,ledger:r.ledger,stageIndex:r.stageIndex});});
+  const before=await snapshot();
+  await page.getByRole('button',{name:'返回首页',exact:true}).click();await page.getByRole('button',{name:'赛事',exact:true}).click();await shot('375-empty-arena');
+  await page.getByRole('button',{name:'去锻刀',exact:true}).click();await page.locator('.dcard').first().waitFor();assert.equal(await snapshot(),before);
+ });
+ await emptyContext.close();
  assert.deepEqual(report.errors,[]);assert.deepEqual(report.requests,[]);
 } catch(error){report.failure=String(error.stack);console.error(report.failure);process.exitCode=1;if(page)await shot('failure').catch(()=>{});}
 finally{fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify(report,null,2));await browser.close();}

@@ -499,3 +499,8 @@ button.blade-card-v2 { cursor: pointer; width: 100%; }
 .codex-clear[hidden] { display:none; }
 .codex-clear { display:inline-grid; place-items:center; min-width:44px; }
 .name-input { width:100%; min-height:48px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--control-face); color:var(--face); font-size:16px; }
+
+.ws-collection-head { display:flex; align-items:center; justify-content:space-between; min-height:44px; padding-inline:4px; }
+.ws-collection-head .ws-fracture-entry { width:auto; min-height:44px; gap:8px; padding:4px 8px; border:0; background:transparent; color:var(--face-3); font-size:12px; }
+.ws-collection-head .ws-fracture-entry>.ui-icon { width:15px; height:15px; }
+.ws-collection-head+.ws-collection-controls { padding:8px 10px; gap:3px; }

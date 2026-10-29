@@ -96,22 +96,17 @@ export function openTab(id) {
 function renderCollection() {
   const list = Core.progress.collection();
   const fractures = Core.progress.fracturedList();
-  body.appendChild(el('button', {
-    class: 'card ws-fracture-entry', type: 'button',
-    'aria-haspopup': 'dialog', onclick: openFractures,
-  }, [
-    el('span', {}, [
-      el('b', { text: `断刀册 · ${fractures.length} 把` }),
-      el('span', { class: 'muted tiny', text: fractures.length ? '查看断裂记录与详情' : '暂无断刀记录' }),
-    ]),
-    icon('next'),
+  body.appendChild(el('div',{class:'ws-collection-head'},[
+    el('span',{class:'muted tiny',text:`成刀 ${list.length} 把`}),
+    el('button',{
+      class:'ws-fracture-entry',type:'button','aria-haspopup':'dialog',
+      'aria-label':`断刀册，${fractures.length} 把，查看断裂记录`,onclick:openFractures,
+    },[el('span',{text:`断刀册 · ${fractures.length}`}),icon('next')]),
   ]));
   if (!list.length) {
     body.appendChild(emptyCollection());
     return;
   }
-
-  body.appendChild(el('div', { class: 'section-title', text: `成刀 ${list.length} 把` }));
 
   /* ★ rework T13.4：筛选与排序控件 */
   body.appendChild(el('div', { class: 'ws-collection-controls' }, [
