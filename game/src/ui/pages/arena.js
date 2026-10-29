@@ -732,6 +732,12 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
   ]);
   const footer = el('div', { class: 'quick-footer' }, [
     el('span', { class: 'quick-combo', text: `斩断 ${run.kills} · 连击 ×${run.combo}` }),
+    el('button', {class:'quick-collect',hidden:true,disabled:true,text:'收手结算',onclick:()=>{
+      if(run.done || !run.structure?.completed) return;
+      Challenge.finish(run,'collected');
+      stopChallengeFrame();
+      submitResult();
+    }}),
     el('span', { class: 'quick-time-label', text: match.blade.name }),
     el('button', { class: 'quick-pause quick-pause-toggle', 'aria-label': run.paused ? '继续' : '暂停', title: run.paused ? '继续' : '暂停',
       onclick: () => { Challenge.setPaused(run, !run.paused); render(); } }, [icon(run.paused ? 'play' : 'pause')]),
@@ -764,7 +770,11 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
     const label = ({warmup:run.structure?.name || '结构试刀',route:run.route?.name,speed:'节奏提速',
       finale:run.finale?.name})[run.phase] || '切割考验';
     mission.querySelector('b').textContent = `${match.definition.branchName} · ${label}`;
-    mission.querySelector('span').textContent = run.risk?.status === 'failed'
+    const collect=footer.querySelector('.quick-collect');
+    if(collect) {collect.hidden=!run.structure?.completed||run.done;collect.disabled=!run.structure?.completed||run.done;}
+    mission.querySelector('span').textContent = run.structure?.completed
+      ? `主目标达成 · 当前 ${Math.round(run.score)} 分 · 可收手，或继续切附加部件`
+      : run.risk?.status === 'failed'
       ? '结构临时失效 · 本项结束'
       : run.structure
         ? `主结构 ${Math.round(run.structure.primary*100)}% · 连接松脱 ${run.structure.failedJoins.length}/${run.structure.joins.length} · 刀况 ${Math.round(run.health / Math.max(1,run.maxHealth)*100)}%`
