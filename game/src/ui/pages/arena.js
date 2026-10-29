@@ -523,7 +523,7 @@ function renderChallengeSetup() {
   if(!blades.some(b=>b.id===selectedBladeId))selectedBladeId=blades[0].id;
   const selected=blades.find(b=>b.id===selectedBladeId);
   const stats=[['强度','strength'],['锋利','sharpness'],['韧性','toughness']];
-  mount(body,[modeSwitch(),bladePicker(blades,selected),el('header',{class:'quick-hero'},[el('h2',{text:'45秒，尽展锋芒'}),el('p',{text:'划过材料，连切得分。收藏刀具不会受损。'})]),el('div',{class:'quick-stat-strip'},stats.map(([label,key])=>el('span',{},[el('small',{text:label}),el('b',{text:String(Math.round(selected.stats?.[key] || 0))})]))),el('div',{class:'quick-entry-list'},[el('section',{class:'quick-entry-card is-daily'},[el('div',{class:'quick-entry-copy'},[el('h3',{text:'每日挑战'}),el('p',{text:'相同靶序，磨练你的最佳刀路。'})]),el('span',{class:'quick-entry-duration',text:'45秒'}),el('button',{class:'btn btn--primary btn--block',text:'开始每日挑战',onclick:()=>startQuickChallenge(true,Core.daily.seedOfDay(Core.daily.dayKey()))})]),el('section',{class:'quick-entry-card'},[el('div',{class:'quick-entry-copy'},[el('h3',{text:'自由快赛'}),el('p',{text:'随机靶序，随时挑战新的高分。'})]),el('span',{class:'quick-entry-duration',text:'45秒'}),el('button',{class:'btn btn--block',text:'开始自由快赛',onclick:()=>startQuickChallenge(false)})])]),el('details',{class:'arena-rules'},[el('summary',{text:'赛道、刀况与奖励'}),el('p',{text:'全程无随机强化弹窗。普通软靶流畅连切，硬靶可选择挑战或放过；不消耗收藏刀具刀况，完整体验45秒。完成后按得分与评级结算CR，不影响正式赛事晋级。'})])]);
+  mount(body,[modeSwitch(),bladePicker(blades,selected),el('header',{class:'quick-hero'},[el('h2',{text:'45秒，尽展锋芒'}),el('p',{text:'划过材料，连切得分。收藏刀具不会受损。'})]),el('div',{class:'quick-stat-strip'},stats.map(([label,key])=>el('span',{},[el('small',{text:label}),el('b',{text:String(Math.round(selected.stats?.[key] || 0))})]))),el('div',{class:'quick-entry-list'},[el('section',{class:'quick-entry-card is-daily'},[el('div',{class:'quick-entry-copy'},[el('h3',{text:'每日挑战'}),el('p',{text:'相同靶序，磨练你的最佳刀路。'})]),el('span',{class:'quick-entry-duration',text:'45秒'}),el('button',{class:'btn btn--primary btn--block',text:'开始每日挑战',onclick:()=>startQuickChallenge(true,Core.daily.seedOfDay(Core.daily.dayKey()))})]),el('section',{class:'quick-entry-card'},[el('div',{class:'quick-entry-copy'},[el('h3',{text:'自由快赛'}),el('p',{text:'随机靶序，橙色封条请避让，连切挑战新高分。'})]),el('span',{class:'quick-entry-duration',text:'45秒'}),el('button',{class:'btn btn--block',text:'开始自由快赛',onclick:()=>startQuickChallenge(false)})])]),el('details',{class:'arena-rules'},[el('summary',{text:'赛道、刀况与奖励'}),el('p',{text:'全程无随机强化弹窗。普通软靶流畅连切，硬靶可选择挑战或放过；橙色「避让 ×」封条不可切，误切只断连击。不消耗收藏刀具刀况，完整体验45秒。完成后按得分与评级结算CR，不影响正式赛事晋级。'})])]);
 }
 
 function startQuickChallenge(daily, seed = null) {
@@ -1170,7 +1170,7 @@ function renderChallengeReport() {
         ? '本局已有匹配纪录，无法确认奖励到账；不会重复发放。'
         : '本局数据无效，无法结算奖励。';
   const stats = el('div', { class: 'quick-result-stats' }, [
-    ['完成切断', r.kills], ['最高连切', r.maxCombo], ['剩余刀况', `${r.health}%`], ['一划斩断', r.bestSwipe],
+    ['完成切断', r.kills], ['最高连切', r.maxCombo], ['避让误切', r.avoidHits || 0], ['一划斩断', r.bestSwipe],
   ].map(([a, b]) => el('div', {}, [el('small', { text: a }), el('b', { text: String(b) })])));
   mount(body, [el('section', { class: 'quick-report' }, [
     el('div', { class: 'quick-kicker', text: run.daily ? '每日挑战' : '自由快赛' }),
