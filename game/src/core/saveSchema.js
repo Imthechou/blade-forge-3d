@@ -75,7 +75,7 @@ export function makeSave() {
     unlockedEdgeSkins: [],
     unlockedBladeCards: [],
     /* ★ rework T11：有限锻造加成的永久解锁态与开锻前装备选择 */
-    forgeBonus: { unlocked: [], equippedId: null, usesTotal: 0 },
+    forgeBonus: { unlocked: [], equippedId: null, usesTotal: 0, specialtyOptions: {}, knowledgeMigrated: false },
     codex: {               // 图鉴发现
       material: {}, card: {}, tag: {}, trait: {}, combo: {},
       knife: {}, finish: {}, arena: {}, fracture: {},
@@ -146,8 +146,10 @@ export function normalizeSave(raw) {
   const fb = map(src.forgeBonus);
   out.forgeBonus = {
     unlocked: list(fb.unlocked).filter(id => typeof id === 'string'),
-    equippedId: typeof fb.equippedId === 'string' ? fb.equippedId : null,
+    equippedId: fb.equippedId==='combo_insight' ? 'extra_reroll' : typeof fb.equippedId === 'string' ? fb.equippedId : null,
     usesTotal: count(fb.usesTotal),
+    specialtyOptions: map(fb.specialtyOptions),
+    knowledgeMigrated: !!fb.knowledgeMigrated || fb.equippedId==='combo_insight',
   };
   out.codex = { ...defaults.codex, ...map(src.codex) };
   for (const key of Object.keys(out.codex)) out.codex[key] = map(out.codex[key]);
