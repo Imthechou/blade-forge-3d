@@ -48,22 +48,25 @@ test('formal score earns quality only from completed real contacts, never blank 
 });
 test('formal cover access makes a different first cut more effective, with no direct stat mean gate',()=>{
   const run=createChallenge(blade,{mode:'formal',seed:7,seconds:90,
-    encounter:{structure:true,styleId:'edge',gradient:2},styleId:'edge'}).run;
+    encounter:{structure:true,styleId:'composite',gradient:2},styleId:'composite'}).run;
   const a=run.targets.find(x=>x.key==='a'),c=run.targets.find(x=>x.key==='c');
   assert.equal(c.coveredBy,'a');
   const routeCut=t=>{
     beginSwipe(run);const x=t.x,y=t.y;
     return swipe(run,{x:x-.2,y},{x:x+.2,y},{duration:.18});
   };
+  const originalArmor=c.armorLeft;
   const first=routeCut(c);
-  assert.ok(first.hits.length>=1);
-  const prog=c.progress;
-  // Opening the cover makes the same direct path work differently.
+  assert.ok(first.hits.some(hit=>hit.target.id===c.id));
+  const guarded=(originalArmor-c.armorLeft)+c.progress;
+  // Compare the same untouched material with the cover now removed.
+  c.progress=0;c.armorLeft=originalArmor;c.alive=true;c.cuts=[];
   a.progress=1;a.alive=false;
   updateStructure(run.structure,run.targets);
   const second=routeCut(c);
-  assert.ok(second.hits.length>=1);
-  assert.ok(c.progress-prog>prog*.4);
+  assert.ok(second.hits.some(hit=>hit.target.id===c.id));
+  const exposed=(originalArmor-c.armorLeft)+c.progress;
+  assert.ok(exposed>guarded,'opening structural cover must reduce required effort');
 });
 test('V4.1 tier budgets, first wins and round receipts are explicit, empty retired records stay legacy',()=>{
  const school={version:'formal-v4.1',result:{version:'formal-v4.1',cut:{structure:{primary:.8}}}};
