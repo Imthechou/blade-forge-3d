@@ -1,11 +1,12 @@
 import { MATERIALS } from '../core/arenaChallenge.js';
 import { impactMotion, targetPose } from './arenaImpact.js';
-import { drawWholeSprite, drawSplitSprite, drawShardSprite, drawFlashSprite, spriteReady } from './arenaSprites.js';
+import { drawWholeSprite, drawSplitSprite, spriteReady } from './arenaSprites.js';
+import { drawTargetHandmark } from './arenaDoodle.js';
 
 const TAU = Math.PI * 2;
-const TRAIL_LIFE = 260;
+const TRAIL_LIFE = 195;
 const LABEL_LIFE = 860;
-const BURST_LIFE = 560;
+const BURST_LIFE = 420;
 const DEBRIS_LIFE = 720;
 const MAX_COUNTS = { trail: 64, hitLabels: 14, bursts: 20, debris: 12 };
 const MATERIAL_NAMES = {
@@ -474,17 +475,10 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
     drawMaterial(ctx,t,data,x,y,bodyW,bodyH,bodyTop,unit);
     if(t.type==='rope'||t.type==='foam') drawBundleTies(ctx,x,y,bodyW,bodyH,unit);
   }
+  // Small authored 2D ink marks sit ON the specimen, never replace the physical material.
+  drawTargetHandmark(ctx,t,x,y,bodyW,bodyH,unit);
   drawKerf(ctx, t, x, y, bodyW, bodyH, bodyTop, unit, progress);
-  if(impact && now-impact.at >= 0 && now-impact.at < (impact.flashMs||90)) {
-    const flash=1-(now-impact.at)/(impact.flashMs||90);
-    if(textured){
-      ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha*=.48*flash;
-      drawWholeSprite(ctx,t.type,x,y,bodyW,bodyH);ctx.restore();
-    }else{
-      ctx.fillStyle=`rgba(250,254,255,${.24*flash})`;
-      roundedRect(ctx,x-bodyW*.52,bodyTop,bodyW*1.04,bodyH,unit*.12);ctx.fill();
-    }
-  }
+  // The persistent kerf carries the hit. No white screen-blend flash over the material.
   ctx.restore();
 
   if(t.layout!=='structure' && t.layout!=='stream') {
@@ -1021,116 +1015,102 @@ function drawDebrisBody(ctx, type, width, height, unit) {
 /* ══ 刀光 / 火花 / 文字 ═════════════════════════════════ */
 
 function drawTrail(ctx, trail, now, w, h, reduced) {
-  if (!trail.length) return;
-  ctx.save();
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  // 三层：外发光（宽）→ 主体 → 高温芯（细）；越靠近笔尖越亮。
-  for (let pass = 0; pass < 3; pass++) {
-    ctx.globalCompositeOperation = 'source-over';
-    for (let i = 0; i < trail.length; i++) {
-      const s = trail[i];
-      if (!s.a || !s.b) continue;
-      const alpha = clamp(1 - (now - s.at) / TRAIL_LIFE, 0, 1);
-      if (alpha <= 0) continue;
-      const t = i / Math.max(1, trail.length - 1);
-      const taper = .35 + t * .65;
-      const ax = s.a.x * w, ay = s.a.y * h, bx = s.b.x * w, by = s.b.y * h;
-      if (pass === 0) {
-        ctx.strokeStyle = `rgba(23,52,75,${alpha * .12 * taper})`;
-        ctx.lineWidth = (reduced ? 6 : 14) * alpha * taper + .6;
-      } else if (pass === 1) {
-        ctx.strokeStyle = `rgba(132,99,205,${alpha * .64 * taper})`;
-        ctx.lineWidth = (reduced ? 2.6 : 5.4) * alpha * taper + .4;
-      } else {
-        ctx.strokeStyle = `rgba(255,255,255,${alpha * .92 * taper})`;
-        ctx.lineWidth = 1.6 * alpha * taper + .35;
-      }
-      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-    }
+  if(!trail.length)return;
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+  // Ink-brush slash: two flat strokes, no white-hot core, glow or bloom.
+  for(let pass=0;pass<2;pass++)for(let i=0;i<trail.length;i++){
+    const seg=trail[i];if(!seg.a||!seg.b)continue;
+    const fade=clamp(1-(now-seg.at)/TRAIL_LIFE,0,1);if(fade<=0)continue;
+    const taper=.35+.65*i/Math.max(1,trail.length-1);
+    ctx.strokeStyle=pass===0?`rgba(39,66,81,${(.21*fade*taper).toFixed(3)})`
+      :`rgba(106,89,167,${(.75*fade*taper).toFixed(3)})`;
+    ctx.lineWidth=(pass===0?(reduced?3.1:6.2):(reduced?1.3:2.5))*taper;
+    ctx.beginPath();ctx.moveTo(seg.a.x*w,seg.a.y*h);ctx.lineTo(seg.b.x*w,seg.b.y*h);ctx.stroke();
   }
   ctx.restore();
 }
 
-/**
- * 六层手感的可视化：轻靶闪/碎屑快，硬靶闪白→定格压缩→法线击退；
- * 物理的切断次数仍完全由 core 判定。
- */
-function drawBursts(ctx, bursts, now, w, h, reduced) {
-  for(const b of bursts) {
-    const age=now-b.at;
-    if(age<0 || age>BURST_LIFE)continue;
-    const power=Math.max(0,1-age/BURST_LIFE);
-    const x=b.x*w,y=b.y*h,angle=Number.isFinite(b.angle)?b.angle:0;
-    const nx=-Math.sin(angle),ny=Math.cos(angle);
-    const hard=Number(b.weight)||.3;
-    const color=burstColor(b);
-    ctx.save();
-    // 非命中也有反馈：护甲阻滞/弹刃偏冷白，击破在中心短闪，快速衰减。
-    if(age<(b.flashMs||90)) {
-      const f=1-age/(b.flashMs||90);
-      // Generated per-material 2.5D impact texture, on top of short low-cost light pulse.
-      if(!reduced && (b.complete || b.objective))
-        drawFlashSprite(ctx,b.type,x,y,56+hard*36,f*.23,angle);
-      const r=(reduced?9:12+hard*20)*(1-f*.15);
-      const gradient=ctx.createRadialGradient(x,y,0,x,y,r);
-      gradient.addColorStop(0,`rgba(255,255,255,${(.26+hard*.14)*f})`);
-      gradient.addColorStop(.35,`rgba(214,244,251,${.30*f})`);
-      gradient.addColorStop(1,'rgba(255,255,255,0)');
-      ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();
-    }
-    // 从切口法线向外扩张，不再所有材料画一个同款圆。
-    const ringAge=clamp(age/(reduced?155:235),0,1);
-    ctx.globalAlpha=(b.complete || b.objective ? (1-ringAge)*(.12+.21*hard) : 0);
-    ctx.strokeStyle=color;ctx.lineWidth=1+hard;
-    ctx.beginPath();ctx.ellipse(x,y,(8+ringAge*(12+hard*17)),
-      (3+ringAge*(7+hard*8)),angle,0,TAU);ctx.stroke();
-    if(!reduced) {
-      const requested = Number(b.particleCount);
-      const count = Math.max(0,Math.min(5,Number.isFinite(requested) ? requested : 2));
-      for(let k=0;k<count;k++){
-        // 每个碎片确定性，避免每帧重新掷随机导致闪烁/乱跳。
-        const sign=k%2?1:-1;
-        const spread=(k/count-.5)*1.35;
-        const dir=angle+Math.PI*.5*sign+spread;
-        const speed=hard> .5 ? 28+hard*49 : 19+hard*28;
-        const travel=(age/1000)*speed*1.9;
-        const px=x+Math.cos(dir)*travel+nx*sign*3;
-        const py=y+Math.sin(dir)*travel+Math.min(28,(age/420)**2*16);
-        const fade=clamp(1-age/(220+hard*250),0,1);
-        if(fade<=0)continue;
-        ctx.globalAlpha=fade*.86;
-        ctx.fillStyle=b.type==='wood'?'#B7824E':b.type==='ice'?'#E8FDFF'
-          :b.type==='metal'?'#F9D59D':b.type==='rope'?'#CDA66C'
-          :b.type==='foam'?'#68D8CC':'#A8CFDC';
-        if(drawShardSprite(ctx,b.type,k,px,py,(b.type==='foam'?11:13)+hard*12,dir)) {
-          continue; // material-specific WebP debris sprite, not a generic drawn polygon
-        }
-        if(b.type==='ice'||b.type==='wood'||b.type==='plastic'){
-          const size=b.type==='ice'?3.4:b.type==='wood'?3:2.6;
-          ctx.beginPath();ctx.moveTo(px,py-size);ctx.lineTo(px+size,py+size*.6);
-          ctx.lineTo(px-size*.6,py+size);ctx.closePath();ctx.fill();
-        } else if(b.type==='metal') {
-          ctx.strokeStyle='#E9AE64';ctx.lineWidth=1.4;ctx.beginPath();
-          ctx.moveTo(px,py);ctx.lineTo(px+Math.cos(dir)*(4+hard*5),py+Math.sin(dir)*(4+hard*5));ctx.stroke();
-        } else {
-          ctx.beginPath();ctx.arc(px,py,b.type==='foam'?1.7:1.05,0,TAU);ctx.fill();
-        }
+/** 2D hand-ink contact feedback. Materials separate by chips and cut resistance,
+ * never by generated sparkle, bloom, starbursts or radial particle rings.
+ * Purely visual: physics, input and all collision coordinates are untouched. */
+function drawBursts(ctx,bursts,now,w,h,reduced){
+  for(const b of bursts){
+    const age=now-b.at;if(age<0||age>BURST_LIFE)continue;
+    const angle=Number.isFinite(b.angle)?b.angle:0;
+    const tx=Math.cos(angle),ty=Math.sin(angle),nx=-ty,ny=tx;
+    const x=b.x*w,y=b.y*h,weight=clamp(Number(b.weight)||.3,0,1);
+    const ink=(SPECIMEN[b.type]||SPECIMEN.metal).ink;
+    const blocked=b.event==='blocked'||b.event==='deflect';
+    const cutFade=clamp(1-age/145,0,1);
+    const complete=!!b.complete;
+    ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+    // Contact pressure: a short dry knife-edge imprint, not an expanding circle.
+    if(cutFade>0){
+      const extent=8+weight*10;
+      ctx.globalAlpha=cutFade*(blocked?.63:.76);
+      ctx.strokeStyle=blocked?'#687D8D':ink;
+      ctx.lineWidth=blocked?2.9:2.0+weight*.65;
+      ctx.beginPath();ctx.moveTo(x-tx*extent,y-ty*extent);
+      ctx.lineTo(x+tx*extent,y+ty*extent);ctx.stroke();
+      if(blocked){
+        ctx.globalAlpha=cutFade*.32;
+        ctx.beginPath();ctx.moveTo(x-tx*extent+nx*4,y-ty*extent+ny*4);
+        ctx.lineTo(x+tx*extent+nx*4,y+ty*extent+ny*4);ctx.stroke();
       }
     }
-    // Inked cut marks only on completed cuts; keep the original material shards.
-    if(b.complete && age<250){
-      const fade=(1-age/250)*(.65+.22*hard);
-      ctx.globalAlpha=fade;ctx.strokeStyle=(SPECIMEN[b.type]||SPECIMEN.metal).ink;
-      ctx.lineWidth=2;ctx.lineCap='round';
+    // Two hand-drawn cut-edge ticks: visible only on completed separation.
+    if(complete&&age<210){
+      const f=1-age/210;
+      ctx.globalAlpha=f*.75;ctx.strokeStyle=ink;ctx.lineWidth=1.7;
       for(const side of [-1,1]){
-        const cx=x+nx*side*(9+age*.055),cy=y+ny*side*(9+age*.055);
-        ctx.beginPath();ctx.moveTo(cx-Math.cos(angle)*6,cy-Math.sin(angle)*6);
-        ctx.lineTo(cx+Math.cos(angle)*6,cy+Math.sin(angle)*6);ctx.stroke();
+        const spread=10+age*.06;
+        const cx=x+nx*spread*side,cy=y+ny*spread*side;
+        ctx.beginPath();ctx.moveTo(cx-tx*6,cy-ty*6);
+        ctx.lineTo(cx+tx*6,cy+ty*6);ctx.stroke();
       }
-      if(b.objective && hard>.4 && !reduced)sketchStar(ctx,x+nx*18,y+ny*18,4+hard*2,(SPECIMEN[b.type]||SPECIMEN.metal).pop,1.1,angle);
+      if(b.objective){
+        // One tiny flat "✓" check on structural clearance; no star/explosion.
+        const cx=x+nx*22,cy=y+ny*22;
+        ctx.strokeStyle='#268B7A';ctx.lineWidth=2.3;
+        ctx.beginPath();ctx.moveTo(cx-4,cy);ctx.lineTo(cx-1,cy+3);
+        ctx.lineTo(cx+6,cy-5);ctx.stroke();
+      }
     }
-    if(b.objective){ctx.globalAlpha=power*.7;ctx.strokeStyle='#4CC7B0';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(x,y,16+age*.045,0,TAU);ctx.stroke();}
+    if(!reduced&&!blocked){
+      const raw=Number(b.particleCount);
+      const count=Math.min(3,Math.max(0,Number.isFinite(raw)?Math.round(raw):2));
+      const life=b.type==='foam'?195:b.type==='metal'?165:255;
+      const f=clamp(1-age/life,0,1);
+      for(let i=0;i<count&&f>0;i++){
+        // Deterministic fragments follow the knife normal; gravity is modest.
+        // Shapes, not emitted light: fibers, foam dots, splinters, facets, filings.
+        const side=i%2===0?-1:1;
+        const offset=side*(7+age*.068*(.6+weight*.5));
+        const px=x+nx*offset+tx*(i-1)*4;
+        const py=y+ny*offset+ty*(i-1)*4+Math.pow(age/250,2)*8;
+        ctx.save();ctx.translate(px,py);
+        ctx.rotate(angle+side*.25);ctx.globalAlpha=f*.82;
+        if(b.type==='rope'){
+          ctx.strokeStyle='#B08B5E';ctx.lineWidth=1.3;
+          ctx.beginPath();ctx.moveTo(-5,-2);ctx.quadraticCurveTo(0,2,5,-2);ctx.stroke();
+        }else if(b.type==='foam'){
+          ctx.fillStyle='#6AC4B0';ctx.beginPath();ctx.arc(0,0,1.9+(i===0?1:0),0,TAU);ctx.fill();
+        }else if(b.type==='wood'){
+          ctx.fillStyle='#B78557';ctx.beginPath();ctx.moveTo(-5,-1.2);ctx.lineTo(4,-2);
+          ctx.lineTo(0,1.6);ctx.closePath();ctx.fill();
+        }else if(b.type==='plastic'){
+          ctx.fillStyle='#A9BBC8';ctx.beginPath();ctx.moveTo(-3,-2);
+          ctx.lineTo(3,-1);ctx.lineTo(2,3);ctx.closePath();ctx.fill();
+        }else if(b.type==='ice'){
+          ctx.fillStyle='#CCF1F8';ctx.strokeStyle='#6EB4CC';ctx.lineWidth=.8;
+          ctx.beginPath();ctx.moveTo(0,-3.4);ctx.lineTo(3,0);ctx.lineTo(0,3.2);
+          ctx.lineTo(-3,0);ctx.closePath();ctx.fill();ctx.stroke();
+        }else{
+          ctx.fillStyle='#6E8997';ctx.fillRect(-3,-.8,6,1.6);
+        }
+        ctx.restore();
+      }
+    }
     ctx.restore();
   }
 }
