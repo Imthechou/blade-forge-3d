@@ -59,7 +59,6 @@ export function matchSpecialtyCard(run,card) {
   if(sp.id==='composite') {
     if(!phases.has(stage)||Number(stage.slice(1))<5||sp.remaining<=0)return false;
     const owned=(run.ledger?.entries||[])
-      .filter(e=>e.stage!=='S4')
       .filter(e=>(e.tags||[]).includes(sp.options.tag)).length;
     if(owned===0||owned>=sp.options.tier)return false;
     return (card.tags||[]).includes(sp.options.tag);
