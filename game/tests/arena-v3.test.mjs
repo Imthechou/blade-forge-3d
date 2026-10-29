@@ -10,9 +10,9 @@ import {materialSample,sampleBlade,simulateMatch} from '../tools/arena-v3-simula
 function run(buffs=[],mean=100){return C.createChallenge(sampleBlade(mean),{mode:'formal',seed:42,buffs,augments:false}).run;}
 function target(type='metal',patch={}){return {id:'t',type,x:.5,y:.5,progress:0,armorLeft:C.MATERIALS[type].armor*.6,alive:true,cuts:[],variation:.03,...patch};}
 function hit(r,t,angle=C.MATERIALS[t.type].angle){r.targets=[t];C.beginSwipe(r);return C.swipe(r,{x:t.x-Math.cos(angle)*.2,y:t.y-Math.sin(angle)*.2},{x:t.x+Math.cos(angle)*.2,y:t.y+Math.sin(angle)*.2},{duration:.18});}
-const payload=score=>({measure:1,detail:{source:'arenaChallenge',score,duration:45}});
+const payload=(score,duration=70)=>({measure:1,detail:{source:'arenaChallenge',score,duration,structure:{completed:score>0,primary:score>0?1:0}}});
 
-test('400 个固定手势校准：60 泡棉 45–55% 首刀断；100/150 ≥95/99%，金属刀数与刀损显著分层',()=>{
+test('正式材料 400 个固定手势校准：低阶泡棉补刀和高阶结构差异可验证',()=>{
   const f=materialSample(60,'foam');assert.ok(f.firstCutRate>=.45&&f.firstCutRate<=.55,JSON.stringify(f));
   assert.ok(materialSample(100,'foam').firstCutRate>=.95);
   assert.ok(materialSample(150,'foam').firstCutRate>=.99);
@@ -34,7 +34,7 @@ test('偏科刀：锋利决定软靶，强度参与破甲，韧性只改变承�
   const blade=sampleBlade(200),before=JSON.stringify(blade);
   C.createChallenge(blade);deriveCutParamsForBlade(blade);assert.equal(JSON.stringify(blade),before);
 });
-test('同一次按压反向补刀；原地抖动、时间未到或短路径不重复伤害，单划连击不重置',()=>{
+test('同一刀次防重复：微抖不记刀，新的有效刀次才允许沿原槽续切',()=>{
   const r=run(),t=target();r.targets=[t];C.beginSwipe(r);
   const a={x:.3,y:.5},b={x:.7,y:.5};
   assert.equal(C.swipe(r,a,b).hits.length,1);const progress=t.progress,armor=t.armorLeft;
@@ -42,7 +42,9 @@ test('同一次按压反向补刀；原地抖动、时间未到或短路径不�
   assert.equal(t.progress,progress);assert.equal(t.armorLeft,armor);
   assert.equal(C.swipe(r,{x:.499,y:.5},{x:.51,y:.5}).hits.length,0);
   C.tick(r,.2);
-  assert.equal(C.swipe(r,b,a).hits.length,1);
+  assert.equal(C.swipe(r,b,a).hits.length,0,'同一刀次不重复击中同一部位');
+  C.beginSwipe(r);
+  assert.equal(C.swipe(r,b,a).hits.length,1,'新的有效刀次可以续切');
 });
 test('清场后 0.15 秒开始补位，不受阶段投放预算耗尽限制；目标 ID 永不复用',()=>{
   const r=run([],150);const ids=new Set();
@@ -118,10 +120,10 @@ test('正式赛只消费真实切割分，不再重复乘刀具能力；无操�
   for(const mean of [60,150]) {
     const m=F.createFormalMatch({blade:sampleBlade(mean),styleId:'edge'}).match;
     assert.equal(F.submitTest(m,{measure:1}).ok,false);
-    F.submitTest(m,payload(3600));assert.equal(m.result.composite,3600);assert.equal(m.done,true);
+    F.submitTest(m,payload(3600,m.definition.rules[0].seconds));assert.equal(m.result.composite,1000);assert.equal(m.done,true);
   }
   const m=F.createFormalMatch({blade:sampleBlade(150)}).match;
-  const r=run();r.health=0;r.score=50000;C.finish(r,'wearout');F.submitTest(m,formalCutPayload(r));assert.equal(m.result.win,false);assert.equal(m.result.composite,50000,'失效保留真实过程分，但不能赢下比赛');
+  const r=run();r.health=0;r.score=50000;C.finish(r,'wearout');const bad=formalCutPayload(r);bad.detail.duration=m.definition.rules[0].seconds;F.submitTest(m,bad);assert.equal(m.result.win,false);assert.equal(m.result.composite,1000,'失效保留上限内分数，但不能赢下比赛');
 });
 test('全国五轮不同风格且不累积强化；失败/放弃不毁刀，三刀巅峰严格轮换并正常结算',()=>{
   const blade=sampleBlade(150),before=JSON.stringify(blade),n=F.createNationalMatch({blade,seed:15}).match;
@@ -130,19 +132,25 @@ test('全国五轮不同风格且不累积强化；失败/放弃不毁刀，三�
     const round=F.nationalCurrentRound(n);
     assert.equal(round.roundMatch.definition.tests.length,1);
     assert.equal(round.roundMatch.round,i);
-    assert.ok(F.nationalSubmit(n,payload(100000)).ok);
+    assert.ok(F.nationalSubmit(n,payload(1000,F.nationalCurrentRound(n).roundMatch.definition.rules[0].seconds)).ok);
   }
   assert.equal(n.result.champion,true);assert.equal(n.result.bladeDestroyed,false);
-  const lost=F.createNationalMatch({blade}).match;F.nationalStartRound(lost,[blade]);F.nationalSubmit(lost,payload(0));assert.equal(lost.result.reason,'eliminated');
+  const lost=F.createNationalMatch({blade}).match;F.nationalStartRound(lost,[blade]);const failed=F.nationalSubmit(lost,payload(0,F.nationalCurrentRound(lost).roundMatch.definition.rules[0].seconds));
+  assert.equal(failed.retry,true,'loss keeps same-seed round instead of ending cup');
+  assert.equal(lost.roundIndex,0);
+  assert.equal(lost.rounds[0].attempts,1);
+  assert.equal(lost.done,false);
+  assert.ok(F.nationalStartRound(lost,[blade]).ok);
+  assert.equal(lost.rounds[0].roundMatch.seed,(lost.seed+0*7919)>>>0);
   const abandoned=F.createNationalMatch({blade}).match;F.nationalAbandon(abandoned);assert.equal(abandoned.result.reason,'abandoned');
   const blades=[blade,{...sampleBlade(150),id:'b'},{...sampleBlade(150),id:'c'}],a=F.createApexMatch({blades}).match;
   assert.equal(F.apexDispatch(a,[{...blade,id:'outside'}],'outside').ok,false);
   for(const b of blades) {
     assert.ok(F.apexDispatch(a,blades,b.id).ok);
-    assert.ok(F.apexSubmit(a,payload(100000)).ok);
+    assert.ok(F.apexSubmit(a,payload(1000,a.rounds[a.roundIndex].match.definition.rules[0].seconds)).ok);
     if(!a.done)assert.equal(F.apexDispatch(a,blades,b.id).ok,false);
   }
-  assert.equal(a.result.wins,3);assert.equal(a.result.win,true);assert.equal(a.result.composite,300000);
+  assert.equal(a.result.wins,3);assert.equal(a.result.win,true);assert.equal(a.result.composite,3000);
   assert.equal(JSON.stringify(blade),before);
 });
 test('新快赛纪录独立版本分组，旧纪录与未知存档内容保留',()=>{
@@ -150,8 +158,8 @@ test('新快赛纪录独立版本分组，旧纪录与未知存档内容保留',
   const r=C.createChallenge(sampleBlade(150),{augments:false}).run;r.elapsed=45;r.score=100;C.finish(r);
   assert.equal(updateQuickRecord(records,r),true);
   assert.equal(records.byChallenge['quick:free'].bestScore,99999);
-  assert.equal(records.byChallenge['quick:v3:free'].bestScore,100);
-  assert.equal(normalizeQuickRecords(records).byChallenge['quick:v3:free'].bestScore,100);
+  assert.equal(records.byChallenge['quick:v41:free'].bestScore,100);
+  assert.equal(normalizeQuickRecords(records).byChallenge['quick:v41:free'].bestScore,100);
 });
 
 

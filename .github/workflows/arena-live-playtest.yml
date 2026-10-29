@@ -41,6 +41,10 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 88a57c970e1c65150228c196104f46de17203373
+          path: arena-v41-main-baseline
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -69,6 +73,23 @@ jobs:
         env:
           FORGE_URL: http://127.0.0.1:8123/
         run: node tools/arena-v3-playtest.mjs
+      - name: Baseline main versus branch, 390 x 844 Chromium screenshots
+        if: always()
+        working-directory: game
+        env:
+          FORGE_URL: http://127.0.0.1:8123/
+          ARENA_BASELINE_URL: http://127.0.0.1:8124/
+        run: |
+          nohup node ../arena-v41-main-baseline/game/serve.cjs 8124 127.0.0.1 > ../arena-baseline-server.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:8124/ > /dev/null
+          node tools/arena-v41-compare-main.mjs
+      - name: V4.1 deterministic 25000 forge outcomes and career economy report
+        if: always()
+        working-directory: game
+        env:
+          FORGE_SIM_SEEDS: 5000
+        run: node tools/arena-v41-simulate.mjs
       - name: Validate horizontal, diagonal and vertical fracture silhouettes
         working-directory: game
         run: node tools/arena-prop-visual-qa.mjs
@@ -92,4 +113,5 @@ jobs:
           path: |
             game/arena-playtest/
             arena-server.log
+            arena-baseline-server.log
           retention-days: 14

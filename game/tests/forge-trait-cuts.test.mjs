@@ -56,17 +56,19 @@ test('45s live challenge actually consumes forged trait effects from archived bl
   assert.ok(forged.run.params.forgeTraits.some(t=>t.id==='cold'));
 });
 
-test('forging powers survive all three rounds of live augment picks and a restart', () => {
-  const created = createChallenge({ id:'persistent', stats, tags:{ cold:6, precision:2 }, traits:['ST_mirror'] }, { seed:456, augments:true });
+test('V4.1 forging powers remain active without random mid-match augmentation', () => {
+  const created = createChallenge({ id:'persistent', stats, tags:{ cold:6, precision:2 }, traits:['ST_mirror'] }, { seed:456 });
   assert.ok(created.ok);
   const run = created.run;
   const ids = x => x.params.forgeTraits.map(t => t.id).sort();
   const expected = ['ST_mirror','cold','precision'].sort();
   assert.deepEqual(ids(run),expected);
-  assert.ok(chooseAugment(run,run.offers[0]).ok);
-  assert.deepEqual(ids(run),expected);
+  assert.deepEqual(run.offers,[]);
+  assert.equal(run.augments,false);
+  assert.equal(run.choicesMade,0);
   assert.ok(run.params.iceChain > 0 && run.params.weakMap);
   const second = restartChallenge(run);
   assert.ok(second.ok);
   assert.deepEqual(ids(second.run),expected);
+  assert.equal(second.run.choicesMade,0);
 });

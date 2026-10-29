@@ -9,7 +9,7 @@ import { CHALLENGE_SECONDS } from './arenaChallenge.js';
 
 export const makeQuickRecords = () => ({ version: 1, provisional: true, byChallenge: {} });
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
-const validKey = key => /^quick:(v3:)?free$/.test(key) || /^quick:(v3:)?daily:\d+$/.test(key);
+const validKey = key => /^quick:(v3:|v41:)?free$/.test(key) || /^quick:(v3:|v41:)?daily:\d+$/.test(key);
 
 /** 加法迁移：同版旧档缺字段/空字段补齐，不触碰其他存档数据，不捏造旧成绩。 */
 export function normalizeQuickRecords(raw) {
@@ -30,7 +30,7 @@ export function normalizeQuickRecords(raw) {
 
 export function quickChallengeKey(run) {
   if (!run || (run.mode != null && run.mode !== 'quick')) return null;
-  const prefix=run.version==='arena-3'?'quick:v3:':'quick:';
+  const prefix=run.rulesVersion==='arena-v4.1'?'quick:v41:':run.version==='arena-3'?'quick:v3:':'quick:';
   if (!run.daily) return prefix+'free';
   return Number.isInteger(run.seed) && run.seed >= 0 && run.seed <= 0xffffffff
     ? `${prefix}daily:${run.seed}` : null;
@@ -39,9 +39,9 @@ export function quickChallengeKey(run) {
 export function updateQuickRecord(records, run) {
   const key = quickChallengeKey(run), result = run?.result;
   if (!key || !run.done || !result || (result.mode != null && result.mode !== 'quick')) return false;
-  // 沿用现有挑战的正常终局：45秒结束，或模拟刀况耗尽。放弃/提前 finish 不记。
+  // V4.1 只在完整 45 秒结束后记纪录；旧版本仍能兼容读取。
   const completed = (result.reason === 'time' && run.elapsed >= CHALLENGE_SECONDS)
-    || (result.reason === 'wearout' && run.health <= 0);
+    || (run.rulesVersion !== 'arena-v4.1' && result.reason === 'wearout' && run.health <= 0);
   if (!completed || !Number.isFinite(result.score) || result.score < 0
     || !['S', 'A', 'B', 'C'].includes(result.grade) || typeof run.id !== 'string') return false;
   const previous = records.byChallenge[key];

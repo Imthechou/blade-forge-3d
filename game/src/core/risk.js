@@ -8,7 +8,7 @@
  *
  *   · 概率只由**当前 Risk** 决定（§9.3 锚点表的自变量就是"当前 Risk"）；
  *   · 锚点之间**线性插值**，不跳变；
- *   · Risk ≥95 后恒为 60%；
+ *   · Risk 100 时为 60%，中间按锚点插值；
  *   · 每次检查独立判定，不叠加隐藏的阶段惩罚（§9.2）。
  *
  * ★ 单一判定入口（V2.1 §9.3）：
@@ -52,13 +52,16 @@ export const after = (risk, deltaPoints) => clamp((Number(risk?.current) || 0) +
  */
 export function breakChance(risk, scale = 1) {
   const v = clamp(risk);
-  const A = BREAK_ANCHORS;
-  // Discrete bands make the exact danger of the NEXT strike readable.
-  // Keep the same central function for cards, S4 previews and actual rolls.
-  for (const band of A) {
-    if (v <= band.risk) return Math.min(1, band.p * (Number(scale) || 1));
+  const anchors = BREAK_ANCHORS;
+  if (v <= anchors[0].risk) return 0;
+  for (let i = 1; i < anchors.length; i++) {
+    const hi = anchors[i], lo = anchors[i - 1];
+    if (v <= hi.risk) {
+      const p = lo.p + (hi.p - lo.p) * ((v - lo.risk) / (hi.risk - lo.risk));
+      return Math.min(1, p * (Number.isFinite(Number(scale)) ? Math.max(0, Number(scale)) : 1));
+    }
   }
-  return Math.min(1, A[A.length - 1].p * (Number(scale) || 1));
+  return Math.min(1, anchors[anchors.length - 1].p * (Number.isFinite(Number(scale)) ? Math.max(0, Number(scale)) : 1));
 }
 
 /** 百分比形式（UI 展示用，与 breakChance 同源） */

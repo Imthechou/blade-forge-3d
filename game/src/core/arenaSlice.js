@@ -238,7 +238,7 @@ export function finishRun(match, performance) {
   if (run.fractured) {
     match.fractured = true;
     const blade = match.blades.find((b) => b.id === run.bladeId);
-    if (blade) blade.fractured = true;
+    // V4.1: do not mutate the roster or permanent blade after a round failure.
     match.fracturedBlades = [...(match.fracturedBlades || []), run.bladeId];
   }
   match.phase = 'runResult';

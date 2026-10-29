@@ -25,6 +25,10 @@ import { makeQuickRecords, normalizeQuickRecords, quickChallengeKey, updateQuick
 import * as Arena from './arena.js';
 import * as Events from './events.js';
 import * as ForgeBonuses from './forgeBonuses.js';
+import * as V41Growth from './arenaV41Growth.js';
+import * as V41Specialties from './arenaV41Specialties.js';
+import * as CareerV41 from './arenaCareerV41.js';
+import { careerRewardPlan, isV41Match } from './arenaV41Rewards.js';
 import * as CodexCatalog from '../data/codexCatalog.js';
 import { COUNTED_CATEGORIES } from '../data/codexCatalog.js';
 import { commitSave } from './saveTransaction.js';
@@ -144,10 +148,13 @@ export function settleQuickChallenge(run) {
     draft = quickCopy(original);
     updateQuickRecord(draft.quickChallengeRecords, run);
     const credited = Economy.addCr(draft, run.result.reward, 'arena-quick-challenge');
+    const effectiveKills=Math.max(0,Number(run.result.kills)||0);
+    if (effectiveKills>0 && run.result.reason==='time')
+      V41Growth.awardWorkshopXp(draft,Math.min(10,4+Math.floor((Number(run.result.score)||0)/1200)), 'quick:'+run.id);
     /* ★ rework T10.1：快赛完成事件与 CR 同一次写盘。
        run.id 是稳定身份，同局重试不会二次计任务/成就。
        注意：快赛**永久安全**——事件只记录完成，不改永久属性、不触发断刀。 */
-    const evt = Events.settle(draft, Events.EVENT.QUICK_COMPLETED, { challengeId: run.id }, {
+    const evt = (Number(run.result.kills)||0) === 0 ? {duplicate:true,cr:0,tasks:[]} : Events.settle(draft, Events.EVENT.QUICK_COMPLETED, { challengeId: run.id }, {
       score: run.result.score, grade: run.result.grade,
     });
     const taskCr = evt.duplicate ? 0 : evt.cr;
@@ -232,6 +239,7 @@ export function archive(record, { mode = 'normal' } = {}) {
     // CR 奖励：断刀也给少量（V2.1 §1「失败也有记录」），成刀按稀有度
     let reward = record.fractured ? 10 : Economy.forgeReward(record.rarity);
     Economy.addCr(s, reward, 'forge');
+    if (!record.fractured && mode !== 'daily') V41Growth.awardWorkshopXp(s,10,'forge:'+record.id);
 
     if (mode === 'daily') {
       // 挑战成绩只进 dailyScores，不入藏刀阁
@@ -289,6 +297,40 @@ export function renameBlade(id, name) {
     return { ok: true };
   });
   return result.ok;
+}
+
+/**
+ * National/world V4.1 permanent checkpoints. Save after event start and
+ * every attempted round. Saving a checkpoint never grants CR/XP.
+ */
+export function checkpointCareerV41(kind,match) {
+  if (!CareerV41.validateCareerCheckpoint(kind,match))
+    return {ok:false,reason:'赛事检查点无效'};
+  return commitSave(load(),s=>{
+    const slot=s.arenaCareerV41[kind];
+    const existing=slot.active;
+    if(existing?.id!==match.id&&existing&&!existing.done)
+      return {ok:false,reason:'已有未结束赛事，请先恢复或退出'};
+    slot.active=JSON.parse(JSON.stringify(match));
+    return {ok:true,id:match.id};
+  });
+}
+export function activeCareerV41(kind) {
+  if(!['national','apex'].includes(kind))return null;
+  return CareerV41.recoverCareerMatch(load().arenaCareerV41?.[kind]?.active);
+}
+export function clearCareerV41(kind,matchId) {
+  if(!['national','apex'].includes(kind)||typeof matchId!=='string')
+    return {ok:false,reason:'赛事身份无效'};
+  return commitSave(load(),s=>{
+    const slot=s.arenaCareerV41[kind];
+    if(slot.active?.id!==matchId)return {ok:false,reason:'当前赛事已变化'};
+    slot.active=null;return {ok:true};
+  });
+}
+export function hasNationalCrownV41() {
+  return load().arena.history.some(h=>h?.tier==='national'&&
+    (h.champion===true||h.result?.champion===true||h.result?.reason==='champion'));
 }
 
 /* ── 图鉴 ──────────────────────────────────────────────── */
@@ -454,14 +496,29 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
   if (previous) return { cr: previous.reward, duplicate: true };
   const blade = bladeId ? s.collection.find((b) => b.id === bladeId) : null;
   if (bladeId && (!blade || blade.fractured || blade.canEnterArena === false)) return { cr: 0, error: '参赛刀已失去资格' };
-  const destroyed = !!(matchRecord?.result?.bladeDestroyed
-    && matchRecord?.result?.fractureInfo?.bladeId === bladeId
-    && matchRecord?.result?.fractureInfo?.matchId === matchId
-    && hasStructuralFailure(matchRecord?.fieldTest?.result?.performance)
-    && JSON.stringify(matchRecord.result.fractureInfo.evidence)
-      === JSON.stringify(matchRecord.fieldTest.result.performance.risk));
-  if (matchRecord?.result?.bladeDestroyed && !destroyed) return { cr: 0, error: '断刀结算缺少一致的实际接触履历' };
-  if (destroyed) win = false;
+  // V4.1: arena exhaustion is a per-round outcome, never a mutation of a forged collectible.
+  // Legacy incident evidence may remain in match history for diagnostics.
+  const destroyed = false;
+  if (matchRecord?.result?.bladeDestroyed) win = false;
+  // V4.1 CR and XP derive from the SAME ledger of verifiable milestones.
+  // Event receipts are stored in the workshop journal and committed atomically.
+  const v41=!!matchId&&isV41Match(matchRecord);
+  let v41Cr=0,grantSummary=[];
+  if(v41){
+    const plan=careerRewardPlan(tier,win,gradient,matchRecord,matchId,styleId);
+    for(const evt of plan.events){
+      const receipt=evt.key;
+      if(s.workshopV41?.receipts?.[receipt])continue;
+      if(evt.xp>0){
+        const credited=V41Growth.awardWorkshopXp(s,evt.xp,receipt);
+        if(!credited.credited)continue;
+      }else{
+        s.workshopV41.receipts[receipt]=1;
+      }
+      v41Cr+=evt.cr;
+      grantSummary.push({id:receipt,xp:evt.xp,cr:evt.cr});
+    }
+  }
   if (win) a.matchWins += 1; else a.matchLosses += 1;
 
   if (tier === 'school' && styleId) {
@@ -476,11 +533,11 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
   }
 
   const idx = tier === 'school' ? 0 : (tier === 'national' ? 1 : 2);
-  const reward = Economy.matchReward(idx, win);
-  Economy.addCr(s, reward, `match:${tier}`);
+  const reward=v41?v41Cr:Economy.matchReward(idx,win);
+  Economy.addCr(s,reward,`match:${tier}`);
   if (matchId) {
     const entry = JSON.parse(JSON.stringify({ ...matchRecord, id: matchId, bladeId, tier,
-      styleId, gradient, win, reward, recordedAt: Date.now() }));
+      styleId, gradient, win, reward, grants:grantSummary, recordedAt: Date.now() }));
     history.push(entry);
     if (blade) {
       (blade.arenaHistory ||= []).push(JSON.parse(JSON.stringify(entry)));
@@ -668,19 +725,7 @@ export function completeTeamRound(teamId) {
     // 履历保留，但每轮不记录单刀胜负进度、不解锁成就、不发 CR。
     const history = teamCopy({ ...match, teamId, mode: 'team3', reward: 0, recordedAt: Date.now() });
     (blade.arenaHistory ||= []).push(history);
-    if (match.result.bladeDestroyed && live) {
-      blade.fractured = true;
-      blade.canEnterArena = false;
-      blade.fractureInfo = teamCopy(match.result.fractureInfo);
-      save.collection.splice(save.collection.indexOf(blade), 1);
-      save.fractured.unshift(blade);
-      save.stats.fractureCount += 1;
-      unlockCodex(save, 'fracture', blade.id);
-      if (save.showcaseId === blade.id) {
-        save.showcaseId = save.collection.reduce((best, item) => !best || (item.score || 0) > (best.score || 0) ? item : best, null)?.id || null;
-        save.showcasePinned = false;
-      }
-    }
+    // V4.1: the roster stays in the collection even if this round failed.
     return { ok: true, team: teamCopy(team), round: teamCopy(round), result: team.result ? teamCopy(team.result) : null };
   });
 }
@@ -803,13 +848,27 @@ export function equipForgeBonus(bonusId) {
   });
 }
 
+/** Validate and save a specialty's pre-forge choices without mutating a running forge. */
+export function setSpecialtyOptions(bonusId,options={}) {
+  if(!V41Specialties.BY_BONUS[bonusId])return {ok:false,reason:'未知专精'};
+  const original=load();
+  return commitSave(original,s=>{
+    const existing=s.forgeBonus.specialtyOptions || {};
+    const merged={...(existing[bonusId]||{}),...(options||{})};
+    const normalized=V41Specialties.normalizeSpecialtyOptions(bonusId,merged);
+    s.forgeBonus.specialtyOptions={...existing,[bonusId]:normalized};
+    return {ok:true,options:normalized};
+  });
+}
+
 /** 当前的可装备加成列表 + 解锁态 + 已装备项（工坊 / 开锻前读取） */
 export function forgeBonusView() {
   const s = load();
   const list = ForgeBonuses.bonusListFor(s);
   const equippedId = s.forgeBonus?.equippedId || null;
   const equipped = list.find((b) => b.id === equippedId && b.unlocked) || null;
-  return { list, equippedId: equipped ? equippedId : null, equipped };
+  return { list, equippedId: equipped ? equippedId : null, equipped,
+    specialty:equipped ? V41Specialties.specialtySnapshot(s,equipped.id) : null };
 }
 
 /* ── 设置 ───────────────────────────────────────────────── */

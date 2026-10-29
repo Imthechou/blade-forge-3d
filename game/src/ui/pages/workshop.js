@@ -335,6 +335,12 @@ function inspect(blade) {
     /* 卡背：六维、特性（标注赛场职责）、连携、赛事经历、工艺与档案 */
     bladeCardDetail(model),
     el('div', { class: 'blade-detail-actions' }, [
+      el('button',{class:'btn btn--primary',text:'12秒短试刀',onclick:async()=>{
+        const Arena=await import('./arena.js');
+        const result=Arena.openCollectionSample(blade.id);
+        if(!result?.ok){toast(result?.reason||'当前无法试刀','warn');return;}
+        detailSheet.close();
+      }}),
       el('button', {
         class: 'btn', text: '设为代表作',
         onclick: () => { if (Core.progress.setShowcase(blade.id)) toast('已设为代表作', 'good'); },
@@ -454,6 +460,15 @@ function emptyCollection() {
 function renderBonuses() {
   const state = Core.progress.get();
   const view = Core.progress.forgeBonusView();
+  const growth = Core.arenaV41Growth.workshopSnapshot(state);
+  body.appendChild(el('section',{class:'card stack', 'aria-label':'工坊等级'},[
+    el('div',{class:'row row--between'},[
+      el('b',{text:'工坊 · Lv.'+growth.level}),
+      el('span',{class:'chip',text:growth.nextXp===null?'已满级':growth.xp+' / '+growth.nextXp+' XP'}),
+    ]),
+    el('div',{class:'report-line',text:'本次锻造：付费刷新优惠 '+Math.round(growth.discount*100)+'% · 断裂相对减免 '+Math.round(growth.riskReduction*100)+'%'}),
+    el('div',{class:'muted tiny',text:'稀有度加权 '+(growth.rarity==='none'?'未开放':growth.rarity+'档')+' · 仅影响新开锻造；原有成刀属性不变'}),
+  ]));
   body.appendChild(el('header',{class:'ws-heading'},[
     el('span',{class:'ws-eyebrow',text:'开锻准备'}),
     el('h2',{text:'让下一把刀，更多一种可能'}),
@@ -479,6 +494,49 @@ function renderBonuses() {
       el('span',{class:'ws-bonus-check','aria-hidden':'true'},[equipped?icon('check'):icon('next')]),
     ]);
   })));
+  // Only parameters for the one equipped discipline are editable. They will
+  // freeze into the forge run upon starting S1.
+  const specialty = view.specialty;
+  if (specialty) {
+    const id=specialty.bonusId,opts=specialty.options;
+    const update=patch=>{
+      const result=Core.progress.setSpecialtyOptions(id,patch);
+      if(!result?.ok){toast(result?.reason||'专精配置保存失败','warn');return;}
+      render();
+    };
+    const optionSelect=(title,value,choices,onchange)=>el('label',{class:'stack'},[
+      el('span',{class:'tiny muted',text:title}),
+      el('select',{class:'input',value,onchange:event=>onchange(event.target.value)},
+        choices.map(([v,t])=>el('option',{value:v,text:t,selected:v===value}))),
+    ]);
+    const settings=[];
+    if(specialty.id==='precise') {
+      const attributes=[['strength','强度'],['toughness','韧性'],['sharpness','锋利'],['craft','工艺'],['design','设计'],['spirit','灵性']];
+      settings.push(optionSelect('定向属性',opts.stat,attributes,v=>update({stat:v,stages:[]})));
+      const valid=Core.arenaV41Specialties.validStatStages(opts.stat).map(x=>[x,x]);
+      for(let i=0;i<2;i++)settings.push(optionSelect('有效阶段 '+(i+1),opts.stages[i],valid,v=>{
+        const stages=[...opts.stages];stages[i]=v;update({stages});
+      }));
+    }
+    if(specialty.id==='quench')settings.push(optionSelect('表面工艺倾向',opts.inclination,
+      [['cold','冷相'],['heat','热相'],['oxide','氧化']],v=>update({inclination:v})));
+    if(specialty.id==='composite'){
+      settings.push(optionSelect('基础标签',opts.tag,
+        [['precision','精密'],['stable','稳态'],['flow','流动'],['layer','层叠'],
+          ['edge','刃线'],['heat','热相'],['cold','冷相'],['oxide','氧化']],v=>update({tag:v})));
+      settings.push(optionSelect('追求层数',String(opts.tier),
+        [['2','2 层'],['4','4 层'],['6','6 层']],v=>update({tier:Number(v)})));
+    }
+    body.appendChild(el('section',{class:'card stack','aria-label':'专精配置'},[
+      el('b',{text:'已装备 '+(view.equipped?.name||'专精')+' · Lv.'+specialty.level}),
+      el('p',{class:'muted tiny',text:'本局效果：'+(specialty.id==='edge'?'第二次描线 ×'+specialty.boost:
+        ['precise','quench','composite','overload'].includes(specialty.id)
+          ?'条件匹配额外 '+Math.round(specialty.boost*100)+'% 权重':
+            '第十一锤起额外相对减险 '+Math.round(specialty.boost*100)+'%')}),
+      ...settings,
+      el('small',{class:'muted',text:'开锻后锁定。所有决策卡仍可抽取，历史偏好权重保留。'}),
+    ]));
+  }
   body.appendChild(el('div',{class:'card ws-bonus-summary'},[
     el('b',{text:view.equipped?`已装备 · ${view.equipped.name}`:'本次未装备加成'}),
     el('p',{text:'进入 S1 后锁定，本局中途无法更换。已开始的锻造沿用开局选择。'}),

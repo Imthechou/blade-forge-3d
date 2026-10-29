@@ -6,7 +6,7 @@ export const sampleBlade=(mean,patch={})=>({id:`mean-${mean}`,bladeName:`均值$
 export function materialSample(mean,type,count=400,patch={}) {
   let firstCuts=0,completed=0,totalCuts=0,totalWear=0;
   for(let sample=0;sample<count;sample++) {
-    const r=C.createChallenge(sampleBlade(mean,patch),{seed:sample+1,augments:false}).run,mat=C.MATERIALS[type];
+    const r=C.createChallenge(sampleBlade(mean,patch),{seed:sample+1,mode:'formal',augments:false}).run,mat=C.MATERIALS[type];
     const t={id:'sample',type,x:.5,y:.5,alive:true,armorLeft:mat.armor*.6,progress:0,cuts:[],variation:.03};
     r.targets=[t];
     const d=(sample%20)/20*.06,angle=mat.angle+(((sample*37)%101)/100-.5)*1.8;

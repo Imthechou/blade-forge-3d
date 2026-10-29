@@ -53,8 +53,12 @@ export function createFormalMatch({ blade, tier = 'school', styleId = null, grad
   const actualSeed = seed == null ? (Date.now() >>> 0) : Number(seed) >>> 0;
   const def = buildFormalDefinition({ branchId, gradient, seed: actualSeed });
   if (!def.ok) return def;
-  if(tier==='national')def.targetScore=ARENA_V3.nationalTargets[Math.min(4,round|0)];
-  if(tier==='apex')def.targetScore=ARENA_V3.apexTargets[Math.min(2,round|0)];
+  if(tier==='national')def.targetScore=[820,840,860,880,900][Math.min(4,Math.max(0,round|0))];
+  if(tier==='apex')def.targetScore=900;
+  // Duration is the actual published rule, not a visual-only timer.
+  def.rules[0].seconds=tier==='national'?[90,95,100,105,110][Math.min(4,Math.max(0,round|0))]
+    :tier==='apex'?[100,110,120][Math.min(2,Math.max(0,round|0))]
+    :[70,75,85,90,90][Math.min(4,Math.max(0,gradient|0))];
 
   const view = adaptBlade(blade);
   const session = TestScoring.createTestSession({
@@ -181,7 +185,7 @@ export function submitTest(match, { measure, detail = {}, temporaryDamage = 0, f
   if (!entry) return { ok: false, reason: '没有待完成的测试项' };
 
   if(match.version===FORMAL_RULES_VERSION && !failed &&
-    (detail.source!=='arenaChallenge' || !Number.isFinite(detail.score) || detail.score<0 || detail.duration!==45)) {
+    (detail.source!=='arenaChallenge' || !Number.isFinite(detail.score) || detail.score<0 || detail.duration!==match.definition.rules[0].seconds)) {
     return {ok:false,reason:'缺少完整切割成绩，请完成本轮切割后提交'};
   }
   const res = TestScoring.settleTest(match.session, match.view, {
@@ -194,7 +198,7 @@ export function submitTest(match, { measure, detail = {}, temporaryDamage = 0, f
   if (!res.ok) return res;
   if(match.version===FORMAL_RULES_VERSION) {
     // 刀具属性已在切割/刀损中生效；真实分数不再乘第二遍能力分。
-    res.result.score=Number.isFinite(detail.score)?Math.max(0,Math.floor(detail.score)):0;
+    res.result.score=Number.isFinite(detail.score)?Math.min(1000,Math.max(0,Math.floor(detail.score))):0;
     res.result.raw.score=res.result.score;
     res.result.version='cut-score-3';
   }
@@ -243,14 +247,19 @@ export function finishMatch(match, reason = 'complete') {
 
   /* 临时失效 → 判负，但**不是**永久断刀（FORMAL_RISK_TBD 未定） */
   const temporaryFailure = match.session.aborted === 'temporary-failure';
-  const win = reason==='complete' && !temporaryFailure && judge.win;
+  const cutDetail=match.session.entries[0]?.result?.detail || {};
+  // Formal titles require the actual target connection objective. A high score
+  // alone cannot count as a completed structure.
+  const primaryCompleted=match.version!==FORMAL_RULES_VERSION ||
+    cutDetail.structure?.completed === true;
+  const win = reason==='complete' && !temporaryFailure && primaryCompleted && judge.win;
 
   match.done = true;
   match.fieldTest = {
     used: true,
     result: { tier: win ? 'perfect' : 'fail', performance: null },
   };
-  const cut=match.session.entries[0]?.result?.detail || {};
+  const cut=cutDetail;
   match.result = {
     cut, honors:match.version===FORMAL_RULES_VERSION && win ? honorsOf(cut,match.styleId) : [],
     version: FORMAL_MATCH_VERSION,
@@ -374,9 +383,11 @@ export function createApexMatch({ blades, seed = null } = {}) {
 
 /** 可派遣的刀（未被本场使用过） */
 export function apexAvailable(match) {
-  if (!match) return [];
-  const used = new Set(match.usedBladeIds || []);
-  return match.roster.filter((b) => !used.has(b.id));
+  if (!match||match.done)return [];
+  const current=match.rounds[match.roundIndex];
+  // Precommitted order is part of the challenge, not a between-round free pick.
+  const promised=match.roster[match.roundIndex];
+  return current?.status==='pending'&&promised?[promised]:[];
 }
 
 /**
@@ -388,9 +399,10 @@ export function apexDispatch(match, blades, bladeId) {
   const round = match.rounds[match.roundIndex];
   if (!round || round.status !== 'pending') return { ok: false, reason: '当前没有待进行的轮次' };
   if (!bladeId) return { ok: false, reason: '请选择派出的刀' };
-  if ((match.usedBladeIds || []).includes(bladeId)) {
-    return { ok: false, reason: '这把刀本场已经出过场，不能重复派出' };
-  }
+  if(match.roster[match.roundIndex]?.id!==bladeId)
+    return {ok:false,reason:'三把刀的出场顺序已在开赛前锁定'};
+  if ((match.usedBladeIds||[]).includes(bladeId) && !(round.attempts>0))
+    return {ok:false,reason:'此刀已用于其他轮次'};
   if(!match.roster.some(b=>b.id===bladeId))return {ok:false,reason:'这把刀不在本届三刀阵容内'};
   const rec = (blades || []).find((b) => b && b.id === bladeId);
   if (!rec) return { ok: false, reason: '找不到这把刀' };
@@ -417,14 +429,30 @@ export function apexSubmit(match, payload) {
   const res = submitTest(round.match, payload);
   if (!res.ok) return res;
   if (res.done) {
-    round.status = 'complete';
-    round.result = res.matchResult;
-    match.usedBladeIds.push(round.dispatchedBladeId);
-    match.roundIndex += 1;
-    if (match.roundIndex >= match.rounds.length) return finishApex(match);
-    return { ok: true, roundDone: true, result: round.result, next: match.rounds[match.roundIndex] };
+    round.status='complete';
+    round.attempts=(round.attempts||0)+1;
+    if(!round.result || (res.matchResult?.cut?.structure?.completed &&
+       res.matchResult.composite>round.result.composite))round.result=res.matchResult;
+    if(!match.usedBladeIds.includes(round.dispatchedBladeId))
+      match.usedBladeIds.push(round.dispatchedBladeId);
+    const next=match.rounds.findIndex((r,i)=>i>match.roundIndex&&r.status==='pending');
+    match.roundIndex=next>=0?next:match.rounds.length;
+    if(next<0)return finishApex(match);
+    return {ok:true,roundDone:true,result:round.result,next:match.rounds[next]};
   }
   return res;
+}
+
+/** Retry a completed world round with the SAME roster slot and fixed seed. */
+export function apexRetryRound(match,index) {
+  if(!match?.done||match.settled)return {ok:false,reason:'仅可在领奖前补考'};
+  if(!Number.isInteger(index)||index<0||index>=3)return {ok:false,reason:'轮次不存在'};
+  const round=match.rounds[index];
+  if(round?.status!=='complete'||!round.result)return {ok:false,reason:'本轮尚无成绩'};
+  match.done=false;match.result=null;match.roundIndex=index;
+  round.status='pending';round.match=null;round.dispatchedBladeId=null;
+  match.retryCount=(match.retryCount||0)+1;
+  return {ok:true,match,round};
 }
 
 /** 三刀赛结算：按各轮实际表现合成，不加鉴定分 */
@@ -436,13 +464,17 @@ export function finishApex(match) {
   const completed = match.rounds.filter((r) => r.status === 'complete' && r.result);
   const wins = completed.filter((r) => r.result.win).length;
   const composite = round1(completed.reduce((a, r) => a + num(r.result.composite), 0));
-  const win = completed.length === match.rounds.length && wins >= 2;
+  // V4.1 world title requires all three physical structures and 2700 total.
+  // A weak round may be offset by a stronger one: no hidden 900-per-round gate.
+  const primaryValid=completed.every(r=>r.result?.cut?.structure?.completed===true);
+  const win=completed.length===match.rounds.length && primaryValid && composite>=2700;
 
   match.done = true;
   match.result = {
     version: FORMAL_MATCH_VERSION,
     win,
     wins,
+    primaryValid,
     rounds: completed.length,
     honors:[...new Set(completed.flatMap(r=>r.result.honors || [])),...(wins===3?['三刀全胜']:[])],
     composite,
@@ -451,6 +483,8 @@ export function finishApex(match) {
       bladeId: r.dispatchedBladeId, status: r.status,
       composite: r.result?.composite ?? null,
       win: r.result?.win ?? null,
+      primary: r.result?.cut?.structure?.primary || 0,
+      primaryCompleted: r.result?.cut?.structure?.completed === true,
       projectScores: r.result?.projectScores || [],
       honors:r.result?.honors || [],
     })),
@@ -582,7 +616,14 @@ export function nationalSubmit(match, payload) {
     const r = res.matchResult;
     round.status = 'complete';
     round.result = r;
-    if (!r.win) return finishNational(match, 'eliminated');
+    if(!r.win){
+      // V4.1 checkpoints keep the event and its original round seed. A failed
+      // round can be attempted again without forfeiting earned earlier rounds.
+      round.status='pending';
+      round.roundMatch=null;
+      round.attempts=(round.attempts||0)+1;
+      return {ok:true,roundDone:true,retry:true,result:r,next:round};
+    }
     match.roundIndex += 1;
     if (match.roundIndex >= match.rounds.length) return finishNational(match, 'champion');
     return { ok: true, roundDone: true, result: r, next: nationalCurrentRound(match) };
@@ -627,6 +668,8 @@ export function finishNational(match, reason = 'eliminated') {
       composite: r.result?.composite ?? null,
       target: r.result?.target ?? null,
       win: r.result?.win ?? null,
+      primary: r.result?.cut?.structure?.primary || 0,
+      primaryCompleted: r.result?.cut?.structure?.completed === true,
       projectScores: r.result?.projectScores || [],
       honors:r.result?.honors || [],
     })),
@@ -651,7 +694,7 @@ export function finishNational(match, reason = 'eliminated') {
 export default {
   FORMAL_MATCH_VERSION, validateApexRoster, createFormalMatch, currentTest, testTask,
   submitTest, abandon, finishMatch, APEX_ROUNDS, createApexMatch, apexAvailable,
-  apexDispatch, apexSubmit, finishApex,
+  apexDispatch, apexSubmit, apexRetryRound, finishApex,
   NATIONAL_ROUNDS_FORMAL, createNationalMatch, nationalCurrentRound, nationalStartRound,
   nationalSubmit, nationalAbandon, finishNational,
 };

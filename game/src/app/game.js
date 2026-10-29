@@ -74,6 +74,8 @@ class Session {
          `rollCandidates` 已改为「只提升已解锁卡的权重、绝不缩减卡池」，
          所以旧档的 218 张内容不会被拿走（详见 core/cards.js 注释）。 */
       unlockedCardIds: Array.isArray(save.unlockedCardIds) ? save.unlockedCardIds : null,
+      workshopSnapshot: Core.arenaV41Growth.workshopSnapshot(save),
+      specialistSnapshot: Core.arenaV41Specialties.specialtySnapshot(save,save.forgeBonus?.equippedId),
     });
     /* ★ rework T11：开锻前装备的有限加成绑定到本局。
        只做两件事：① 把选择的加成快照到 run.bonus（不写永久属性）；
@@ -361,8 +363,9 @@ class Session {
        因此不会因为一次免费重抽而让后续价格变化。 */
     const freeReroll = this._canUseFreeReroll();
     // 赛事可能已增加主档 CR；旧 run 只提供刷新次数，不能反写余额。
-    const draft = { ...this.run, cr: Core.progress.get().cr,
-      rerollCountByStage: { ...this.run.rerollCountByStage } };
+    const draft = { ...this.run, cr: Core.progress.get().cr, freeRerollOverride: !!freeReroll,
+      rerollCountByStage: { ...this.run.rerollCountByStage },
+      specialist: this.run.specialist ? JSON.parse(JSON.stringify(this.run.specialist)) : null };
     const r = Core.cards.reroll(draft);
     if (!r.ok) return r;
     let paid;
@@ -376,7 +379,8 @@ class Session {
       if (!paid.ok) return paid;
     }
     Object.assign(this.run, { cr: paid.cr, rerollCountByStage: draft.rerollCountByStage,
-      rerollTotal: draft.rerollTotal, candidates: draft.candidates });
+      rerollTotal: draft.rerollTotal, paidRerollsUsed: draft.paidRerollsUsed, candidates: draft.candidates,
+      specialist: draft.specialist });
     bus.emit(EVENTS.CR_CHANGED, { cr: paid.cr });
     this.preview = null; // the previous candidate is no longer in this pool
     this.syncStage();
@@ -907,6 +911,25 @@ class Session {
 
   retryFormalSave() { return this._settleFormalIfDone(); }
 
+  /** Restore a committed cup checkpoint without replaying an unsubmitted attempt. */
+  resumeCareerV41() {
+    if(!this.nationalMatch) {
+      const national=Core.progress.activeCareerV41('national');
+      if(national) {
+        this.nationalMatch=national;
+        if(national.done&&!national.settled)this._settleNationalIfDone();
+      }
+    }
+    if(!this.apexMatch) {
+      const apex=Core.progress.activeCareerV41('apex');
+      if(apex) {
+        this.apexMatch=apex;
+        // Completed world cups remain claimable and replayable until the player accepts the result.
+      }
+    }
+    return {national:!!this.nationalMatch,apex:!!this.apexMatch};
+  }
+
   /* ── 三刀巅峰赛（T09）──────────────────────────── */
 
   /**
@@ -915,9 +938,13 @@ class Session {
    *   任何单刀旁路都无法绕过 —— 旧 hub 的 apex+single 路由已不再调用这条路径。
    */
   startApexMatch({ bladeIds = [], seed = null } = {}) {
+    if(!Core.progress.hasNationalCrownV41())
+      return {ok:false,reason:'需先赢得全国大赛冠军才能挑战世界三刀赛'};
     const blades = bladeIds.map((id) => Core.progress.bladeById(id)).filter(Boolean);
     const r = Core.arenaFormal.createApexMatch({ blades, seed });
     if (!r.ok) return r;
+    const saved=Core.progress.checkpointCareerV41('apex',r.match);
+    if(!saved.ok)return saved;
     this.apexMatch = r.match;
     audio.play('confirm');
     bus.emit(EVENTS.MATCH_START, { tier: 'apex', kind: 'apex', bladeIds });
@@ -928,16 +955,23 @@ class Session {
   apexDispatch(bladeId) {
     if (!this.apexMatch) return { ok: false, reason: '当前没有进行中的巅峰赛' };
     const blades = (this.apexMatch.roster || []).map((r) => Core.progress.bladeById(r.id)).filter(Boolean);
+    const before=JSON.parse(JSON.stringify(this.apexMatch));
     const r = Core.arenaFormal.apexDispatch(this.apexMatch, blades, bladeId);
-    if (r.ok) audio.play('select');
-    return r;
+    if(!r.ok)return r;
+    const saved=Core.progress.checkpointCareerV41('apex',this.apexMatch);
+    if(!saved.ok){this.apexMatch=before;return saved;}
+    audio.play('select');return r;
   }
 
   /** 提交当前轮的测试成绩 */
   apexSubmit(payload) {
     if (!this.apexMatch) return { ok: false, reason: '当前没有进行中的巅峰赛' };
-    const r = Core.arenaFormal.apexSubmit(this.apexMatch, payload);
-    if (r?.done) this._settleApexIfDone();
+    const before=JSON.parse(JSON.stringify(this.apexMatch));
+    const r=Core.arenaFormal.apexSubmit(this.apexMatch,payload);
+    if(!r?.ok)return r;
+    const saved=Core.progress.checkpointCareerV41('apex',this.apexMatch);
+    if(!saved.ok){this.apexMatch=before;return saved;}
+    // Do not auto-claim: completed world rounds can be replayed for the best legal score.
     return r;
   }
 
@@ -962,10 +996,30 @@ class Session {
 
   clearApexMatch() {
     if (this.apexMatch?.done && !this.apexMatch.settled) return { ok: false, reason: '本场记录尚未保存，请先重试结算' };
+    if(this.apexMatch) {
+      const saved=Core.progress.clearCareerV41('apex',this.apexMatch.id);
+      if(!saved.ok)return saved;
+    }
     this.apexMatch = null;
   }
 
   retryApexSave() { return this._settleApexIfDone(); }
+
+  /** Optional retake of a recorded world round; seed and roster are immutable. */
+  retryApexRound(index) {
+    const m=this.apexMatch;
+    if(!m)return {ok:false,reason:'尚无世界赛'};
+    const before=JSON.parse(JSON.stringify(m));
+    const r=Core.arenaFormal.apexRetryRound(m,index);
+    if(!r.ok)return r;
+    const saved=Core.progress.checkpointCareerV41('apex',m);
+    if(!saved.ok){this.apexMatch=before;return saved;}
+    return r;
+  }
+  finishApexCareer() {
+    if(!this.apexMatch?.done)return {ok:false,reason:'三轮尚未结束'};
+    return this._settleApexIfDone();
+  }
 
   /* ── 全国大赛（rework T09）：五轮多项目，非旧三局切割 ── */
 
@@ -973,10 +1027,15 @@ class Session {
    * 开一届全囉赛。代表刀创建时锁定，整届不换。
    */
   startNationalMatch({ bladeId, seed = null } = {}) {
+    const expert=Object.values(Core.progress.get().arena.school || {})
+      .filter(x=>Array.isArray(x?.cleared)&&x.cleared.includes(2)).length;
+    if(expert<3)return {ok:false,reason:'全国赛需至少三个流派达到专家'};
     const blade = Core.progress.bladeById(bladeId);
     if (!blade) return { ok: false, reason: '找不到这把刀' };
     const r = Core.arenaFormal.createNationalMatch({ blade, seed });
     if (!r.ok) return r;
+    const saved=Core.progress.checkpointCareerV41('national',r.match);
+    if(!saved.ok)return saved;
     this.nationalMatch = r.match;
     audio.play('confirm');
     bus.emit(EVENTS.MATCH_START, { tier: 'national', kind: 'national', bladeId });
@@ -987,24 +1046,35 @@ class Session {
   nationalStartRound() {
     if (!this.nationalMatch) return { ok: false, reason: '当前没有进行中的全国赛' };
     const blades = Core.progress.collection();
-    const r = Core.arenaFormal.nationalStartRound(this.nationalMatch, blades);
-    if (r.ok) audio.play('select');
-    return r;
+    const before=JSON.parse(JSON.stringify(this.nationalMatch));
+    const r=Core.arenaFormal.nationalStartRound(this.nationalMatch,blades);
+    if(!r.ok)return r;
+    const saved=Core.progress.checkpointCareerV41('national',this.nationalMatch);
+    if(!saved.ok){this.nationalMatch=before;return saved;}
+    audio.play('select');return r;
   }
 
   /** 提交当前轮成绩 */
   nationalSubmitRound(payload) {
     if (!this.nationalMatch) return { ok: false, reason: '当前没有进行中的全国赛' };
-    const r = Core.arenaFormal.nationalSubmit(this.nationalMatch, payload);
-    if (r?.done) this._settleNationalIfDone();
+    const before=JSON.parse(JSON.stringify(this.nationalMatch));
+    const r=Core.arenaFormal.nationalSubmit(this.nationalMatch,payload);
+    if(!r?.ok)return r;
+    const saved=Core.progress.checkpointCareerV41('national',this.nationalMatch);
+    if(!saved.ok){this.nationalMatch=before;return saved;}
+    if(r.done)this._settleNationalIfDone();
     return r;
   }
 
   /** 主动退出本届（不伪造成绩） */
   nationalAbandonRound() {
     if (!this.nationalMatch) return { ok: false, reason: '当前没有进行中的全国赛' };
-    const r = Core.arenaFormal.nationalAbandon(this.nationalMatch);
-    if (r?.done) this._settleNationalIfDone();
+    const before=JSON.parse(JSON.stringify(this.nationalMatch));
+    const r=Core.arenaFormal.nationalAbandon(this.nationalMatch);
+    if(!r?.ok)return r;
+    const saved=Core.progress.checkpointCareerV41('national',this.nationalMatch);
+    if(!saved.ok){this.nationalMatch=before;return saved;}
+    if(r.done)this._settleNationalIfDone();
     return r;
   }
 
@@ -1052,6 +1122,10 @@ class Session {
     if (this.nationalMatch?.done && !this.nationalMatch.settled) {
       return { ok: false, reason: '本届记录尚未保存，请先重试结算' };
     }
+    if(this.nationalMatch){
+      const saved=Core.progress.clearCareerV41('national',this.nationalMatch.id);
+      if(!saved.ok)return saved;
+    }
     this.nationalMatch = null;
   }
 
@@ -1082,15 +1156,7 @@ class Session {
     if (!this.sliceMatch) return { ok: false, reason: '当前没有进行中的比赛' };
     const m = this.sliceMatch;
     const r = Core.arenaSlice.finishRun(m, performance);
-    // 断刀：当场移入断刀册（后续轮次换刀继续；单刀/全国赛则整场结束）
-    if (r.ok && r.run?.fractured && r.run.bladeId) {
-      const info = {
-        stageId: 'arena', stageName: '赛事切割', risk: 100, peakRisk: 100, chance: 1,
-        cause: '硬靶负荷累积导致结构失效', matchId: m.id,
-      };
-      const saved = Core.progress.fractureBlade(r.run.bladeId, info);
-      if (!saved.ok) (m.pendingFractures ||= []).push({ bladeId: r.run.bladeId, info });
-    }
+    // V4.1: local blade failure only affects this round, not the owner's collection.
     this._settleSliceIfDone();
     return r;
   }
@@ -1105,12 +1171,8 @@ class Session {
   /** 整场收场后一次性结算：CR、成就、断刀迁移。用 settled 保证只跑一次。 */
   _settleSliceIfDone() {
     const m = this.sliceMatch;
-    while (m?.pendingFractures?.length) {
-      const pending = m.pendingFractures[0];
-      const saved = Core.progress.fractureBlade(pending.bladeId, pending.info);
-      if (!saved.ok) return saved;
-      m.pendingFractures.shift();
-    }
+    // Legacy pending battlefield fractures are deliberately not migrated to the collection.
+    if (m?.pendingFractures?.length) m.pendingFractures = [];
     if (!m || !m.done || m.settled) return null;
     const result = m.result;
     // 组队赛沿用 Apex 档（120/30），单刀与全国赛按各自层级
@@ -1123,7 +1185,7 @@ class Session {
       matchId: m.id,
       rewardTarget: m.kind === 'national' ? 70 * (result.wins || 0) + ((result.losses || 0) > 0 ? 20 : 0) : null,
       // 断过的刀已经从藏刀阁移走，传 bladeId 会被判"失去资格"而拿 0 奖励
-      bladeId: (m.kind === 'team' || m.fractured) ? null : m.blade.id,
+      bladeId: m.kind === 'team' ? null : m.blade.id,
       matchRecord: { seed: m.seed, opponent: m.opponent, runs: result.runs, buffs: result.buffs, result },
     });
     if (recount?.error || recount?.ok === false) return recount;

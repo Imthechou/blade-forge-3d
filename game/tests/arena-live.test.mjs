@@ -28,8 +28,8 @@ test('六流派 × 五档：所有项目规则必须可按项目 ID 检索，切
       const task = Formal.testTask(match);
       assert.equal(task.kind,id);
       assert.ok(task.rule?.kind, id+' 缺规则');
-      if(id==='cutting') { assert.ok(task.sequence?.length>=6, '切割题目不能为空'); assert.equal(task.rule.seconds,45); }
-      const submitted = Formal.submitTest(match,{measure:.78,detail:{source:'arenaChallenge',score:3000,duration:45}});
+      if(id==='cutting') { assert.ok(task.sequence?.length>=6, '切割题目不能为空'); assert.ok(task.rule.seconds>=60&&task.rule.seconds<=120); }
+      const submitted = Formal.submitTest(match,{measure:.78,detail:{source:'arenaChallenge',score:900,duration:task.rule.seconds}});
       assert.ok(submitted.ok, id+' 分项结算失败');
     }
     assert.ok(match.done);
@@ -37,19 +37,21 @@ test('六流派 × 五档：所有项目规则必须可按项目 ID 检索，切
   }
 });
 
-test('45 秒有效时钟，0/15/30 秒三次选卡冻结时间，大帧不穿过决策',()=>{
+test('V4.1 有效时钟不被随机强化中断，暂停时逻辑时间停止',()=>{
   const r=Challenge.createChallenge(blade,{seed:12}).run;
-  for(const at of [0,15,30]) {
-    assert.equal(r.phase,'buff-choice');assert.equal(r.elapsed,at);
-    const freeze=JSON.stringify([r.elapsed,r.health,r.targets]);
-    advanceArenaClock(r,40,Challenge.tick);
-    assert.equal(JSON.stringify([r.elapsed,r.health,r.targets]),freeze);
-    assert.ok(Challenge.chooseAugment(r,r.offers[0]).ok);
-    Challenge.setPaused(r,true);advanceArenaClock(r,40,Challenge.tick);
-    assert.equal(r.elapsed,at);
-    Challenge.setPaused(r,false);advanceArenaClock(r,40,Challenge.tick);
-  }
-  assert.equal(r.elapsed,45);assert.equal(r.remaining,0);assert.equal(r.done,true);assert.equal(r.choicesMade,3);
+  assert.equal(r.phase,'warmup');
+  assert.equal(r.augments,false);
+  assert.deepEqual(r.offers,[]);
+  advanceArenaClock(r,12,Challenge.tick);
+  assert.equal(r.elapsed,12);
+  Challenge.setPaused(r,true);
+  const freeze=JSON.stringify([r.elapsed,r.health,r.targets]);
+  advanceArenaClock(r,40,Challenge.tick);
+  assert.equal(JSON.stringify([r.elapsed,r.health,r.targets]),freeze);
+  Challenge.setPaused(r,false);
+  advanceArenaClock(r,40,Challenge.tick);
+  assert.equal(r.elapsed,45);assert.equal(r.remaining,0);
+  assert.equal(r.done,true);assert.equal(r.choicesMade,0);
   assert.equal(Challenge.finish(r),r.result);
 });
 

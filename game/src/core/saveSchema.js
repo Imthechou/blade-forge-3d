@@ -3,6 +3,8 @@ import { SAVE_VERSION } from '../platform/storage.js';
 import { CR_START, STAT_KEYS } from '../data/balance.js';
 import * as Daily from './daily.js';
 import { makeQuickRecords } from './quickChallengeRecords.js';
+import { makeWorkshopV41, normalizeWorkshopV41, migrateVerifiedLegacyGrowth } from './arenaV41Growth.js';
+import { makeCareerV41, normalizeCareerV41 } from './arenaCareerV41.js';
 
 /**
  * 设置项默认值（唯一真源）。
@@ -59,6 +61,8 @@ export function makeSave() {
     showcaseId: null,      // 首页代表作品（自动跟随最高分；玩家手动指定后不再自动改）
     showcasePinned: false, // ★ 玩家是否**手动**点过「设为代表作」（false = 首页自动用最高分那把）
     teamArena: { version: 1, active: null, history: [] }, // 可选原型，独立于旧单刀记录
+    workshopV41: makeWorkshopV41(),
+    arenaCareerV41: makeCareerV41(), // V4.1 workshop XP and idempotent rewards
     quickChallengeRecords: makeQuickRecords(), // provisional：紧凑个人纪录，不保存逐局日志
     nationalRuns: { version: 1, nextSerial: 1, active: null, history: [] }, // provisional 全国赛连赛游标
 
@@ -73,7 +77,7 @@ export function makeSave() {
     unlockedEdgeSkins: [],
     unlockedBladeCards: [],
     /* ★ rework T11：有限锻造加成的永久解锁态与开锻前装备选择 */
-    forgeBonus: { unlocked: [], equippedId: null, usesTotal: 0 },
+    forgeBonus: { unlocked: [], equippedId: null, usesTotal: 0, specialtyOptions: {}, knowledgeMigrated: false },
     codex: {               // 图鉴发现
       material: {}, card: {}, tag: {}, trait: {}, combo: {},
       knife: {}, finish: {}, arena: {}, fracture: {},
@@ -128,6 +132,8 @@ export function normalizeSave(raw) {
   const src = map(raw);
   const out = { ...defaults, ...src };
   out.cr = count(src.cr, defaults.cr);
+  out.workshopV41 = normalizeWorkshopV41(src.workshopV41);
+  out.arenaCareerV41 = normalizeCareerV41(src.arenaCareerV41);
   out.createdAt = count(src.createdAt, defaults.createdAt);
   for (const key of ['collection', 'fractured']) {
     out[key] = list(src[key]).filter(item => object(item) && typeof item.id === 'string').map(normalizeBlade);
@@ -143,8 +149,10 @@ export function normalizeSave(raw) {
   const fb = map(src.forgeBonus);
   out.forgeBonus = {
     unlocked: list(fb.unlocked).filter(id => typeof id === 'string'),
-    equippedId: typeof fb.equippedId === 'string' ? fb.equippedId : null,
+    equippedId: fb.equippedId==='combo_insight' ? 'extra_reroll' : typeof fb.equippedId === 'string' ? fb.equippedId : null,
     usesTotal: count(fb.usesTotal),
+    specialtyOptions: map(fb.specialtyOptions),
+    knowledgeMigrated: !!fb.knowledgeMigrated || fb.equippedId==='combo_insight',
   };
   out.codex = { ...defaults.codex, ...map(src.codex) };
   for (const key of Object.keys(out.codex)) out.codex[key] = map(out.codex[key]);
@@ -161,6 +169,7 @@ export function normalizeSave(raw) {
   }
   for (const key of ['matchWins', 'matchLosses']) out.arena[key] = count(out.arena[key]);
   out.arena.history = list(out.arena.history).filter(object);
+  if(!object(src.workshopV41)) out.workshopV41=migrateVerifiedLegacyGrowth(out.workshopV41,out);
   const daily = map(src.daily);
   out.daily = { ...defaults.daily, ...daily };
   out.daily.dayKey = typeof daily.dayKey === 'string' ? daily.dayKey : defaults.daily.dayKey;

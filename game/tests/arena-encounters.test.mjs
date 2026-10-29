@@ -19,7 +19,7 @@ test('13 档赛事提高出场压力，六种靶具本体始终不变，始终�
       advanceArenaClock(r,.25,C.tick);
       assert.ok(r.targets.filter(t=>t.alive).length<=6);
     }
-    assert.equal(r.elapsed,45);
+    assert.equal(r.elapsed,70);
     for(const p of PHASES) {
       const h=r.encounterHistory[p];
       assert.ok(h.spawned>=1,`${config.label}/${p}`);
