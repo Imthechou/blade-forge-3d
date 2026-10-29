@@ -192,6 +192,19 @@ function paintBackdrop(ctx,w,h,stream=false){
   sketchStar(ctx,w*.82,h*.795,Math.min(w*.025,10),'#65BEB1',2,.13);
   sketchLoop(ctx,w*.16,h*.77,Math.min(w*.055,19),'rgba(145,121,201,.44)');
   sketchLoop(ctx,w*.83,h*.105,Math.min(w*.033,14),'rgba(82,176,168,.42)');
+  // Faint hand-drawn slash ribbons use the quiet lower half as breathing room.
+  // Kept behind real targets and deliberately low contrast for later waves.
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.strokeStyle='rgba(139,107,201,.14)';ctx.lineWidth=Math.max(3,w*.011);
+  ctx.beginPath();ctx.moveTo(w*.23,h*.83);
+  ctx.bezierCurveTo(w*.35,h*.73,w*.56,h*.79,w*.76,h*.65);ctx.stroke();
+  ctx.strokeStyle='rgba(77,187,174,.17)';ctx.lineWidth=Math.max(2,w*.006);
+  ctx.beginPath();ctx.moveTo(w*.28,h*.87);
+  ctx.bezierCurveTo(w*.44,h*.77,w*.58,h*.84,w*.79,h*.72);ctx.stroke();
+  ctx.strokeStyle='rgba(230,167,132,.23)';ctx.lineWidth=Math.max(2,w*.006);
+  ctx.beginPath();ctx.moveTo(w*.38,h*.85);ctx.quadraticCurveTo(w*.57,h*.76,w*.69,h*.79);ctx.stroke();
+  ctx.restore();
+  sketchStar(ctx,w*.71,h*.685,Math.min(11,w*.029),'rgba(147,122,205,.37)',2,.25);
   const benchY=h*.92,bench=ctx.createLinearGradient(0,benchY,0,h);
   bench.addColorStop(0,'rgba(255,255,255,.94)');bench.addColorStop(1,'#D7D7F0');
   ctx.fillStyle=bench;ctx.fillRect(0,benchY,w,h-benchY);
@@ -251,8 +264,8 @@ function drawSpecimenPlate(ctx,type,x,y,bw,bh,unit){
 /** 非缓存层：顶部柔光 + 工作区光池。浅色下不要锥形光柱，会像脏污。 */
 function drawWorkLight(ctx, w, h) {
   const pool = ctx.createRadialGradient(w * .5, h * .12, 0, w * .5, h * .12, w * .78);
-  pool.addColorStop(0, 'rgba(255,255,255,.85)');
-  pool.addColorStop(.42, 'rgba(255,255,255,.32)');
+  pool.addColorStop(0, 'rgba(255,255,255,.25)');
+  pool.addColorStop(.42, 'rgba(255,255,255,.08)');
   pool.addColorStop(1, 'rgba(210,228,240,0)');
   ctx.fillStyle = pool;
   ctx.fillRect(0, 0, w, h * .72);
