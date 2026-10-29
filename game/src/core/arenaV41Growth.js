@@ -65,3 +65,44 @@ export function effectiveRiskScale(workshop,specialistReduction=0,challengeScale
   const reduced=Math.min(.20,1-(1-a)*(1-b));
   return (Number.isFinite(challengeScale)?Math.max(0,challengeScale):1)*(1-reduced);
 }
+
+/**
+ * One-time verified legacy migration. XP is backfilled for known persisted
+ * forge count and actual school victories; an absent record grants nothing.
+ * CR is not retroactively minted. Already-cleared milestones are marked so
+ * replaying a new V4.1 cup cannot falsely claim its "first" milestone.
+ */
+export function migrateVerifiedLegacyGrowth(growth,legacy) {
+  const out=normalizeWorkshopV41(growth);
+  if(out.migration?.applied)return out;
+  const source=legacy&&typeof legacy==='object'?legacy:{};
+  const forge=Math.min(500,Math.max(0,Math.floor(Number(source.stats?.forgeCount)||0)));
+  let recovered=forge*10;
+  const receipts={...out.receipts};
+  const school=source.arena?.school||{};
+  const verified=[];
+  for(const [style,info] of Object.entries(school)){
+    const cleared=Array.isArray(info?.cleared)?info.cleared:[];
+    for(const grade of new Set(cleared)){
+      if(!Number.isInteger(grade)||grade<0||grade>4)continue;
+      const key='first:school:'+style+':'+grade;
+      if(receipts[key])continue;
+      const value=[50,75,110,160,220][grade];
+      recovered+=value;receipts[key]=value;verified.push(key);
+    }
+  }
+  const history=Array.isArray(source.arena?.history)?source.arena.history:[];
+  if(history.some(entry=>entry?.tier==='national'&&
+     (entry?.result?.champion===true||entry?.champion===true))){
+    receipts['first:national:champion'] ||= 200;
+    recovered+=200;
+    verified.push('first:national:champion');
+  }
+  if(history.some(entry=>entry?.tier==='apex'&&entry?.result?.win===true)){
+    receipts['first:apex:champion'] ||= 300;
+    recovered+=300;
+    verified.push('first:apex:champion');
+  }
+  return {...out,xp:out.xp+recovered,receipts,
+    migration:{applied:true,version:1,forgeCount:forge,verifiedMilestones:verified,backfilledXp:recovered}};
+}
