@@ -504,3 +504,15 @@ button.blade-card-v2 { cursor: pointer; width: 100%; }
 .ws-collection-head .ws-fracture-entry { width:auto; min-height:44px; gap:8px; padding:4px 8px; border:0; background:transparent; color:var(--face-3); font-size:12px; }
 .ws-collection-head .ws-fracture-entry>.ui-icon { width:15px; height:15px; }
 .ws-collection-head+.ws-collection-controls { padding:8px 10px; gap:3px; }
+
+
+/* A large archive renders at most 24 cards per page, with simple touch-sized
+   navigation. Keep the footer lightweight and visually subordinate to blades. */
+.ws-collection-pagination {
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  padding:14px 6px max(14px,env(safe-area-inset-bottom));
+  border-top:1px solid var(--glass-border);
+}
+.ws-collection-page-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:7px; width:100%; }
+.ws-collection-page-actions>.chip { min-height:44px; min-width:62px; padding-inline:12px; }
+.ws-collection-page-actions>.chip:disabled { opacity:.36; cursor:default; }

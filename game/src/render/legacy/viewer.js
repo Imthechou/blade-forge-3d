@@ -163,7 +163,7 @@ class Viewer {
     this.renderer.setSize(w, h, false);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.90; // Slight exposure trim; stage PBR reflection budget does the heavy lifting
+    this.renderer.toneMappingExposure = 0.87; // Subtle global exposure trim; keep stage PBR and material highlights intact
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();

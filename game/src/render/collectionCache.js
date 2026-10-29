@@ -5,7 +5,10 @@
  */
 const DB = 'blade-forge-thumbnails';
 const STORE = 'previews';
-const MAX_DISK = 180;
+// WebP thumbnails are small (normally a few KB). Keep enough for a large
+// archive so paging back does not rebuild old GPU images. Prune oldest after
+// this limit; visual keys are versioned to invalidate changed appearance.
+const MAX_DISK = 512;
 let connection = null;
 let writes = 0;
 const metrics = { hits: 0, misses: 0, writes: 0, errors: 0 };

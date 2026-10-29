@@ -12,9 +12,21 @@ let queue = Promise.resolve();
 let thumbStage = null;
 let thumbHost = null;
 let observer = null;
+let generation = 0;
+
+// The collection has its own camera/scale, so apply a small extra exposure trim
+// without altering shaders, materials, studio PMREM or game-stage lighting.
+export const COLLECTION_EXPOSURE = 0.84;
+export function applyCollectionLighting(stage) {
+  const viewer = stage?.viewer;
+  if (!viewer?.renderer) return false;
+  viewer.renderer.toneMappingExposure = COLLECTION_EXPOSURE;
+  viewer.needsRender = true;
+  return true;
+}
 
 function fingerprint(record) {
-  return JSON.stringify(['archive-image-v3',
+  return JSON.stringify(['archive-image-v4',
     record.id, record.knifeTypeId, record.knifeType, record.seed,
     record.visualRecipe, record.history, record.pendingSkin,
   ]);
@@ -54,12 +66,15 @@ function raf() {
   return new Promise(resolve => requestAnimationFrame(() => resolve()));
 }
 
-async function draw(record, visual) {
+async function draw(record, visual, isCurrent = () => true) {
   if (!BladeStage.supported) return null;
   const stage = ensureStage();
   const mounted = stage.ready ? { ok: true } : await stage.mount(thumbHost);
   if (!mounted?.ok) return null;
+  applyCollectionLighting(stage);
+  if (!isCurrent()) return null;
   const environment = await stage.loadEnvironment();
+  if (!isCurrent()) return null;
   const modelId = visual?.modelId;
   if (!modelId || !visual.skin) return null;
   // 独立缩略舞台切刀时不重放上一份材质，当前档案配方在 show 后一次性应用。
@@ -67,7 +82,7 @@ async function draw(record, visual) {
   let shown;
   try { shown = await stage.show(modelId, { viewPreset: visual.viewPreset || 'forge' }); }
   finally { stage.deferSkin = false; }
-  if (!shown?.ok) return null;
+  if (!shown?.ok || !isCurrent()) return null;
   stage.applySkin(visual.skin, { coverAll: !visual.handle?.explicit });
   stage.applyHandle(visual.handle?.explicit ? visual.handle : null, visual.skin);
   stage.applyGlow(visual.glowCardId || null);
@@ -75,23 +90,28 @@ async function draw(record, visual) {
   for (let pass = 0; pass < 8; pass++) {
     try { await stage.viewer?._compilePromise; } catch (_) { /* 仍尝试已有可用材质 */ }
     await raf();
+    if (!isCurrent()) return null;
     if (!stage.isCompiling && !stage._visualFlushQueued) break;
   }
   /* ★ 2026-10-21（审计 #5）：改走门面的**离屏定尺出图**，不再把可见画布缩到 136×164
      再缩回来（12 张一批里有 50.6 ms 花在 drawing buffer 重分配上）。 */
-  if (!stage.viewer?.renderer) return null;
+  if (!stage.viewer?.renderer || !isCurrent()) return null;
   try { return { dataUrl: stage.snapshot(136, 164), degraded: !environment?.ok }; } catch (_) { return null; }
 }
 
-function requestDraw(key, record, visual) {
+function requestDraw(key, record, visual, token) {
   if (imageCache.has(key)) return Promise.resolve(imageCache.get(key));
-  if (inFlight.has(key)) return inFlight.get(key);
+  const pending = inFlight.get(key);
+  if (pending?.token === token) return pending.task;
   const task = queue.then(async () => {
+    if (token !== generation) return null;
     // Fast path: never mount a second WebGL renderer for a previously captured
     // unchanged blade. Visual recipes are part of the versioned cache key.
     const saved = await loadThumbnail(key);
+    if (token !== generation) return null;
     if (saved) return saved;
-    const result = await draw(record, visual);
+    const result = await draw(record, visual, () => token === generation);
+    if (token !== generation) return null;
     if (result?.dataUrl && !result.degraded) {
       // Persist off the critical rendering path. If IndexedDB is unavailable,
       // continue normally with the existing bounded memory cache.
@@ -105,9 +125,9 @@ function requestDraw(key, record, visual) {
     return null;
   });
   queue = task.catch(() => {});
-  inFlight.set(key, task);
+  inFlight.set(key, { task, token });
   task.then(dataUrl => {
-    inFlight.delete(key);
+    if (inFlight.get(key)?.task === task) inFlight.delete(key);
     if (dataUrl) remember(key, dataUrl);
   });
   return task;
@@ -171,9 +191,11 @@ export function collectionStageStats() {
   const cached = imageCache.get(key);
   if (cached) { imageCache.delete(key); imageCache.set(key, cached); paint(cached, true); return; }
   showState(host, '档案外观生成中', 'loading');
+  const token = generation;
   const run = () => {
     observer?.unobserve(host);
-    requestDraw(key, record, visual).then(paint);
+    if (token !== generation || !host.isConnected) return;
+    requestDraw(key, record, visual, token).then(paint);
   };
   if (typeof IntersectionObserver === 'function') {
     if (!observer) observer = new IntersectionObserver(entries => {
@@ -196,6 +218,22 @@ export function disconnectCollectionPreview(host) {
 
 /** 页面重绘时解除旧卡片节点引用，避免滞留观察器。 */
 export function disconnectCollectionPreviews() {
+  generation++;
   observer?.disconnect();
   observer = null;
+  inFlight.clear();
+}
+
+/** Return the hidden archive canvas and its GPU resources after leaving. */
+export function releaseCollectionPreviewStage() {
+  disconnectCollectionPreviews();
+  const token = generation;
+  queue.then(() => {
+    if (token !== generation || !thumbStage) return;
+    const stage = thumbStage;
+    thumbStage = null;
+    try { stage.dispose(); } catch (_) { /* WebGL context may be lost */ }
+    thumbHost?.remove();
+    thumbHost = null;
+  });
 }
