@@ -12,7 +12,7 @@ test('6种固定靶具都拥有轻重区分的冲击预设，且不污染材料�
     assert.ok(config.weight>last,type+' 错误重量等级');
     assert.ok(config.holdMs>0 && config.holdMs<85,'短顿帧应小于85ms');
     assert.ok(config.shakePx>=0 && config.shakePx<=4.0);
-    assert.ok(config.particleCount>=2 && config.particleCount<=16);
+    assert.ok(config.particleCount>=0 && config.particleCount<=5,'V4.1 普通命中不再喷礼花');
     assert.ok(config.hapticMs>=4 && config.hapticMs<=28);
     assert.ok(Object.hasOwn(IMPACT_PRESETS,type));
     const mid=impactMotion({...config,at:1000},1000+config.holdMs*.5);
