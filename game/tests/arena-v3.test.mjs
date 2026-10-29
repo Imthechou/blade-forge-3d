@@ -12,7 +12,7 @@ function target(type='metal',patch={}){return {id:'t',type,x:.5,y:.5,progress:0,
 function hit(r,t,angle=C.MATERIALS[t.type].angle){r.targets=[t];C.beginSwipe(r);return C.swipe(r,{x:t.x-Math.cos(angle)*.2,y:t.y-Math.sin(angle)*.2},{x:t.x+Math.cos(angle)*.2,y:t.y+Math.sin(angle)*.2},{duration:.18});}
 const payload=score=>({measure:1,detail:{source:'arenaChallenge',score,duration:45}});
 
-test('400 个固定手势校准：60 泡棉 45–55% 首刀断；100/150 ≥95/99%，金属刀数与刀损显著分层',()=>{
+test('正式材料 400 个固定手势校准：低阶泡棉补刀和高阶结构差异可验证',()=>{
   const f=materialSample(60,'foam');assert.ok(f.firstCutRate>=.45&&f.firstCutRate<=.55,JSON.stringify(f));
   assert.ok(materialSample(100,'foam').firstCutRate>=.95);
   assert.ok(materialSample(150,'foam').firstCutRate>=.99);
@@ -34,7 +34,7 @@ test('偏科刀：锋利决定软靶，强度参与破甲，韧性只改变承�
   const blade=sampleBlade(200),before=JSON.stringify(blade);
   C.createChallenge(blade);deriveCutParamsForBlade(blade);assert.equal(JSON.stringify(blade),before);
 });
-test('同一次按压反向补刀；原地抖动、时间未到或短路径不重复伤害，单划连击不重置',()=>{
+test('同一刀次防重复：微抖不记刀，新的有效刀次才允许沿原槽续切',()=>{
   const r=run(),t=target();r.targets=[t];C.beginSwipe(r);
   const a={x:.3,y:.5},b={x:.7,y:.5};
   assert.equal(C.swipe(r,a,b).hits.length,1);const progress=t.progress,armor=t.armorLeft;
@@ -42,7 +42,9 @@ test('同一次按压反向补刀；原地抖动、时间未到或短路径不�
   assert.equal(t.progress,progress);assert.equal(t.armorLeft,armor);
   assert.equal(C.swipe(r,{x:.499,y:.5},{x:.51,y:.5}).hits.length,0);
   C.tick(r,.2);
-  assert.equal(C.swipe(r,b,a).hits.length,1);
+  assert.equal(C.swipe(r,b,a).hits.length,0,'同一刀次不重复击中同一部位');
+  C.beginSwipe(r);
+  assert.equal(C.swipe(r,b,a).hits.length,1,'新的有效刀次可以续切');
 });
 test('清场后 0.15 秒开始补位，不受阶段投放预算耗尽限制；目标 ID 永不复用',()=>{
   const r=run([],150);const ids=new Set();
@@ -150,7 +152,7 @@ test('新快赛纪录独立版本分组，旧纪录与未知存档内容保留',
   const r=C.createChallenge(sampleBlade(150),{augments:false}).run;r.elapsed=45;r.score=100;C.finish(r);
   assert.equal(updateQuickRecord(records,r),true);
   assert.equal(records.byChallenge['quick:free'].bestScore,99999);
-  assert.equal(records.byChallenge['quick:v3:free'].bestScore,100);
+  assert.equal(records.byChallenge['quick:v41:free'].bestScore,100);
   assert.equal(normalizeQuickRecords(records).byChallenge['quick:v3:free'].bestScore,100);
 });
 
