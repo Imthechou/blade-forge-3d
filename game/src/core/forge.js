@@ -18,6 +18,7 @@ import { CR_START } from '../data/balance.js';
 import * as RNG from '../platform/rng.js';
 import * as Attr from './attributes.js';
 import * as Risk from './risk.js';
+import { noteSafeRisk } from './arenaV41Specialties.js';
 import * as Tags from './tags.js';
 import * as Cards from './cards.js';
 import * as Traits from './traits.js';
@@ -41,6 +42,7 @@ export function createRun({
   cr = CR_START,
   unlockedCardIds = null,
   workshopSnapshot = null,
+  specialistSnapshot = null,
   daily = null,
 } = {}) {
   const s = (seed != null ? (Number(seed) >>> 0) : ((Date.now() % 100000000) >>> 0));
@@ -60,6 +62,7 @@ export function createRun({
     rerollTotal: 0,
     paidRerollsUsed: 0,
     workshop: workshopSnapshot ? {...workshopSnapshot} : null,
+    specialist: specialistSnapshot ? JSON.parse(JSON.stringify(specialistSnapshot)) : null,
 
     candidates: [],
     history: [],
@@ -215,6 +218,7 @@ export function submitEdge(run, path, opts = {}) {
 
 function checkRisk(run, stageId) {
   const check = Risk.check(run.risk.current, run.rng, (run.daily?.breakScale || 1) * (1 - (run.workshop?.riskReduction || 0)));
+  if (!check.fractured) noteSafeRisk(run,check.chance);
   run.lastRiskCheck = { stageId, ...check };
   if (check.fractured) markFractured(run, stageId, '风险检查失败');
   return check;
