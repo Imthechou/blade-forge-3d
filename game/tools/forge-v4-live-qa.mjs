@@ -73,14 +73,14 @@ try{
    // cancellation. Each deliberate full pass still counts against three tries.
    await page.mouse.move(b.x+points.path[0].x,b.y+points.path[0].y);
    await page.mouse.down();await page.mouse.up();
-   assert.match(await page.locator('.edge-simple-hud').innerText(),/0\\s*\\/\\s*3/,'short touch must not cost an attempt');
+   assert.match(await page.locator('.edge-simple-hud').innerText(),/0\s*\/\s*3/,'short touch must not cost an attempt');
    await page.evaluate(({x,y})=>{
      const c=document.querySelector('.edge-stage-canvas'),r=c.getBoundingClientRect();
      const base={bubbles:true,cancelable:true,clientX:r.x+x,clientY:r.y+y,pointerId:77,pointerType:'touch',isPrimary:true};
      c.dispatchEvent(new PointerEvent('pointerdown',base));
      c.dispatchEvent(new PointerEvent('pointercancel',base));
    },points.path[0]);
-   assert.match(await page.locator('.edge-simple-hud').innerText(),/0\\s*\\/\\s*3/,'cancelled gesture must not cost an attempt');
+   assert.match(await page.locator('.edge-simple-hud').innerText(),/0\s*\/\s*3/,'cancelled gesture must not cost an attempt');
 
    async function trace(){
      await page.mouse.move(b.x+points.path[0].x,b.y+points.path[0].y);
