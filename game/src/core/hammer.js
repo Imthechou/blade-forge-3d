@@ -18,6 +18,8 @@ import { hammerTierOf } from '../data/balance.js';
 import { HAMMER_TRAITS, hammerDirectionVector } from '../data/traits.js';
 import * as Attr from './attributes.js';
 import * as Risk from './risk.js';
+import { effectiveRiskScale } from './arenaV41Growth.js';
+import { noteSafeRisk } from './arenaV41Specialties.js';
 import * as Tags from './tags.js';
 
 export function makeState() {
@@ -94,8 +96,11 @@ export function strike(run, rng) {
   // Ten safe strikes even when prior-stage card risk is nonzero.
   const check = index <= 10
     ? { risk: run.risk.current, chance: 0, roll: null, fractured: false, protected: true }
-    : Risk.check(run.risk.current, rng, (run.daily?.breakScale || 1) * (1 - (run.workshop?.riskReduction || 0)));
+    : Risk.check(run.risk.current,rng,effectiveRiskScale(run.workshop,
+        run.specialist?.id==='press' ? run.specialist.boost : 0,
+        run.daily?.breakScale || 1));
 
+  if(index>10 && !check.fractured)noteSafeRisk(run,check.chance);
   const tierBefore = run.hammer.tier;
   run.hammer.tier = hammerTierOf(run.hammer.progress).id;
 
