@@ -454,6 +454,15 @@ function emptyCollection() {
 function renderBonuses() {
   const state = Core.progress.get();
   const view = Core.progress.forgeBonusView();
+  const growth = Core.arenaV41Growth.workshopSnapshot(state);
+  body.appendChild(el('section',{class:'card stack', 'aria-label':'工坊等级'},[
+    el('div',{class:'row row--between'},[
+      el('b',{text:'工坊 · Lv.'+growth.level}),
+      el('span',{class:'chip',text:growth.nextXp===null?'已满级':growth.xp+' / '+growth.nextXp+' XP'}),
+    ]),
+    el('div',{class:'report-line',text:'本次锻造：付费刷新优惠 '+Math.round(growth.discount*100)+'% · 断裂相对减免 '+Math.round(growth.riskReduction*100)+'%'}),
+    el('div',{class:'muted tiny',text:'稀有度加权 '+(growth.rarity==='none'?'未开放':growth.rarity+'档')+' · 仅影响新开锻造；原有成刀属性不变'}),
+  ]));
   body.appendChild(el('header',{class:'ws-heading'},[
     el('span',{class:'ws-eyebrow',text:'开锻准备'}),
     el('h2',{text:'让下一把刀，更多一种可能'}),
