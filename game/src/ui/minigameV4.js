@@ -194,7 +194,8 @@ export function renderEdgeV4({body,run,stage,Game,getStage,render,toast}) {
     for(let i=lastIndex;i<=next;i++)
       samples.set(i,Math.min(samples.has(i)?samples.get(i):1,value));
     if(next>=lastBuzzIndex+12&&next>3){
-      lastBuzzIndex=next;haptic(4);Audio.play('hone');
+      lastBuzzIndex=next;haptic(4);
+      if(Audio.settings().enabled)Audio.play('hone');
     }
     lastIndex=next;
   }
@@ -232,7 +233,7 @@ export function renderEdgeV4({body,run,stage,Game,getStage,render,toast}) {
       }
       locked=true;
       haptic(candidate.eligible?12:6);
-      if(candidate.eligible)Audio.play('honeFinish');
+      if(candidate.eligible&&Audio.settings().enabled)Audio.play('honeFinish');
     }else{
       samples.clear();lastIndex=0;
     }
@@ -246,7 +247,7 @@ export function renderEdgeV4({body,run,stage,Game,getStage,render,toast}) {
     active=e.pointerId;lastIndex=0;previous=null;cursor=null;
     lastBuzzIndex=-9;samples.clear();
     try{canvas.setPointerCapture(active);}catch(_){}
-    Audio.unlock();
+    if(Audio.settings().enabled)Audio.unlock();
     haptic(6);moveTo(e);feedback(true);
     e.preventDefault();
   },{passive:false});
