@@ -71,6 +71,8 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
     effectSummary: adaptation.effectSummary,
   };
   const plan = encounter ? createEncounter({...encounter, styleId: styleId || encounter.styleId}) : null;
+  // V4.1: forged blade traits are the build. Neither mode interrupts play for random augment offers.
+  augments = false;
   const total = seconds == null ? CHALLENGE_SECONDS : clamp(Number(seconds) || CHALLENGE_SECONDS, 5, CHALLENGE_SECONDS);
   const run = {
     id: `C-${actualSeed.toString(36)}-${Date.now().toString(36)}`, seed: actualSeed, daily: !!daily, mode,
@@ -93,7 +95,7 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
     },
     adaptation, buffs: [...buffs], params, ghost, matchId, winStreak,
     version: ARENA_V3.version, styleId: styleId || encounter?.styleId || 'composite', targetScore,
-    augments, choicesMade: 0, offers: [], resumePhase: 'warmup', resonances: resonanceOf(buffs),
+    augments, rulesVersion: 'arena-v4.1', choicesMade: 0, offers: [], resumePhase: 'warmup', resonances: resonanceOf(buffs),
     refillAt: null, targetSerial: 0, travel: 0, contacts: {},
     perfects: 0, weakHits: 0, armorBreaks: 0, crossCuts: 0, secondaryKills: 0, secondaryScore: 0,
     shield: 0, deathSaveUsed: false, objectives: 0, objectiveBonus: 0, materialSet: [],
@@ -260,6 +262,7 @@ function spawnTarget(run) {
     cuts: [], lastAngle: null, createdAt: run.elapsed,
     difficulty: 1, stage: run.encounter ? run.spawnStage : run.phase,
     armorLeft: armorOf(type), layer: 0, variation: random(run) * .06,
+    challengeSpecimen: run.mode === 'quick' && (type === 'metal' || run.targetSerial % 7 === 0),
     weakX: formation==='weakpoint' ? .018 : 0, weakY: formation==='weakpoint' ? -.018 : 0, markedUntil: run.params.marked && run.targetSerial % 5 === 0 ? run.elapsed + 3 : -1,
   };
   target.formation=formation;
@@ -392,6 +395,8 @@ export function chooseFinale(run, id) {
 export function beginSwipe(run) { if (!run || run.done || run.paused) return false; run.bestSwipe = Math.max(run.bestSwipe, run.gestureKills || 0); run.hitIds = []; run.gestureKills = 0; run.waveTriggered=false; run.secondaryThisSwipe=0; return true; }
 function distanceToSegment(px, py, a, b) { const dx=b.x-a.x,dy=b.y-a.y,t=clamp(((px-a.x)*dx+(py-a.y)*dy)/Math.max(1e-8,dx*dx+dy*dy),0,1); return Math.hypot(px-a.x-t*dx,py-a.y-t*dy); }
 function addWear(run, target, quality, stats) {
+  // V4.1 quick is a full 45-second practice session; it cannot end early on wear.
+  if (run.mode === 'quick') return 0;
   const P = run.params || {};
   const mat = MATERIALS[target.type];
   const hard = mat.hard;
@@ -470,7 +475,8 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
   run.contacts ||= {};
   const ordered = run.targets.filter((t) => {
     const last=run.contacts[t.id];
-    return t.alive && (!run.hitIds.includes(t.id) || (last && run.elapsed-last.at>=ARENA_V3.repeatCooldown && run.travel-last.travel>=ARENA_V3.repeatTravel));
+    // A target can only receive one primary contact per natural stroke; sampling rate is irrelevant.
+    return t.alive && !run.hitIds.includes(t.id);
   }).map((t) => ({ t, d: distanceToSegment(t.x,t.y,a,b) })).filter((x) => x.d < radius).sort((x,y) => ((x.t.x-a.x)*dx+(x.t.y-a.y)*dy)-((y.t.x-a.x)*dx+(y.t.y-a.y)*dy));
   let secondaryBudget=Math.max(0,ARENA_V3.secondaryLimit-(run.secondaryThisSwipe||0));
   const frenzy = run.elapsed < (run.frenzyUntil ?? -1);
@@ -552,6 +558,14 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
       effective = power * sharpDrive * craftEff;
     }
     t.progress = clamp(t.progress + effective / (mat.health * (1 + (t.variation || .03) - .03)), 0, 1);
+    // Most ordinary arcade pieces break on a deliberate first cut. Hard specimens
+    // remain optional skill/strength challenges, never block the next wave.
+    if (run.mode === 'quick' && !t.challengeSpecimen &&
+        (t.type === 'foam' || t.type === 'rope' || t.type === 'wood' ||
+         t.type === 'plastic' || t.type === 'ice') && quality !== 'ANGLE' && dist >= .015) {
+      t.armorLeft = 0;
+      t.progress = 1;
+    }
 
     if (guaranteedBreak) {
       t.progress = 1;
@@ -758,13 +772,16 @@ export function finish(run, reason='time') {
   const grade = ghost > 0
     ? (ratio >= 1.5 ? 'S' : ratio >= 1.15 ? 'A' : ratio >= 0.85 ? 'B' : 'C')
     : (run.score >= 18000 ? 'S' : run.score >= 9000 ? 'A' : run.score >= 3500 ? 'B' : 'C');
-  const reward=reason==='manual'?0:Math.max(2,Math.min(30,Math.floor(run.score/100)+(grade==='S'?5:grade==='A'?3:grade==='B'?1:0)));
+  const reward=reason==='manual' || run.kills === 0 ? 0
+    : run.mode === 'quick'
+      ? Math.min(20, Math.max(8, 8 + Math.floor(run.score / 750)))
+      : Math.max(2, Math.min(30, Math.floor(run.score / 100) + (grade==='S'?5:grade==='A'?3:grade==='B'?1:0)));
   run.result={grade,score:Math.floor(run.score),reward,kills:run.kills,maxCombo:run.maxCombo,maxStreak:run.maxStreak||0,bestSwipe:run.bestSwipe,
     health:Math.round(run.health),maxHealth:Math.round(run.maxHealth ?? 100),misses:run.misses||0,
     frenzy:run.frenzyCount||0,buffs:[...(run.buffs||[])],
     ghost: ghost || null, win: ghost > 0 ? run.score >= ghost : null,
     route:run.route?.name||'—',finale:run.finale?.name||'—',reason,riskStop:run.riskStop,fractured:!!run.fractured,
-    version:ARENA_V3.version, choicesMade:run.choicesMade, resonances:[...(run.resonances||[])],
+    version:run.rulesVersion || ARENA_V3.version, choicesMade:run.choicesMade, resonances:[...(run.resonances||[])],
     perfects:run.perfects,weakHits:run.weakHits,armorBreaks:run.armorBreaks,crossCuts:run.crossCuts,
     secondaryKills:run.secondaryKills,secondaryScore:run.secondaryScore,metrics:copy(run.metrics),
     objectives:run.objectives,materials:[...(run.materialSet||[])],
