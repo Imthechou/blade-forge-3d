@@ -28,6 +28,7 @@ import * as ForgeBonuses from './forgeBonuses.js';
 import * as V41Growth from './arenaV41Growth.js';
 import * as V41Specialties from './arenaV41Specialties.js';
 import * as CareerV41 from './arenaCareerV41.js';
+import { careerRewardPlan, isV41Match } from './arenaV41Rewards.js';
 import * as CodexCatalog from '../data/codexCatalog.js';
 import { COUNTED_CATEGORIES } from '../data/codexCatalog.js';
 import { commitSave } from './saveTransaction.js';
@@ -499,19 +500,24 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
   // Legacy incident evidence may remain in match history for diagnostics.
   const destroyed = false;
   if (matchRecord?.result?.bladeDestroyed) win = false;
-  // XP is awarded within the same atomic save transaction and keyed by match ID.
-  const wasSchoolClear=tier==='school' && styleId
-    ? !!a.school[styleId]?.cleared?.includes(gradient) : false;
-  if (matchId) {
-    const baseXp=tier==='school'?[18,24,32,40,48][Math.min(4,Math.max(0,gradient|0))]
-      : tier==='national'?48:70;
-    const winXp=win?baseXp:Math.floor(baseXp*.35*
-      Math.max(0,Math.min(1,(Number(matchRecord?.result?.structure?.primary)
-        ||Number(matchRecord?.result?.composite)||0)/1000)));
-    V41Growth.awardWorkshopXp(s,winXp,'match:'+matchId);
-    if (win && tier==='school' && !wasSchoolClear)
-      V41Growth.awardWorkshopXp(s,[50,75,110,160,220][Math.min(4,Math.max(0,gradient|0))],
-        'first:school:'+styleId+':'+gradient);
+  // V4.1 CR and XP derive from the SAME ledger of verifiable milestones.
+  // Event receipts are stored in the workshop journal and committed atomically.
+  const v41=!!matchId&&isV41Match(matchRecord);
+  let v41Cr=0,grantSummary=[];
+  if(v41){
+    const plan=careerRewardPlan(tier,win,gradient,matchRecord,matchId,styleId);
+    for(const evt of plan.events){
+      const receipt=evt.key;
+      if(s.workshopV41?.receipts?.[receipt])continue;
+      if(evt.xp>0){
+        const credited=V41Growth.awardWorkshopXp(s,evt.xp,receipt);
+        if(!credited.credited)continue;
+      }else{
+        s.workshopV41.receipts[receipt]=1;
+      }
+      v41Cr+=evt.cr;
+      grantSummary.push({id:receipt,xp:evt.xp,cr:evt.cr});
+    }
   }
   if (win) a.matchWins += 1; else a.matchLosses += 1;
 
@@ -527,11 +533,11 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
   }
 
   const idx = tier === 'school' ? 0 : (tier === 'national' ? 1 : 2);
-  const reward = Economy.matchReward(idx, win);
-  Economy.addCr(s, reward, `match:${tier}`);
+  const reward=v41?v41Cr:Economy.matchReward(idx,win);
+  Economy.addCr(s,reward,`match:${tier}`);
   if (matchId) {
     const entry = JSON.parse(JSON.stringify({ ...matchRecord, id: matchId, bladeId, tier,
-      styleId, gradient, win, reward, recordedAt: Date.now() }));
+      styleId, gradient, win, reward, grants:grantSummary, recordedAt: Date.now() }));
     history.push(entry);
     if (blade) {
       (blade.arenaHistory ||= []).push(JSON.parse(JSON.stringify(entry)));
