@@ -295,6 +295,22 @@ function paintBackdrop(ctx,w,h,stream=false){
   ctx.fillStyle='#E9B491';ctx.fillRect(w*.705,benchY,w*.26,3);
 }
 /** Tiny identity sticker per material, drawn outside the photo's central silhouette. */
+/** Flat hand-painted safety seal, clearly unlike an ordinary hard specimen.
+ * Its hitbox is still the one and only material target coordinate. */
+function drawAvoidSeal(ctx,x,y,width,height,unit){
+  const badgeW=Math.min(width*.88,62),badgeH=Math.max(18,unit*.255);
+  const left=x-badgeW*.5,top=y-badgeH*.5;
+  ctx.save();
+  ctx.translate(x,y);ctx.rotate(-.09);ctx.translate(-x,-y);
+  ctx.fillStyle='rgba(255,246,224,.96)';ctx.strokeStyle='#C46046';
+  ctx.lineWidth=2.0;ctx.lineJoin='round';
+  roundedRect(ctx,left,top,badgeW,badgeH,4);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#9F3D32';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font='800 '+Math.max(10,Math.min(13,unit*.16))+'px system-ui, sans-serif';
+  ctx.fillText('避让 ×',x,y+.6);
+  ctx.restore();
+}
+
 function drawMaterialMark(ctx,type,x,y,u,color){
   ctx.save();ctx.translate(x,y);ctx.strokeStyle=color;ctx.fillStyle=color;
   ctx.lineWidth=Math.max(1.4,u*.031);ctx.lineJoin='round';ctx.lineCap='round';
@@ -476,7 +492,8 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
     if(t.type==='rope'||t.type==='foam') drawBundleTies(ctx,x,y,bodyW,bodyH,unit);
   }
   // Small authored 2D ink marks sit ON the specimen, never replace the physical material.
-  drawTargetHandmark(ctx,t,x,y,bodyW,bodyH,unit);
+  if(t.avoid) drawAvoidSeal(ctx,x,y,bodyW,bodyH,unit);
+  else drawTargetHandmark(ctx,t,x,y,bodyW,bodyH,unit);
   drawKerf(ctx, t, x, y, bodyW, bodyH, bodyTop, unit, progress);
   // The persistent kerf carries the hit. No white screen-blend flash over the material.
   ctx.restore();
@@ -1040,7 +1057,7 @@ function drawBursts(ctx,bursts,now,w,h,reduced){
     const tx=Math.cos(angle),ty=Math.sin(angle),nx=-ty,ny=tx;
     const x=b.x*w,y=b.y*h,weight=clamp(Number(b.weight)||.3,0,1);
     const ink=(SPECIMEN[b.type]||SPECIMEN.metal).ink;
-    const blocked=b.event==='blocked'||b.event==='deflect';
+    const blocked=b.event==='blocked'||b.event==='deflect'||b.event==='avoid-hit';
     const cutFade=clamp(1-age/145,0,1);
     const complete=!!b.complete;
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
@@ -1179,6 +1196,7 @@ function drawLabels(ctx, labels, now, w, h, reduced) {
     const ev = hit.contactEvent;
     const mainText = hit.complete
       ? `+${Math.round(Number(hit.points) || 0)}`
+      : ev === 'avoid-hit' ? '误切 · 断连击'
       : ev === 'armor' ? `破甲 ${Math.round((hit.progress || 0) * 100)}%`
       : ev === 'blocked' ? `受阻 ${Math.round((hit.progress || 0) * 100)}%`
       : ev === 'deflect' ? `弹刃 ${Math.round((hit.progress || 0) * 100)}%`
@@ -1197,11 +1215,12 @@ function drawLabels(ctx, labels, now, w, h, reduced) {
     if (hit.objective) detail += `${detail ? ' · ' : ''}目标 +${hit.objective}`;
     /* 未击破时：先按接触类型说清楚“为什么没切开”，再给方向提示 */
     else if (!hit.complete) {
-      if (ev === 'armor') detail = `已破甲 · 补刀`;
+      if(ev==='avoid-hit') detail='橙色封条请避开';
+      else if (ev === 'armor') detail = `已破甲 · 补刀`;
       else if (ev === 'blocked') detail = `未破甲 · 调整刀路`;
       else if (ev === 'deflect') detail = `角度偏离 · 注意刀损`;
       else detail = `沿刀痕继续切`;
-      detail += ` ${directionHint(hit.angle)}`;
+      if(ev!=='avoid-hit')detail += ` ${directionHint(hit.angle)}`;
     }
     if (detail) { ctx.fillStyle = 'rgba(56,84,105,.92)'; ctx.fillText(detail, x, y + 15, w * .31); }
   }
