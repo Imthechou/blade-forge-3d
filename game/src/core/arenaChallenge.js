@@ -56,7 +56,7 @@ function random(run) {
  */
 export function createChallenge(blade, { seed = null, daily = false, mode = 'quick', buffs = [], ghost = null, winStreak = 1, matchId = null, seconds = null, encounter = null, augments = true, styleId = null, targetScore = null } = {}) {
   if (!blade || blade.fractured || blade.canEnterArena === false) return { ok: false, reason: '只能使用完整成刀参加挑战' };
-  if (!['quick', 'formal'].includes(mode)) return { ok: false, reason: '未知测试模式' };
+  if (!['quick', 'formal', 'sample'].includes(mode)) return { ok: false, reason: '未知测试模式' };
 
   const adaptation = adaptBlade(blade);
   const stats = Object.fromEntries(Object.entries(adaptation.permanentStats).map(([k,v])=>[k,arenaStat(v)]));
@@ -77,7 +77,7 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
     : null;
   // V4.1: forged blade traits are the build. Neither mode interrupts play for random augment offers.
   augments = false;
-  const total = mode === 'quick' ? CHALLENGE_SECONDS : (seconds == null ? 70 : clamp(Number(seconds)||70,5,120));
+  const total = mode === 'quick' ? CHALLENGE_SECONDS : mode === 'sample' ? 12 : (seconds == null ? 70 : clamp(Number(seconds)||70,5,120));
   const run = {
     id: `C-${actualSeed.toString(36)}-${Date.now().toString(36)}`, seed: actualSeed, daily: !!daily, mode,
     blade: {
@@ -806,7 +806,7 @@ export function finish(run, reason='time') {
     : ghost > 0
       ? (ratio >= 1.5 ? 'S' : ratio >= 1.15 ? 'A' : ratio >= 0.85 ? 'B' : 'C')
       : (run.score >= 18000 ? 'S' : run.score >= 9000 ? 'A' : run.score >= 3500 ? 'B' : 'C');
-  const reward=reason==='manual' || run.kills === 0 ? 0
+  const reward=run.mode==='sample' || reason==='manual' || run.kills === 0 ? 0
     : run.mode === 'quick'
       ? Math.min(20, Math.max(8, 8 + Math.floor(run.score / 750)))
       : Math.max(2, Math.min(30, Math.floor(run.score / 100) + (grade==='S'?5:grade==='A'?3:grade==='B'?1:0)));
