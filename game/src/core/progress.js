@@ -27,6 +27,7 @@ import * as Events from './events.js';
 import * as ForgeBonuses from './forgeBonuses.js';
 import * as V41Growth from './arenaV41Growth.js';
 import * as V41Specialties from './arenaV41Specialties.js';
+import * as CareerV41 from './arenaCareerV41.js';
 import * as CodexCatalog from '../data/codexCatalog.js';
 import { COUNTED_CATEGORIES } from '../data/codexCatalog.js';
 import { commitSave } from './saveTransaction.js';
@@ -295,6 +296,40 @@ export function renameBlade(id, name) {
     return { ok: true };
   });
   return result.ok;
+}
+
+/**
+ * National/world V4.1 permanent checkpoints. Save after event start and
+ * every attempted round. Saving a checkpoint never grants CR/XP.
+ */
+export function checkpointCareerV41(kind,match) {
+  if (!CareerV41.validateCareerCheckpoint(kind,match))
+    return {ok:false,reason:'赛事检查点无效'};
+  return commitSave(load(),s=>{
+    const slot=s.arenaCareerV41[kind];
+    const existing=slot.active;
+    if(existing?.id!==match.id&&existing&&!existing.done)
+      return {ok:false,reason:'已有未结束赛事，请先恢复或退出'};
+    slot.active=JSON.parse(JSON.stringify(match));
+    return {ok:true,id:match.id};
+  });
+}
+export function activeCareerV41(kind) {
+  if(!['national','apex'].includes(kind))return null;
+  return CareerV41.recoverCareerMatch(load().arenaCareerV41?.[kind]?.active);
+}
+export function clearCareerV41(kind,matchId) {
+  if(!['national','apex'].includes(kind)||typeof matchId!=='string')
+    return {ok:false,reason:'赛事身份无效'};
+  return commitSave(load(),s=>{
+    const slot=s.arenaCareerV41[kind];
+    if(slot.active?.id!==matchId)return {ok:false,reason:'当前赛事已变化'};
+    slot.active=null;return {ok:true};
+  });
+}
+export function hasNationalCrownV41() {
+  return load().arena.history.some(h=>h?.tier==='national'&&
+    (h.champion===true||h.result?.champion===true||h.result?.reason==='champion'));
 }
 
 /* ── 图鉴 ──────────────────────────────────────────────── */
