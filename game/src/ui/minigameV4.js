@@ -3,6 +3,7 @@ import { icon } from './icons.js';
 import { el, mount } from './dom.js';
 import { bladeContourProjection } from './bladeEdgeProjection.js';
 import { renderHoningArtwork } from './edgeHoningArtwork.js';
+import * as Audio from '../platform/audio.js';
 import { HAMMER_TIERS } from '../data/balance.js';
 import * as Hammer from '../core/hammer.js';
 import { breakChance } from '../core/risk.js';
@@ -193,7 +194,7 @@ export function renderEdgeV4({body,run,stage,Game,getStage,render,toast}) {
     for(let i=lastIndex;i<=next;i++)
       samples.set(i,Math.min(samples.has(i)?samples.get(i):1,value));
     if(next>=lastBuzzIndex+12&&next>3){
-      lastBuzzIndex=next;haptic(4);
+      lastBuzzIndex=next;haptic(4);Audio.play('hone');
     }
     lastIndex=next;
   }
@@ -231,6 +232,7 @@ export function renderEdgeV4({body,run,stage,Game,getStage,render,toast}) {
       }
       locked=true;
       haptic(candidate.eligible?12:6);
+      if(candidate.eligible)Audio.play('honeFinish');
     }else{
       samples.clear();lastIndex=0;
     }
@@ -244,6 +246,7 @@ export function renderEdgeV4({body,run,stage,Game,getStage,render,toast}) {
     active=e.pointerId;lastIndex=0;previous=null;cursor=null;
     lastBuzzIndex=-9;samples.clear();
     try{canvas.setPointerCapture(active);}catch(_){}
+    Audio.unlock();
     haptic(6);moveTo(e);feedback(true);
     e.preventDefault();
   },{passive:false});
