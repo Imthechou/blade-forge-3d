@@ -727,9 +727,17 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
     updateStructure(run.structure,run.targets);
     run.score=structureScore(run.structure,run.elapsed,run.total,run.health,run.maxHealth);
     if (run.structure.completed) {
-      run.log.push({type:'structure-terminated',at:run.elapsed,route:run.structure.routeComplete,
-        completed:[...run.structure.completedIds]});
-      return {ok:true,hits,done:finish(run,'structure-complete')};
+      if(!run.primaryClearLogged) {
+        run.primaryClearLogged=true;
+        run.log.push({type:'structure-primary-clear',at:run.elapsed,route:run.structure.routeComplete,
+          completed:[...run.structure.completedIds]});
+      }
+      // The required structure is defeated, but the player owns the choice:
+      // collect now to bank time/blade condition, or cut remaining optional
+      // pieces to improve precision/protection quality. The timer stays real.
+      if(!run.targets.some(t=>t.alive && !t.isProtected)){
+        return {ok:true,hits,done:finish(run,'structure-complete')};
+      }
     }
   }
   if(run.health<=0)return {ok:true,hits,done:finish(run,'wearout')};
