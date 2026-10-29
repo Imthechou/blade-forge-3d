@@ -562,7 +562,7 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
     // remain optional skill/strength challenges, never block the next wave.
     if (run.mode === 'quick' && !t.challengeSpecimen &&
         (t.type === 'foam' || t.type === 'rope' || t.type === 'wood' ||
-         t.type === 'plastic' || t.type === 'ice') && quality !== 'ANGLE' && dist >= .015) {
+         t.type === 'plastic' || t.type === 'ice') && quality !== 'ANGLE' && dist >= .008) {
       t.armorLeft = 0;
       t.progress = 1;
     }
