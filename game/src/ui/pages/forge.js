@@ -69,21 +69,9 @@ export function render() {
   $('#forgeStage .hammer-stage-hit', root)?.remove();
   $('#forgeStage .edge-stage-canvas', root)?.remove();
   root.classList.toggle('is-hammer', run?.phase === 'hammer');
-  if (!run) {
-    /* ★ 2026-10-14：空态**必须也往舞台上放一把刀**。
-       玩家只要在 `#/forge` 上刷新（hash 会停在 #/forge）或从别处切进锻刀页，
-       否则看到的就是一块"什么都没有"的 3D 区。
-       这里用与首页同一把**幽灵唐刀**（Game.showDefault），保证"舞台永不空白"。
-
-       ★ 2026-10-24（用户：「还没有开始锻造。可以删掉」）：
-       原文案已移除 —— 幽灵刀 + 「开始锻刀」按钮已经说清了状态，
-       再补一句“还没有开始锻造”是重复陈述。只保留可执行的那个按钮。 */
-    Game.showDefault();
-    mount(body, [el('div', { class: 'forge-pad' }, [
-      el('button', { class: 'btn btn--primary btn--block', text: '开始锻刀', onclick: () => router.go('home') }),
-    ])]);
-    return;
-  }
+  // 无进行中的锻造不再显示“唐刀 + 开始锻刀”的假空态。
+  // 路由 canEnter 守卫会在深链刷新时直接转回首页。
+  if (!run) return;
   const snap = Game.run; // 直接用 run，避免快照与可变状态不一致
   renderStageHead(run);
   /* ★ 锻造页的鉴赏图标：S4 锻打阶段直接禁用拖动开关（热区铺满舞台，
@@ -122,7 +110,7 @@ function padFor(body) {
 }
 
 /**
- * 舞台上缘浮层：阶段徽标 + 题面 + 构筑进度 chip。
+ * 舞台上缘浮层：左侧阶段徽标 + 右侧构筑进度 chip。
  *
  * ★ 2026-10-15（用户：「我希望锻造页都是一屏」）——
  *   题面原来是 `.forge-body` 里的一个**独立块，实吃 47px**；而一屏的纵向预算
@@ -164,11 +152,8 @@ function renderStageHead(run) {
   badge.innerHTML = '';
   badge.appendChild(el('b', { text: String(idx + 1).padStart(2, '0') }));
   badge.appendChild(el('span', { text: def.name || '' }));
-  badge.appendChild(el('i', { text: `${idx + 1}/${total}` }));
-
-  let question = $('.stage-question', bar);
-  if (!question) { question = el('div', { class: 'stage-question' }); bar.appendChild(question); }
-  question.textContent = def.question || '';
+  // 左上角仅留阶段序号与名称；底部图形进度条承担进度说明。
+  $('.stage-question', bar)?.remove();
 
   /* 编号式 10 段进度条：浮在舞台下缘。
      done 用阶段色淡底、active 用阶段色实心 —— 让玩家看见"走到第几段"。 */
