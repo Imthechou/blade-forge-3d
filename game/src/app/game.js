@@ -911,6 +911,25 @@ class Session {
 
   retryFormalSave() { return this._settleFormalIfDone(); }
 
+  /** Restore a committed cup checkpoint without replaying an unsubmitted attempt. */
+  resumeCareerV41() {
+    if(!this.nationalMatch) {
+      const national=Core.progress.activeCareerV41('national');
+      if(national) {
+        this.nationalMatch=national;
+        if(national.done&&!national.settled)this._settleNationalIfDone();
+      }
+    }
+    if(!this.apexMatch) {
+      const apex=Core.progress.activeCareerV41('apex');
+      if(apex) {
+        this.apexMatch=apex;
+        if(apex.done&&!apex.settled)this._settleApexIfDone();
+      }
+    }
+    return {national:!!this.nationalMatch,apex:!!this.apexMatch};
+  }
+
   /* ── 三刀巅峰赛（T09）──────────────────────────── */
 
   /**
@@ -919,9 +938,13 @@ class Session {
    *   任何单刀旁路都无法绕过 —— 旧 hub 的 apex+single 路由已不再调用这条路径。
    */
   startApexMatch({ bladeIds = [], seed = null } = {}) {
+    if(!Core.progress.hasNationalCrownV41())
+      return {ok:false,reason:'需先赢得全国大赛冠军才能挑战世界三刀赛'};
     const blades = bladeIds.map((id) => Core.progress.bladeById(id)).filter(Boolean);
     const r = Core.arenaFormal.createApexMatch({ blades, seed });
     if (!r.ok) return r;
+    const saved=Core.progress.checkpointCareerV41('apex',r.match);
+    if(!saved.ok)return saved;
     this.apexMatch = r.match;
     audio.play('confirm');
     bus.emit(EVENTS.MATCH_START, { tier: 'apex', kind: 'apex', bladeIds });
@@ -932,16 +955,23 @@ class Session {
   apexDispatch(bladeId) {
     if (!this.apexMatch) return { ok: false, reason: '当前没有进行中的巅峰赛' };
     const blades = (this.apexMatch.roster || []).map((r) => Core.progress.bladeById(r.id)).filter(Boolean);
+    const before=JSON.parse(JSON.stringify(this.apexMatch));
     const r = Core.arenaFormal.apexDispatch(this.apexMatch, blades, bladeId);
-    if (r.ok) audio.play('select');
-    return r;
+    if(!r.ok)return r;
+    const saved=Core.progress.checkpointCareerV41('apex',this.apexMatch);
+    if(!saved.ok){this.apexMatch=before;return saved;}
+    audio.play('select');return r;
   }
 
   /** 提交当前轮的测试成绩 */
   apexSubmit(payload) {
     if (!this.apexMatch) return { ok: false, reason: '当前没有进行中的巅峰赛' };
-    const r = Core.arenaFormal.apexSubmit(this.apexMatch, payload);
-    if (r?.done) this._settleApexIfDone();
+    const before=JSON.parse(JSON.stringify(this.apexMatch));
+    const r=Core.arenaFormal.apexSubmit(this.apexMatch,payload);
+    if(!r?.ok)return r;
+    const saved=Core.progress.checkpointCareerV41('apex',this.apexMatch);
+    if(!saved.ok){this.apexMatch=before;return saved;}
+    if(r.done)this._settleApexIfDone();
     return r;
   }
 
@@ -966,6 +996,10 @@ class Session {
 
   clearApexMatch() {
     if (this.apexMatch?.done && !this.apexMatch.settled) return { ok: false, reason: '本场记录尚未保存，请先重试结算' };
+    if(this.apexMatch) {
+      const saved=Core.progress.clearCareerV41('apex',this.apexMatch.id);
+      if(!saved.ok)return saved;
+    }
     this.apexMatch = null;
   }
 
@@ -977,10 +1011,15 @@ class Session {
    * 开一届全囉赛。代表刀创建时锁定，整届不换。
    */
   startNationalMatch({ bladeId, seed = null } = {}) {
+    const expert=Object.values(Core.progress.get().arena.school || {})
+      .filter(x=>Array.isArray(x?.cleared)&&x.cleared.includes(2)).length;
+    if(expert<3)return {ok:false,reason:'全国赛需至少三个流派达到专家'};
     const blade = Core.progress.bladeById(bladeId);
     if (!blade) return { ok: false, reason: '找不到这把刀' };
     const r = Core.arenaFormal.createNationalMatch({ blade, seed });
     if (!r.ok) return r;
+    const saved=Core.progress.checkpointCareerV41('national',r.match);
+    if(!saved.ok)return saved;
     this.nationalMatch = r.match;
     audio.play('confirm');
     bus.emit(EVENTS.MATCH_START, { tier: 'national', kind: 'national', bladeId });
@@ -991,24 +1030,35 @@ class Session {
   nationalStartRound() {
     if (!this.nationalMatch) return { ok: false, reason: '当前没有进行中的全国赛' };
     const blades = Core.progress.collection();
-    const r = Core.arenaFormal.nationalStartRound(this.nationalMatch, blades);
-    if (r.ok) audio.play('select');
-    return r;
+    const before=JSON.parse(JSON.stringify(this.nationalMatch));
+    const r=Core.arenaFormal.nationalStartRound(this.nationalMatch,blades);
+    if(!r.ok)return r;
+    const saved=Core.progress.checkpointCareerV41('national',this.nationalMatch);
+    if(!saved.ok){this.nationalMatch=before;return saved;}
+    audio.play('select');return r;
   }
 
   /** 提交当前轮成绩 */
   nationalSubmitRound(payload) {
     if (!this.nationalMatch) return { ok: false, reason: '当前没有进行中的全国赛' };
-    const r = Core.arenaFormal.nationalSubmit(this.nationalMatch, payload);
-    if (r?.done) this._settleNationalIfDone();
+    const before=JSON.parse(JSON.stringify(this.nationalMatch));
+    const r=Core.arenaFormal.nationalSubmit(this.nationalMatch,payload);
+    if(!r?.ok)return r;
+    const saved=Core.progress.checkpointCareerV41('national',this.nationalMatch);
+    if(!saved.ok){this.nationalMatch=before;return saved;}
+    if(r.done)this._settleNationalIfDone();
     return r;
   }
 
   /** 主动退出本届（不伪造成绩） */
   nationalAbandonRound() {
     if (!this.nationalMatch) return { ok: false, reason: '当前没有进行中的全国赛' };
-    const r = Core.arenaFormal.nationalAbandon(this.nationalMatch);
-    if (r?.done) this._settleNationalIfDone();
+    const before=JSON.parse(JSON.stringify(this.nationalMatch));
+    const r=Core.arenaFormal.nationalAbandon(this.nationalMatch);
+    if(!r?.ok)return r;
+    const saved=Core.progress.checkpointCareerV41('national',this.nationalMatch);
+    if(!saved.ok){this.nationalMatch=before;return saved;}
+    if(r.done)this._settleNationalIfDone();
     return r;
   }
 
@@ -1055,6 +1105,10 @@ class Session {
   clearNationalMatch() {
     if (this.nationalMatch?.done && !this.nationalMatch.settled) {
       return { ok: false, reason: '本届记录尚未保存，请先重试结算' };
+    }
+    if(this.nationalMatch){
+      const saved=Core.progress.clearCareerV41('national',this.nationalMatch.id);
+      if(!saved.ok)return saved;
     }
     this.nationalMatch = null;
   }
