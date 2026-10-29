@@ -44,6 +44,11 @@ export function unlockStateOf(bonus, save) {
     const need = Number(u.count) || 0;
     return { unlocked: have >= need, have, need, text: bonus.unlockText };
   }
+  if (u.kind === 'school') {
+    const cleared=new Set(save?.arena?.school?.[u.branchId]?.cleared || []);
+    const unlocked=cleared.has(u.gradient||1);
+    return {unlocked,progress:null,text:bonus.unlockText};
+  }
   if (u.kind === 'achievement') {
     const unlocked = !!(save?.achievements || {})[u.id];
     return { unlocked, progress: null, text: bonus.unlockText };
