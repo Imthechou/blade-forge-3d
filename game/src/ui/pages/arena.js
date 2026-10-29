@@ -298,7 +298,7 @@ function renderTournamentHub() {
           },
           text:`${on?'✓ ':''}${b.bladeName||b.name||b.id} · ${b.rarityName||b.rarity||'成刀'} · 评分 ${b.score||0}`});
       })),
-      el('p',{class:'arena-note',text:roster.ok?'已锁定顺序：${picked.map((id,i)=>`${i+1}. ${blades.find(b=>b.id===id)?.bladeName||id}`).join(" → ")}；全程无赛中随机强化。':`还不能开赛：${roster.reason}`}),
+      el('p',{class:'arena-note',text:roster.ok?`赛前顺序：${picked.map((id,i)=>`${i+1}. ${blades.find(b=>b.id===id)?.bladeName||id}`).join(' → ')} · 无赛中选卡`:`还不能开赛：${roster.reason}`}),
       el('p',{class:'arena-note',text:'三轮主题：极致锋芒 → 不屈之刃 → 巅峰之作。各刀只出场一次。'}),
     );
   }
@@ -1663,8 +1663,8 @@ function renderApexReport() {
       })) : []),
       !m.settled && !r.win ? el('button',{class:'btn btn--primary',text:'确认本届成绩并结算',
         onclick:()=>{const x=Game.finishApexCareer();if(!x?.ok)toast(x?.reason||'保存失败','warn');render();}}):null,
-      el('button', { class: 'btn btn--primary', text: '再来一场', onclick: () => { Game.clearApexMatch(); render(); } }),
-      el('button', { class: 'btn', text: '回首页', onclick: () => { Game.clearApexMatch(); router.go('home'); } }),
+      m.settled ? el('button', { class: 'btn btn--primary', text: '再来一场', onclick: () => { Game.clearApexMatch(); render(); } }) : null,
+      m.settled ? el('button', { class: 'btn', text: '回首页', onclick: () => { Game.clearApexMatch(); router.go('home'); } }) : null,
     ].filter(Boolean)),
   ]);
 }
