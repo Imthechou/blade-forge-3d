@@ -68,6 +68,21 @@ export function drawArenaStage(ctx, run, w, h, effects = {}) {
     if (!d) continue;
     drawTarget(ctx, t, d, i, t.x * w, t.y * h, w, h, isGuideTarget(run.guide, t), now, bursts, reduced,
       Math.max(0,(Number(run.elapsed)||0)-(Number(t.createdAt)||0)));
+    if (run.structure && t.isProtected) {
+      ctx.save();
+      // A protected component is a distinct recognizable object, not a
+      // tinted damage target. Crosshair is deliberately absent.
+      ctx.lineWidth=1.8;
+      ctx.strokeStyle='#324F76';
+      ctx.fillStyle='rgba(251,253,255,.94)';
+      const tagX=t.x*w,tagY=t.y*h-Math.min(26,w*.06);
+      ctx.beginPath();
+      ctx.roundRect(tagX-25,tagY-12,50,23,6);
+      ctx.fill();ctx.stroke();
+      ctx.font='bold 11px system-ui';ctx.textAlign='center';
+      ctx.fillStyle='#324F76';ctx.fillText('保留标牌',tagX,tagY+3);
+      ctx.restore();
+    }
     if(run.version==='arena-3') {
       const x=(t.x+(t.weakX||0))*w,y=(t.y+(t.weakY||0))*h;
       const marked=t.markedUntil>=run.elapsed;
@@ -157,6 +172,19 @@ function drawStructureAssembly(ctx, structure, targets, w, h) {
       const cx=(ax+bx)*.5,cy=(ay+by)*.5;
       ctx.strokeStyle='rgba(75,90,106,.38)';ctx.lineWidth=2;
       ctx.beginPath();ctx.moveTo(cx-5*nx-3,cy-5*ny);ctx.lineTo(cx+5*nx+3,cy+5*ny);ctx.stroke();
+    }
+  }
+  // A disconnected support shifts to its physical resting coordinate; the
+  // actual collision point is identical to this rendered position.
+  for(const part of targets||[]) {
+    if(!part.alive||part.isProtected||!part.coveredBy)continue;
+    const cover=byId.get('struct-'+part.coveredBy);
+    if(!cover?.alive) {
+      ctx.save();ctx.strokeStyle='rgba(83,125,141,.42)';
+      ctx.setLineDash([3,4]);ctx.lineWidth=1.2;
+      const x=part.x*w,y=part.y*h;
+      ctx.beginPath();ctx.moveTo(x-12,y-6);ctx.lineTo(x+12,y-6);ctx.stroke();
+      ctx.restore();
     }
   }
   // Permanent visible marks where a severed object used to be attached.
