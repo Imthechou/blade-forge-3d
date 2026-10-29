@@ -16,6 +16,7 @@ import * as RNG from '../platform/rng.js';
 import * as Attr from './attributes.js';
 import * as Risk from './risk.js';
 import { rarityMultiplier, discountedRerollCost } from './arenaV41Growth.js';
+import { activeRollSpecialty, matchSpecialtyCard } from './arenaV41Specialties.js';
 
 export const CANDIDATE_COUNT = 3;
 
@@ -43,14 +44,20 @@ export function rollCandidates(run, { unlockedIds = null } = {}) {
        基础池（77）始终可得；已解锁卡（成就/图鉴奖励发的 `card:` token）
        在该阶段的候选里出现得明显更频繁（×2.2）。
      这样「解锁」真的能在开锻时被看见，而又不会把内容从任何人手里拿走。 */
-  const unlocked = Array.isArray(unlockedIds) && unlockedIds.length ? new Set(unlockedIds) : null;
+  const stableUnlocks=Array.isArray(unlockedIds)?unlockedIds:run.unlockedCardIds;
+  const unlocked=Array.isArray(stableUnlocks)&&stableUnlocks.length?new Set(stableUnlocks):null;
 
   const rng = RNG.stream(run.seed, 'candidates', stageId, run.rerollCountByStage[stageId] || 0);
   const picked = [];
   const bag = pool.slice();
-  const weightOf = (c) => {
-    const w = (RARITY_WEIGHT[c.rarity] ?? 10) * rarityMultiplier(run.workshop, c.rarity);
-    return unlocked && unlocked.has(c.id) ? w * UNLOCKED_WEIGHT_BOOST : w;
+  const rollBonus=activeRollSpecialty(run,bag);
+  const weightOf = c => {
+    const rareFactor=Math.min(2,rarityMultiplier(run.workshop,c.rarity)*
+      (['rare','epic','legend','mythic'].includes(c.rarity)?1+rollBonus.rarityBoost:1));
+    const legacyPreference=unlocked?.has(c.id)?UNLOCKED_WEIGHT_BOOST:1;
+    const matched=rollBonus.active&&matchSpecialtyCard(run,c);
+    const preference=Math.min(2.55,legacyPreference+(matched?rollBonus.boost:0));
+    return (RARITY_WEIGHT[c.rarity]??10)*rareFactor*preference;
   };
   const unlockedCount = unlocked ? base.filter((c) => unlocked.has(c.id)).length : 0;
 
@@ -59,6 +66,11 @@ export function rollCandidates(run, { unlockedIds = null } = {}) {
     if (!card) break;
     picked.push(card);
     bag.splice(bag.indexOf(card), 1);
+  }
+  // One candidate GROUP consumes one activated specialist roll, never one card.
+  if(rollBonus.active&&rollBonus.consume&&run.specialist) {
+    if(run.specialist.id==='composite')run.specialist.remaining=Math.max(0,run.specialist.remaining-1);
+    if(run.specialist.id==='overload'){run.specialist.consumed=true;run.specialist.ready=false;}
   }
   run.candidates = picked;
   /* 供 UI/诊断：本阶段池内实际享受加成解锁的卡数（不参与判定） */
@@ -82,16 +94,17 @@ export function reroll(run) {
   if (run.daily && run.daily.maxReroll != null && run.rerollTotal >= run.daily.maxReroll) {
     return { ok: false, cost: 0, reason: `今日挑战限制：最多重铸 ${run.daily.maxReroll} 次` };
   }
-  if (run.cr < cost) return { ok: false, cost, reason: 'CR 不足', short: cost - run.cr };
+  const charge=run.freeRerollOverride?0:cost;
+  if (run.cr < charge) return { ok: false, cost:charge, reason:'CR 不足', short:charge-run.cr };
 
-  run.cr -= cost;
+  run.cr -= charge;
   run.rerollCountByStage[stageId] = n + 1;
   run.rerollTotal += 1;
   if(paid) run.paidRerollsUsed=(run.paidRerollsUsed||0)+1;
   /* ★ rework T10.4：重铸必须沿用本局的解锁列表。
      否则「重铸一次」就会把已解锁卡的加权静默抹掉（改造前的实际缺陷）。 */
   rollCandidates(run, { unlockedIds: run.unlockedCardIds || null });
-  return { ok: true, cost };
+  return { ok:true, cost:charge, quotedCost:cost };
 }
 
 /** 下一阶段的重铸价格（UI 提示用） */
