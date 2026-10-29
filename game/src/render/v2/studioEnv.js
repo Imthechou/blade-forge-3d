@@ -227,43 +227,57 @@ function makeEquirectTexture(THREE) {
   return tex;
 }
 
-let studioEnv = null;
+/**
+ * PMREM / WebGLRenderTarget 属于创建它的 WebGLRenderer 上下文。
+ * 不能像普通 Image/DataTexture 一样跨 WebGLRenderer 共用！
+ *
+ * 主舞台先初始化摄影棚，然后藏刀阁和详情分别创建自己的 Renderer。
+ * 旧的全局单例将主舞台 RT.texture 直接交给其他 GL context，纹理无法在
+ * 新 context 上传/采样，纯金属（metalness≈1）因此显示成黑色剪影。
+ * 缓存必须以 renderer 为键，并在 viewer 销毁时释放其 RT。
+ */
+const studioEnvs = new Map();
+let nextStudioEnvId = 0;
 let lastGenMs = 0;
 
-/**
- * 取程序化摄影棚环境（PMREM 之后的 cube 纹理）。
- * 首次调用才生成，之后复用。
- */
+/** 为当前 WebGL 上下文取得专属 PMREM 贴图。 */
 export function getStudioEnv(renderer) {
   const THREE = globalThis.THREE;
   if (!THREE || !renderer) return null;
-  if (studioEnv) return studioEnv;
+  const cached = studioEnvs.get(renderer);
+  if (cached) return cached.texture;
 
   const now = () => ((globalThis.performance && performance.now) ? performance.now() : Date.now());
   const t0 = now();
-
   const equirect = makeEquirectTexture(THREE);
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  pmrem.compileEquirectangularShader();
-  const target = pmrem.fromEquirectangular(equirect);
-  studioEnv = target.texture;
-  equirect.dispose();
-  pmrem.dispose();
+  let pmrem;
+  let target;
+  try {
+    pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+    target = pmrem.fromEquirectangular(equirect);
+    if (!target?.texture) throw new Error('studio PMREM target unavailable');
+  } finally {
+    equirect.dispose();
+    pmrem?.dispose();
+  }
 
   lastGenMs = now() - t0;
+  const key = ++nextStudioEnvId === 1 ? 'studio-env:v1' : `studio-env:v1:${nextStudioEnvId}`;
+  const entry = { target, texture: target.texture, key, genMs: lastGenMs };
+  studioEnvs.set(renderer, entry);
 
   try {
     const K3D = globalThis.K3D || {};
-    K3D.rLedger?.track?.('studio-env:v1', {
-      kind: 'studio-env', tex: studioEnv,
-      bytesMiB: K3D.rLedger.textureMiB ? K3D.rLedger.textureMiB(studioEnv) : 4,
-      optional: true,
-      evictable: false,
-      note: '程序化产品摄影棚环境（P2）',
+    K3D.rLedger?.track?.(key, {
+      kind: 'studio-env', tex: entry.texture,
+      bytesMiB: K3D.rLedger.textureMiB ? K3D.rLedger.textureMiB(entry.texture) : 4,
+      optional: true, evictable: false,
+      note: '当前渲染器的程序化摄影棚环境',
     });
-  } catch (_) { /* 诊断件失败不影响渲染 */ }
+  } catch (_) { /* 诊断账本不影响出图 */ }
 
-  return studioEnv;
+  return entry.texture;
 }
 
 /** 把棚环境挂到场景内所有材质（与 viewer._applyEnvMapToScene 同一口径）。 */
@@ -286,16 +300,31 @@ export function applyStudioEnvToScene(renderer, scene) {
   return touched;
 }
 
-export function studioEnvInfo() {
-  return studioEnv ? { key: 'studio-env:v1', genMs: +lastGenMs.toFixed(2), size: `${W}x${H}`, inputType: 'HalfFloatType' } : null;
+/** 当前各 renderer 的环境状态；默认报告第一个舞台。 */
+export function studioEnvInfo(renderer = null) {
+  const entry = renderer ? studioEnvs.get(renderer) : studioEnvs.values().next().value;
+  return entry ? {
+    key: entry.key, genMs: +entry.genMs.toFixed(2),
+    size: `${W}x${H}`, inputType: 'HalfFloatType', contexts: studioEnvs.size,
+  } : null;
 }
 
-export function releaseStudioEnv() {
-  if (!studioEnv) return false;
-  try { studioEnv.dispose(); } catch (_) { /* ignore */ }
-  try { (globalThis.K3D?.rLedger)?.untrack?.('studio-env:v1'); } catch (_) { /* ignore */ }
-  studioEnv = null;
-  return true;
+/**
+ * 按 renderer 释放对应 render target。
+ * 无参用于全局重置（兼容旧调用），不会因关闭一张详情卡而清理主舞台。
+ */
+export function releaseStudioEnv(renderer = null) {
+  if (renderer) {
+    const entry = studioEnvs.get(renderer);
+    if (!entry) return false;
+    studioEnvs.delete(renderer);
+    try { entry.target.dispose(); } catch (_) { /* context may already be lost */ }
+    try { (globalThis.K3D?.rLedger)?.untrack?.(entry.key); } catch (_) { /* ignore */ }
+    return true;
+  }
+  let released = false;
+  for (const owner of [...studioEnvs.keys()]) released = releaseStudioEnv(owner) || released;
+  return released;
 }
 
 /* 挂到 globalThis.K3D 上，供 legacy 层（viewer.js）直接取用。
