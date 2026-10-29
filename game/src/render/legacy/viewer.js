@@ -14,6 +14,7 @@ import { renderLoopAllowed, renderSurfaceVisible } from '../renderVisibility.js'
     viewer.envMap / scene.environment / 刀身材质 envMap **全部不是它**（棚=N 贯穿 9 个阶段）。
    静态导入后模块求值顺序保证它一定在 loadEnvironment 之前就绪。 */
 import { getStudioEnv, releaseStudioEnv } from '../v2/studioEnv.js';
+import { invalidateCaptureTargets } from '../captureRunner.js';
 /* 透射通道的 program 变体只在一个地方定义（见 gpuPreparation.js 注释）：
    早期实现"绑 RT 编一遍 + 翻面再编一遍"，每张晶体卡多付一支约 1s 的无用程序。 */
 import { compileTransmissionVariants } from '../gpuPreparation.js';
@@ -307,6 +308,7 @@ class Viewer {
       if (e && typeof e.preventDefault === 'function') e.preventDefault();
       if (this.disposed) return;
       this._contextLost = true;
+      invalidateCaptureTargets(this.renderer);
       /* ★ 2026-10-21：上下文代数 +1 —— 之后所有"待释放"的 program 都属于旧 context，
          不能再 delete（会刷 "delete: object does not belong to this context"）。 */
       try { globalThis.K3D.glCtxEpoch = (globalThis.K3D.glCtxEpoch || 0) + 1; } catch (_) { /* ignore */ }
@@ -1437,6 +1439,8 @@ class Viewer {
     this.modelSize = null;
     /* 摄影棚 PMREM 是当前 WebGLRenderer 私有的 RT。释放本 renderer 的贴图，
        不能把主舞台的贴图一起 dispose（否则其它藏刀/首页也会变黑）。 */
+    invalidateCaptureTargets(this.renderer);
+    try { K3D.rLedger?.releaseRenderer?.(this.renderer); } catch (_) { /* diagnostics */ }
     const studioReleased = releaseStudioEnv(this.renderer);
     if (!studioReleased && this.envMap) this.envMap.dispose();
     this.controls && this.controls.dispose();

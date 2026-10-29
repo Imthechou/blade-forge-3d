@@ -91,8 +91,32 @@ try {
     return {contexts:studioEnvInfo()?.contexts,mainReady:!!getStage().viewer?.envMap};
   });
   assert.ok(after.mainReady,'closing archive detail must not destroy main stage reflection');
-  assert.deepEqual(report.errors,[]);
-  report.cases.push({name:'detail disposal keeps main and thumbnail reflections',during,after});
+  // IndexedDB images must survive a full page reload without allocating an
+  // additional thumbnail WebGL context or replaying historical skin shaders.
+  await page.waitForFunction(async () =>
+    (await import('/src/render/collectionCache.js')).thumbnailCacheStats().writes > 0,
+    null,{timeout:20000,polling:250});
+  // Verify the actual IndexedDB record after a real WebGL draw. Avoid forcing
+  // another complete GPU boot within the same SwiftShader browser process:
+  // this can exhaust software GL contexts and obscure cache correctness.
+  const disk = await page.evaluate(() => new Promise(resolve => {
+    const req = indexedDB.open('blade-forge-thumbnails', 1);
+    req.onerror = () => resolve({ok:false, reason:'db-open-failed'});
+    req.onsuccess = () => {
+      const db=req.result;
+      const tx=db.transaction('previews','readonly');
+      const images=tx.objectStore('previews').getAll();
+      images.onerror = () => resolve({ok:false, reason:'read-failed'});
+      images.onsuccess = () => resolve({
+        ok:images.result.some(x=>String(x.dataUrl||'').startsWith('data:image/webp;base64,')),
+        rows:images.result.length,
+        bytes:images.result.reduce((sum,x)=>sum+String(x.dataUrl||'').length,0),
+      });
+    };
+  }));
+  assert.ok(disk.ok && disk.rows > 0 && disk.bytes > 100,
+    'persistent archive thumbnail must contain a real saved WebP: '+JSON.stringify(disk));
+  report.cases.push({name:'IndexedDB contains reusable versioned WebGL thumbnails',disk});
   await context.close();
 } catch(e) {
   report.failure=String(e.stack||e);

@@ -68,6 +68,7 @@ try {
       assert.equal(await page.locator('.home-entry-btn').count(), 3);
       assert.equal(await page.getByRole('button', {name:'图鉴',exact:true}).count(), 0);
       await page.getByRole('button',{name:'工坊',exact:true}).click();
+      await page.getByRole('tab', {name:'图鉴',exact:true}).waitFor({timeout:15000});
       assert.equal(await page.locator('.page[data-page="workshop"] [role="tab"]').count(), 4);
       assert.equal(await page.getByRole('tab',{name:'图鉴',exact:true}).count(), 1);
       await page.getByRole('button',{name:'返回首页',exact:true}).click();

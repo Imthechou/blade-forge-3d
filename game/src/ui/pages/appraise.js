@@ -23,8 +23,6 @@ import * as Core from '../../core/index.js';
 import Game from '../../app/game.js';
 import router from '../router.js';
 import { getStage } from '../../render/index.js';
-import * as Arena from './arena.js';
-import * as Workshop from './workshop.js';
 
 let root = null;    // .page[data-page="appraise"]
 let host = null;    // 3D 画布容器
@@ -77,7 +75,7 @@ export function render() {
       el('div', { class: 'card', text: saved ? '作品已保存至藏刀阁' : '开始锻造你的第一把刀' }),
     ])]);
     mount(actions, [
-      saved ? el('button', { class: 'btn btn--primary', text: '查看收藏', onclick: () => Workshop.openTab('collection') }) : null,
+      saved ? el('button', { class: 'btn btn--primary', text: '查看收藏', onclick: () => import('./workshop.js').then(m => m.openTab('collection')) }) : null,
       el('button', { class: saved ? 'btn' : 'btn btn--primary', text: '回首页', onclick: () => router.go('home') }),
     ]);
     return;
@@ -220,13 +218,13 @@ function renderReveal(rec) {
      跳过与完整播放的结果**完全相同**（只是不播动画）。 */
   mount(actions, [
     el('button', { class: 'btn ap-skip', text: '跳过揭晓', onclick: () => skipReveal(rec) }),
-    rec.canEnterArena ? el('button', { class: 'btn btn--primary ap-try', text: '带刀试炼 →', onclick: () => Arena.openQuickChallenge(rec.id) }) : null,
+    rec.canEnterArena ? el('button', { class: 'btn btn--primary ap-try', text: '带刀试炼 →', onclick: () => import('./arena.js').then(m => m.openQuickChallenge(rec.id)) }) : null,
     reforgeButton(!rec.canEnterArena),
     el('button', { class: 'btn ap-more', 'aria-label': '作品操作', title: '作品操作', onclick: () => {
       let dialog;
       dialog = sheet({ title: rec.bladeName || '作品', body: el('div', { class: 'stack' }, [
-        rec.canEnterArena ? el('button', { class: 'btn btn--primary', text: '正式赛事', onclick: () => { dialog.close(); Arena.openTournament(rec.id); } }) : null,
-        el('button', { class: 'btn', text: '查看收藏', onclick: () => { dialog.close(); Workshop.openTab('collection'); } }),
+        rec.canEnterArena ? el('button', { class: 'btn btn--primary', text: '正式赛事', onclick: () => { dialog.close(); import('./arena.js').then(m => m.openTournament(rec.id)); } }) : null,
+        el('button', { class: 'btn', text: '查看收藏', onclick: () => { dialog.close(); import('./workshop.js').then(m => m.openTab('collection')); } }),
       ]) });
     } }, [icon('more')]),
   ]);

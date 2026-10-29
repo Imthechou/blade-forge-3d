@@ -896,6 +896,9 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
   };
   canvas.addEventListener('pointerup',endSwipe);canvas.addEventListener('pointercancel',endSwipe);canvas.addEventListener('lostpointercapture',endSwipe);
 
+  let lastHudUpdate = -Infinity;
+  let lastHudScore = NaN, lastHudHealth = NaN, lastHudPhase = '';
+  let lastHudPaused = null, lastHudRisk = '';
   const drawScene = (now) => {
     if (challengeCanvas !== canvas || !canvas.isConnected) return;
     const width=bounds.width,height=bounds.height;
@@ -904,6 +907,15 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     drawArenaStage(ctx,run,width,height,effects);
     if (run.mode==='formal' && !isSlice && !run.unifiedFormalCut) Formal.drawFormalCutGuides(ctx, run, width, height);
     if (run.mode !== 'formal' || now >= scoreDelayUntil) shownScore = run.score;
+    // Canvas runs at display refresh rate for crisp cutting. HUD layout and
+    // mission text only need 10-12 Hz unless gameplay state changes.
+    const risk = run.risk?.status || '';
+    const important = shownScore !== lastHudScore || run.health !== lastHudHealth
+      || run.phase !== lastHudPhase || run.paused !== lastHudPaused || risk !== lastHudRisk;
+    if (!important && now - lastHudUpdate < 90) return;
+    lastHudUpdate = now;
+    lastHudScore = shownScore; lastHudHealth = run.health;
+    lastHudPhase = run.phase; lastHudPaused = run.paused; lastHudRisk = risk;
     text(hud.querySelector('.quick-hud-score small'),run.targetScore?`目标 ${run.targetScore}`:'当前得分');
     text(timeNode,run.remaining.toFixed(1));text(scoreNode,String(Math.floor(shownScore)).padStart(4,'0'));
     const healthPercent = Math.max(0, Math.min(100, run.health / Math.max(1, run.maxHealth ?? 100) * 100));
@@ -1935,7 +1947,8 @@ function renderTeamCutStage() {
     const current = read(); if (!current || !ui.canvas.isConnected) return;
     const r = ui.resize();
     if (ui.ctx) { drawArenaStage(ui.ctx, current, r.width, r.height, { trail: [], hitLabels: [], bursts: [], now: performance.now(), pointer, reducedMotion: motion.reduced() }); Formal.drawFormalCutGuides(ui.ctx, current, r.width, r.height); }
-    ui.hud.textContent = `${current.remaining.toFixed(1)}秒 · ${Math.floor(current.score)}分 · 刀况 ${Math.round(current.health)}%${current.paused ? ' · 已暂停' : ''}`;
+    const hudCopy = `${current.remaining.toFixed(1)}秒 · ${Math.floor(current.score)}分 · 刀况 ${Math.round(current.health)}%${current.paused ? ' · 已暂停' : ''}`;
+    if (ui.hud.textContent !== hudCopy) ui.hud.textContent = hudCopy;
     if (current.risk?.status === 'warning' || current.risk?.status === 'failed') ui.feedback.textContent = current.risk.message;
   };
   const commit = fn => teamUpdate(draft => { Suite.startSuite(draft); const value = fn(draft.teamOperation, draft); return value?.ok === false ? value : { ok: true }; }, false);
@@ -2493,7 +2506,8 @@ function renderNationalCutStage() {
     const current = read(); if (!current || !ui.canvas.isConnected) return;
     const r = ui.resize();
     if (ui.ctx) { drawArenaStage(ui.ctx, current, r.width, r.height, { trail: [], hitLabels: [], bursts: [], now: performance.now(), pointer, reducedMotion: motion.reduced() }); Formal.drawFormalCutGuides(ui.ctx, current, r.width, r.height); }
-    ui.hud.textContent = `${current.remaining.toFixed(1)}秒 · ${Math.floor(current.score)}分 · 刀况 ${Math.round(current.health)}%${current.paused ? ' · 已暂停' : ''}`;
+    const hudCopy = `${current.remaining.toFixed(1)}秒 · ${Math.floor(current.score)}分 · 刀况 ${Math.round(current.health)}%${current.paused ? ' · 已暂停' : ''}`;
+    if (ui.hud.textContent !== hudCopy) ui.hud.textContent = hudCopy;
     if (current.risk?.status === 'warning' || current.risk?.status === 'failed') ui.feedback.textContent = current.risk.message;
   };
   const commit = fn => {

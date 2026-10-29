@@ -3,6 +3,7 @@
  * 缩略舞台与详情舞台分离，不碰游戏主舞台；无 WebGL 时不以通用刀型图冒充档案外观。
  */
 import { BladeStage } from './index.js';
+import { loadThumbnail, saveThumbnail, thumbnailCacheStats } from './collectionCache.js';
 
 const MAX_CACHE = 72;
 const imageCache = new Map();
@@ -13,7 +14,7 @@ let thumbHost = null;
 let observer = null;
 
 function fingerprint(record) {
-  return JSON.stringify([
+  return JSON.stringify(['archive-image-v3',
     record.id, record.knifeTypeId, record.knifeType, record.seed,
     record.visualRecipe, record.history, record.pendingSkin,
   ]);
@@ -85,7 +86,21 @@ async function draw(record, visual) {
 function requestDraw(key, record, visual) {
   if (imageCache.has(key)) return Promise.resolve(imageCache.get(key));
   if (inFlight.has(key)) return inFlight.get(key);
-  const task = queue.then(() => draw(record, visual)).catch(error => {
+  const task = queue.then(async () => {
+    // Fast path: never mount a second WebGL renderer for a previously captured
+    // unchanged blade. Visual recipes are part of the versioned cache key.
+    const saved = await loadThumbnail(key);
+    if (saved) return saved;
+    const result = await draw(record, visual);
+    if (result?.dataUrl && !result.degraded) {
+      // Persist off the critical rendering path. If IndexedDB is unavailable,
+      // continue normally with the existing bounded memory cache.
+      const persist = () => { saveThumbnail(key, result).catch(() => {}); };
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(persist, { timeout: 1500 });
+      else setTimeout(persist, 50);
+    }
+    return result;
+  }).catch(error => {
     console.warn('[collection] archived preview failed', error);
     return null;
   });
@@ -116,6 +131,7 @@ export function collectionStageStats() {
     cachedImages: imageCache.size,
     inFlight: inFlight.size,
     canvases: document.querySelectorAll('canvas').length,
+    disk: thumbnailCacheStats(),
   };
 }
 

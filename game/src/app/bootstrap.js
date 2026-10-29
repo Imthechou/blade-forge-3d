@@ -24,9 +24,35 @@ import { $ } from '../ui/dom.js';
 import * as Home from '../ui/pages/home.js';
 import * as Forge from '../ui/pages/forge.js';
 import * as Appraise from '../ui/pages/appraise.js';
-import * as Arena from '../ui/pages/arena.js';
-import * as Workshop from '../ui/pages/workshop.js';
-import * as Daily from '../ui/pages/daily.js';
+// Secondary modules load on first visit instead of blocking the home route.
+function lazyPage(load, { initialize = false } = {}) {
+  let page = null;
+  let pending = null;
+  const ready = () => pending || (pending = load().then(mod => {
+    page = mod;
+    if (initialize) page.create?.();
+    return page;
+  }).catch(error => { pending = null; console.warn('[route] lazy page failed', error); throw error; }));
+  return {
+    render() {
+      if (page) { page.render?.(); return; }
+      const key = router.currentKey();
+      ready().then(mod => {
+        if (router.currentKey() === key) mod.render?.();
+      }).catch(() => {
+        if (router.currentKey() === key) {
+          const host = document.querySelector('.page[data-page="' + key + '"]');
+          if (host) host.textContent = '页面加载失败，请返回后重试';
+        }
+      });
+    },
+    leave() { page?.leave?.(); },
+    enter() { page?.enter?.(); },
+  };
+}
+const Arena = lazyPage(() => import('../ui/pages/arena.js'));
+const Workshop = lazyPage(() => import('../ui/pages/workshop.js'), { initialize: true });
+const Daily = lazyPage(() => import('../ui/pages/daily.js'), { initialize: true });
 
 const boot = { note: null, root: null };
 
@@ -76,8 +102,6 @@ async function main() {
   Home.create();
   Forge.create();
   Appraise.create();
-  Workshop.create();
-  Daily.create();
 
   // ③ 渲染门面挂载
   setNote('正在装填锻造台…');

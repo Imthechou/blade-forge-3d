@@ -33,7 +33,7 @@
 const TM_NONE = 0;
 const TM_ACES = 1;
 
-let cache = null;        // Map<key, { linear, out, quad, uniforms }>
+let cache = null;        // Map<WebGLRenderer, Map<size, pipeline>>; GPU contexts never share RTs
 let canvas2d = null;
 let warnedMode = null;
 
@@ -88,8 +88,10 @@ function modeOf(THREE, renderer) {
 
 function ensurePipeline(THREE, renderer, w, h) {
   if (!cache) cache = new Map();
+  let contexts = cache.get(renderer);
+  if (!contexts) { contexts = new Map(); cache.set(renderer, contexts); }
   const key = w + 'x' + h;
-  const hit = cache.get(key);
+  const hit = contexts.get(key);
   if (hit) return hit;
 
   const isGL2 = renderer.capabilities ? renderer.capabilities.isWebGL2 !== false : true;
@@ -141,7 +143,7 @@ function ensurePipeline(THREE, renderer, w, h) {
   scene.add(quad);
 
   const entry = { linear, out, uniforms, scene, camera, material, geometry };
-  cache.set(key, entry);
+  contexts.set(key, entry);
   return entry;
 }
 
@@ -217,25 +219,30 @@ export function captureToDataURL(viewer, w, h, opts = {}) {
   }
 }
 
-/** 上下文丢失后调用：旧 RT 作废。 */
-export function invalidateCaptureTargets() {
+/** Release only the owning renderer's GPU render targets on dispose/context loss. */
+export function invalidateCaptureTargets(renderer = null) {
   if (!cache) return;
-  for (const e of cache.values()) {
-    try { e.linear.dispose(); } catch (_) { /* ignore */ }
-    try { e.out.dispose(); } catch (_) { /* ignore */ }
-    try { e.material.dispose(); } catch (_) { /* ignore */ }
-    try { e.geometry.dispose(); } catch (_) { /* ignore */ }
+  const targets = renderer ? [[renderer, cache.get(renderer)]] : [...cache.entries()];
+  for (const [owner, contexts] of targets) {
+    if (!contexts) continue;
+    for (const entry of contexts.values()) {
+      for (const resource of [entry.linear, entry.out, entry.material, entry.geometry]) {
+        try { resource?.dispose(); } catch (_) { /* renderer may have lost context */ }
+      }
+    }
+    cache.delete(owner);
   }
-  cache.clear();
 }
 
-/** 诊断：缓存了哪些尺寸 / 当前色调映射模式。 */
-export function captureStats() {
+/** Diagnostic cache summary, optionally scoped to one WebGL renderer. */
+export function captureStats(renderer = null) {
+  const contexts = renderer ? cache?.get(renderer) : cache?.values().next().value;
+  const entry = contexts?.values().next().value;
   const THREE = globalThis.THREE;
-  const e = cache && cache.values().next().value;
   return {
-    sizes: cache ? [...cache.keys()] : [],
-    mode: e && THREE ? (e.uniforms.uMode.value === TM_ACES ? 'aces' : 'none') : null,
+    sizes: contexts ? [...contexts.keys()] : [],
+    contexts: cache?.size || 0,
+    mode: entry && THREE ? (entry.uniforms.uMode.value === TM_ACES ? 'aces' : 'none') : null,
     canvas: canvas2d ? [canvas2d.width, canvas2d.height] : null,
   };
 }

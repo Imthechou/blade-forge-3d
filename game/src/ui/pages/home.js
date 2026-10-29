@@ -4,7 +4,6 @@ import { ICONS } from '../components.js';
 import * as Progress from '../../core/progress.js';
 import Game from '../../app/game.js';
 import router from '../router.js';
-import * as Workshop from './workshop.js';
 import { getStage } from '../../render/index.js';
 import { createStageInspect } from '../stageControls.js';
 
@@ -15,8 +14,8 @@ let root, body, stageHost;
 let inspectCtl = null;
 const ENTRIES = [
   { label: '赛事', icon: 'arena', go: () => router.go('arena') },
-  { label: '藏刀阁', icon: 'collection', go: () => Workshop.openTab('collection') },
-  { label: '工坊', icon: 'workshop', go: () => Workshop.openTab('bonuses') },
+  { label: '藏刀阁', icon: 'collection', go: () => import('./workshop.js').then(m => m.openTab('collection')) },
+  { label: '工坊', icon: 'workshop', go: () => import('./workshop.js').then(m => m.openTab('bonuses')) },
 ];
 
 export function create() {
