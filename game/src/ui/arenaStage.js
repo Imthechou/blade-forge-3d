@@ -383,7 +383,7 @@ function targetMetrics(w, h, stream = false, structure = false) {
   const unit = structure ? Math.min(w*.23,h*.21,96)
     : stream ? Math.min(w*.18,h*.165,72) : Math.min(w*.19,h*.21,82);
   return {unit,half:unit*.5,bodyW:unit*.94,
-    bodyH:Math.min(unit*1.48,h*(stream?.15:structure?.195:.21))};
+    bodyH:Math.min(unit*1.48,h*(stream ? .15 : structure ? .195 : .21))};
 }
 
 function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY, reduced = false, age = 1) {
