@@ -3,12 +3,12 @@
  * 顿帧采用短时间「物体压缩保持」，不是阻塞 JS/RAF，更不会卡住触控输入。
  */
 export const IMPACT_PRESETS=Object.freeze({
-  foam:   Object.freeze({weight:.20,hold:16,recoil:1.6,shake:.24,particles:3,sound:'soft'}),
-  rope:   Object.freeze({weight:.31,hold:22,recoil:2.0,shake:.38,particles:5,sound:'fiber'}),
-  wood:   Object.freeze({weight:.59,hold:36,recoil:3.4,shake:.65,particles:8,sound:'wood'}),
-  plastic:Object.freeze({weight:.69,hold:41,recoil:4.0,shake:.80,particles:9,sound:'plastic'}),
-  ice:    Object.freeze({weight:.77,hold:44,recoil:4.8,shake:.92,particles:11,sound:'ice'}),
-  metal:  Object.freeze({weight:1.00,hold:58,recoil:5.8,shake:1.0,particles:13,sound:'metal'}),
+  foam:   Object.freeze({weight:.20,hold:12,recoil:1.4,shake:.10,particles:1,sound:'soft'}),
+  rope:   Object.freeze({weight:.31,hold:16,recoil:1.8,shake:.16,particles:2,sound:'fiber'}),
+  wood:   Object.freeze({weight:.59,hold:28,recoil:3.0,shake:.26,particles:3,sound:'wood'}),
+  plastic:Object.freeze({weight:.69,hold:32,recoil:3.4,shake:.30,particles:3,sound:'plastic'}),
+  ice:    Object.freeze({weight:.77,hold:36,recoil:4.0,shake:.35,particles:4,sound:'ice'}),
+  metal:  Object.freeze({weight:1.00,hold:46,recoil:4.8,shake:.42,particles:3,sound:'metal'}),
 });
 const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
 export function cutImpact(hit,{reducedMotion=false}={}) {
@@ -27,8 +27,8 @@ export function cutImpact(hit,{reducedMotion=false}={}) {
     holdMs:reducedMotion?0:Math.round(preset.hold*factor),
     recoilPx:reducedMotion?0:Number((preset.recoil*factor).toFixed(2)),
     shakePx:reducedMotion?0:Number((2.8*preset.shake*factor).toFixed(2)),
-    particleCount:reducedMotion?0:clamp(Math.round(preset.particles*factor),2,16),
-    flashMs:reducedMotion?55:clamp(Math.round(80+45*preset.weight),70,130),
+    particleCount:reducedMotion?0:clamp(Math.round(preset.particles*factor),0,5),
+    flashMs:reducedMotion?0:clamp(Math.round(35+20*preset.weight),35,60),
     hapticMs:clamp(Math.round((completed?9:4)+(preset.weight*(completed?19:9))),4,28),
   };
 }
