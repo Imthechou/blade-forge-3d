@@ -92,7 +92,7 @@ test('Six school rigs have distinct playable silhouettes and physical join graph
  const validKeys=new Set(['a','b','c','d','e','f']);
  for(const school of names){
    const template=STRUCTURE_TEMPLATES[school],structure=createStructure(73,school,2);
-   assert.equal(structure.version,'arena-structure-v3');
+   assert.equal(structure.version,'arena-structure-v4');
    const physical=structure.parts.filter(p=>!p.isProtected);
    assert.equal(physical.length,6);
    const keyMap=new Map(physical.map(p=>[p.key,p]));
@@ -158,4 +158,34 @@ test('Formal structure completion allows an explicit bank-or-continue choice wit
  assert.equal(result.score,points,'player banks already earned score, with no fabricated bonus');
  assert.equal(result.structure.completed,true);
  assert.equal(finish(run,'collected'),result,'cannot settle same run twice');
+});
+
+test('Five school grades require visibly different access and actual dismantling, never scaled hidden material HP',()=>{
+ for(const name of Object.keys(STRUCTURE_TEMPLATES)){
+   const [apprentice,skilled,expert,master,legend]=[0,1,2,3,4].map(rank=>createStructure(91,name,rank));
+   const get=(s,key)=>s.parts.find(p=>p.key===key);
+   assert.equal(get(apprentice,'c').coveredBy,null);
+   assert.equal(get(skilled,'c').coveredBy,'a');
+   assert.equal(get(skilled,'e').coveredBy,null);
+   assert.equal(get(expert,'e').coveredBy,'c');
+   assert.equal(apprentice.protectedId,null);
+   assert.ok(expert.protectedId);
+   assert.equal(expert.routes[0].length,3);
+   assert.equal(master.routes[0].length,4);
+   assert.equal(legend.routes[0].length,5);
+   assert.ok(master.joins.length>=expert.joins.length);
+   assert.ok(legend.joins.length>=master.joins.length);
+   for(const rank of [apprentice,skilled,expert,master,legend]){
+     assert.ok(rank.parts.filter(p=>!p.isProtected).every(p=>p.difficulty===1),
+       name+' must not secretly multiply health with rank');
+     const route=rank.routes[0];
+     for(const nodeId of route){
+       const target=rank.parts.find(p=>p.id===nodeId);
+       target.alive=false;target.progress=1;
+     }
+     updateStructure(rank,rank.parts);
+     assert.equal(rank.completed,true,name+' rank '+rank.gradient+' lost a valid finish');
+     assert.equal(rank.primary,1);
+   }
+ }
 });
