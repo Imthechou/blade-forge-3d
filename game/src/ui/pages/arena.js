@@ -1019,8 +1019,8 @@ function openChallengeHelp(stage, run) {
     el('div', { class: 'quick-choice-panel' }, [
       el('div', { class: 'quick-kicker', text: '操作说明' }),
       el('h2', { text: '按住，划过，连切' }),
-      el('p', { text: '鼠标或单指按住舞台，从目标上划过即可切割。尽量一笔串过多个靶具；手指不必抬起，划离后反向补刀可再次命中硬靶。' }),
-      el('p', { text: '开局、第15秒、第30秒各有一次同品质三选一。高级靶具更难切、刀损更高、得分更高；沿亮点和虚线入刀更有效率。' }),
+      el('p', { text: '鼠标或单指划过材料即可切割，一笔可以连续切过多个目标。自然停顿、反向回划或抬手会产生新刀次；原地微抖无效。' }),
+      el('p', { text: '快赛完整 45 秒不被强化选卡打断；硬靶可选择挑战或放过。正式赛事需要沿持续切槽拆解结构连接，刀况耗尽只结束本轮，不会损坏收藏。' }),
       el('p', { text: '得分、评级和 CR 只在完成后的战报结算。暂停不会消耗时间；按 P 或 Escape 可暂停，切到后台会自动暂停。' }),
       el('button', { class: 'quick-choice-card', type: 'button', onclick: close }, [el('b', { text: '明白，继续' })]),
     ]),
