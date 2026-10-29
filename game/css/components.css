@@ -432,3 +432,18 @@
 }
 .guide-title { font-size: var(--fs-md); font-weight: 600; }
 .guide-desc { font-size: var(--fs-xs); color: var(--face-3); line-height: 1.5; margin-top: 3px; }
+
+/* Settings retain a compact visual switch inside a full finger-sized control. */
+.set-row,.guide-item { border-color:var(--glass-border); background:var(--surface-glass); }
+.set-row { padding:14px; }
+.switch { width:52px; height:44px; border:0; background:transparent; }
+.switch::before { content:''; position:absolute; inset:9px 3px; border:1px solid var(--line-firm); border-radius:var(--r-pill); background:var(--base-3); transition:background var(--dur-fast); }
+.switch::after { top:12px; left:6px; background:var(--base-1); box-shadow:var(--shadow-1); }
+.switch.is-on { background:transparent; border:0; }
+.switch.is-on::before { background:var(--accent); border-color:var(--accent); }
+.switch.is-on::after { background:var(--base-1); }
+.seg { padding:3px; gap:3px; border-color:var(--glass-border); background:var(--surface-inset); border-radius:14px; }
+.seg-btn { min-height:44px; border:0; border-radius:10px; background:transparent; font-family:var(--font); }
+.seg-btn.is-on { background:var(--control-face); color:var(--accent); box-shadow:var(--shadow-1); }
+.range { min-height:32px; }
+.guide-desc,.set-hint { line-height:1.6; }

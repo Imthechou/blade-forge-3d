@@ -526,3 +526,22 @@
 @media(max-height:660px){
   .page[data-page="forge"] .dcard--instant .dcard-instant {gap:2px}
 }
+
+.forge-reroll { display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+.edge-simple-actions { grid-template-columns:64px minmax(0,1fr) 44px; }
+.edge-simple-actions>.btn:first-child { display:flex; align-items:center; justify-content:center; gap:6px; padding-inline:6px; }
+.stage-badge { border-radius:var(--r-md); }
+.stage-traits { border-radius:var(--r-pill); }
+
+/* On the smallest phones keep auxiliary labels away from the actual model. */
+@media(max-height:600px) and (max-width:374px) {
+  .page[data-page="forge"] { --card-h:172px; }
+  .stage-chipbar { top:8px; left:10px; right:10px; }
+  .stage-badge { padding:5px 8px; gap:5px; }
+  .stage-badge b { font-size:23px; }
+  .stage-badge span { font-size:14px; }
+  .stage-traits { position:absolute; top:0; right:0; padding-inline:8px; font-size:11px; }
+  .stage-question { max-width:100%; }
+  .page[data-page="forge"]:not(.is-hammer):not(:has(.edge-stage-canvas)) .stage-question,
+  .stage-preview { display:none; }
+}

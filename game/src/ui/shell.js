@@ -2,7 +2,7 @@
 import { el, mount, toast } from './dom.js';
 import * as Progress from '../core/progress.js';
 import router from './router.js';
-import { ICONS } from './components.js';
+import { icon } from './icons.js';
 import * as SettingsSheet from './settingsSheet.js';
 import { motion, bus, EVENTS, env } from '../platform/index.js';
 
@@ -34,10 +34,10 @@ let backEl = null;
 export function create(host) {
   if (!env.hasLocalStorage) toast('当前浏览器无法持久保存，进度仅在本次页面有效。请允许本地存储后重新打开。', 'warn', 8000);
   backEl = el('button', {
-    class: 'topbar-back', text: '←',
+    class: 'topbar-back',
     title: '返回首页', 'aria-label': '返回首页',
     onclick: () => router.go('home'),
-  });
+  }, [icon('back')]);
   backEl.hidden = true;
 
   titleEl = el('div', { class: 'topbar-title', text: TITLES.home });
@@ -54,7 +54,7 @@ export function create(host) {
       class: 'topbar-gear',
       title: '设置', 'aria-label': '设置',
       onclick: () => SettingsSheet.open(),
-    }, [ICONS.settings(false)]),
+    }, [icon('settings')]),
   ]);
 }
 

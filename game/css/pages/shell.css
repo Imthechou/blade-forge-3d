@@ -231,3 +231,16 @@
 .home-stats span { font-size: 11px; }
 .home-showcase::after { content: ''; position: absolute; left: 18%; right: 18%; bottom: 16%; height: 15%; border: 1px solid rgba(255,255,255,.8); border-radius: 50%; background: rgba(255,255,255,.12); box-shadow: 0 10px 30px rgba(91,101,169,.08); pointer-events: none; z-index: 0; }
 @media (min-width: 560px) { #app { border-inline: 1px solid var(--glass-border); } }
+
+.topbar-back,.topbar-gear { border:1px solid var(--glass-border); background:var(--surface-glass); border-radius:var(--r-pill); }
+.topbar-title { font-size:17px; letter-spacing:-.02em; }
+.topbar-cr { box-shadow:none; }
+.home-start { border-radius:var(--r-lg); }
+.home-entry-btn { transition:transform var(--dur-fast) var(--ease),background var(--dur-fast); }
+.home-entry-btn:active { transform:translateY(2px); }
+.home-stats { padding-top:12px; }
+@media(max-height:600px) {
+  .home-dashboard { gap:8px; }
+  .home-entry-btn { min-height:62px; gap:3px; }
+  .home-stats { padding-top:6px; }
+}

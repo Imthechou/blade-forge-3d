@@ -194,3 +194,11 @@
 /* Detail tabs use the same body scroll area at every screen height. */
 .ap-panels { flex:0 0 auto; min-height:100px; overflow:visible; }
 .ap-panel { height:auto; min-height:100px; overflow:visible; }
+
+.ap-actions--try { grid-template-columns:minmax(0,1fr) 94px 48px; }
+.ap-actions:not(.ap-actions--try) { grid-template-columns:minmax(0,1fr) 48px; }
+.ap-actions .ap-more { padding:8px; border-radius:var(--r-pill); }
+.ap-detail-content.card,.ap-details { background:var(--surface-glass); border-color:var(--glass-border); border-radius:var(--r-md); }
+.ap-archive-receipt { border:1px solid var(--glass-border); background:var(--surface-glass); color:var(--risk-safe); }
+.ap-tabs { padding:4px; border-radius:var(--r-md); }
+.ap-tab { font-size:13px; border-radius:12px; }

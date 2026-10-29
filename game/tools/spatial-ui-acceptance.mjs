@@ -11,7 +11,25 @@ const browser = await chromium.launch({ executablePath: browserExecutable(), hea
   args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage', '--ignore-gpu-blocklist'] });
 const report = { cases: [], errors: [], failures: [], testedAt: new Date().toISOString() };
 let current;
-async function shot(page, name) { await page.screenshot({ path: path.join(out, name + '.png'), timeout: 20000 }); }
+async function shot(page, name) {
+  // Stage changes are asynchronous. Do not accept a screenshot taken between
+  // model mounting and material compilation (previous S3/S8 evidence could be blank).
+  if (await page.locator('.page[data-page="forge"].is-active').count()) {
+    await page.evaluate(async()=>{
+      const stage=(await import('/src/render/index.js')).getStage();
+      await stage.waitForModel();
+      for(let i=0;i<3;i++) {
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        if(stage.viewer?._compilePromise) await stage.viewer._compilePromise;
+      }
+    });
+    await page.waitForFunction(async()=>{
+      const stage=(await import('/src/render/index.js')).getStage();
+      return !stage.isCompiling && !!stage.viewer?.root && stage.viewer.renderer.info.render.triangles>0;
+    },null,{timeout:90000});
+  }
+  await page.screenshot({ path: path.join(out, name + '.png'), timeout: 20000 });
+}
 async function check(name, fn) {
   try { const detail = await fn(); report.cases.push({ name, ok: true, detail }); console.log('PASS', name); }
   catch (e) { report.cases.push({ name, ok: false, error: String(e.stack) }); throw e; }
@@ -215,7 +233,12 @@ try {
         await page.locator('.ap-skip').waitFor({state:'detached',timeout:10000});
         const rec=await page.evaluate(async()=>(await import('/src/app/game.js')).default.record);
         assert.ok(rec&&!rec.fractured,'seed must complete a real blade');
+        assert.equal(rec.edge.tier,'contour');
+        assert.ok((await page.locator('.ap-stats').innerText()).includes(Math.round(rec.edge.fit*100)+'%'),'completed contour must show its measured fit');
         await fit(page,'.ap-try');await shot(page,'390-appraise');
+        await page.getByRole('button',{name:'作品操作'}).click();
+        await centered(page,'.sheet');await shot(page,'390-appraise-actions');
+        await page.keyboard.press('Escape');await page.locator('.sheet-mask').waitFor({state:'detached'});
         assert.equal(await page.locator('.ap-sec[data-step="top"] .ap-final-score').count(),1);
         assert.equal(await page.locator('.ap-stat-v.is-score').innerText(),String(rec.score));
         await page.reload();await page.waitForFunction(()=>window.__FORGE_PREP?.ready,null,{timeout:120000});

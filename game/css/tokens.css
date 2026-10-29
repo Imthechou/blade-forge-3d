@@ -34,7 +34,10 @@
  */
 
 :root {
-  --app-surface: radial-gradient(ellipse at 100% 0%, #F8DFEF88, transparent 44%), radial-gradient(ellipse at 0% 55%, #CDEFFA88, transparent 52%), linear-gradient(155deg, #F5F3FF, #EDF1FC 58%, #F6F2FC);
+  --app-surface: radial-gradient(ellipse at 100% 0%, #F8DFEF55, transparent 44%), radial-gradient(ellipse at 0% 55%, #CDEFFA66, transparent 52%), linear-gradient(155deg, #F6F5FC, #EFF3FA 58%, #F8F5FA);
+  --surface-inset: rgba(240,243,251,.65);
+  --control-face: rgba(255,255,255,.82);
+  --overlay-blur: blur(8px);
   --surface-glass: linear-gradient(135deg, rgba(255,255,255,.84), rgba(255,255,255,.48));
   --dialog-glass: linear-gradient(140deg, rgba(255,255,255,.88), rgba(242,244,255,.78));
   --dialog-scrim: rgba(48,44,86,.24);
@@ -47,7 +50,7 @@
   --showcase-base: #EDF0FF;
   --showcase-ink: #292B4B;
   --showcase-muted: #69718F;
-  --showcase-surface: radial-gradient(ellipse 60% 13% at 50% 82%, #727EC323, transparent 90%), radial-gradient(ellipse at 90% 14%, #FAD7EB99, transparent 56%), radial-gradient(ellipse at 10% 68%, #BEEEF9AA, transparent 60%), linear-gradient(145deg, #E9E5FE, #F7F7FF 48%, #DCE9FC);
+  --showcase-surface: radial-gradient(ellipse 60% 13% at 50% 82%, #727EC323, transparent 90%), radial-gradient(ellipse at 90% 14%, #FAD7EB66, transparent 56%), radial-gradient(ellipse at 10% 68%, #BEEEF977, transparent 60%), linear-gradient(145deg, #EEEBFB, #F8FAFF 48%, #E4EDF9);
   --face:   #292B4B;
   --face-2: #4C5275;
   --face-3: #69718F;
@@ -112,8 +115,8 @@
 
   /* ── 阴影（冷灰蓝投影，**禁止纯黑投影**） ───────────── */
   --shadow-1: 0 4px 14px rgba(77, 82, 154, .06);
-  --shadow-2: 0 10px 28px rgba(77, 82, 154, .10), 0 2px 6px rgba(77, 82, 154, .04);
-  --shadow-3: 0 16px 40px rgba(65, 59, 130, .16), 0 32px 90px rgba(65, 59, 130, .12);
+  --shadow-2: 0 8px 24px rgba(77, 82, 154, .08), 0 2px 6px rgba(77, 82, 154, .04);
+  --shadow-3: 0 18px 60px rgba(65, 59, 130, .17), 0 3px 12px rgba(65, 59, 130, .08);
   --shadow-cta: 0 8px 20px rgba(111, 83, 221, .26);
   /* 决策卡专用：内 hairline（inset 不触发 layout，替代双边框） */
   --card-hair:    inset 0 0 0 .5px rgba(22, 28, 35, .09);

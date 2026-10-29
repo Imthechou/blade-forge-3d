@@ -1,5 +1,6 @@
 /** 工坊：藏刀阁、成就、锻造加成与图鉴；保留长期玩法与完整检视信息。 */
 import { el, $, clear, mount, toast, sheet } from '../dom.js';
+import { icon } from '../icons.js';
 import { rarityBadge, statRail } from '../components.js';
 import { bladeCardModel, bladeCard, bladeCardDetail, compareModels } from '../bladeCard.js';
 import * as Core from '../../core/index.js';
@@ -71,10 +72,10 @@ export function render() {
       event.preventDefault();
       const index = TABS.findIndex(entry => entry.id === tab);
       const next = event.key === 'Home' ? 0 : event.key === 'End' ? TABS.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length;
-      tab = TABS[next].id; render(); tabHost.querySelector('[aria-selected="true"]')?.focus();
+      tab = TABS[next].id; root.scrollTop = 0; render(); tabHost.querySelector('[aria-selected="true"]')?.focus();
     },
     text: item.name,
-    onclick: () => { tab = item.id; render(); tabHost.querySelector('[aria-selected="true"]')?.focus({ preventScroll: true }); },
+    onclick: () => { tab = item.id; root.scrollTop = 0; render(); tabHost.querySelector('[aria-selected="true"]')?.focus({ preventScroll: true }); },
   }))); 
   body.setAttribute('aria-labelledby', `workshopTab-${tab}`);
   disconnectCollectionPreviews();
@@ -84,7 +85,10 @@ export function render() {
 
 /** 首页快捷导航可直接进入指定工坊分类。 */
 export function openTab(id) {
-  if (TABS.some((item) => item.id === id)) tab = id;
+  if (TABS.some((item) => item.id === id)) {
+    if (tab !== id && root) root.scrollTop = 0;
+    tab = id;
+  }
   router.go('workshop');
 }
 
@@ -92,22 +96,17 @@ export function openTab(id) {
 function renderCollection() {
   const list = Core.progress.collection();
   const fractures = Core.progress.fracturedList();
-  body.appendChild(el('button', {
-    class: 'card ws-fracture-entry', type: 'button',
-    'aria-haspopup': 'dialog', onclick: openFractures,
-  }, [
-    el('span', {}, [
-      el('b', { text: `断刀册 · ${fractures.length} 把` }),
-      el('span', { class: 'muted tiny', text: fractures.length ? '查看断裂记录与详情' : '暂无断刀记录' }),
-    ]),
-    el('span', { text: '查看 ›', 'aria-hidden': 'true' }),
+  body.appendChild(el('div',{class:'ws-collection-head'},[
+    el('span',{class:'muted tiny',text:`成刀 ${list.length} 把`}),
+    el('button',{
+      class:'ws-fracture-entry',type:'button','aria-haspopup':'dialog',
+      'aria-label':`断刀册，${fractures.length} 把，查看断裂记录`,onclick:openFractures,
+    },[el('span',{text:`断刀册 · ${fractures.length}`}),icon('next')]),
   ]));
   if (!list.length) {
-    body.appendChild(el('div', { class: 'card ws-empty', text: '还没有成刀。锻出第一把刀后，它会永久留在这里。' }));
+    body.appendChild(emptyCollection());
     return;
   }
-
-  body.appendChild(el('div', { class: 'section-title', text: `成刀 ${list.length} 把` }));
 
   /* ★ rework T13.4：筛选与排序控件 */
   body.appendChild(el('div', { class: 'ws-collection-controls' }, [
@@ -134,7 +133,7 @@ function renderCollection() {
         disabled: compareIds.length < 2,
         onclick: () => openCompare(),
       }),
-      el('button', { class: 'btn', type: 'button', text: '取消选择', onclick: () => { compareIds = []; render(); } }),
+      el('button', { class: 'btn btn--icon', type: 'button', 'aria-label':'取消选择', title:'取消选择', onclick: () => { compareIds = []; render(); } }, [icon('close')]),
     ]) : null,
   ].filter(Boolean)));
 
@@ -153,7 +152,7 @@ function renderCollection() {
   });
 
   if (!shown.length) {
-    body.appendChild(el('div', { class: 'card ws-empty', text: '当前筛选条件下没有成刀。' }));
+    body.appendChild(el('div', { class: 'card ws-empty' }, [icon('help'), el('b', {text:'还没有符合条件的刀'}), el('p', {class:'muted',text:'换个筛选条件，看看其他收藏。'}), el('button',{class:'btn',text:'查看全部',onclick:()=>{collectionFilter='all';render();}})]));
     return;
   }
 
@@ -223,7 +222,6 @@ function openFractures() {
   const content = el('div', { class: 'stack ws-fracture-content' });
   const archive = sheet({ title: '断刀册', body: content });
   archive.panel.classList.add('ws-fracture-sheet');
-  archive.panel.querySelector('.sheet-x').textContent = '返回工坊';
   const scroll = archive.panel.querySelector('.sheet-body');
   const title = archive.panel.querySelector('.sheet-title');
   const line = (label, value) => el('div', { class: 'report-line', text: `${label}：${value ?? '未记录'}` });
@@ -306,14 +304,21 @@ function inspect(blade) {
       el('button', {
         class: 'btn', text: '重命名',
         onclick: () => {
-          const nextName = globalThis.prompt('新的刀名', blade.bladeName || '');
-          if (nextName && Core.progress.renameBlade(blade.id, nextName)) {
-            const currentName = Core.progress.bladeById(blade.id)?.bladeName || nextName;
-            detailSheet.panel.querySelector('.sheet-title').textContent = currentName;
-            detailSheet.panel.setAttribute('aria-label', currentName);
-            previewHost.setAttribute('aria-label', `${currentName}三维档案外观`);
-            toast('已重命名'); render();
-          }
+          const input=el('input',{class:'name-input',type:'text',value:blade.bladeName||'',maxlength:'24','aria-label':'新的刀名',autocomplete:'off'});
+          const submit=el('button',{class:'btn btn--primary btn--block',type:'submit',text:'保存刀名'});
+          const form=el('form',{class:'stack',onsubmit:event=>{
+            event.preventDefault();
+            const nextName=input.value.trim();
+            if(!nextName){input.focus();return;}
+            if(!Core.progress.renameBlade(blade.id,nextName)){toast('保存失败，请重试','warn');return;}
+            const currentName=Core.progress.bladeById(blade.id)?.bladeName||nextName;
+            detailSheet.panel.querySelector('.sheet-title').textContent=currentName;
+            detailSheet.panel.setAttribute('aria-label',currentName);
+            previewHost.setAttribute('aria-label',`${currentName}三维档案外观`);
+            rename.close();toast('已重命名','good');render();
+          }},[el('label',{class:'muted tiny',text:'给这把刀一个名字，最多 24 个字符。'}),input,submit]);
+          const rename=sheet({title:'重命名',body:form});
+          requestAnimationFrame(()=>{input.focus();input.select();});
         },
       }),
     ]),
@@ -393,63 +398,60 @@ function renderAchievements() {
 }
 
 /* ── 锻造加成（rework T11） ───────────────────────────── */
+async function enterForge() {
+  if (!Game.run || Game.run.finished) Game.startForge({mode:'normal'});
+  try { await Game.prewarmCandidates(); router.go('forge'); }
+  catch (_) { toast('工艺准备未完成，请重试','warn'); }
+}
+
+function emptyCollection() {
+  return el('section', {class:'card ws-empty'}, [
+    icon('spark'), el('b',{text:'为第一把刀留个位置'}),
+    el('p',{class:'muted',text:'完成十道工序，作品与工艺会自动保存在这里。'}),
+    el('button',{class:'btn btn--primary',text:Game.run && !Game.run.finished ? '继续锻刀' : '开始锻刀',onclick:enterForge}),
+  ]);
+}
+
 function renderBonuses() {
   const state = Core.progress.get();
   const view = Core.progress.forgeBonusView();
-
-  /* ★ rework T11：这不是说明页，而是可装备的单槽选择。
-     只能装一项；已解锁/未解锁条件直接写出来；开锻后就不能再换。 */
-  body.appendChild(el('div', { class: 'card' }, [
-    el('div', { class: 'section-title', text: '开锻前装备（单槽）' }),
-    el('div', { class: 'report-line', text: view.equipped
-      ? `已装备：${view.equipped.name} —— ${view.equipped.desc}`
-      : '尚未装备任何加成。装备一项后，下一次普通开锻生效。' }),
-    el('div', { class: 'report-line muted', text: '· 一次只能装一项，进入 S1 后锁定，本局中途不能更换' }),
-    el('div', { class: 'report-line muted', text: '· 限制的是每局机会，不是反复付费维持；解锁后永久拥有' }),
-    el('div', { class: 'report-line muted', text: '· 不做永久基础六维加点，也不是研究树' }),
+  body.appendChild(el('header',{class:'ws-heading'},[
+    el('span',{class:'ws-eyebrow',text:'开锻准备'}),
+    el('h2',{text:'让下一把刀，更多一种可能'}),
+    el('p',{text:'选择一项加成，下一次普通锻造生效。永久解锁，每局可用一次。'}),
   ]));
-
-  body.appendChild(el('div', { class: 'card' }, [
-    el('div', { class: 'section-title', text: '可装备加成' }),
-    ...view.list.map((b) => {
-      const equipped = view.equippedId === b.id;
-      const btn = el('button', {
-        class: 'btn' + (equipped ? ' btn--primary' : ''),
-        disabled: !b.unlocked,
-        'aria-pressed': String(equipped),
-        text: equipped ? '已装备' : b.unlocked ? '装备' : '未解锁',
-        onclick: () => {
-          const r = Core.progress.equipForgeBonus(equipped ? null : b.id);
-          if (!r?.ok) { toast(r?.reason || '装备失败', 'warn'); return; }
-          toast(equipped ? '已卸下加成' : `已装备：${b.name}`, 'good');
-          render();
-        },
-      });
-      return el('div', { class: 'report-line' }, [
-        el('div', {}, [
-          el('b', { text: `${b.icon || '·'} ${b.name}` }),
-          el('div', { class: 'muted tiny', text: b.desc }),
-          el('div', { class: 'muted tiny', text: b.detail }),
-          el('div', { class: 'muted tiny', text: b.unlocked
-            ? `已解锁 · 每局 ${b.usesPerRun} 次`
-            : `解锁条件：${b.unlockText}${Number.isFinite(b.have) ? `（当前 ${b.have}/${b.need}）` : ''}` }),
-        ]),
-        btn,
-      ]);
-    }),
+  body.appendChild(el('div',{class:'ws-bonus-list'},view.list.map(b=>{
+    const equipped = view.equippedId === b.id;
+    return el('button',{
+      class:'ws-bonus'+(equipped?' is-equipped':''), type:'button',
+      disabled:!b.unlocked, 'aria-pressed':String(equipped),
+      'aria-label':b.name+(equipped?'，已装备，点击卸下':b.unlocked?'，点击装备':'，未解锁'),
+      onclick:()=>{
+        const result=Core.progress.equipForgeBonus(equipped?null:b.id);
+        if(!result?.ok){toast(result?.reason||'装备失败','warn');return;}
+        toast(equipped?'已卸下加成':`已装备：${b.name}`,'good');render();
+      },
+    },[
+      el('span',{class:'ws-bonus-icon'},[icon(b.id==='extra_reroll'?'refresh':'spark')]),
+      el('span',{class:'ws-bonus-copy'},[
+        el('b',{text:b.name}),el('span',{text:b.desc.replace('开锻前装备：','')}),
+        el('small',{text:b.unlocked?`每局 ${b.usesPerRun} 次 · 已解锁`:`解锁条件：${b.unlockText}`}),
+      ]),
+      el('span',{class:'ws-bonus-check','aria-hidden':'true'},[equipped?icon('check'):icon('next')]),
+    ]);
+  })));
+  body.appendChild(el('div',{class:'card ws-bonus-summary'},[
+    el('b',{text:view.equipped?`已装备 · ${view.equipped.name}`:'本次未装备加成'}),
+    el('p',{text:'进入 S1 后锁定，本局中途无法更换。已开始的锻造沿用开局选择。'}),
+    el('button',{class:'btn btn--primary btn--block',text:Game.run && !Game.run.finished?'继续当前锻造':'开始锻刀',onclick:enterForge}),
   ]));
-
-  body.appendChild(el('div', { class: 'card' }, [
-    el('div', { class: 'section-title', text: '已解锁内容' }),
-    el('div', { class: 'report-line', text: `永久解锁卡牌：${(state.unlockedCardIds || []).length} 张` }),
-    el('div', { class: 'report-line', text: `称号：${(state.unlockedTitles || []).join('、') || '无'}` }),
-    el('div', { class: 'report-line', text: `刃线外观：${(state.unlockedEdgeSkins || []).join('、') || '无'}` }),
-  ]));
-
-  body.appendChild(el('div', { class: 'card' }, [
-    el('div', { class: 'section-title', text: '本轮的边界' }),
-    el('div', { class: 'report-line muted', text: '· 风险干预类加成尚未开放：需要先定好它与基础 Risk 曲线的关系与上限' }),
-    el('div', { class: 'report-line muted', text: '· 收藏数量不直接转换为无限叠加战力' }),
+  body.appendChild(el('details',{class:'codex-group'},[
+    el('summary',{text:'已解锁内容'}),
+    el('div',{class:'ws-unlocks'},[
+      el('div',{class:'report-line',text:`永久解锁卡牌 ${(state.unlockedCardIds||[]).length} 张`}),
+      el('div',{class:'report-line',text:`称号 ${(state.unlockedTitles||[]).join('、')||'暂未获得'}`}),
+      el('div',{class:'report-line',text:`刃线外观 ${(state.unlockedEdgeSkins||[]).join('、')||'暂未获得'}`}),
+    ]),
   ]));
 }
 
@@ -486,8 +488,9 @@ function renderCodex() {
     placeholder: '搜索已发现内容 / 线索',
     'aria-label': '搜索图鉴',
     value: codexQuery,
-    oninput: (e) => { codexQuery = e.target.value; renderCodexList(); },
+    oninput: (e) => { codexQuery = e.target.value; clearSearch.hidden = !codexQuery && !codexOnlyMissing; renderCodexList(); },
   });
+  const clearSearch=el('button',{class:'chip codex-clear',type:'button','aria-label':'清除搜索与筛选',title:'清除搜索与筛选',hidden:!codexQuery&&!codexOnlyMissing,onclick:()=>{codexQuery='';codexOnlyMissing=false;render();body.querySelector('.codex-search')?.focus();}},[icon('close')]);
   body.appendChild(el('div', { class: 'ws-collection-controls' }, [
     searchInput,
     el('div', { class: 'ws-control-row', role: 'group', 'aria-label': '筛选' }, [
@@ -496,10 +499,7 @@ function renderCodex() {
         'aria-pressed': String(codexOnlyMissing), text: '只看未发现',
         onclick: () => { codexOnlyMissing = !codexOnlyMissing; render(); },
       }),
-      codexQuery || codexOnlyMissing ? el('button', {
-        class: 'chip', type: 'button', text: '清除',
-        onclick: () => { codexQuery = ''; codexOnlyMissing = false; render(); },
-      }) : null,
+      clearSearch,
     ].filter(Boolean)),
   ]));
 

@@ -6,6 +6,7 @@
  */
 
 import { motion } from '../platform/index.js';
+import { icon } from './icons.js';
 
 /**
  * 建节点。
@@ -102,18 +103,8 @@ export function toast(message, tone = 'info', ms = 2200) {
 /** 居中玻璃弹窗：焦点约束、Esc 关闭与返回触发器。 */
 export function sheet({ title, body, onClose }) {
   const trigger = document.activeElement;
-  const cross=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  cross.setAttribute('viewBox','0 0 24 24');
-  cross.setAttribute('aria-hidden','true');
-  cross.setAttribute('focusable','false');
-  cross.setAttribute('class','sheet-x-icon');
-  const crossPath=document.createElementNS('http://www.w3.org/2000/svg','path');
-  crossPath.setAttribute('d','M5.5 5.5 18.5 18.5 M18.5 5.5 5.5 18.5');
-  crossPath.setAttribute('fill','none');
-  crossPath.setAttribute('stroke','currentColor');
-  crossPath.setAttribute('stroke-width','2');
-  crossPath.setAttribute('stroke-linecap','round');
-  cross.appendChild(crossPath);
+  const cross = icon('close');
+  cross.classList.add('sheet-x-icon');
   const mask = el('div', { class: 'sheet-mask' });
   const panel = el('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '详情' }, [
     el('div', { class: 'sheet-head' }, [

@@ -7,6 +7,7 @@
 
 import { el, $, clear, mount, toast, sheet } from '../dom.js';
 import { riskBar, statGrid, decisionCard, traitItem, rarityBadge } from '../components.js';
+import { icon } from '../icons.js';
 import { cardDoodle, doodleSpec } from '../cardDoodles.js';
 import { STAGES } from '../../data/stages.js';
 import { HAMMER_TIERS } from '../../data/balance.js';
@@ -306,7 +307,7 @@ function renderSelect(body, run) {
   // every tap discarded keyboard focus and restarted the tactile transition.
   let mountedCards = '';
   let readinessKey = '';
-  const rerollButton = el('button', { class: 'btn', onclick: () => {
+  const rerollButton = el('button', { class: 'btn forge-reroll', onclick: () => {
     const r = Game.reroll();
     if (!r || !r.ok) { toast((r && r.reason) || '无法重铸', 'warn'); return; }
     toast(r.cost === 0 ? '本阶段首次重铸免费' : `已重铸，花费 ${r.cost} CR`);
@@ -373,7 +374,8 @@ function renderSelect(body, run) {
       node.classList.toggle('is-picked', selected);
       node.setAttribute('aria-pressed', String(selected));
     }
-    rerollButton.textContent = `重铸 ${rerollCostText()}`;
+    rerollButton.setAttribute('aria-label', `重铸 ${rerollCostText()}`);
+    rerollButton.replaceChildren(icon('refresh'), el('span',{text:rerollCostText()}));
     confirmButton.textContent = pickedCard ? '确认工艺 →' : '选择工艺卡';
     confirmButton.disabled = !pickedCard;
     selectionStatus.classList.toggle('has-selection', !!pickedCard);
