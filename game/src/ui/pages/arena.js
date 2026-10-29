@@ -1654,14 +1654,14 @@ function renderApexReport() {
       ...((r.report?.lines || []).map((line) => el('p', { class: 'arena-note', text: line }))),
       el('p', { class: 'arena-note', text: '本场仅消耗局内刀况，不影响永久藏刀；三刀按赛前顺序出战，通关或确认退出后写入荣誉记录。' }),
     ]),
-    saveFail ? el('p', { class: 'arena-note', text: r.win ? '冠军记录正在写入，保存失败可重试。' : '本届尚未领奖，可用相同种子补考已完成轮次。' }) : null,
+    saveFail ? el('p', { class: 'arena-note', text: '本届成绩尚未领奖；可按固定顺序和种子补考，历史最佳成绩不降低。' }) : null,
     el('div', { class: 'quick-report-actions' }, [
-      saveFail && r.win ? el('button', { class: 'btn btn--primary', text: '重试保存', onclick: () => { const x = Game.retryApexSave?.(); if (!x?.ok) toast(x?.reason || '保存仍然失败', 'warn'); render(); } }) : null,
-      ...(!m.settled && !r.win ? m.rounds.map((round,i)=>el('button',{
+      
+      ...(!m.settled ? m.rounds.map((round,i)=>el('button',{
         class:'btn',text:'补考第 '+(i+1)+' 轮（保留最佳合法成绩）',
         onclick:()=>{const x=Game.retryApexRound(i);if(!x?.ok)toast(x?.reason||'无法补考','warn');render();}
       })) : []),
-      !m.settled && !r.win ? el('button',{class:'btn btn--primary',text:'确认本届成绩并结算',
+      !m.settled ? el('button',{class:'btn btn--primary',text:'确认本届成绩并领奖',
         onclick:()=>{const x=Game.finishApexCareer();if(!x?.ok)toast(x?.reason||'保存失败','warn');render();}}):null,
       m.settled ? el('button', { class: 'btn btn--primary', text: '再来一场', onclick: () => { Game.clearApexMatch(); render(); } }) : null,
       m.settled ? el('button', { class: 'btn', text: '回首页', onclick: () => { Game.clearApexMatch(); router.go('home'); } }) : null,
