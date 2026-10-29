@@ -10,7 +10,7 @@ import {materialSample,sampleBlade,simulateMatch} from '../tools/arena-v3-simula
 function run(buffs=[],mean=100){return C.createChallenge(sampleBlade(mean),{mode:'formal',seed:42,buffs,augments:false}).run;}
 function target(type='metal',patch={}){return {id:'t',type,x:.5,y:.5,progress:0,armorLeft:C.MATERIALS[type].armor*.6,alive:true,cuts:[],variation:.03,...patch};}
 function hit(r,t,angle=C.MATERIALS[t.type].angle){r.targets=[t];C.beginSwipe(r);return C.swipe(r,{x:t.x-Math.cos(angle)*.2,y:t.y-Math.sin(angle)*.2},{x:t.x+Math.cos(angle)*.2,y:t.y+Math.sin(angle)*.2},{duration:.18});}
-const payload=(score,duration=70)=>({measure:1,detail:{source:'arenaChallenge',score,duration}});
+const payload=(score,duration=70)=>({measure:1,detail:{source:'arenaChallenge',score,duration,structure:{completed:score>0,primary:score>0?1:0}}});
 
 test('正式材料 400 个固定手势校准：低阶泡棉补刀和高阶结构差异可验证',()=>{
   const f=materialSample(60,'foam');assert.ok(f.firstCutRate>=.45&&f.firstCutRate<=.55,JSON.stringify(f));
