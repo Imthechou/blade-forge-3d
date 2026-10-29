@@ -123,90 +123,149 @@ function drawBackdrop(ctx, w, h, stream = false) {
 }
 
 /** 缓存层：墙、拉丝、夹具导轨、台沿。每帧只画一次 drawImage。 */
-function paintBackdrop(ctx, w, h, stream = false) {
-  /* 钢釉浅色底：与 app 的纸面同一套（白 → 冷灰），不再是深色测试舱 */
-  const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0, '#F2EDFF');
-  bg.addColorStop(.42, '#F5F6FF');
-  bg.addColorStop(.78, '#E7F3FC');
-  bg.addColorStop(1, '#DFE7F8');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
-
-  /* 台面 = 一张白色样卡：1px 冷灰描边 + 冷调投影，和 app 里的 .card 同语言 */
-  const panelX = w * .035, panelY = h * .02, panelW = w * .93, panelH = h * .9;
-  ctx.save();
-  ctx.shadowColor = 'rgba(23,52,75,.10)';
-  ctx.shadowBlur = Math.max(10, w * .035);
-  ctx.shadowOffsetY = Math.max(2, h * .004);
-  ctx.fillStyle = 'rgba(255,255,255,.60)';
-  roundedRect(ctx, panelX, panelY, panelW, panelH, w * .035); ctx.fill();
+/* The foreground material atlas stays intact; only its card-style setting changes. */
+const SPECIMEN=Object.freeze({
+  rope:{paper:'#FFF1D9',ink:'#BD8050',pop:'#F3BE76',soft:'#FFFAEF'},
+  foam:{paper:'#D9F7E9',ink:'#278D7D',pop:'#76D8B9',soft:'#F2FFF9'},
+  wood:{paper:'#FFE5CF',ink:'#B97556',pop:'#E6A67B',soft:'#FFF8EF'},
+  plastic:{paper:'#E9E2FF',ink:'#7965BC',pop:'#B9A4F2',soft:'#FBF8FF'},
+  ice:{paper:'#DBF1FF',ink:'#408FC3',pop:'#9BDDF4',soft:'#F5FCFF'},
+  metal:{paper:'#E1E7F9',ink:'#596F9D',pop:'#F0B18C',soft:'#F8F9FF'},
+});
+function sketchStar(ctx,x,y,r,color,width=2,rotation=0){
+  ctx.save();ctx.translate(x,y);ctx.rotate(rotation);
+  ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.beginPath();ctx.moveTo(0,-r);ctx.quadraticCurveTo(r*.19,-r*.19,r,0);
+  ctx.quadraticCurveTo(r*.19,r*.19,0,r);ctx.quadraticCurveTo(-r*.19,r*.19,-r,0);
+  ctx.quadraticCurveTo(-r*.19,-r*.19,0,-r);ctx.stroke();ctx.restore();
+}
+function sketchLoop(ctx,x,y,r,color,width=1.8){
+  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';
+  ctx.beginPath();ctx.ellipse(x,y,r,r*.68,-.23,.15,Math.PI*1.75);ctx.stroke();
+  ctx.fillStyle=color;ctx.beginPath();ctx.arc(x+r*.94,y-r*.39,Math.max(1.2,r*.07),0,TAU);
+  ctx.fill();ctx.restore();
+}
+/** One cached pastel glass arena, with ink accents kept out of the touch area. */
+function paintBackdrop(ctx,w,h,stream=false){
+  const bg=ctx.createLinearGradient(0,0,w,h);
+  bg.addColorStop(0,'#F2E7FF');bg.addColorStop(.47,'#F7F4FF');
+  bg.addColorStop(.76,'#E6F7F8');bg.addColorStop(1,'#E4EAFE');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+  ctx.save();ctx.globalAlpha=.78;
+  ctx.fillStyle='#E3D2FF';ctx.beginPath();ctx.ellipse(-w*.09,h*.16,w*.36,h*.26,-.45,0,TAU);ctx.fill();
+  ctx.fillStyle='#C8F2E7';ctx.beginPath();ctx.ellipse(w*1.03,h*.72,w*.36,h*.33,.24,0,TAU);ctx.fill();
+  ctx.fillStyle='#FFE1D1';ctx.beginPath();ctx.ellipse(w*.1,h*.86,w*.25,h*.19,.14,0,TAU);ctx.fill();
   ctx.restore();
-
-  ctx.save();
-  roundedRect(ctx, panelX, panelY, panelW, panelH, w * .035); ctx.clip();
-  // 竖向拉丝：极淡的冷灰线，给白面一点织理
-  ctx.strokeStyle = 'rgba(23,52,75,.028)';
-  ctx.lineWidth = 1;
-  for (let x = panelX; x < panelX + panelW; x += Math.max(5, w * .013)) {
-    ctx.beginPath(); ctx.moveTo(x, panelY); ctx.lineTo(x, panelY + panelH); ctx.stroke();
+  const px=w*.035,py=h*.025,pw=w*.93,ph=h*.895,r=Math.min(26,w*.055);
+  ctx.save();ctx.shadowColor='rgba(80,75,142,.16)';ctx.shadowBlur=24;ctx.shadowOffsetY=9;
+  ctx.fillStyle='rgba(255,255,255,.76)';
+  roundedRect(ctx,px,py,pw,ph,r);ctx.fill();ctx.restore();
+  ctx.save();roundedRect(ctx,px,py,pw,ph,r);ctx.clip();
+  const pane=ctx.createLinearGradient(0,py,0,py+ph);
+  pane.addColorStop(0,'rgba(255,255,255,.91)');
+  pane.addColorStop(.44,'rgba(245,244,255,.68)');
+  pane.addColorStop(1,'rgba(232,248,250,.78)');
+  ctx.fillStyle=pane;ctx.fillRect(px,py,pw,ph);
+  for(const [sx,sw,c] of [[.11,.18,'#A88BE9'],[.40,.15,'#6DCDBE'],[.70,.18,'#E9AB8B']]){
+    ctx.fillStyle=c;roundedRect(ctx,px+pw*sx,py,w*sw,5,3);ctx.fill();
   }
-  const sheen = ctx.createLinearGradient(0, panelY, 0, panelY + panelH * .52);
-  sheen.addColorStop(0, 'rgba(255,255,255,.95)');
-  sheen.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = sheen;
-  ctx.fillRect(panelX, panelY, panelW, panelH * .52);
+  ctx.fillStyle='rgba(119,105,170,.10)';
+  const step=Math.max(12,w*.043);
+  for(let x=px+step*.65;x<px+pw-step*.5;x+=step){
+    if(x>w*.23&&x<w*.78)continue;
+    for(let y=py+h*.17;y<py+ph-h*.06;y+=step){
+      ctx.beginPath();ctx.arc(x,y,Math.max(.7,w*.0022),0,TAU);ctx.fill();
+    }
+  }
+  const rows=stream?[.34,.52,.70]:[.52,.42,.62];
+  rows.forEach((yy,i)=>{
+    const y=h*yy-Math.min(w*.16,h*.16,62)*.85;
+    ctx.strokeStyle=i===0?'rgba(143,108,207,.16)':'rgba(67,165,164,.14)';
+    ctx.lineWidth=1.5;ctx.setLineDash([5,9]);ctx.beginPath();
+    ctx.moveTo(px+19,y);ctx.lineTo(px+pw-19,y);ctx.stroke();ctx.setLineDash([]);
+  });
   ctx.restore();
-
-  ctx.strokeStyle = 'rgba(23,52,75,.12)';
-  ctx.lineWidth = 1;
-  roundedRect(ctx, panelX, panelY, panelW, panelH, w * .035); ctx.stroke();
-
-  const rivet = Math.max(2, w * .005);
-  ctx.fillStyle = 'rgba(23,52,75,.13)';
-  for (const [rx, ry] of [[panelX + w * .022, panelY + w * .022], [panelX + panelW - w * .022, panelY + w * .022],
-    [panelX + w * .022, panelY + panelH - w * .022], [panelX + panelW - w * .022, panelY + panelH - w * .022]]) {
-    ctx.beginPath(); ctx.arc(rx, ry, rivet, 0, TAU); ctx.fill();
+  ctx.strokeStyle='rgba(136,116,194,.33)';ctx.lineWidth=1.2;
+  roundedRect(ctx,px,py,pw,ph,r);ctx.stroke();
+  sketchStar(ctx,w*.12,h*.14,Math.min(w*.024,10),'#A38ADC',2,-.13);
+  sketchStar(ctx,w*.88,h*.225,Math.min(w*.016,7),'#EBAB8F',1.8,.15);
+  sketchStar(ctx,w*.82,h*.795,Math.min(w*.025,10),'#65BEB1',2,.13);
+  sketchLoop(ctx,w*.16,h*.77,Math.min(w*.055,19),'rgba(145,121,201,.44)');
+  sketchLoop(ctx,w*.83,h*.105,Math.min(w*.033,14),'rgba(82,176,168,.42)');
+  // Faint hand-drawn slash ribbons use the quiet lower half as breathing room.
+  // Kept behind real targets and deliberately low contrast for later waves.
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.strokeStyle='rgba(139,107,201,.14)';ctx.lineWidth=Math.max(3,w*.011);
+  ctx.beginPath();ctx.moveTo(w*.23,h*.83);
+  ctx.bezierCurveTo(w*.35,h*.73,w*.56,h*.79,w*.76,h*.65);ctx.stroke();
+  ctx.strokeStyle='rgba(77,187,174,.17)';ctx.lineWidth=Math.max(2,w*.006);
+  ctx.beginPath();ctx.moveTo(w*.28,h*.87);
+  ctx.bezierCurveTo(w*.44,h*.77,w*.58,h*.84,w*.79,h*.72);ctx.stroke();
+  ctx.strokeStyle='rgba(230,167,132,.23)';ctx.lineWidth=Math.max(2,w*.006);
+  ctx.beginPath();ctx.moveTo(w*.38,h*.85);ctx.quadraticCurveTo(w*.57,h*.76,w*.69,h*.79);ctx.stroke();
+  ctx.restore();
+  sketchStar(ctx,w*.71,h*.685,Math.min(11,w*.029),'rgba(147,122,205,.37)',2,.25);
+  const benchY=h*.92,bench=ctx.createLinearGradient(0,benchY,0,h);
+  bench.addColorStop(0,'rgba(255,255,255,.94)');bench.addColorStop(1,'#D7D7F0');
+  ctx.fillStyle=bench;ctx.fillRect(0,benchY,w,h-benchY);
+  ctx.fillStyle='#BFAAE8';ctx.fillRect(w*.035,benchY,w*.28,3);
+  ctx.fillStyle='#87D9C3';ctx.fillRect(w*.325,benchY,w*.37,3);
+  ctx.fillStyle='#E9B491';ctx.fillRect(w*.705,benchY,w*.26,3);
+}
+/** Tiny identity sticker per material, drawn outside the photo's central silhouette. */
+function drawMaterialMark(ctx,type,x,y,u,color){
+  ctx.save();ctx.translate(x,y);ctx.strokeStyle=color;ctx.fillStyle=color;
+  ctx.lineWidth=Math.max(1.4,u*.031);ctx.lineJoin='round';ctx.lineCap='round';
+  const r=Math.max(4,u*.11);
+  ctx.beginPath();
+  if(type==='rope'){
+    ctx.ellipse(0,0,r*.73,r*.45,-.4,0,TAU);ctx.moveTo(-r*.4,r*.62);ctx.lineTo(r*.48,-r*.62);
+  }else if(type==='foam'){
+    ctx.arc(-r*.35,r*.16,r*.43,0,TAU);ctx.moveTo(r*.4-r*.34,-r*.36);
+    ctx.arc(r*.4,-r*.36,r*.34,0,TAU);ctx.moveTo(r*.42+r*.19,r*.45);
+    ctx.arc(r*.42,r*.45,r*.19,0,TAU);
+  }else if(type==='wood'){
+    ctx.moveTo(-r*.5,r*.7);ctx.quadraticCurveTo(.4*r,-.25*r,r*.55,-r*.7);
+    ctx.moveTo(0,0);ctx.quadraticCurveTo(-r,-r*.5,-r*.65,-r*.8);
+    ctx.quadraticCurveTo(r*.08,-r*.74,0,0);
+  }else if(type==='plastic'){
+    ctx.moveTo(0,-r);ctx.lineTo(r,0);ctx.lineTo(0,r);ctx.lineTo(-r,0);ctx.closePath();
+    ctx.moveTo(-r*.42,0);ctx.lineTo(r*.45,0);
+  }else if(type==='ice'){
+    for(let i=0;i<3;i++){
+      const a=i*Math.PI/3;ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+      ctx.lineTo(-Math.cos(a)*r,-Math.sin(a)*r);
+    }
+  }else{
+    ctx.moveTo(-r*.2,-r);ctx.lineTo(r*.62,-r*.25);ctx.lineTo(0,0);
+    ctx.lineTo(r*.42,r*.22);ctx.lineTo(-r*.44,r);
   }
-
-  // 夹具导轨：画在每一排**夹座**的高度上，否则靶具像浮在桌面上
-  const unit = stream ? Math.min(w * .16, h * .16, 62) : Math.min(w * .19, h * .21, 82);
-  const bodyH = Math.min(unit * 1.55, h * (stream ? .145 : .21));
-  const rows = stream ? [0.34, 0.52, 0.70] : [0.52, 0.42, 0.62];
-  const gap = Math.max(10, unit * .24);
-  for (let i = 0; i < rows.length; i++) {
-    const y = rows[i] * h - bodyH * .5 - gap;
-    const rail = ctx.createLinearGradient(0, 0, w, 0);
-    rail.addColorStop(0, 'rgba(23,52,75,0)');
-    rail.addColorStop(.14, 'rgba(23,52,75,.14)');
-    rail.addColorStop(.86, 'rgba(23,52,75,.14)');
-    rail.addColorStop(1, 'rgba(23,52,75,0)');
-    ctx.fillStyle = rail;
-    ctx.fillRect(w * .04, y, w * .92, Math.max(1, h * .0016));
-    ctx.fillStyle = 'rgba(23,52,75,.06)';
-    ctx.fillRect(w * .04, y + Math.max(1, h * .0016), w * .92, Math.max(1, h * .0022));
-  }
-
-  // 台沿：最下方一条实体，落地感靠它
-  const benchY = h * .885;
-  const bench = ctx.createLinearGradient(0, benchY, 0, h);
-  bench.addColorStop(0, '#FBFDFE');
-  bench.addColorStop(.35, '#E9F0F5');
-  bench.addColorStop(1, '#D8E3EB');
-  ctx.fillStyle = bench;
-  ctx.fillRect(0, benchY, w, h - benchY);
-  ctx.strokeStyle = 'rgba(23,52,75,.13)';
-  ctx.lineWidth = Math.max(1, h * .0018);
-  ctx.beginPath(); ctx.moveTo(0, benchY); ctx.lineTo(w, benchY); ctx.stroke();
-  ctx.strokeStyle = 'rgba(23,52,75,.05)';
-  ctx.beginPath(); ctx.moveTo(0, benchY + Math.max(2, h * .004)); ctx.lineTo(w, benchY + Math.max(2, h * .004)); ctx.stroke();
+  ctx.stroke();ctx.restore();
+}
+function drawSpecimenPlate(ctx,type,x,y,bw,bh,unit){
+  const p=SPECIMEN[type]||SPECIMEN.metal;
+  const width=bw*1.37,height=bh*1.12,left=x-width/2,top=y-height*.53;
+  ctx.save();ctx.shadowColor='rgba(74,72,131,.15)';
+  ctx.shadowBlur=Math.max(3,unit*.1);ctx.shadowOffsetY=2;
+  const wash=ctx.createLinearGradient(left,top,left+width,top+height);
+  wash.addColorStop(0,p.soft);wash.addColorStop(.48,'rgba(255,255,255,.86)');wash.addColorStop(1,p.paper);
+  ctx.fillStyle=wash;roundedRect(ctx,left,top,width,height,Math.min(17,unit*.25));ctx.fill();ctx.restore();
+  ctx.save();ctx.strokeStyle=p.ink;ctx.globalAlpha=.27;ctx.lineWidth=1.25;
+  roundedRect(ctx,left,top,width,height,Math.min(17,unit*.25));ctx.stroke();
+  ctx.globalAlpha=.7;ctx.strokeStyle=p.pop;ctx.lineWidth=Math.max(1.6,unit*.035);
+  ctx.beginPath();ctx.arc(x,y,unit*.56,-.74,Math.PI*.83);ctx.stroke();
+  ctx.globalAlpha=.75;sketchStar(ctx,left+width*.14,top+height*.18,unit*.065,p.ink,1.5,.13);
+  drawMaterialMark(ctx,type,left+width*.81,top+height*.19,unit,p.ink);
+  ctx.fillStyle=p.ink;ctx.globalAlpha=.35;
+  for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(left+width*.83+i*unit*.065,top+height*.15,1.2,0,TAU);ctx.fill();}
+  ctx.restore();
 }
 
 /** 非缓存层：顶部柔光 + 工作区光池。浅色下不要锥形光柱，会像脏污。 */
 function drawWorkLight(ctx, w, h) {
   const pool = ctx.createRadialGradient(w * .5, h * .12, 0, w * .5, h * .12, w * .78);
-  pool.addColorStop(0, 'rgba(255,255,255,.85)');
-  pool.addColorStop(.42, 'rgba(255,255,255,.32)');
+  pool.addColorStop(0, 'rgba(255,255,255,.25)');
+  pool.addColorStop(.42, 'rgba(255,255,255,.08)');
   pool.addColorStop(1, 'rgba(210,228,240,0)');
   ctx.fillStyle = pool;
   ctx.fillRect(0, 0, w, h * .72);
@@ -312,6 +371,7 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
   ctx.translate(x+pose.x,bodyTop-hangGap(unit)+pose.y);
   ctx.rotate(pose.angle);ctx.scale(pose.scaleX,pose.scaleY);
   ctx.translate(-x,-bodyTop+hangGap(unit));
+  drawSpecimenPlate(ctx,t.type,x,y,bodyW,bodyH,unit);
   drawHanger(ctx, x, bodyTop, unit);
 
   // The target is now a genuine prebaked transparent WebP material sprite.
@@ -339,9 +399,10 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
   ctx.restore();
 
   const railW = bodyW * .88, railY = bodyTop - Math.max(9, unit * .15), railH = Math.max(3, unit * .05);
-  ctx.fillStyle = 'rgba(225,239,241,.16)'; roundedRect(ctx, x - railW / 2, railY, railW, railH, railH / 2); ctx.fill();
+  const sampleColor=(SPECIMEN[t.type]||SPECIMEN.metal).ink;
+  ctx.fillStyle = 'rgba(110,104,166,.18)'; roundedRect(ctx, x - railW / 2, railY, railW, railH, railH / 2); ctx.fill();
   if (progress > 0) {
-    ctx.fillStyle = progress >= 1 ? '#9de4d9' : '#e5c888';
+    ctx.fillStyle = progress >= 1 ? '#51BAA0' : sampleColor;
     roundedRect(ctx, x - railW / 2, railY, railW * progress, railH, railH / 2); ctx.fill();
   }
 
@@ -764,25 +825,28 @@ function drawKerf(ctx, t, x, y, width, height, top, unit, progress) {
   ctx.restore();
 }
 
-function drawTargetCaption(ctx, t, data, index, x, y, unit, guided, w, bodyH, progress) {
-  const size = clamp(w * .032, 10, 13);
-  const titleY = y + bodyH * .58 + 12;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = `650 ${size}px system-ui, sans-serif`;
-  ctx.fillStyle = guided ? '#227A87' : '#17344B';
-  ctx.fillText(MATERIAL_NAMES[t.type] || data.short || '材料', x, titleY);
-  if (guided) {
-    const tagY = y - bodyH * .5 - 28;
-    ctx.font = `700 ${Math.max(9, size * .7)}px system-ui, sans-serif`;
-    ctx.fillStyle = '#227A87';
-    ctx.fillText('优先', x, tagY);
+function drawTargetCaption(ctx,t,data,index,x,y,unit,guided,w,bodyH,progress){
+  const p=SPECIMEN[t.type]||SPECIMEN.metal;
+  const size=clamp(w*.031,10,13),title=MATERIAL_NAMES[t.type]||data.short||'材料';
+  const titleY=y+bodyH*.58+12;
+  ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font='700 '+size+'px system-ui, sans-serif';
+  const pillW=Math.max(unit*.83,ctx.measureText(title).width+16),pillH=size+10;
+  ctx.fillStyle=guided?p.paper:'rgba(255,255,255,.91)';
+  roundedRect(ctx,x-pillW*.5,titleY-pillH*.5,pillW,pillH,pillH*.5);ctx.fill();
+  ctx.strokeStyle=guided?p.ink:'rgba(134,124,177,.26)';ctx.lineWidth=1;
+  roundedRect(ctx,x-pillW*.5,titleY-pillH*.5,pillW,pillH,pillH*.5);ctx.stroke();
+  ctx.fillStyle=p.ink;ctx.fillText(title,x,titleY);
+  if(guided){
+    ctx.font='800 '+Math.max(9,size*.72)+'px system-ui, sans-serif';
+    ctx.fillStyle=p.ink;ctx.fillText('★ 优先',x,y-bodyH*.5-28);
   }
-  // 序号只在旧的三靶制里保留；连续投放里是噪声
-  if (t.layout !== 'stream') {
-    ctx.font = `500 ${Math.max(8, size * .68)}px system-ui, sans-serif`;
-    ctx.fillStyle = 'rgba(82,104,121,.40)';
-    ctx.fillText(String(index + 1).padStart(2, '0'), x, titleY + size * .92);
+  if(t.layout!=='stream'){
+    ctx.font='600 '+Math.max(8,size*.68)+'px system-ui, sans-serif';
+    ctx.fillStyle='rgba(95,92,139,.58)';
+    ctx.fillText(String(index+1).padStart(2,'0'),x,titleY+pillH*.75);
   }
+  ctx.restore();
 }
 
 function directionHint(angle) {
@@ -886,7 +950,7 @@ function drawTrail(ctx, trail, now, w, h, reduced) {
         ctx.strokeStyle = `rgba(23,52,75,${alpha * .12 * taper})`;
         ctx.lineWidth = (reduced ? 6 : 14) * alpha * taper + .6;
       } else if (pass === 1) {
-        ctx.strokeStyle = `rgba(34,122,135,${alpha * .50 * taper})`;
+        ctx.strokeStyle = `rgba(132,99,205,${alpha * .64 * taper})`;
         ctx.lineWidth = (reduced ? 2.6 : 5.4) * alpha * taper + .4;
       } else {
         ctx.strokeStyle = `rgba(255,255,255,${alpha * .92 * taper})`;
@@ -962,6 +1026,18 @@ function drawBursts(ctx, bursts, now, w, h, reduced) {
         }
       }
     }
+    // Inked cut marks only on completed cuts; keep the original material shards.
+    if(b.complete && age<250){
+      const fade=(1-age/250)*(.65+.22*hard);
+      ctx.globalAlpha=fade;ctx.strokeStyle=(SPECIMEN[b.type]||SPECIMEN.metal).ink;
+      ctx.lineWidth=2;ctx.lineCap='round';
+      for(const side of [-1,1]){
+        const cx=x+nx*side*(9+age*.055),cy=y+ny*side*(9+age*.055);
+        ctx.beginPath();ctx.moveTo(cx-Math.cos(angle)*6,cy-Math.sin(angle)*6);
+        ctx.lineTo(cx+Math.cos(angle)*6,cy+Math.sin(angle)*6);ctx.stroke();
+      }
+      if(hard>.4&&!reduced)sketchStar(ctx,x+nx*25,y+ny*25,5+hard*5,(SPECIMEN[b.type]||SPECIMEN.metal).pop,1.7,angle);
+    }
     if(b.objective){ctx.globalAlpha=power*.7;ctx.strokeStyle='#4CC7B0';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(x,y,16+age*.045,0,TAU);ctx.stroke();}
     ctx.restore();
   }
@@ -1035,8 +1111,14 @@ function drawLabels(ctx, labels, now, w, h, reduced) {
       : ev === 'blocked' ? `受阻 ${Math.round((hit.progress || 0) * 100)}%`
       : ev === 'deflect' ? `弹刃 ${Math.round((hit.progress || 0) * 100)}%`
       : `${hit.followup ? '补刀' : '切入'} ${Math.round((hit.progress || 0) * 100)}%`;
-    ctx.fillStyle = color;
-    ctx.fillText(mainText, x, y, w * .28);
+    // Small outlined screen-print sticker: score stays readable on light glass.
+    const mainW=Math.min(w*.29,ctx.measureText(mainText).width+15);
+    ctx.fillStyle=hit.complete?'rgba(255,251,242,.92)':'rgba(255,255,255,.87)';
+    roundedRect(ctx,x-mainW*.5,y-12,mainW,24,11);ctx.fill();
+    ctx.strokeStyle=hit.complete?'rgba(219,158,90,.56)':'rgba(151,129,200,.36)';
+    ctx.lineWidth=1;roundedRect(ctx,x-mainW*.5,y-12,mainW,24,11);ctx.stroke();
+    ctx.fillStyle=color;
+    ctx.fillText(mainText,x,y,w*.28);
     ctx.font = `650 ${clamp(w * .026, 9, 11)}px system-ui, sans-serif`;
     let detail = QUALITY_NAMES[hit.quality] || '';
     if (hit.complete && hit.combo > 1) detail += `${detail ? ' · ' : ''}连斩 ×${hit.combo}`;
@@ -1070,9 +1152,9 @@ function drawLabels(ctx, labels, now, w, h, reduced) {
 function drawPointer(ctx, pointer, w, h, reduced) {
   const x = pointer.x * w, y = pointer.y * h;
   ctx.save();
-  ctx.strokeStyle = 'rgba(227,252,250,.72)'; ctx.lineWidth = 1.3;
+  ctx.strokeStyle = 'rgba(122,95,205,.88)'; ctx.lineWidth = 1.3;
   ctx.beginPath(); ctx.arc(x, y, reduced ? 5 : 7, 0, TAU); ctx.stroke();
-  ctx.fillStyle = 'rgba(102,219,220,.30)'; ctx.beginPath(); ctx.arc(x, y, 2, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(109,207,188,.55)'; ctx.beginPath(); ctx.arc(x, y, 2, 0, TAU); ctx.fill();
   ctx.restore();
 }
 
