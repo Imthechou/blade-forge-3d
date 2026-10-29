@@ -157,7 +157,8 @@ export function statGrid(stats, directions = null, showValues = false, preview =
           comparing ? el('span', { class: 'stat-meter-before', style: { width: (old / STAT_SOFT_CAP * 100) + '%' } }) : null,
           el('i', { style: { width: (showValues ? v / STAT_SOFT_CAP * 100 : trend.width) + '%' } }),
         ]),
-        el('div', { class: 'stat-cell-val', text: showValues ? String(Math.round(v)) : trend.label }),
+        // 比较时只保留条形轨道和方向，不再额外渲染当前数值行。
+        comparing ? null : el('div', { class: 'stat-cell-val', text: showValues ? String(Math.round(v)) : trend.label }),
         comparing ? el('div', { class: 'stat-cell-dir' + (delta < 0 ? ' is-down' : ''), text: deltaLabel })
           : d ? el('div', { class: 'stat-cell-dir' + (down ? ' is-down' : ''), title: d.label || '', text: arrow }) : null,
       ]);

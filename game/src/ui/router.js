@@ -29,8 +29,8 @@ const registry = new Map();
 let current = 'home';
 const listeners = [];
 
-export function register(key, { render, enter, leave }) {
-  registry.set(key, { render, enter, leave });
+export function register(key, { render, enter, leave, canEnter }) {
+  registry.set(key, { render, enter, leave, canEnter });
 }
 
 export function onNavigate(fn) { listeners.push(fn); }
@@ -44,7 +44,11 @@ function syncActive(key) {
 }
 
 export function go(key, opts = {}) {
-  if (!registry.has(key)) key = 'home';
+  // 失效的 #/forge 深链直接回首页并同步 URL，避免刷新进入唐刀空态。
+  if (!registry.has(key) || (registry.get(key).canEnter && !registry.get(key).canEnter())) {
+    key = 'home';
+    opts = { ...opts, silent: false };
+  }
   const prev = current;
   const prevPage = registry.get(prev);
   if (prevPage && prevPage.leave && prev !== key) prevPage.leave();

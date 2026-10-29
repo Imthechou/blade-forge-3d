@@ -245,8 +245,8 @@
 .page[data-page="forge"] .stat-grid.is-comparing .stat-cell { grid-template-columns:1fr auto; }
 .page[data-page="forge"] .stat-grid.is-comparing .stat-cell-name { grid-column:1; grid-row:1; }
 .page[data-page="forge"] .stat-grid.is-comparing .stat-cell-dir { grid-column:2; grid-row:1; font:750 11px/16px var(--font-num); white-space:nowrap; }
-.page[data-page="forge"] .stat-grid.is-comparing .stat-cell-val { display:block; grid-column:1/-1; grid-row:2; color:var(--face); text-align:right; font:750 12px/15px var(--font-num); }
-.page[data-page="forge"] .stat-grid.is-comparing .stat-cell-meter { grid-column:1/-1; grid-row:3; position:relative; height:5px; }
+.page[data-page="forge"] .stat-grid.is-comparing .stat-cell-val { display:none; }
+.page[data-page="forge"] .stat-grid.is-comparing .stat-cell-meter { grid-column:1/-1; grid-row:2; position:relative; height:5px; }
 .page[data-page="forge"] .stat-meter-before { position:absolute; inset:0 auto 0 0; height:100%; background:color-mix(in srgb,var(--st, var(--face-3)) 35%,transparent); border-radius:inherit; }
 .page[data-page="forge"] .stat-grid.is-comparing .stat-cell-meter i { position:relative; background:var(--st); z-index:1; }
 .page[data-page="forge"] .risk:has(.risk-value) { min-width:0; }
@@ -544,4 +544,34 @@
   .stage-question { max-width:100%; }
   .page[data-page="forge"]:not(.is-hammer):not(:has(.edge-stage-canvas)) .stage-question,
   .stage-preview { display:none; }
+}
+
+/* 简洁对齐的舞台上缘：仅阶段标签和构筑芯片，各 44px 高。 */
+.page[data-page="forge"] .stage-chipbar {
+  top:14px; left:14px; right:14px;
+  flex-wrap:nowrap; align-items:center; gap:8px;
+}
+.page[data-page="forge"] .stage-badge {
+  flex:0 0 auto; box-sizing:border-box; min-height:44px;
+  padding:7px 12px; gap:7px;
+  border:1px solid rgba(255,255,255,.84);
+  background:var(--surface-glass);
+  box-shadow:var(--shadow-1), inset 0 1px rgba(255,255,255,.85);
+}
+.page[data-page="forge"] .stage-badge b { font-size:23px; }
+.page[data-page="forge"] .stage-badge span { font-size:14px; }
+.page[data-page="forge"] .stage-traits {
+  flex:0 1 auto; max-width:60%; min-height:44px;
+  display:inline-flex; align-items:center; justify-content:center;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  padding-inline:11px; font-size:12px; border-radius:16px;
+  background:var(--surface-glass); box-shadow:var(--shadow-1);
+}
+@media (max-width:374px) {
+  .page[data-page="forge"] .stage-chipbar { top:10px; left:10px; right:10px; }
+  .page[data-page="forge"] .stage-badge { padding-inline:9px; }
+  .page[data-page="forge"] .stage-traits {
+    position:static; margin-left:auto; max-width:53%;
+    padding-inline:8px; font-size:11px;
+  }
 }
