@@ -654,7 +654,7 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
     const source = Core.progress.bladeById(match.blade.id) || match.blade;
     const created = Challenge.createChallenge(source, {
       seed: ((Number(match.seed) || 1) ^ Math.imul(task.index + 1, 2654435761)) >>> 0,
-      mode: 'formal', seconds: Challenge.CHALLENGE_SECONDS, encounter:{...encounter,styleId:match.styleId,styleIds:match.styleIds}, styleId:match.styleId, targetScore:match.definition.targetScore,
+      mode: 'formal', seconds: Challenge.CHALLENGE_SECONDS, encounter:{...encounter,structure:true,styleId:match.styleId,styleIds:match.styleIds}, styleId:match.styleId, targetScore:match.definition.targetScore,
     });
     if (!created.ok) {
       mount(body, [el('p', { class: 'arena-note', text: created.reason || '无法创建切割测试' })]);
@@ -704,7 +704,7 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
   });
   const mission = el('div', { class: 'quick-stage-label' }, [
     el('b', { text: `${match.definition.branchName} · 第 ${task.index + 1}/${task.total} 项` }),
-    el('span', { text: '按住划切 · 硬靶补刀 · 留意临时受损' }),
+    el('span', { text: '选择连接拆解路线 · 顺槽续切 · 刀况只在局内消耗' }),
   ]);
   const footer = el('div', { class: 'quick-footer' }, [
     el('span', { class: 'quick-combo', text: `斩断 ${run.kills} · 连击 ×${run.combo}` }),
@@ -737,7 +737,7 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
   }
   body.append(stage);
   const updateMission = () => {
-    const label = ({warmup:'热身连切',route:run.route?.name,speed:'节奏提速',
+    const label = ({warmup:run.structure?.name || '结构试刀',route:run.route?.name,speed:'节奏提速',
       finale:run.finale?.name})[run.phase] || '切割考验';
     mission.querySelector('b').textContent = `${match.definition.branchName} · ${label}`;
     mission.querySelector('span').textContent = run.risk?.status === 'failed'
