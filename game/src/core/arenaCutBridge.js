@@ -23,16 +23,17 @@ export function formalCutPayload(run) {
   // 目标基于 45 秒局：熟练切断/补刀/连击可达满利用率；零操作严格为零。
   const score = Math.max(0, Number(result.score) || 0);
   const kills = Math.max(0, Number(result.kills) || 0);
-  const normalizedScore = Math.min(1, score / 1800);
+  const normalizedScore = Math.min(1, score / (result.structure ? 1000 : 1800));
   const normalizedKills = Math.min(1, kills / 18);
-  const measure = Number(Math.min(1, normalizedScore * 0.8 + normalizedKills * 0.2).toFixed(3));
+  const measure = Number((result.structure ? normalizedScore :
+    Math.min(1, normalizedScore * 0.8 + normalizedKills * 0.2)).toFixed(3));
   const loss = Math.max(0, Number(run.damage) || 0);
   const maxHealth = Math.max(1, Number(run.maxHealth) || 100);
   return {
     measure,
     detail: {
       source: 'arenaChallenge', duration: run.total,
-      score, kills, misses: result.misses,
+      score, kills, misses: result.misses, structure: result.structure || null,
       bestSwipe: result.bestSwipe, maxCombo: result.maxCombo, maxStreak:result.maxStreak,
       route: result.route, finale: result.finale,
       grade: result.grade, version:result.version,
