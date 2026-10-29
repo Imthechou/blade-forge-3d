@@ -17,7 +17,6 @@ const ENTRIES = [
   { label: '赛事', icon: 'arena', go: () => router.go('arena') },
   { label: '藏刀阁', icon: 'collection', go: () => Workshop.openTab('collection') },
   { label: '工坊', icon: 'workshop', go: () => Workshop.openTab('bonuses') },
-  { label: '图鉴', icon: 'codex', go: () => Workshop.openTab('codex') },
 ];
 
 export function create() {
@@ -34,7 +33,7 @@ export function create() {
   root.append(stageHost, body);
 }
 
-/** 首页只保留展台、开锻、四个入口和生涯统计。 */
+/** 首页保留展台、开锻、三个入口和生涯统计；图鉴在工坊内。 */
 export function render() {
   if (!root || !body) create();
   if (!body) return;
