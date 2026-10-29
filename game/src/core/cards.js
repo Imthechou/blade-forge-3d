@@ -15,6 +15,7 @@ import { rerollCost } from '../data/balance.js';
 import * as RNG from '../platform/rng.js';
 import * as Attr from './attributes.js';
 import * as Risk from './risk.js';
+import { rarityMultiplier, discountedRerollCost } from './arenaV41Growth.js';
 
 export const CANDIDATE_COUNT = 3;
 
@@ -48,7 +49,7 @@ export function rollCandidates(run, { unlockedIds = null } = {}) {
   const picked = [];
   const bag = pool.slice();
   const weightOf = (c) => {
-    const w = RARITY_WEIGHT[c.rarity] ?? 10;
+    const w = (RARITY_WEIGHT[c.rarity] ?? 10) * rarityMultiplier(run.workshop, c.rarity);
     return unlocked && unlocked.has(c.id) ? w * UNLOCKED_WEIGHT_BOOST : w;
   };
   const unlockedCount = unlocked ? base.filter((c) => unlocked.has(c.id)).length : 0;
@@ -73,7 +74,11 @@ export function rollCandidates(run, { unlockedIds = null } = {}) {
 export function reroll(run) {
   const stageId = run.stageId;
   const n = run.rerollCountByStage[stageId] || 0;
-  const cost = rerollCost(n);
+  const cost = discountedRerollCost(rerollCost(n),run.workshop);
+  const paid = cost > 0 && !run.freeRerollOverride;
+  if (paid && (run.paidRerollsUsed||0)>=6) {
+    return {ok:false,cost,reason:'本次锻造已使用 6 次付费刷新'};
+  }
   if (run.daily && run.daily.maxReroll != null && run.rerollTotal >= run.daily.maxReroll) {
     return { ok: false, cost: 0, reason: `今日挑战限制：最多重铸 ${run.daily.maxReroll} 次` };
   }
@@ -82,6 +87,7 @@ export function reroll(run) {
   run.cr -= cost;
   run.rerollCountByStage[stageId] = n + 1;
   run.rerollTotal += 1;
+  if(paid) run.paidRerollsUsed=(run.paidRerollsUsed||0)+1;
   /* ★ rework T10.4：重铸必须沿用本局的解锁列表。
      否则「重铸一次」就会把已解锁卡的加权静默抹掉（改造前的实际缺陷）。 */
   rollCandidates(run, { unlockedIds: run.unlockedCardIds || null });
@@ -89,7 +95,7 @@ export function reroll(run) {
 }
 
 /** 下一阶段的重铸价格（UI 提示用） */
-export const nextRerollCost = (run) => rerollCost(run.rerollCountByStage[run.stageId] || 0);
+export const nextRerollCost = (run) => discountedRerollCost(rerollCost(run.rerollCountByStage[run.stageId] || 0),run.workshop);
 
 /**
  * 预览：选这张卡之后的六维与风险（**纯函数**，不改 run）。
@@ -106,7 +112,7 @@ export function previewPick(run, card) {
     statDelta: card.statDelta,
     riskAfter: Risk.after(run.risk, card.riskDeltaPoints),
     riskDelta: card.riskDeltaPoints,
-    breakChanceAfter: Risk.breakChance(Risk.after(run.risk, card.riskDeltaPoints), run.daily?.breakScale || 1),
+    breakChanceAfter: Risk.breakChance(Risk.after(run.risk, card.riskDeltaPoints), (run.daily?.breakScale || 1) * (1 - (run.workshop?.riskReduction || 0))),
   };
 }
 
