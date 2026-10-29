@@ -19,6 +19,7 @@ import * as RNG from '../platform/rng.js';
 import * as Attr from './attributes.js';
 import * as Risk from './risk.js';
 import { noteSafeRisk } from './arenaV41Specialties.js';
+import { effectiveRiskScale } from './arenaV41Growth.js';
 import * as Tags from './tags.js';
 import * as Cards from './cards.js';
 import * as Traits from './traits.js';
@@ -273,8 +274,10 @@ export function snapshot(run) {
     statMean: Math.round(Attr.mean(run.stats) * 10) / 10,
     risk: { current: run.risk.current, peak: run.risk.peak },
     riskBand: Risk.band(run.risk.current),
-    breakChance: Risk.breakChance(run.risk.current, (run.daily?.breakScale || 1) * (1 - (run.workshop?.riskReduction || 0))),
-    breakPercent: Risk.breakPercent(run.risk.current, (run.daily?.breakScale || 1) * (1 - (run.workshop?.riskReduction || 0))),
+    breakChance: Risk.breakChance(run.risk.current, effectiveRiskScale(run.workshop,
+      run.stageId==='S4'&&run.specialist?.id==='press'?run.specialist.boost:0,run.daily?.breakScale||1)),
+    breakPercent: Risk.breakPercent(run.risk.current, effectiveRiskScale(run.workshop,
+      run.stageId==='S4'&&run.specialist?.id==='press'?run.specialist.boost:0,run.daily?.breakScale||1)),
     tags: Tags.counts(run.ledger),
     tagTiers: run.tagTiersCache.slice(),
     pendingTraits: Traits.pendingBaseTraits(run),
