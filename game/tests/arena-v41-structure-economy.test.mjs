@@ -1,0 +1,84 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createStructure,updateStructure,structureScore,structureSnapshot,STRUCTURE_TEMPLATES} from '../src/core/arenaStructures.js';
+import {createChallenge,beginSwipe,swipe} from '../src/core/arenaChallenge.js';
+import {sampleBlade} from '../tools/arena-v3-simulate.mjs';
+import {careerRewardPlan,SCHOOL_CR,SCHOOL_FIRST_CR,isV41Match} from '../src/core/arenaV41Rewards.js';
+const blade=sampleBlade(100);
+test('all six original material families are physical components in six distinct authored structures',()=>{
+  assert.equal(Object.keys(STRUCTURE_TEMPLATES).length,6);
+  const types=new Set();
+  for(const name of Object.keys(STRUCTURE_TEMPLATES)) {
+    const structure=createStructure(1,name,2);
+    assert.ok(structure.parts.length>=6);
+    assert.equal(structure.routes.length,2);
+    for(const part of structure.parts)types.add(part.type);
+    assert.equal(structure.primary,0);
+    assert.equal(structure.completed,false);
+    assert.equal(structureScore(structure,0,90,100,100),0,'full health cannot earn objective progress');
+    assert.equal(structureSnapshot(structure).completed,false);
+  }
+  assert.deepEqual([...types].sort(),['foam','ice','metal','plastic','rope','wood']);
+});
+test('real support disconnect changes location and collision point; protection can be kept intact',()=>{
+ const s=createStructure(2,'composite',3);
+ const byKey=new Map(s.parts.map(x=>[x.key,x]));
+ const c=byKey.get('c'),a=byKey.get('a');
+ const before=c.x;
+ a.progress=1;a.alive=false;
+ updateStructure(s,s.parts);
+ assert.notEqual(c.x,before);
+ assert.equal(s.failedJoins.some(edge=>edge.includes(a.id)),true);
+ const support=s.routes[0];
+ for(const id of support){const t=s.parts.find(p=>p.id===id);t.progress=1;t.alive=false;}
+ updateStructure(s,s.parts);
+ assert.equal(s.completed,true);
+ assert.equal(s.primary,1);
+ assert.equal(s.quality<=1,true);
+ assert.equal(s.parts.find(p=>p.isProtected).progress,0);
+});
+test('formal score earns quality only from completed real contacts, never blank protected plate',()=>{
+ const s=createStructure(2,'precise',4),max=90;
+ assert.equal(s.quality,0);
+ updateStructure(s,s.parts);
+ assert.equal(s.quality,0);
+ const pts=structureScore(s,20,max,100,100);
+ // Score formula: when P=0, even a perfect protected plate is worth 0.
+ assert.equal(pts,0);
+});
+test('formal cover access makes a different first cut more effective, with no direct stat mean gate',()=>{
+  const run=createChallenge(blade,{mode:'formal',seed:7,seconds:90,
+    encounter:{structure:true,styleId:'press',gradient:2},styleId:'press'}).run;
+  const a=run.targets.find(x=>x.key==='a'),c=run.targets.find(x=>x.key==='c');
+  assert.equal(c.coveredBy,'a');
+  const routeCut=t=>{
+    beginSwipe(run);const x=t.x,y=t.y;
+    return swipe(run,{x:x-.2,y},{x:x+.2,y},{duration:.18});
+  };
+  const first=routeCut(c);
+  assert.ok(first.hits.length>=1);
+  const prog=c.progress;
+  // Opening the cover makes the same direct path work differently.
+  a.progress=1;a.alive=false;
+  updateStructure(run.structure,run.targets);
+  const second=routeCut(c);
+  assert.ok(second.hits.length>=1);
+  assert.ok(c.progress-prog>prog*.4);
+});
+test('V4.1 tier budgets, first wins and round receipts are explicit, empty retired records stay legacy',()=>{
+ const school={version:'formal-v4.1',result:{version:'formal-v4.1',cut:{structure:{primary:.8}}}};
+ assert.equal(isV41Match(school),true);
+ assert.equal(careerRewardPlan('school',true,2,school,'m1','press').events[0].cr,SCHOOL_CR[2]);
+ assert.equal(careerRewardPlan('school',true,2,school,'m1','press').events[1].cr,SCHOOL_FIRST_CR[2]);
+ assert.equal(careerRewardPlan('school',false,2,school,'m2','press').events[0].cr,Math.floor(SCHOOL_CR[2]*.35*.8));
+ assert.equal(careerRewardPlan('school',false,2,school,'m2','press').events[0].xp,Math.floor(32*.35*.8));
+ assert.equal(careerRewardPlan('school',false,2,{version:'formal-3'},'m3','press').reason,'not-v41');
+ const rounds=Array.from({length:5},(_,i)=>({round:i,win:true,primary:1,primaryCompleted:true}));
+ const national=careerRewardPlan('national',true,4,{version:'formal-v4.1',rounds},'cup1');
+ assert.equal(national.events.filter(x=>x.key.startsWith('round:')).length,5);
+ assert.equal(national.events.filter(x=>x.key.startsWith('first:national:')).length,6);
+ assert.equal(national.events.reduce((t,x)=>t+x.cr,0),5*60+5*100+160);
+ const world=careerRewardPlan('apex',true,4,{version:'formal-v4.1',
+   rounds:rounds.slice(0,3).map(r=>({...r,win:false}))},'world1');
+ assert.equal(world.events.reduce((t,x)=>t+x.cr,0),3*85+3*120+240);
+});
