@@ -43,7 +43,7 @@ export function createStructure(seed=1,styleId='composite',gradient=0){
    // cutting; a very strong knife can instead force the direct route.
    coveredBy:key==='c'?'a':key==='d'?'b':key==='e'?'c':key==='f'?'d':null,
  }));
- const protective=['precise','composite','overload'].includes(spec.kind==='protected'?'precise':styleId)||tier>=2;
+ const protective=['precise','composite','overload'].includes(styleId)||tier>=2;
  if(protective)parts.push({
    id:id('p'),key:'p',type:'plastic',role:'protected',isProtected:true,
    x:.50,y:.53,baseX:.50,baseY:.53,slot:1,row:1,layout:'structure',
@@ -78,9 +78,9 @@ export function updateStructure(structure,targets){
  for(const part of parts){
    if(part.isProtected)continue;
    const left=['c','e'].includes(part.key),right=['d','f'].includes(part.key);
-   const offset=left&&a?-.018:right&&b?.018:0;
-   const drop=part.key==='e'&&done.has(id('c'))?.027:
-              part.key==='f'&&done.has(id('d'))?.027:0;
+   const offset = left && a ? -.018 : right && b ? .018 : 0;
+   const drop = part.key==='e' && done.has(id('c')) ? .027 :
+      part.key==='f' && done.has(id('d')) ? .027 : 0;
    part.x=part.baseX+offset;part.y=part.baseY+drop;
  }
  const damaged=parts.find(p=>p.isProtected);
