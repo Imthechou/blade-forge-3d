@@ -16,7 +16,7 @@ export function cutImpact(hit,{reducedMotion=false}={}) {
   const preset=IMPACT_PRESETS[material]||IMPACT_PRESETS.rope;
   const event=hit?.contactEvent || (hit?.complete?'kill':'cut');
   const completed=!!hit?.complete;
-  const blocked=event==='blocked'||event==='deflect';
+  const blocked=event==='blocked'||event==='deflect'||event==='avoid-hit';
   const power=completed?1.2:blocked?.75:.87;
   const quality=hit?.quality==='PERFECT'?1.08:hit?.quality==='ANGLE'?.83:1;
   const factor=power*quality;
@@ -27,7 +27,7 @@ export function cutImpact(hit,{reducedMotion=false}={}) {
     holdMs:reducedMotion?0:Math.round(preset.hold*factor),
     recoilPx:reducedMotion?0:Number((preset.recoil*factor).toFixed(2)),
     shakePx:reducedMotion?0:Number((2.8*preset.shake*factor).toFixed(2)),
-    particleCount:reducedMotion?0:clamp(Math.round(preset.particles*factor),0,3),
+    particleCount:reducedMotion||blocked?0:clamp(Math.round(preset.particles*factor),0,3),
     flashMs:reducedMotion?0:clamp(Math.round(35+20*preset.weight),35,60),
     hapticMs:clamp(Math.round((completed?9:4)+(preset.weight*(completed?19:9))),4,28),
   };
