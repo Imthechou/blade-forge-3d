@@ -971,7 +971,7 @@ class Session {
     if(!r?.ok)return r;
     const saved=Core.progress.checkpointCareerV41('apex',this.apexMatch);
     if(!saved.ok){this.apexMatch=before;return saved;}
-    if(r.done)this._settleApexIfDone();
+    if(r.done&&this.apexMatch.result?.win)this._settleApexIfDone();
     return r;
   }
 
@@ -1004,6 +1004,22 @@ class Session {
   }
 
   retryApexSave() { return this._settleApexIfDone(); }
+
+  /** Optional retake of a recorded world round; seed and roster are immutable. */
+  retryApexRound(index) {
+    const m=this.apexMatch;
+    if(!m)return {ok:false,reason:'尚无世界赛'};
+    const before=JSON.parse(JSON.stringify(m));
+    const r=Core.arenaFormal.apexRetryRound(m,index);
+    if(!r.ok)return r;
+    const saved=Core.progress.checkpointCareerV41('apex',m);
+    if(!saved.ok){this.apexMatch=before;return saved;}
+    return r;
+  }
+  finishApexCareer() {
+    if(!this.apexMatch?.done)return {ok:false,reason:'三轮尚未结束'};
+    return this._settleApexIfDone();
+  }
 
   /* ── 全国大赛（rework T09）：五轮多项目，非旧三局切割 ── */
 
