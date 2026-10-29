@@ -940,7 +940,7 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     text(hud.querySelector('.quick-hud-score small'),run.targetScore?`目标 ${run.targetScore}`:'当前得分');
     text(timeNode,run.remaining.toFixed(1));text(scoreNode,String(Math.floor(shownScore)).padStart(4,'0'));
     const healthPercent = Math.max(0, Math.min(100, run.health / Math.max(1, run.maxHealth ?? 100) * 100));
-    const arcade=(run.mode==='quick'||run.mode==='sample'&&false)&&!isSlice;
+    const arcade=run.mode==='quick'&&!isSlice;
     text(healthNode,arcade?'∞':isSlice ? `${Math.round(run.health)}/${Math.round(run.maxHealth ?? 100)}` : `${Math.round(healthPercent)}%`);
     healthBar.style.display=arcade?'none':'';
     if(!arcade)healthBar.style.transform=`scaleX(${healthPercent/100})`;
