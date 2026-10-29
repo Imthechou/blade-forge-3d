@@ -123,6 +123,21 @@ export function openQuickChallenge(bladeId = null) {
   openDailyChallenge();
 }
 
+/** Collection short-range blade feel test; no persistent reward or score ladder. */
+export function openCollectionSample(bladeId) {
+  if(guardPendingQuickChallenge())return {ok:false,reason:'请先保存上一局的奖励'};
+  const blade=Core.progress.bladeById(bladeId);
+  if(!blade)return {ok:false,reason:'找不到可用藏刀'};
+  const made=Challenge.createChallenge(blade,{mode:'sample',seconds:12,seed:81241});
+  if(!made.ok)return made;
+  selectedBladeId=bladeId;
+  arenaMode='challenge';
+  challengeRun=made.run;
+  Game.match=null;
+  router.go('arena');
+  return {ok:true};
+}
+
 export function openTournament(bladeId = null) {
   if (guardPendingQuickChallenge()) { router.go('arena'); return; }
   if (bladeId) selectedBladeId = bladeId;
@@ -538,7 +553,7 @@ function renderChallenge() {
   const hud = el('div', { class: 'quick-hud' }, [
     el('div', { class: 'quick-hud-time' }, [el('small', { text: '剩余时间' }), el('b', { class: 'mono', text: run.remaining.toFixed(1) }), el('span', { text: '秒' })]),
     el('div', { class: 'quick-hud-score' }, [el('small', { text: '当前得分' }), el('b', { class: 'mono', text: String(Math.floor(run.score)).padStart(4, '0') })]),
-    el('div', { class: 'quick-hud-vitals' }, [el('small', { text: '快赛模式' }), el('b', { text: '无限试刀' }), el('i', { style: { transform: `scaleX(${run.health / 100})` } })]),
+    el('div', { class: 'quick-hud-vitals' }, [el('small', { text: run.mode==='sample'?'模拟刀况':'快赛模式' }), el('b', { text: run.mode==='sample'?`${Math.round(run.health)}%`:'∞' }), el('i', { style: { transform: `scaleX(${run.health / 100})` } })]),
   ]);
   const canvas = el('canvas', { class: 'quick-canvas', 'aria-label': '2D 切割赛场；按住并划过材料靶完成切割' });
   const mission = el('div', { class: 'quick-stage-label' }, [el('b', { text: '热身连切' }), el('span', { text: '划过靶具，一笔连切' })]);
@@ -553,7 +568,7 @@ function renderChallenge() {
     stage.classList.add('is-paused');
     stage.appendChild(challengePauseOverlay({
       onResume: () => { Challenge.setPaused(run, false); render(); },
-      onRestart: () => startQuickChallenge(run.daily, run.seed),
+      onRestart: () => run.mode==='sample' ? openCollectionSample(selectedBladeId) : startQuickChallenge(run.daily, run.seed),
       onAbandon: () => { challengeRun = null; render(); },
       onFinish: () => { if(run.done)return; Challenge.finish(run,'manual'); settleQuickChallenge(); }, 
       label: run.daily ? '每日挑战不会因暂停而重置' : '重开或放弃都不会提前结算 CR',
@@ -925,14 +940,14 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     text(hud.querySelector('.quick-hud-score small'),run.targetScore?`目标 ${run.targetScore}`:'当前得分');
     text(timeNode,run.remaining.toFixed(1));text(scoreNode,String(Math.floor(shownScore)).padStart(4,'0'));
     const healthPercent = Math.max(0, Math.min(100, run.health / Math.max(1, run.maxHealth ?? 100) * 100));
-    const arcade=run.mode==='quick'&&!isSlice;
+    const arcade=(run.mode==='quick'||run.mode==='sample'&&false)&&!isSlice;
     text(healthNode,arcade?'∞':isSlice ? `${Math.round(run.health)}/${Math.round(run.maxHealth ?? 100)}` : `${Math.round(healthPercent)}%`);
     healthBar.style.display=arcade?'none':'';
     if(!arcade)healthBar.style.transform=`scaleX(${healthPercent/100})`;
     stage.classList.toggle('is-risky',run.finale?.id==='rush');stage.classList.toggle('is-low-health',healthPercent<35);stage.classList.toggle('is-countdown',run.remaining<=5);
     text(vitals.querySelector('small'), isSlice
       ? (run.risk?.status === 'failed' ? '结构失效' : run.risk?.status === 'warning' ? '⚠ 高负荷' : '刀况')
-      : run.mode === 'formal' ? (run.risk?.status === 'failed' ? '结构失效' : '临时刀况') : '无限试刀');
+      : run.mode === 'formal' ? (run.risk?.status === 'failed' ? '结构失效' : '临时刀况') : run.mode==='sample'?'模拟刀况':'无限试刀');
     phaseBar.style.transform=`scaleX(${Math.max(0,run.remaining)/(run.total || Challenge.CHALLENGE_SECONDS)})`;
     const pauseLabel=run.paused?'继续':'暂停';
     if (pauseNode && pauseNode.getAttribute('aria-label')!==pauseLabel) { pauseNode.setAttribute('aria-label',pauseLabel); pauseNode.title=pauseLabel; }
@@ -1100,10 +1115,29 @@ function settleQuickChallenge() {
   render();
 }
 
+function renderCollectionTrialReport(run){
+  const r=run.result;
+  const max=run.maxHealth||100;
+  mount(body,[el('section',{class:'quick-report'},[
+    el('div',{class:'quick-kicker',text:'藏刀阁 · 12 秒短试刀'}),
+    el('h2',{text:'试刀完成'}),
+    el('p',{class:'arena-note',text:run.blade.name+' · 此处仅模拟短试刀，不产生 CR、工坊经验或永久刀损'}),
+    el('div',{class:'quick-result-stats'},[
+      ['切断数',r.kills],['最高连切',r.maxCombo],['本次刀损',Math.round(max-r.health)],
+      ['模拟刀况',Math.round(r.health/max*100)+'%'],
+    ].map(([name,value])=>el('div',{},[el('small',{text:name}),el('b',{text:String(value)})]))),
+    el('div',{class:'quick-report-actions'},[
+      el('button',{class:'btn btn--primary',text:'同刀再试',onclick:()=>openCollectionSample(run.blade.id)}),
+      el('button',{class:'btn',text:'返回藏刀阁',onclick:()=>{challengeRun=null;router.go('workshop');}}),
+    ]),
+  ])]);
+}
+
 function renderChallengeReport() {
   body.className = 'arena-body arena-view-quick-report';
   const run = challengeRun;
   if (!run?.result) return renderChallengeSetup();
+  if(run.mode==='sample')return renderCollectionTrialReport(run);
   const r = run.result;
   const settlement = r.reason==='manual' ? { code:'MANUAL', ok:true, settled:false, settledReward:0 } : quickChallengeSettlement(run);
   // 只认本 UI 首次 OK 的成功回执；旧纪录 DUPLICATE 不能被当成到账凭据。
