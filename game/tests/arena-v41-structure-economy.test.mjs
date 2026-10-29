@@ -168,7 +168,9 @@ test('Five school grades require visibly different access and actual dismantling
    assert.equal(get(skilled,'c').coveredBy,'a');
    assert.equal(get(skilled,'e').coveredBy,null);
    assert.equal(get(expert,'e').coveredBy,'c');
-   assert.equal(apprentice.protectedId,null);
+   // Precision teaches its protected-object rule from apprentice level;
+   // composite/overload likewise retain their existing protection identities.
+   assert.equal(!!apprentice.protectedId,['precise','composite','overload'].includes(name));
    assert.ok(expert.protectedId);
    assert.equal(expert.routes[0].length,3);
    assert.equal(master.routes[0].length,4);
