@@ -51,3 +51,21 @@ test('v4 quick must never terminate from wearout even if called explicitly', () 
   assert.equal(r.result.fractured,false);
   assert.equal(r.result.reward,0);
 });
+
+test('12-second short trial never mints CR or permanently mutates archived blades',()=>{
+  const archived=blade();
+  const before=JSON.stringify(archived);
+  const created=Challenge.createChallenge(archived,{mode:'sample',seconds:12,seed:81241});
+  assert.equal(created.ok,true);
+  const r=created.run;
+  assert.equal(r.total,12);
+  assert.equal(r.augments,false);
+  const t=r.targets.find(x=>x.alive);
+  Challenge.beginSwipe(r);
+  Challenge.swipe(r,{x:t.x-.19,y:t.y},{x:t.x+.19,y:t.y},{duration:.16});
+  for(let i=0;i<120&&!r.done;i++)Challenge.tick(r,.2);
+  assert.equal(r.result?.reward,0);
+  assert.equal(r.result?.mode,'sample');
+  assert.equal(archived.fractured,undefined);
+  assert.equal(JSON.stringify(archived),before);
+});
