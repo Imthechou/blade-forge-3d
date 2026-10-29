@@ -270,7 +270,7 @@ export function getStudioEnv(renderer) {
   try {
     const K3D = globalThis.K3D || {};
     K3D.rLedger?.track?.(key, {
-      kind: 'studio-env', tex: entry.texture,
+      kind: 'studio-env', tex: entry.texture, renderer,
       bytesMiB: K3D.rLedger.textureMiB ? K3D.rLedger.textureMiB(entry.texture) : 4,
       optional: true, evictable: false,
       note: '当前渲染器的程序化摄影棚环境',
