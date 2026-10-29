@@ -60,6 +60,25 @@ try {
     const s=document.querySelector('.blade-detail-stage-status');
     return studioEnvInfo()?.contexts>=3 && (!s || !s.isConnected);
   },null,{timeout:90000});
+  // The status can disappear before the first real GPU frame. Never archive a blank
+  // 'success' screenshot: wait until the actual WebGL canvas contains nontransparent
+  // model pixels, not just a mounted DOM canvas or finished shader compilation.
+  await page.waitForFunction(async () => {
+    const canvas=document.querySelector('.blade-detail-stage canvas');
+    if(!canvas || !canvas.width || !canvas.height) return false;
+    const img=new Image();
+    img.src=canvas.toDataURL('image/png');
+    try { await img.decode(); } catch (_) { return false; }
+    const out=document.createElement('canvas');
+    out.width=img.width;out.height=img.height;
+    const ctx=out.getContext('2d',{willReadFrequently:true});
+    if(!ctx) return false;
+    ctx.drawImage(img,0,0);
+    const data=ctx.getImageData(0,0,img.width,img.height).data;
+    let solid=0;
+    for(let i=3;i<data.length;i+=4) if(data[i]>160) solid++;
+    return solid>150;
+  },null,{timeout:20000,polling:300});
   await page.screenshot({path:path.join(output,'detail.png')});
   const during=await page.evaluate(async()=>(await import('/src/render/v2/studioEnv.js')).studioEnvInfo()?.contexts);
   assert.ok(during>=3,'detail must have its own studio reflection target');
