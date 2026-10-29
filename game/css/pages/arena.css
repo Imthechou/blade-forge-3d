@@ -485,3 +485,17 @@
 @media(prefers-reduced-motion:reduce){
   .arena-augment-overlay .quick-choice-card::after{transform:none}
 }
+
+
+/* V4.1 formal objective choice: a compact deliberate action, never covering
+   the material's touch canvas or appearing before the real structure clears. */
+.formal-field-match .quick-collect{
+  flex:0 0 auto;min-height:42px;padding:8px 12px;
+  border:1px solid rgba(46,138,120,.42);border-radius:12px;
+  background:rgba(227,249,240,.96);color:#236D60;
+  box-shadow:inset 0 1px rgba(255,255,255,.9);
+  font:750 13px var(--font);white-space:nowrap;cursor:pointer;
+}
+.formal-field-match .quick-collect[hidden]{display:none!important}
+.formal-field-match .quick-collect:focus-visible{outline:2px solid #327F73;outline-offset:2px}
+@media(max-width:374px){.formal-field-match .quick-collect{font-size:12px;padding:8px 9px}}
