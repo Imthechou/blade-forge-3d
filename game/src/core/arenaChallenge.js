@@ -77,7 +77,7 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
     : null;
   // V4.1: forged blade traits are the build. Neither mode interrupts play for random augment offers.
   augments = false;
-  const total = seconds == null ? CHALLENGE_SECONDS : clamp(Number(seconds) || CHALLENGE_SECONDS, 5, CHALLENGE_SECONDS);
+  const total = mode === 'quick' ? CHALLENGE_SECONDS : (seconds == null ? 70 : clamp(Number(seconds)||70,5,120));
   const run = {
     id: `C-${actualSeed.toString(36)}-${Date.now().toString(36)}`, seed: actualSeed, daily: !!daily, mode,
     blade: {
@@ -138,7 +138,7 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
 /** 沿用重开入口，但正式测试内已发生的实际受损不被重开抹除；非跨项目政策。 */
 export function restartChallenge(run) {
   if (!run || run.done || run.fractured) return { ok: false, reason: '已结束的测试不能重开' };
-  if(run.version===ARENA_V3.version && run.mode==='formal')return {ok:false,reason:'正式赛事不能重开本轮，请继续或退出'};
+  if(run.mode==='formal')return {ok:false,reason:'正式赛事不能重开本轮，请继续或退出'};
   const created = createChallenge({...run.blade, stats:run.adaptation?.permanentStats || run.blade.stats}, { seed: run.seed, daily: run.daily, mode: run.mode || 'quick',
     buffs: run.mode==='formal' ? run.buffs || [] : [], ghost: run.ghost ?? null, winStreak: run.winStreak ?? 1, matchId: run.matchId ?? null, seconds: run.total, encounter: run.encounter, augments: run.augments, styleId: run.styleId, targetScore:run.targetScore });
   if (created.ok && run.mode === 'formal') {
