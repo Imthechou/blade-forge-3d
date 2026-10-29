@@ -24,6 +24,8 @@ export const CHALLENGE_SECONDS = ARENA_V3.seconds;
 
 
 export const MATERIALS = ARENA_MATERIALS;
+// Same six successive test specimens for every collection blade. Never draws from gameplay RNG.
+export const SAMPLE_MATERIALS=Object.freeze(['foam','rope','plastic','wood','ice','metal']);
 export const ROUTES = Object.freeze([
   { id: 'soft', name: '连切路线', tag: '低风险 · 软靶阵列', types: ['rope', 'foam', 'rope'], bonus: 1.04 },
   { id: 'mixed', name: '穿透路线', tag: '中风险 · 绳束夹板', types: ['rope', 'plastic', 'rope'], bonus: 1.18 },
@@ -233,7 +235,7 @@ function spawnInterval(run) {
 
 /** 投放一件：在 3×3 的挂架里随机挑一个空位 */
 function spawnTarget(run) {
-  if (!run || run.done) return null;
+  if (!run || run.done || (run.mode==='sample'&&run.targetSerial>=SAMPLE_MATERIALS.length)) return null;
   const alive = run.targets.filter((t) => t.alive);
   if (alive.length >= (run.encounter?.maxAlive ?? STREAM_MAX_ALIVE)) return null;
   const taken = new Set(alive.map((t) => `${t.row}:${t.slot}`));
@@ -268,6 +270,7 @@ function spawnTarget(run) {
   const serial=(run.targetSerial||0)+1;
   const avoid=run.mode==='quick' && serial%20===0 && run.elapsed>=8;
   if(avoid)type='metal';
+  if(run.mode==='sample')type=SAMPLE_MATERIALS[serial-1];
   const target = {
     id: `target-${run.targetSerial=serial}`, type, slot, row,
     avoid,
@@ -513,6 +516,7 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
         contactEvent:'avoid-hit',combo:0});
       continue;
     }
+    run.primaryContacts=(run.primaryContacts||0)+1;
     /* 「一刀必破」标记：每次接触独立重置，不能跨目标/跨手势泄漏 */
     let guaranteedBreak = false;
     const mat=MATERIALS[t.type],stats=run.blade.stats;
@@ -743,6 +747,8 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
     }
   }
   run.bestSwipe=Math.max(run.bestSwipe,run.gestureKills);
+  if(run.mode==='sample' && run.kills>=SAMPLE_MATERIALS.length)
+    return {ok:true,hits,done:finish(run,'sample-complete')};
   if (run.structure) {
     updateStructure(run.structure,run.targets);
     run.score=structureScore(run.structure,run.elapsed,run.total,run.health,run.maxHealth);
@@ -848,9 +854,10 @@ export function finish(run, reason='time') {
     perfects:run.perfects,weakHits:run.weakHits,armorBreaks:run.armorBreaks,crossCuts:run.crossCuts,
     secondaryKills:run.secondaryKills,secondaryScore:run.secondaryScore,metrics:copy(run.metrics),
     objectives:run.objectives,materials:[...(run.materialSet||[])],avoidHits:run.avoidHits||0,avoidCleared:run.avoidCleared||0,
+    elapsedSeconds:Number(run.elapsed.toFixed(3)),primaryContacts:run.primaryContacts||0,sampleTotal:run.mode==='sample'?SAMPLE_MATERIALS.length:null,
     mode:run.mode || 'quick',total:run.total,risk:copy(run.risk || {}),log:copy(run.log),
     structure:structureSnapshot(run.structure),rulesVersion:run.rulesVersion};
-  if (run.mode !== 'formal' && reason !== 'manual') emit(EVENTS.QUICK_CHALLENGE_FINISHED, run);
+  if (run.mode === 'quick' && reason !== 'manual') emit(EVENTS.QUICK_CHALLENGE_FINISHED, run);
   return run.result;
 }
 export function setPaused(run, paused) { if(!run||run.done)return false;run.paused=!!paused;return true; }
