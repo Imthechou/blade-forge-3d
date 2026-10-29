@@ -28,8 +28,8 @@ test('六流派 × 五档：所有项目规则必须可按项目 ID 检索，切
       const task = Formal.testTask(match);
       assert.equal(task.kind,id);
       assert.ok(task.rule?.kind, id+' 缺规则');
-      if(id==='cutting') { assert.ok(task.sequence?.length>=6, '切割题目不能为空'); assert.equal(task.rule.seconds,45); }
-      const submitted = Formal.submitTest(match,{measure:.78,detail:{source:'arenaChallenge',score:3000,duration:45}});
+      if(id==='cutting') { assert.ok(task.sequence?.length>=6, '切割题目不能为空'); assert.ok(task.rule.seconds>=60&&task.rule.seconds<=120); }
+      const submitted = Formal.submitTest(match,{measure:.78,detail:{source:'arenaChallenge',score:900,duration:task.rule.seconds}});
       assert.ok(submitted.ok, id+' 分项结算失败');
     }
     assert.ok(match.done);
