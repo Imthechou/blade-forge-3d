@@ -2,6 +2,7 @@ import { icon } from './icons.js';
 /** Forge V4: one visible 3D stage, two distinct touch minigames. */
 import { el, mount } from './dom.js';
 import { bladeContourProjection } from './bladeEdgeProjection.js';
+import { renderHoningArtwork } from './edgeHoningArtwork.js';
 import { HAMMER_TIERS } from '../data/balance.js';
 import * as Hammer from '../core/hammer.js';
 import { breakChance } from '../core/risk.js';
@@ -73,163 +74,190 @@ export function renderHammerV4({body,run,stage,Game,getStage,router,render}) {
 }
 
 /**
- * S7: finger traces the actual two-sided blade outline.
- * One continuous % fit, up to three attempts. Best stroke wins;
- * spending fewer attempts gives a disclosed small multiplier.
+ * S7 · Precision honing.
+ * The active GLB drives the target: a subtle wire directly on the real metal,
+ * with a small whetstone polishing head and a progressively revealed satin edge.
+ *
+ * The only grade is proximity/fit. Three complete one-finger passes are
+ * available, with a small disclosed bonus for finishing earlier. All rewards
+ * still go through Game.submitEdge / core/edge (no duplicated stat logic).
  */
 export function renderEdgeV4({body,run,stage,Game,getStage,render,toast}) {
   const question=stage.querySelector('.stage-question');
-  if(question)question.textContent='沿刀身轮廓描线 · 最多三次';
-  const canvas=el('canvas',{class:'edge-stage-canvas','aria-label':'沿真实刀身两侧轮廓描线'});
+  if(question)question.textContent='沿刀锋收光 · 三次精磨机会';
+  stage.classList.add('edge-honing-active');
+  const canvas=el('canvas',{class:'edge-stage-canvas edge-honing-surface',
+    'aria-label':'按住刀根的起点，沿真实刀刃轮廓滑动至终点'});
   stage.appendChild(canvas);
-  const ctx=canvas.getContext('2d');
-  const hud=el('div',{class:'edge-simple-hud',role:'status','aria-live':'polite'});
-  const bar=el('div',{class:'edge-simple-rail'},[el('i')]);
-  const hint=el('div',{class:'edge-simple-hint'});
-  const action=el('div',{class:'edge-simple-actions'});
-  const again=el('button',{class:'btn',type:'button',text:'再描一次'});
-  const finish=el('button',{class:'btn btn--primary',type:'button',text:'完成开刃'});
+  const ctx=canvas.getContext('2d',{alpha:true});
+  const hud=el('div',{class:'edge-simple-hud edge-honing-hud',role:'status'});
+  const fitValue=el('b',{text:'—'});
+  const countValue=el('b',{text:'0 / 3'});
+  const sharpValue=el('b',{text:'+0'});
+  hud.append(
+    el('div',{class:'edge-honing-primary'},[el('small',{text:'最佳贴合'}),fitValue]),
+    el('div',{},[el('small',{text:'磨刃次数'}),countValue]),
+    el('div',{class:'edge-hud-result'},[el('small',{text:'预计锋利'}),sharpValue])
+  );
+  const bar=el('div',{class:'edge-simple-rail edge-honing-progress','aria-label':'当前研刃进度'},[el('i')]);
+  const hint=el('div',{class:'edge-simple-hint edge-honing-hint',role:'status','aria-live':'polite'});
+  const action=el('div',{class:'edge-simple-actions edge-honing-actions'});
+  const again=el('button',{class:'btn edge-retry',type:'button',text:'再描一次'});
+  const finish=el('button',{class:'btn btn--primary edge-finish',type:'button',text:'完成开刃'});
   const skip=el('button',{class:'edge-skip',type:'button',text:'跳过'});
-  action.append(again,finish,skip);body.append(hud,bar,hint,action);
-  const n=48,tolerance=28;
-  let path=null,active=null,previous=null,lastIndex=0,frame=0,disposed=false,dirty=true;
-  let attempts=0,strokes=[],best=null,bestFit=-1,locked=false;
-  let samples=new Map();
+  action.append(again,finish,skip);
+  body.append(hud,bar,hint,action);
+  const n=48;
+  let path=null,active=null,previous=null,lastIndex=0;
+  let frame=0,disposed=false,dirty=true;
+  let attempts=0,best=null,bestFit=-1,locked=false,cursor=null;
+  let samples=new Map(),lastHud=0,lastBuzzIndex=-9;
+  let currentModel=null,tolerance=26;
   const asArray=map=>[...map].map(([index,value])=>({index,value}));
-  const score=(map,used)=>Edge.contourPreview(asArray(map),used);
-  function currentBest(){
-    const map=best||samples;
-    return score(map,Math.max(1,attempts||1));
+  const score=(map,used)=>Edge.contourPreview(asArray(map),Math.max(1,used));
+  const currentBest=()=>score(best||samples,Math.max(1,attempts));
+  const isReduced=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  function haptic(ms=5){
+    try{if(!isReduced&&typeof navigator.vibrate==='function')navigator.vibrate(ms);}catch(_){}
   }
-  function sync(){
-    const data=currentBest(),percentage=Math.round(data.fit*100);
-    const earned=best?data.sharp:0;
-    const played=attempts;
-    put(hud,[
-      el('div',{},[el('small',{text:'最佳贴合度'}),el('b',{text:percentage+'%'})]),
-      el('div',{},[el('small',{text:'已描次数'}),el('b',{text:played+'/3'})]),
-      el('div',{class:'edge-hud-result'},[el('small',{text:'预计锋利'}),el('b',{text:'+'+earned})])
-    ]);
-    bar.firstChild.style.width=(best?Math.round(data.fit*100):Math.round(score(samples,1).coverage*100))+'%';
+  function feedback(force=false){
+    const now=performance.now();
+    if(!force&&now-lastHud<75)return;
+    lastHud=now;
+    const data=currentBest(),live=score(samples,Math.max(1,attempts+1));
+    const percentage=Math.round(data.fit*100);
+    fitValue.textContent=(best?percentage:(active!==null?Math.round(live.fit*100):0))+'%';
+    countValue.textContent=attempts+' / 3';
+    sharpValue.textContent='+'+(best?data.sharp:0);
+    bar.firstChild.style.width=Math.round(((active!==null?lastIndex/(n-1):(best?data.coverage:0))*100))+'%';
     finish.disabled=attempts<1;
     again.disabled=attempts<1||attempts>=3||!locked;
-    const mult=[1.12,1.06,1][Math.min(2,Math.max(0,attempts-1))];
-    if(attempts===0)hint.textContent='从「起点」开始 · 贴着刀身轮廓滑动';
-    else if(!locked)hint.textContent='沿轮廓继续描画';
-    else hint.textContent='贴合 '+percentage+'%  ·  基础 +'+data.baseSharp
-      +'  ×'+mult.toFixed(2)+'  ·  奖励 +'+data.bonus+'  =  +'+earned;
-    again.setAttribute('aria-label',attempts<3?'再描一次 ('+(3-attempts)+')':'次数已用完');
-    again.replaceChildren(icon('refresh'),el('span',{text:attempts<3?String(3-attempts):'0'}));
+    again.setAttribute('aria-label',attempts<3?'再描一次 ('+(3-attempts)+' 次剩余)':'次数已用完');
+    if(attempts===0&&active===null)hint.textContent='按住金色起点，沿两侧刀锋滑动 · 磨到终点';
+    else if(active!==null)hint.textContent='保持贴刃 · 当前覆盖 '+Math.round(live.coverage*100)+'%';
+    else if(!locked)hint.textContent='从刀根起点重新描磨';
+    else hint.textContent='贴合 '+percentage+'% · 基础 +'+data.baseSharp+' ×'+data.multiplier.toFixed(2)
+      +' · 收光 +'+data.bonus+' = 锋利 +'+data.sharp;
   }
   function setup(){
     const b=canvas.getBoundingClientRect();
     if(!b.width||!b.height)return;
-    const dpr=Math.min(2,devicePixelRatio||1);
-    canvas.width=Math.ceil(b.width*dpr);canvas.height=Math.ceil(b.height*dpr);
+    const dpr=Math.min(2,globalThis.devicePixelRatio||1);
+    const width=Math.round(b.width*dpr),height=Math.round(b.height*dpr);
+    if(canvas.width!==width||canvas.height!==height){
+      canvas.width=width;canvas.height=height;
+    }
     ctx.setTransform(dpr,0,0,dpr,0,0);
     path=bladeContourProjection(getStage(),b.width,b.height);
+    currentModel=getStage()?.modelId;
+    tolerance=Math.max(20,Math.min(30,b.width*.073));
     dirty=false;
-    if(!path)hint.textContent='正在定位刀身轮廓…';
-  }
-  function traceLine(points,color,width,blur=0){
-    if(!points.length)return;
-    ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
-    ctx.lineJoin='round';ctx.lineCap='round';ctx.lineWidth=width;ctx.strokeStyle=color;
-    ctx.shadowColor=color;ctx.shadowBlur=blur;ctx.stroke();ctx.shadowBlur=0;
+    if(!path)hint.textContent='正在校准真实刀刃…';
   }
   function draw(){
-    frame=0;if(disposed||!canvas.isConnected)return;
-    if(dirty||!path)setup();
-    const b=canvas.getBoundingClientRect();if(!b.width||!path)return;
-    ctx.clearRect(0,0,b.width,b.height);
-    traceLine(path,'rgba(67,190,228,.16)',14);
-    traceLine(path,'rgba(76,200,241,.86)',2.2,5);
-    // The best completed contour becomes a satin silver edge on the actual knife.
-    for(const [map,color] of [[best,'rgba(242,252,255,.94)'],[samples,'#fff8ee']]){
-      if(!map)continue;
-      let segment=[];
-      for(let i=0;i<path.length;i++){
-        if(map.has(i)){segment.push(path[i]);}
-        else {if(segment.length>1)traceLine(segment,color,map===best?3.5:3,5);segment=[];}
-      }
-      if(segment.length>1)traceLine(segment,color,3,7);
-    }
-    for(const [p,label] of [[path[0],'起'],[path[path.length-1],'终']]){
-      ctx.beginPath();ctx.arc(p.x,p.y,9,0,Math.PI*2);ctx.fillStyle='rgba(246,252,255,.96)';ctx.fill();
-      ctx.fillStyle='#36577b';ctx.font='bold 10px sans-serif';ctx.textAlign='center';
-      ctx.fillText(label,p.x,p.y+3.5);
-    }
+    frame=0;
+    if(disposed||!canvas.isConnected)return;
+    if(dirty||!path||currentModel!==getStage()?.modelId)setup();
+    if(!path)return;
+    renderHoningArtwork(ctx,path,{
+      best,samples,active:active!==null,cursor,
+      progress:lastIndex/(n-1),showStart:active===null,
+      finished:locked,quality:bestFit,
+    });
   }
   function repaint(){if(!frame&&!disposed)frame=requestAnimationFrame(draw);}
-  // Return the nearest segment with its path position in [0..47].
-  // Bounded forward search prevents finger paths from snapping to the opposite side.
+  // Project the finger into nearby contour segments, never jump to an unrelated
+  // section on the opposite side of the knife.
   function nearest(x,y){
     if(!path)return null;
-    let nearest=null;
-    const first=active===null?0:Math.max(0,lastIndex-2);
-    const end=active===null?Math.min(5,n-2):Math.min(n-2,lastIndex+9);
-    for(let i=first;i<=end;i++){
+    let closest=null;
+    const from=active===null?0:Math.max(0,lastIndex-2);
+    const to=active===null?Math.min(5,n-2):Math.min(n-2,lastIndex+7);
+    for(let i=from;i<=to;i++){
       const a=path[i],b=path[i+1],dx=b.x-a.x,dy=b.y-a.y;
       const t=Math.max(0,Math.min(1,((x-a.x)*dx+(y-a.y)*dy)/(dx*dx+dy*dy||1)));
-      const xx=a.x+dx*t,yy=a.y+dy*t,d=Math.hypot(x-xx,y-yy);
-      if(!nearest||d<nearest.distance)nearest={index:Math.min(n-1,Math.round(i+t)),distance:d};
+      const xx=a.x+dx*t,yy=a.y+dy*t,dist=Math.hypot(x-xx,y-yy);
+      if(!closest||dist<closest.distance)closest={index:Math.min(n-1,Math.round(i+t)),distance:dist};
     }
-    return nearest;
+    return closest;
   }
   function sample(x,y){
-    const near=nearest(x,y);if(!near)return;
-    if(near.index<lastIndex-1||near.distance>tolerance*1.6)return;
+    const near=nearest(x,y);
+    if(!near)return;
+    cursor={...near,tolerance};
+    if(near.index<lastIndex-1||near.distance>tolerance*1.55)return;
     const next=Math.max(lastIndex,near.index);
-    // Intermediate cells are valid only after physically traversing their segments.
-    for(let i=lastIndex;i<=next;i++){
-      const dist=Math.min(tolerance,near.distance);
-      const val=.5 + dist/(2*tolerance);
-      samples.set(i,Math.min(samples.has(i)?samples.get(i):1,val));
+    // The movement is resampled every 4 CSS px. Credit only visited cells,
+    // not missing sections; quality remains the physical distance to the edge.
+    const value=.5+Math.min(tolerance,near.distance)/(2*tolerance);
+    for(let i=lastIndex;i<=next;i++)
+      samples.set(i,Math.min(samples.has(i)?samples.get(i):1,value));
+    if(next>=lastBuzzIndex+12&&next>3){
+      lastBuzzIndex=next;haptic(4);
     }
     lastIndex=next;
   }
-  function point(e){const b=canvas.getBoundingClientRect();return {x:e.clientX-b.left,y:e.clientY-b.top};}
-  function moveTo(e){
-    const q=point(e);
-    if(previous){
-      const distance=Math.hypot(q.x-previous.x,q.y-previous.y);
-      const steps=Math.max(1,Math.ceil(distance/6));
-      for(let i=1;i<=steps;i++){
-        const t=i/steps;sample(previous.x+(q.x-previous.x)*t,previous.y+(q.y-previous.y)*t);
-      }
-    } else sample(q.x,q.y);
-    previous=q;repaint();sync();
+  function position(e){
+    const b=canvas.getBoundingClientRect();
+    return {x:e.clientX-b.left,y:e.clientY-b.top};
   }
-  function finishStroke(e){
+  function moveTo(e){
+    const p=position(e);
+    if(previous){
+      const dist=Math.hypot(p.x-previous.x,p.y-previous.y);
+      const steps=Math.max(1,Math.min(150,Math.ceil(dist/4)));
+      for(let i=1;i<=steps;i++){
+        const t=i/steps;
+        sample(previous.x+(p.x-previous.x)*t,previous.y+(p.y-previous.y)*t);
+      }
+    }else sample(p.x,p.y);
+    previous=p;
+    feedback();repaint();
+  }
+  function endStroke(e){
     if(active!==e.pointerId)return;
-    try{if(canvas.hasPointerCapture(active))canvas.releasePointerCapture(active);}catch(_){}
-    active=null;previous=null;
-    if(samples.size>=3){
-      attempts++;strokes.push(new Map(samples));
+    const id=active;active=null;previous=null;cursor=null;
+    try{if(canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);}catch(_){}
+    // Cancellation (incoming call, gesture interruption) never burns a chance.
+    if(e.type==='pointercancel'){
+      samples.clear();lastIndex=0;feedback(true);repaint();return;
+    }
+    // Short accidental contact is not an attempt.
+    if(samples.size>=8){
+      attempts++;
       const candidate=score(samples,1);
-      if(candidate.eligible&&candidate.fit>bestFit){bestFit=candidate.fit;best=new Map(samples);}
+      if(candidate.eligible&&candidate.fit>bestFit){
+        bestFit=candidate.fit;best=new Map(samples);
+      }
       locked=true;
-    } else {samples.clear();lastIndex=0;}
-    sync();repaint();
+      haptic(candidate.eligible?12:6);
+    }else{
+      samples.clear();lastIndex=0;
+    }
+    feedback(true);repaint();
   }
   canvas.addEventListener('pointerdown',e=>{
-    if(disposed||active!==null||locked||attempts>=3||e.isPrimary===false)return;
+    if(disposed||locked||active!==null||attempts>=3||e.isPrimary===false)return;
     if(!path)setup();if(!path)return;
-    const p=point(e);
-    if(Math.hypot(p.x-path[0].x,p.y-path[0].y)>38)return;
-    active=e.pointerId;lastIndex=0;previous=null;samples.clear();
-    canvas.setPointerCapture(active);moveTo(e);
-  });
+    const p=position(e);
+    if(Math.hypot(p.x-path[0].x,p.y-path[0].y)>42)return;
+    active=e.pointerId;lastIndex=0;previous=null;cursor=null;
+    lastBuzzIndex=-9;samples.clear();
+    try{canvas.setPointerCapture(active);}catch(_){}
+    haptic(6);moveTo(e);feedback(true);
+    e.preventDefault();
+  },{passive:false});
   canvas.addEventListener('pointermove',e=>{
     if(active!==e.pointerId)return;
-    // Coalesced pointer events keep precision on phones with high-frequency touch sampling.
     for(const p of (e.getCoalescedEvents?.()||[]))moveTo(p);
-    moveTo(e);
-  });
-  for(const event of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(event,finishStroke);
+    moveTo(e);e.preventDefault();
+  },{passive:false});
+  canvas.addEventListener('pointerup',endStroke);
+  canvas.addEventListener('pointercancel',endStroke);
   again.addEventListener('click',()=>{
-    if(attempts>=3||!locked)return;
-    samples.clear();lastIndex=0;previous=null;locked=false;sync();repaint();
+    if(!locked||attempts>=3)return;
+    samples.clear();lastIndex=0;previous=null;cursor=null;locked=false;
+    feedback(true);repaint();
   });
   function commit(skipped){
     if(!skipped&&attempts<1)return;
@@ -237,17 +265,25 @@ export function renderEdgeV4({body,run,stage,Game,getStage,render,toast}) {
     const result=Game.submitEdge(skipped?null:data,{skipped,projected:true,attemptsUsed:Math.max(1,attempts)});
     if(!result?.ok){toast('开刃结算失败','warn');return;}
     const e=result.edge||{};
-    toast('贴合 '+Math.round((e.fit||0)*100)+'% ×'+(e.multiplier||1).toFixed(2)
+    toast('刃口贴合 '+Math.round((e.fit||0)*100)+'% ×'+(e.multiplier||1).toFixed(2)
       +' · 锋利 +'+(e.sharp||0),e.sharp?'good':'info');
     render();
   }
-  finish.addEventListener('click',()=>commit(false));skip.addEventListener('click',()=>commit(true));
-  const observer=new ResizeObserver(()=>{if(active===null){dirty=true;repaint();}});observer.observe(canvas);
-  const timer=setTimeout(()=>{dirty=true;repaint();},700);
-  function clearPointer(){active=null;previous=null;lastIndex=0;}
-  const onBlur=()=>{if(active!==null){clearPointer();samples.clear();locked=false;sync();repaint();}};
+  finish.addEventListener('click',()=>commit(false));
+  skip.addEventListener('click',()=>commit(true));
+  const observer=new ResizeObserver(()=>{if(active===null){dirty=true;repaint();}});
+  observer.observe(canvas);
+  const initial=setTimeout(()=>{dirty=true;repaint();},700);
+  const onBlur=()=>{
+    if(active!==null){active=null;previous=null;cursor=null;samples.clear();lastIndex=0;feedback(true);repaint();}
+  };
   globalThis.addEventListener('blur',onBlur);
-  repaint();sync();
-  return ()=>{disposed=true;observer.disconnect();clearTimeout(timer);
-    globalThis.removeEventListener('blur',onBlur);if(frame)cancelAnimationFrame(frame);canvas.remove();};
+  repaint();feedback(true);
+  return ()=>{
+    disposed=true;observer.disconnect();clearTimeout(initial);
+    globalThis.removeEventListener('blur',onBlur);
+    if(frame)cancelAnimationFrame(frame);
+    stage.classList.remove('edge-honing-active');
+    canvas.remove();
+  };
 }
