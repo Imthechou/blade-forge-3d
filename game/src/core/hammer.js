@@ -94,7 +94,7 @@ export function strike(run, rng) {
   // Ten safe strikes even when prior-stage card risk is nonzero.
   const check = index <= 10
     ? { risk: run.risk.current, chance: 0, roll: null, fractured: false, protected: true }
-    : Risk.check(run.risk.current, rng, run.daily?.breakScale || 1);
+    : Risk.check(run.risk.current, rng, (run.daily?.breakScale || 1) * (1 - (run.workshop?.riskReduction || 0)));
 
   const tierBefore = run.hammer.tier;
   run.hammer.tier = hammerTierOf(run.hammer.progress).id;
