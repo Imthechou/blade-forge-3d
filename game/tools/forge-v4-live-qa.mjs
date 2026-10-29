@@ -83,6 +83,21 @@ try{
    assert.match(await page.locator('.edge-simple-hud').innerText(),/0\s*\/\s*3/,'cancelled gesture must not cost an attempt');
 
    async function trace(){
+     // Exercise the actual touch stream on the 390px mobile viewport rather
+     // than treating a mouse drag as sufficient mobile acceptance.
+     if(width===390){
+       const cdp=await context.newCDPSession(page);
+       const first=points.path[0];
+       await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',
+         touchPoints:[{x:b.x+first.x,y:b.y+first.y}]});
+       for(let i=1;i<points.path.length;i++){
+         const p=points.path[i];
+         await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',
+           touchPoints:[{x:b.x+p.x,y:b.y+p.y}]});
+       }
+       await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+       await cdp.detach();return;
+     }
      await page.mouse.move(b.x+points.path[0].x,b.y+points.path[0].y);
      await page.mouse.down();
      for(let i=1;i<points.path.length;i++)await page.mouse.move(b.x+points.path[i].x,b.y+points.path[i].y,{steps:3});
