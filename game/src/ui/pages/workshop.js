@@ -335,6 +335,12 @@ function inspect(blade) {
     /* 卡背：六维、特性（标注赛场职责）、连携、赛事经历、工艺与档案 */
     bladeCardDetail(model),
     el('div', { class: 'blade-detail-actions' }, [
+      el('button',{class:'btn btn--primary',text:'12秒短试刀',onclick:async()=>{
+        const Arena=await import('./arena.js');
+        const result=Arena.openCollectionSample(blade.id);
+        if(!result?.ok){toast(result?.reason||'当前无法试刀','warn');return;}
+        detailSheet.close();
+      }}),
       el('button', {
         class: 'btn', text: '设为代表作',
         onclick: () => { if (Core.progress.setShowcase(blade.id)) toast('已设为代表作', 'good'); },
