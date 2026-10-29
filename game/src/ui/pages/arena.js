@@ -742,7 +742,9 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
     mission.querySelector('b').textContent = `${match.definition.branchName} · ${label}`;
     mission.querySelector('span').textContent = run.risk?.status === 'failed'
       ? '结构临时失效 · 本项结束'
-      : `目标 ${match.definition.targetScore} 分 · 本段已投放 ${run.stageSpawned} 靶 · 刀况 ${Math.round(run.health / Math.max(1,run.maxHealth) * 100)}%`;
+      : run.structure
+        ? `主结构 ${Math.round(run.structure.primary*100)}% · 连接松脱 ${run.structure.failedJoins.length}/${run.structure.joins.length} · 刀况 ${Math.round(run.health / Math.max(1,run.maxHealth)*100)}%`
+        : `目标 ${match.definition.targetScore} 分 · 已投放 ${run.stageSpawned} 靶 · 刀况 ${Math.round(run.health/Math.max(1,run.maxHealth)*100)}%`;
   };
   renderChallengeCanvas(canvas, run, {
     hud, mission, footer, updateMission,
@@ -919,12 +921,14 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     text(hud.querySelector('.quick-hud-score small'),run.targetScore?`目标 ${run.targetScore}`:'当前得分');
     text(timeNode,run.remaining.toFixed(1));text(scoreNode,String(Math.floor(shownScore)).padStart(4,'0'));
     const healthPercent = Math.max(0, Math.min(100, run.health / Math.max(1, run.maxHealth ?? 100) * 100));
-    text(healthNode, isSlice ? `${Math.round(run.health)}/${Math.round(run.maxHealth ?? 100)}` : `${Math.round(healthPercent)}%`);
-    healthBar.style.transform=`scaleX(${healthPercent/100})`;
+    const arcade=run.mode==='quick'&&!isSlice;
+    text(healthNode,arcade?'∞':isSlice ? `${Math.round(run.health)}/${Math.round(run.maxHealth ?? 100)}` : `${Math.round(healthPercent)}%`);
+    healthBar.style.display=arcade?'none':'';
+    if(!arcade)healthBar.style.transform=`scaleX(${healthPercent/100})`;
     stage.classList.toggle('is-risky',run.finale?.id==='rush');stage.classList.toggle('is-low-health',healthPercent<35);stage.classList.toggle('is-countdown',run.remaining<=5);
     text(vitals.querySelector('small'), isSlice
       ? (run.risk?.status === 'failed' ? '结构失效' : run.risk?.status === 'warning' ? '⚠ 高负荷' : '刀况')
-      : run.mode === 'formal' ? (run.risk?.status === 'failed' ? '结构失效' : '临时刀况') : '模拟刀况');
+      : run.mode === 'formal' ? (run.risk?.status === 'failed' ? '结构失效' : '临时刀况') : '无限试刀');
     phaseBar.style.transform=`scaleX(${Math.max(0,run.remaining)/(run.total || Challenge.CHALLENGE_SECONDS)})`;
     const pauseLabel=run.paused?'继续':'暂停';
     if (pauseNode && pauseNode.getAttribute('aria-label')!==pauseLabel) { pauseNode.setAttribute('aria-label',pauseLabel); pauseNode.title=pauseLabel; }
