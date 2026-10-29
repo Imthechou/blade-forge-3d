@@ -26,6 +26,7 @@ import * as Arena from './arena.js';
 import * as Events from './events.js';
 import * as ForgeBonuses from './forgeBonuses.js';
 import * as V41Growth from './arenaV41Growth.js';
+import * as V41Specialties from './arenaV41Specialties.js';
 import * as CodexCatalog from '../data/codexCatalog.js';
 import { COUNTED_CATEGORIES } from '../data/codexCatalog.js';
 import { commitSave } from './saveTransaction.js';
@@ -806,13 +807,27 @@ export function equipForgeBonus(bonusId) {
   });
 }
 
+/** Validate and save a specialty's pre-forge choices without mutating a running forge. */
+export function setSpecialtyOptions(bonusId,options={}) {
+  if(!V41Specialties.BY_BONUS[bonusId])return {ok:false,reason:'未知专精'};
+  const original=load();
+  return commitSave(original,s=>{
+    const existing=s.forgeBonus.specialtyOptions || {};
+    const merged={...(existing[bonusId]||{}),...(options||{})};
+    const normalized=V41Specialties.normalizeSpecialtyOptions(bonusId,merged);
+    s.forgeBonus.specialtyOptions={...existing,[bonusId]:normalized};
+    return {ok:true,options:normalized};
+  });
+}
+
 /** 当前的可装备加成列表 + 解锁态 + 已装备项（工坊 / 开锻前读取） */
 export function forgeBonusView() {
   const s = load();
   const list = ForgeBonuses.bonusListFor(s);
   const equippedId = s.forgeBonus?.equippedId || null;
   const equipped = list.find((b) => b.id === equippedId && b.unlocked) || null;
-  return { list, equippedId: equipped ? equippedId : null, equipped };
+  return { list, equippedId: equipped ? equippedId : null, equipped,
+    specialty:equipped ? V41Specialties.specialtySnapshot(s,equipped.id) : null };
 }
 
 /* ── 设置 ───────────────────────────────────────────────── */
