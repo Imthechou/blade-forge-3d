@@ -85,3 +85,48 @@ test('V4.1 tier budgets, first wins and round receipts are explicit, empty retir
    rounds:rounds.slice(0,3).map(r=>({...r,win:false}))},'world1');
  assert.equal(world.events.reduce((t,x)=>t+x.cr,0),3*85+3*120+240);
 });
+
+test('Six school rigs have distinct playable silhouettes and physical join graphs, not six recolored copies',()=>{
+ const signatures=new Set();
+ const names=Object.keys(STRUCTURE_TEMPLATES);
+ const validKeys=new Set(['a','b','c','d','e','f']);
+ for(const school of names){
+   const template=STRUCTURE_TEMPLATES[school],structure=createStructure(73,school,2);
+   assert.equal(structure.version,'arena-structure-v3');
+   const physical=structure.parts.filter(p=>!p.isProtected);
+   assert.equal(physical.length,6);
+   const keyMap=new Map(physical.map(p=>[p.key,p]));
+   assert.equal(keyMap.size,6);
+   const signature=JSON.stringify({
+     geometry:physical.map(p=>[p.key,p.x,p.y]),
+     joints:template.joins.map(pair=>pair.join('-')),
+   });
+   assert.equal(signatures.has(signature),false,school+' reuses previous rig geometry and links');
+   signatures.add(signature);
+   for(const part of physical) {
+     assert.ok(validKeys.has(part.key));
+     assert.ok(part.x>=.18&&part.x<=.81&&part.y>=.22&&part.y<=.78,school+' off-stage target');
+   }
+   for(const [a,b] of structure.joins){
+     assert.ok(structure.parts.some(p=>p.id===a),school+' unknown physical join');
+     assert.ok(structure.parts.some(p=>p.id===b),school+' unknown physical join');
+   }
+   for(const route of structure.routes){
+     assert.equal(route.length,3);
+     for(const nodeId of route)assert.ok(structure.joins.some(j=>j.includes(nodeId)),school+' route node is invisible');
+     const frozen=createStructure(73,school,2);
+     for(const nodeId of route){
+       const target=frozen.parts.find(p=>p.id===nodeId);
+       target.alive=false;target.progress=1;
+     }
+     updateStructure(frozen,frozen.parts);
+     assert.equal(frozen.completed,true,school+' route cannot complete actual graph');
+     assert.equal(frozen.primary,1,school+' route has wrong score');
+     assert.ok(frozen.failedJoins.length>0);
+   }
+   const saved=createStructure(73,school,2);
+   const initial=JSON.stringify(saved);
+   assert.equal(JSON.stringify(createStructure(73,school,2)),initial,school+' seed not deterministic');
+ }
+ assert.equal(signatures.size,6);
+});
