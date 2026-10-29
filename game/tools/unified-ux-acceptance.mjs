@@ -69,7 +69,7 @@ try {
    await page.getByRole('button',{name:'更换参赛刀'}).click();await dialog();await shot(`${width}-loadout`);await close();
    await page.getByRole('button',{name:'全国大赛',exact:true}).click();await shot(`${width}-national`);
    await page.getByRole('button',{name:'全球巅峰赛',exact:true}).click();await shot(`${width}-apex`);
-   await page.getByRole('button',{name:'快速挑战',exact:true}).click();await page.getByRole('button',{name:'开始自由快赛',exact:true}).click();await page.locator('[data-augment-id]').first().waitFor();await shot(`${width}-augment`);await page.locator('[data-augment-id]').first().click();
+   await page.getByRole('button',{name:'快速挑战',exact:true}).click();await page.getByRole('button',{name:'开始自由快赛',exact:true}).click();await page.locator('.quick-canvas').waitFor();assert.equal(await page.locator('[data-augment-id]').count(),0,'V4.1 no random augment');await shot(`${width}-quick-opening`);
    await page.locator('.quick-canvas').waitFor();await page.waitForTimeout(500);await page.getByRole('button',{name:'暂停',exact:true}).click();await page.locator('.quick-pause-overlay').waitFor();
    const time=await page.evaluate(()=>__FORGE_ARENA.run.elapsed);await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>__FORGE_ARENA.run.elapsed),time);
    await page.getByRole('button',{name:/继续挑战/}).press('Shift+Tab');assert.equal(await page.evaluate(()=>!!document.activeElement.closest('.quick-pause-overlay')),true);await shot(`${width}-pause`);
