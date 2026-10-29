@@ -75,8 +75,11 @@ export function createStructure(seed=1,styleId='composite',gradient=0){
  // requires a central support, not more invisible HP. Both preserve routes.
  const routes=spec.routes.map((path,index)=>{
    const keys=[...path];
-   if(tier>=3)keys.push(index===0?'f':'e');
-   if(tier>=4)keys.push(index===0?'d':'c');
+   // Crystal school has a different left/right ordering; derive the
+   // reinforcements from the *other* authored route, never duplicate a node.
+   const alternative=spec.routes[1-index].filter(key=>!keys.includes(key));
+   if(tier>=3)keys.push(alternative.at(-1));
+   if(tier>=4)keys.push(alternative.at(-2));
    return [...new Set(keys)].map(id);
  });
  const extra=tier>=3?[['c','f'],['d','e']]:[];
