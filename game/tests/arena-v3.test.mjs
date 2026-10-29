@@ -10,7 +10,7 @@ import {materialSample,sampleBlade,simulateMatch} from '../tools/arena-v3-simula
 function run(buffs=[],mean=100){return C.createChallenge(sampleBlade(mean),{mode:'formal',seed:42,buffs,augments:false}).run;}
 function target(type='metal',patch={}){return {id:'t',type,x:.5,y:.5,progress:0,armorLeft:C.MATERIALS[type].armor*.6,alive:true,cuts:[],variation:.03,...patch};}
 function hit(r,t,angle=C.MATERIALS[t.type].angle){r.targets=[t];C.beginSwipe(r);return C.swipe(r,{x:t.x-Math.cos(angle)*.2,y:t.y-Math.sin(angle)*.2},{x:t.x+Math.cos(angle)*.2,y:t.y+Math.sin(angle)*.2},{duration:.18});}
-const payload=score=>({measure:1,detail:{source:'arenaChallenge',score,duration:45}});
+const payload=(score,duration=70)=>({measure:1,detail:{source:'arenaChallenge',score,duration}});
 
 test('正式材料 400 个固定手势校准：低阶泡棉补刀和高阶结构差异可验证',()=>{
   const f=materialSample(60,'foam');assert.ok(f.firstCutRate>=.45&&f.firstCutRate<=.55,JSON.stringify(f));
@@ -120,10 +120,10 @@ test('正式赛只消费真实切割分，不再重复乘刀具能力；无操�
   for(const mean of [60,150]) {
     const m=F.createFormalMatch({blade:sampleBlade(mean),styleId:'edge'}).match;
     assert.equal(F.submitTest(m,{measure:1}).ok,false);
-    F.submitTest(m,payload(3600));assert.equal(m.result.composite,3600);assert.equal(m.done,true);
+    F.submitTest(m,payload(3600,m.definition.rules[0].seconds));assert.equal(m.result.composite,1000);assert.equal(m.done,true);
   }
   const m=F.createFormalMatch({blade:sampleBlade(150)}).match;
-  const r=run();r.health=0;r.score=50000;C.finish(r,'wearout');F.submitTest(m,formalCutPayload(r));assert.equal(m.result.win,false);assert.equal(m.result.composite,50000,'失效保留真实过程分，但不能赢下比赛');
+  const r=run();r.health=0;r.score=50000;C.finish(r,'wearout');const bad=formalCutPayload(r);bad.detail.duration=m.definition.rules[0].seconds;F.submitTest(m,bad);assert.equal(m.result.win,false);assert.equal(m.result.composite,1000,'失效保留上限内分数，但不能赢下比赛');
 });
 test('全国五轮不同风格且不累积强化；失败/放弃不毁刀，三刀巅峰严格轮换并正常结算',()=>{
   const blade=sampleBlade(150),before=JSON.stringify(blade),n=F.createNationalMatch({blade,seed:15}).match;
@@ -132,19 +132,19 @@ test('全国五轮不同风格且不累积强化；失败/放弃不毁刀，三�
     const round=F.nationalCurrentRound(n);
     assert.equal(round.roundMatch.definition.tests.length,1);
     assert.equal(round.roundMatch.round,i);
-    assert.ok(F.nationalSubmit(n,payload(100000)).ok);
+    assert.ok(F.nationalSubmit(n,payload(1000,F.nationalCurrentRound(n).roundMatch.definition.rules[0].seconds)).ok);
   }
   assert.equal(n.result.champion,true);assert.equal(n.result.bladeDestroyed,false);
-  const lost=F.createNationalMatch({blade}).match;F.nationalStartRound(lost,[blade]);F.nationalSubmit(lost,payload(0));assert.equal(lost.result.reason,'eliminated');
+  const lost=F.createNationalMatch({blade}).match;F.nationalStartRound(lost,[blade]);F.nationalSubmit(lost,payload(0,F.nationalCurrentRound(lost).roundMatch.definition.rules[0].seconds));assert.equal(lost.result.reason,'eliminated');
   const abandoned=F.createNationalMatch({blade}).match;F.nationalAbandon(abandoned);assert.equal(abandoned.result.reason,'abandoned');
   const blades=[blade,{...sampleBlade(150),id:'b'},{...sampleBlade(150),id:'c'}],a=F.createApexMatch({blades}).match;
   assert.equal(F.apexDispatch(a,[{...blade,id:'outside'}],'outside').ok,false);
   for(const b of blades) {
     assert.ok(F.apexDispatch(a,blades,b.id).ok);
-    assert.ok(F.apexSubmit(a,payload(100000)).ok);
+    assert.ok(F.apexSubmit(a,payload(1000,a.rounds[a.roundIndex].match.definition.rules[0].seconds)).ok);
     if(!a.done)assert.equal(F.apexDispatch(a,blades,b.id).ok,false);
   }
-  assert.equal(a.result.wins,3);assert.equal(a.result.win,true);assert.equal(a.result.composite,300000);
+  assert.equal(a.result.wins,3);assert.equal(a.result.win,true);assert.equal(a.result.composite,3000);
   assert.equal(JSON.stringify(blade),before);
 });
 test('新快赛纪录独立版本分组，旧纪录与未知存档内容保留',()=>{
