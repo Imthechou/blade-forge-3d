@@ -130,7 +130,15 @@ async function scenario(name,fn,options) {
   const env=await newGame(name,options);
   try{const data=await fn(env);report.cases.push({name,status:'PASS',data});console.log('PASS',name,JSON.stringify(data));}
   catch(error){report.cases.push({name,status:'FAIL',error:String(error.stack)});await screenshot(env.page,name+'-failure').catch(()=>{});console.error('FAIL',name,String(error));}
-  finally{await env.context.close();}
+  finally{
+    await env.context.close();
+    try{
+      const dest=path.join(out,'video-'+name+'.webm');
+      await env.page.video()?.saveAs(dest);
+      const result=report.cases.findLast(c=>c.name===name);
+      if(result)result.video=path.basename(dest);
+    }catch(err){console.warn('Video not saved for '+name+': '+String(err));}
+  }
 }
 try {
   await scenario('quick-45s-real-pointer',async({page,virtual})=>{
