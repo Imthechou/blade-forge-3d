@@ -11,7 +11,7 @@ import { tagName } from '../../data/tags.js';
 import { getTrait } from '../../data/traits.js';
 import { Game } from '../../app/game.js';
 import { BladeStage } from '../../render/index.js';
-import { mountCollectionPreview, disconnectCollectionPreviews } from '../../render/collectionPreview.js';
+import { mountCollectionPreview, disconnectCollectionPreviews, releaseCollectionPreviewStage, applyCollectionLighting } from '../../render/collectionPreview.js';
 import * as CodexCatalog from '../../data/codexCatalog.js';
 import router from '../router.js';
 
@@ -43,6 +43,10 @@ const FILTERS = [
 ];
 let collectionSort = 'score';
 let collectionFilter = 'all';
+// A very large archive must not instantiate hundreds of PBR card models,
+// observers and DOM nodes at once. Keep sorting/filtering across ALL blades.
+const COLLECTION_PAGE_SIZE = 24;
+let collectionPage = 0;
 /** 比较选择（最多 2 把） */
 let compareIds = [];
 
@@ -58,6 +62,10 @@ export function create() {
   tabHost = el('div', { class: 'pill-tabs ws-tabhost', role: 'tablist', 'aria-label': '工坊分类' });
   body = el('div', { class: 'ws-body', role: 'tabpanel', id: 'workshopPanel', tabindex: '0' });
   root.append(tabHost, body);
+}
+
+export function leave() {
+  releaseCollectionPreviewStage();
 }
 
 export function render() {
@@ -115,7 +123,7 @@ function renderCollection() {
       ...SORTS.map((s) => el('button', {
         class: 'chip' + (collectionSort === s.id ? ' chip--accent' : ''),
         type: 'button', 'aria-pressed': String(collectionSort === s.id), text: s.name,
-        onclick: () => { collectionSort = s.id; render(); },
+        onclick: () => { collectionSort = s.id; collectionPage = 0; render(); },
       })),
     ]),
     el('div', { class: 'ws-control-row', role: 'group', 'aria-label': '筛选' }, [
@@ -123,7 +131,7 @@ function renderCollection() {
       ...FILTERS.map((f) => el('button', {
         class: 'chip' + (collectionFilter === f.id ? ' chip--accent' : ''),
         type: 'button', 'aria-pressed': String(collectionFilter === f.id), text: f.name,
-        onclick: () => { collectionFilter = f.id; render(); },
+        onclick: () => { collectionFilter = f.id; collectionPage = 0; render(); },
       })),
     ]),
     compareIds.length ? el('div', { class: 'ws-control-row' }, [
@@ -152,13 +160,17 @@ function renderCollection() {
   });
 
   if (!shown.length) {
-    body.appendChild(el('div', { class: 'card ws-empty' }, [icon('help'), el('b', {text:'还没有符合条件的刀'}), el('p', {class:'muted',text:'换个筛选条件，看看其他收藏。'}), el('button',{class:'btn',text:'查看全部',onclick:()=>{collectionFilter='all';render();}})]));
+    body.appendChild(el('div', { class: 'card ws-empty' }, [icon('help'), el('b', {text:'还没有符合条件的刀'}), el('p', {class:'muted',text:'换个筛选条件，看看其他收藏。'}), el('button',{class:'btn',text:'查看全部',onclick:()=>{collectionFilter='all';collectionPage=0;render();}})]));
     return;
   }
 
+  const pageCount = Math.ceil(shown.length / COLLECTION_PAGE_SIZE);
+  collectionPage = Math.max(0, Math.min(collectionPage, pageCount - 1));
+  const start = collectionPage * COLLECTION_PAGE_SIZE;
+  const onPage = shown.slice(start, start + COLLECTION_PAGE_SIZE);
   const grid = el('div', { class: 'ws-collection-grid' });
   body.appendChild(grid);
-  for (const blade of shown) {
+  for (const blade of onPage) {
     /* ★ rework T13.1：用**共用**展示模型与卡片，不在这里另拼一套。
        3D 缩略图仍由 mountCollectionPreview 挂到卡面主视觉位。 */
     const model = bladeCardModel(blade, { kind: 'collection' });
@@ -187,6 +199,29 @@ function renderCollection() {
       }),
     ]));
     grid.appendChild(card);
+  }
+  if (pageCount > 1) {
+    const paginate = (next) => {
+      if (next < 0 || next >= pageCount || next === collectionPage) return;
+      collectionPage = next;
+      root.scrollTop = 0;
+      render();
+    };
+    body.appendChild(el('nav', {
+      class: 'ws-collection-pagination', 'aria-label': '藏刀阁分页',
+    }, [
+      el('span', { class: 'muted tiny', text: `第 ${collectionPage + 1} / ${pageCount} 页 · 当前 ${start + 1}–${start + onPage.length} / ${shown.length} 把` }),
+      el('div', { class: 'ws-collection-page-actions' }, [
+        el('button', { class: 'chip', text: '首页', disabled: collectionPage === 0,
+          onclick: () => paginate(0) }),
+        el('button', { class: 'chip', text: '上一页', disabled: collectionPage === 0,
+          onclick: () => paginate(collectionPage - 1) }),
+        el('button', { class: 'chip', text: '下一页', disabled: collectionPage >= pageCount - 1,
+          onclick: () => paginate(collectionPage + 1) }),
+        el('button', { class: 'chip', text: '末页', disabled: collectionPage >= pageCount - 1,
+          onclick: () => paginate(pageCount - 1) }),
+      ]),
+    ]));
   }
 }
 
@@ -354,6 +389,7 @@ function inspect(blade) {
       if (detailStage === stage) detailStage = null;
       return;
     }
+    applyCollectionLighting(stage);
     const environment = await stage.loadEnvironment();
     if (detailSequence !== sequence || !previewHost.isConnected) { stage.dispose(); return; }
     const shown = await stage.show(modelId, { viewPreset: visual.viewPreset || 'forge' });
