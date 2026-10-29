@@ -263,8 +263,14 @@ function spawnTarget(run) {
   }
   run.spawnCount = (run.spawnCount || 0) + 1;
   if (run.spawnCount % 5 === 0) run.wave += 1;   // 让 activeTypes 的奇偶轮换起来
+  // One authored, clearly marked avoid opportunity in every 20 quick targets.
+  // No hidden damage or score penalty: clipping it only breaks the combo.
+  const serial=(run.targetSerial||0)+1;
+  const avoid=run.mode==='quick' && serial%20===0 && run.elapsed>=8;
+  if(avoid)type='metal';
   const target = {
-    id: `target-${run.targetSerial=(run.targetSerial||0)+1}`, type, slot, row,
+    id: `target-${run.targetSerial=serial}`, type, slot, row,
+    avoid,
     progress: 0, alive: true, x: STREAM_COLS[slot], y: STREAM_ROWS[row], layout: 'stream',
     cuts: [], lastAngle: null, createdAt: run.elapsed,
     difficulty: 1, stage: run.encounter ? run.spawnStage : run.phase,
@@ -290,6 +296,11 @@ function expireTargets(run) {
     const worked = t.progress > .05 || t.armorLeft < armorOf(t.type) - .02;
     const extension = worked ? Math.min(2, Math.max(0,(t.lastHitAt || 0) - (t.createdAt ?? 0)) * .3) : 0;
     if (run.elapsed - (t.createdAt ?? 0) < baseLife + extension) continue;
+    if(t.avoid) {
+      t.alive=false;run.avoidCleared=(run.avoidCleared||0)+1;
+      run.log.push({type:'avoid-cleared',target:t.id,at:run.elapsed});
+      scheduleRefill(run);continue;
+    }
     t.alive = false; t.missed = true; scheduleRefill(run);
     run.misses = (run.misses || 0) + 1;
     if ((run.streak || 0) >= 2) run.log.push({ type: 'combo-break', at: run.elapsed, streak: run.streak, reason: 'miss' });
@@ -493,6 +504,15 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
     if(!t.alive)continue;
     if(!run.hitIds.includes(t.id))run.hitIds.push(t.id);
     run.contacts[t.id]={at:run.elapsed,travel:run.travel}; t.lastHitAt=run.elapsed;
+    if(t.avoid) {
+      t.alive=false;run.avoidHits=(run.avoidHits||0)+1;
+      run.streak=0;run.combo=0;run.gestureKills=0;
+      run.log.push({type:'avoid-hit',target:t.id,at:run.elapsed});
+      scheduleRefill(run);
+      hits.push({target:t,complete:false,points:0,quality:'MISS',
+        contactEvent:'avoid-hit',combo:0});
+      continue;
+    }
     /* 「一刀必破」标记：每次接触独立重置，不能跨目标/跨手势泄漏 */
     let guaranteedBreak = false;
     const mat=MATERIALS[t.type],stats=run.blade.stats;
@@ -689,20 +709,20 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
     let secondaryPower=0, candidates=[];
     if(primaryComplete && weak && P.pierce) {
       secondaryPower=power*P.pierce;
-      candidates=run.targets.filter(n=>n.alive && n.id!==t.id && (n.x-t.x)*dx+(n.y-t.y)*dy>0 && lineDistance(n.x,n.y)<radius)
+      candidates=run.targets.filter(n=>n.alive && !n.avoid && n.id!==t.id && (n.x-t.x)*dx+(n.y-t.y)*dy>0 && lineDistance(n.x,n.y)<radius)
         .sort((x,y)=>Math.hypot(x.x-t.x,x.y-t.y)-Math.hypot(y.x-t.x,y.y-t.y)).slice(0,1);
     }
     if(cross && P.crackSpread) {
       secondaryPower=Math.max(secondaryPower,power*P.crackSpread);
-      candidates.push(...run.targets.filter(n=>n.alive && n.id!==t.id && Math.hypot(n.x-t.x,n.y-t.y)<.4).slice(0,2));
+      candidates.push(...run.targets.filter(n=>n.alive && !n.avoid && n.id!==t.id && Math.hypot(n.x-t.x,n.y-t.y)<.4).slice(0,2));
     }
     if(primaryComplete && t.type==='ice' && P.iceChain) {
       secondaryPower=Math.max(secondaryPower,P.iceChain);
-      candidates.push(...run.targets.filter(n=>n.alive && Math.hypot(n.x-t.x,n.y-t.y)<.5));
+      candidates.push(...run.targets.filter(n=>n.alive && !n.avoid && Math.hypot(n.x-t.x,n.y-t.y)<.5));
     }
     if(primaryComplete && P.waveBlade && run.gestureKills>=3 && !run.waveTriggered) {
       run.waveTriggered=true; secondaryPower=Math.max(secondaryPower,P.waveBlade);
-      candidates.push(...run.targets.filter(n=>n.alive && Math.hypot(n.x-t.x,n.y-t.y)<.48));
+      candidates.push(...run.targets.filter(n=>n.alive && !n.avoid && Math.hypot(n.x-t.x,n.y-t.y)<.48));
     }
     for(const next of new Set(candidates)) {
       if(!next.alive || secondaryBudget<=0)continue;
@@ -710,7 +730,7 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
       const secondary=applySecondary(run,next,secondaryPower);
       hits.push(secondary);
       if(secondary.complete && next.type==='ice' && P.iceChain && secondaryBudget>0) {
-        for(const n of run.targets.filter(n=>n.alive && Math.hypot(n.x-next.x,n.y-next.y)<.4)) {
+        for(const n of run.targets.filter(n=>n.alive && !n.avoid && Math.hypot(n.x-next.x,n.y-next.y)<.4)) {
           if(secondaryBudget<=0)break;
           secondaryBudget--;run.secondaryThisSwipe++;hits.push(applySecondary(run,n,P.iceChain));
         }
@@ -763,6 +783,7 @@ function branchScoreFactor(run,t,{weak,cross,quality}) {
   }
 }
 function applySecondary(run,t,power) {
+  if(t.avoid)return {target:t,complete:false,points:0,contactEvent:'avoid-ignored'};
   const mat=MATERIALS[t.type];
   if(run.resonances?.includes('crack'))power*=1+run.params.resonancePower*2;
   const armor=Math.min(t.armorLeft||0,power*.9);
@@ -826,7 +847,7 @@ export function finish(run, reason='time') {
     version:run.rulesVersion || ARENA_V3.version, choicesMade:run.choicesMade, resonances:[...(run.resonances||[])],
     perfects:run.perfects,weakHits:run.weakHits,armorBreaks:run.armorBreaks,crossCuts:run.crossCuts,
     secondaryKills:run.secondaryKills,secondaryScore:run.secondaryScore,metrics:copy(run.metrics),
-    objectives:run.objectives,materials:[...(run.materialSet||[])],
+    objectives:run.objectives,materials:[...(run.materialSet||[])],avoidHits:run.avoidHits||0,avoidCleared:run.avoidCleared||0,
     mode:run.mode || 'quick',total:run.total,risk:copy(run.risk || {}),log:copy(run.log),
     structure:structureSnapshot(run.structure),rulesVersion:run.rulesVersion};
   if (run.mode !== 'formal' && reason !== 'manual') emit(EVENTS.QUICK_CHALLENGE_FINISHED, run);
