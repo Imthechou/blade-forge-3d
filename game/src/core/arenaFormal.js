@@ -247,14 +247,19 @@ export function finishMatch(match, reason = 'complete') {
 
   /* 临时失效 → 判负，但**不是**永久断刀（FORMAL_RISK_TBD 未定） */
   const temporaryFailure = match.session.aborted === 'temporary-failure';
-  const win = reason==='complete' && !temporaryFailure && judge.win;
+  const cutDetail=match.session.entries[0]?.result?.detail || {};
+  // Formal titles require the actual target connection objective. A high score
+  // alone cannot count as a completed structure.
+  const primaryCompleted=match.version!==FORMAL_RULES_VERSION ||
+    cutDetail.structure?.completed === true;
+  const win = reason==='complete' && !temporaryFailure && primaryCompleted && judge.win;
 
   match.done = true;
   match.fieldTest = {
     used: true,
     result: { tier: win ? 'perfect' : 'fail', performance: null },
   };
-  const cut=match.session.entries[0]?.result?.detail || {};
+  const cut=cutDetail;
   match.result = {
     cut, honors:match.version===FORMAL_RULES_VERSION && win ? honorsOf(cut,match.styleId) : [],
     version: FORMAL_MATCH_VERSION,
