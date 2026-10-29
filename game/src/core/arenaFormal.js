@@ -53,8 +53,12 @@ export function createFormalMatch({ blade, tier = 'school', styleId = null, grad
   const actualSeed = seed == null ? (Date.now() >>> 0) : Number(seed) >>> 0;
   const def = buildFormalDefinition({ branchId, gradient, seed: actualSeed });
   if (!def.ok) return def;
-  if(tier==='national')def.targetScore=ARENA_V3.nationalTargets[Math.min(4,round|0)];
-  if(tier==='apex')def.targetScore=ARENA_V3.apexTargets[Math.min(2,round|0)];
+  if(tier==='national')def.targetScore=[820,840,860,880,900][Math.min(4,Math.max(0,round|0))];
+  if(tier==='apex')def.targetScore=900;
+  // Duration is the actual published rule, not a visual-only timer.
+  def.rules[0].seconds=tier==='national'?[90,95,100,105,110][Math.min(4,Math.max(0,round|0))]
+    :tier==='apex'?[100,110,120][Math.min(2,Math.max(0,round|0))]
+    :[70,75,85,90,90][Math.min(4,Math.max(0,gradient|0))];
 
   const view = adaptBlade(blade);
   const session = TestScoring.createTestSession({
@@ -181,7 +185,7 @@ export function submitTest(match, { measure, detail = {}, temporaryDamage = 0, f
   if (!entry) return { ok: false, reason: '没有待完成的测试项' };
 
   if(match.version===FORMAL_RULES_VERSION && !failed &&
-    (detail.source!=='arenaChallenge' || !Number.isFinite(detail.score) || detail.score<0 || detail.duration!==45)) {
+    (detail.source!=='arenaChallenge' || !Number.isFinite(detail.score) || detail.score<0 || detail.duration!==match.definition.rules[0].seconds)) {
     return {ok:false,reason:'缺少完整切割成绩，请完成本轮切割后提交'};
   }
   const res = TestScoring.settleTest(match.session, match.view, {
@@ -194,7 +198,7 @@ export function submitTest(match, { measure, detail = {}, temporaryDamage = 0, f
   if (!res.ok) return res;
   if(match.version===FORMAL_RULES_VERSION) {
     // 刀具属性已在切割/刀损中生效；真实分数不再乘第二遍能力分。
-    res.result.score=Number.isFinite(detail.score)?Math.max(0,Math.floor(detail.score)):0;
+    res.result.score=Number.isFinite(detail.score)?Math.min(1000,Math.max(0,Math.floor(detail.score))):0;
     res.result.raw.score=res.result.score;
     res.result.version='cut-score-3';
   }
