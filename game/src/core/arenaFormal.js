@@ -383,9 +383,11 @@ export function createApexMatch({ blades, seed = null } = {}) {
 
 /** 可派遣的刀（未被本场使用过） */
 export function apexAvailable(match) {
-  if (!match) return [];
-  const used = new Set(match.usedBladeIds || []);
-  return match.roster.filter((b) => !used.has(b.id));
+  if (!match||match.done)return [];
+  const current=match.rounds[match.roundIndex];
+  // Precommitted order is part of the challenge, not a between-round free pick.
+  const promised=match.roster[match.roundIndex];
+  return current?.status==='pending'&&promised?[promised]:[];
 }
 
 /**
@@ -397,9 +399,10 @@ export function apexDispatch(match, blades, bladeId) {
   const round = match.rounds[match.roundIndex];
   if (!round || round.status !== 'pending') return { ok: false, reason: '当前没有待进行的轮次' };
   if (!bladeId) return { ok: false, reason: '请选择派出的刀' };
-  if ((match.usedBladeIds || []).includes(bladeId)) {
-    return { ok: false, reason: '这把刀本场已经出过场，不能重复派出' };
-  }
+  if(match.roster[match.roundIndex]?.id!==bladeId)
+    return {ok:false,reason:'三把刀的出场顺序已在开赛前锁定'};
+  if ((match.usedBladeIds||[]).includes(bladeId) && !(round.attempts>0))
+    return {ok:false,reason:'此刀已用于其他轮次'};
   if(!match.roster.some(b=>b.id===bladeId))return {ok:false,reason:'这把刀不在本届三刀阵容内'};
   const rec = (blades || []).find((b) => b && b.id === bladeId);
   if (!rec) return { ok: false, reason: '找不到这把刀' };
@@ -426,14 +429,30 @@ export function apexSubmit(match, payload) {
   const res = submitTest(round.match, payload);
   if (!res.ok) return res;
   if (res.done) {
-    round.status = 'complete';
-    round.result = res.matchResult;
-    match.usedBladeIds.push(round.dispatchedBladeId);
-    match.roundIndex += 1;
-    if (match.roundIndex >= match.rounds.length) return finishApex(match);
-    return { ok: true, roundDone: true, result: round.result, next: match.rounds[match.roundIndex] };
+    round.status='complete';
+    round.attempts=(round.attempts||0)+1;
+    if(!round.result || (res.matchResult?.cut?.structure?.completed &&
+       res.matchResult.composite>round.result.composite))round.result=res.matchResult;
+    if(!match.usedBladeIds.includes(round.dispatchedBladeId))
+      match.usedBladeIds.push(round.dispatchedBladeId);
+    const next=match.rounds.findIndex((r,i)=>i>match.roundIndex&&r.status==='pending');
+    match.roundIndex=next>=0?next:match.rounds.length;
+    if(next<0)return finishApex(match);
+    return {ok:true,roundDone:true,result:round.result,next:match.rounds[next]};
   }
   return res;
+}
+
+/** Retry a completed world round with the SAME roster slot and fixed seed. */
+export function apexRetryRound(match,index) {
+  if(!match?.done||match.settled)return {ok:false,reason:'仅可在领奖前补考'};
+  if(!Number.isInteger(index)||index<0||index>=3)return {ok:false,reason:'轮次不存在'};
+  const round=match.rounds[index];
+  if(round?.status!=='complete'||!round.result)return {ok:false,reason:'本轮尚无成绩'};
+  match.done=false;match.result=null;match.roundIndex=index;
+  round.status='pending';round.match=null;round.dispatchedBladeId=null;
+  match.retryCount=(match.retryCount||0)+1;
+  return {ok:true,match,round};
 }
 
 /** 三刀赛结算：按各轮实际表现合成，不加鉴定分 */
@@ -595,7 +614,14 @@ export function nationalSubmit(match, payload) {
     const r = res.matchResult;
     round.status = 'complete';
     round.result = r;
-    if (!r.win) return finishNational(match, 'eliminated');
+    if(!r.win){
+      // V4.1 checkpoints keep the event and its original round seed. A failed
+      // round can be attempted again without forfeiting earned earlier rounds.
+      round.status='pending';
+      round.roundMatch=null;
+      round.attempts=(round.attempts||0)+1;
+      return {ok:true,roundDone:true,retry:true,result:r,next:round};
+    }
     match.roundIndex += 1;
     if (match.roundIndex >= match.rounds.length) return finishNational(match, 'champion');
     return { ok: true, roundDone: true, result: r, next: nationalCurrentRound(match) };
@@ -664,7 +690,7 @@ export function finishNational(match, reason = 'eliminated') {
 export default {
   FORMAL_MATCH_VERSION, validateApexRoster, createFormalMatch, currentTest, testTask,
   submitTest, abandon, finishMatch, APEX_ROUNDS, createApexMatch, apexAvailable,
-  apexDispatch, apexSubmit, finishApex,
+  apexDispatch, apexSubmit, apexRetryRound, finishApex,
   NATIONAL_ROUNDS_FORMAL, createNationalMatch, nationalCurrentRound, nationalStartRound,
   nationalSubmit, nationalAbandon, finishNational,
 };
