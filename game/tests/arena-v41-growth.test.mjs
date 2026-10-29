@@ -60,3 +60,23 @@ test('risk protection is relative, retains displayed risk, capped at twenty perc
   assert.equal(G.discountedRerollCost(10,workshop),9);
   assert.equal(G.discountedRerollCost(1,workshop),1);
 });
+
+test('legacy verified milestones grant XP once without changing CR or permanent blades',()=>{
+  const legacy=makeSave();
+  delete legacy.workshopV41;
+  legacy.stats.forgeCount=8;
+  legacy.arena.school={edge:{cleared:[0,1,2]}};
+  legacy.arena.history=[{id:'old-national',tier:'national',result:{champion:true}}];
+  legacy.collection=[{id:'legacy-knife',stats:{strength:80,toughness:70,sharpness:100,
+    craft:95,design:85,spirit:60},score:123,visualRecipe:[]}];
+  const first=normalizeSave(legacy);
+  assert.equal(first.workshopV41.xp,8*10+50+75+110+200);
+  assert.equal(first.workshopV41.receipts['first:school:edge:2'],110);
+  assert.equal(first.workshopV41.migration.applied,true);
+  assert.equal(first.cr,legacy.cr);
+  assert.equal(first.collection[0].score,123);
+  const twice=normalizeSave(first);
+  assert.equal(twice.workshopV41.xp,first.workshopV41.xp);
+  assert.deepEqual(twice.workshopV41.receipts,first.workshopV41.receipts);
+  assert.deepEqual(twice.collection[0].stats,first.collection[0].stats);
+});
