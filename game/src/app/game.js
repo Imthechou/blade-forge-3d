@@ -924,7 +924,7 @@ class Session {
       const apex=Core.progress.activeCareerV41('apex');
       if(apex) {
         this.apexMatch=apex;
-        if(apex.done&&!apex.settled)this._settleApexIfDone();
+        if(apex.done&&!apex.settled&&apex.result?.win)this._settleApexIfDone();
       }
     }
     return {national:!!this.nationalMatch,apex:!!this.apexMatch};
