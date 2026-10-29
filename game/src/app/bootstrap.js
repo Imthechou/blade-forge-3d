@@ -170,8 +170,11 @@ async function main() {
   if (renderOk) {
     try {
       setNote('正在加载金属与环境反射…');
-      const hdr = await stage.loadEnvironment();
+      const [hdr, s3] = await Promise.all([
+        stage.loadEnvironment(), ensureS3TextureData(),
+      ]);
       if (!hdr?.ok) prep.problems.push('HDR environment unavailable');
+      if (!s3) prep.problems.push('S3 supplied textures unavailable');
 
       setNote('正在解析刀具模型…');
       const processes = ['ore_small', 'molten_sphere_small', 'blank_ingot_small'];
@@ -210,14 +213,31 @@ async function main() {
           .filter((id) => !stage.engine.loaded?.has?.(id));
       }
       setNote('正在解码与上传纹理…');
-      /* 首屏资产已备妥，S3 纹理会在首帧呈现后继续上传。 */
-      prep.readyStages.assetsReady = prep.models.length === policy.models.length && !!hdr?.ok;
+      /* 资产（模型 + HDR + S3 数据）到这里已经齐了 —— 注意这与"程序就绪"是两件事。 */
+      prep.readyStages.assetsReady = prep.models.length === policy.models.length && !!hdr?.ok && !!s3;
+      const readyTextures = await K3DTextureReady(stage);
+      prep.textures = readyTextures.uploaded;
+      /* 账本：S3 的 24 张 512² 程序化贴图（每张 RGBA，按 createTexture 的 mip 设置估算）。 */
+      try {
+        const maps = globalThis.K3D?.s3TexMaps;
+        const n = maps?.ids?.length || 0;
+        const size = maps?.SIZE || 512;
+        if (n) {
+          gpuLedger.track('s3-textures', {
+            kind: 's3-textures', renderer: stage.viewer?.renderer,
+            bytesMiB: (n * size * size * 4 * (4 / 3)) / 1048576,
+            optional: true, evictable: false,
+            note: `${n} 张 ${size}² S3 纹理（含 mip 估算）`,
+          });
+        }
+      } catch (_) { /* 诊断件 */ }
+      if (readyTextures.uploaded !== readyTextures.total) prep.problems.push('S3 texture upload incomplete');
       const modelTextures = stage.initLoadedTextures();
       prep.modelTextures = modelTextures.count;
       prep.gpuMiB = modelTextures.gpuMiB;
       if (!modelTextures.ok) prep.problems.push('model texture upload incomplete');
       /* 上传提交（gl.texImage2D 已下发）—— 与"像素被采样到"仍不是同一件事。 */
-      prep.readyStages.uploadSubmitted = modelTextures.ok;
+      prep.readyStages.uploadSubmitted = readyTextures.uploaded === readyTextures.total && modelTextures.ok;
       /* 方案 §5：GPU 预算账本（估算值），随启动报告一起留痕。 */
       prep.gpuLedger = gpuLedger.report();
       setNote('正在准备全刀光晕着色器…');
@@ -245,36 +265,6 @@ async function main() {
         /* 首帧已提交（draw 已下发）。仍不等于"像素已呈现"，但这已经是本层能测的最后一档。 */
         prep.readyStages.firstDrawSubmitted = true;
       }
-      // First scene has been submitted. Release the boot cover before preparing
-      // S3 patterns (three decisions away), while retaining strict PREP.ready.
-      if (prep.readyStages.firstDrawSubmitted && boot.root) {
-        prep.firstInteractiveMs = Math.round(performance.now() - prep.startedAt);
-        boot.root.classList.add('is-gone');
-        setTimeout(() => boot.root?.remove(), 340);
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      }
-      const s3 = await ensureS3TextureData();
-      if (!s3) prep.problems.push('S3 supplied textures unavailable');
-      const readyTextures = await K3DTextureReady(stage);
-      prep.textures = readyTextures.uploaded;
-      /* 账本：S3 的 24 张 512² 程序化贴图（每张 RGBA，按 createTexture 的 mip 设置估算）。 */
-      try {
-        const maps = globalThis.K3D?.s3TexMaps;
-        const n = maps?.ids?.length || 0;
-        const size = maps?.SIZE || 512;
-        if (n) {
-          gpuLedger.track('s3-textures', {
-            kind: 's3-textures', renderer: stage.viewer?.renderer,
-            bytesMiB: (n * size * size * 4 * (4 / 3)) / 1048576,
-            optional: true, evictable: false,
-            note: `${n} 张 ${size}² S3 纹理（含 mip 估算）`,
-          });
-        }
-      } catch (_) { /* 诊断件 */ }
-      if (readyTextures.uploaded !== readyTextures.total) prep.problems.push('S3 texture upload incomplete');
-      prep.readyStages.assetsReady = prep.readyStages.assetsReady && !!s3;
-      prep.readyStages.uploadSubmitted = prep.readyStages.uploadSubmitted
-        && readyTextures.uploaded === readyTextures.total;
       prep.gpuLedger = gpuLedger.report();
       prep.ready = !!compiled.ok && !!hdr?.ok && !!s3
         && readyTextures.total > 0 && readyTextures.uploaded === readyTextures.total
