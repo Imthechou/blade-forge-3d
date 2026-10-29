@@ -780,7 +780,7 @@ export function finish(run, reason='time') {
   if(run.guide&&!run.guide.done&&run.guide.minHealth&&run.health>=run.guide.minHealth){run.guide.done=true;run.score+=run.guide.reward;run.log.push({type:'objective',title:run.guide.title,reward:run.guide.reward});}
   // 满贯：本局零漏切时整局乘分（在评级之前结算）
   const P = run.params || {};
-  if (P.flawlessMult>1 && reason==='time' && (run.misses || 0) === 0 && run.score >= (run.targetScore || 1800)) {
+  if (!run.structure && P.flawlessMult>1 && reason==='time' && (run.misses || 0) === 0 && run.score >= (run.targetScore || 1800)) {
     run.score = Math.round(run.score * P.flawlessMult);
     run.log.push({ type: 'flawless', mult: P.flawlessMult });
   }
@@ -791,9 +791,11 @@ export function finish(run, reason='time') {
      训练场没有幽灵分，沿用原来的绝对阈值。 */
   const ghost = Number(run.ghost) || 0;
   const ratio = ghost > 0 ? run.score / ghost : 0;
-  const grade = ghost > 0
-    ? (ratio >= 1.5 ? 'S' : ratio >= 1.15 ? 'A' : ratio >= 0.85 ? 'B' : 'C')
-    : (run.score >= 18000 ? 'S' : run.score >= 9000 ? 'A' : run.score >= 3500 ? 'B' : 'C');
+  const grade = run.structure
+    ? (run.score >= 950 ? 'S' : run.score >= 900 ? 'A' : run.score >= 800 ? 'B' : 'C')
+    : ghost > 0
+      ? (ratio >= 1.5 ? 'S' : ratio >= 1.15 ? 'A' : ratio >= 0.85 ? 'B' : 'C')
+      : (run.score >= 18000 ? 'S' : run.score >= 9000 ? 'A' : run.score >= 3500 ? 'B' : 'C');
   const reward=reason==='manual' || run.kills === 0 ? 0
     : run.mode === 'quick'
       ? Math.min(20, Math.max(8, 8 + Math.floor(run.score / 750)))
