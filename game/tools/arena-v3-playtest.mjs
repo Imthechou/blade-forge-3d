@@ -157,7 +157,7 @@ try {
           const bridge=globalThis.__FORGE_ARENA,run=bridge.run,effects=bridge.effects;
           const t={
             id:'fixture-'+type,type,x:.5,y:.52,slot:1,row:1,layout:'structure',
-            progress:state==='damage'?.48:0,
+            progress:state==='damage' ? .48 : 0,
             armorLeft:0,alive:state!=='severed',
             cuts:state==='damage'?[{angle:-.35,y:.03,progress:.48}]:[],
             lastAngle:-.35,variation:.03,createdAt:run.elapsed
