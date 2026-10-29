@@ -92,7 +92,7 @@ async function playRound(page,virtual,{capture=false,evidenceName='v41-round'}={
     'V4.1 must never interrupt to sell an augment');
   let loops=0;
   const contact=[];
-  let firstDamage=false;
+  if(capture)await screenshot(page,evidenceName+'-before');
   while(loops++<650) {
     if(virtual)await page.clock.fastForward(38);
     else await page.waitForTimeout(40);
@@ -108,9 +108,9 @@ async function playRound(page,virtual,{capture=false,evidenceName='v41-round'}={
     if(state.id!==initial.id||state.done)break;
     const cut=await pointerCut(page);
     if(cut){contact.push({at:state.elapsed,...cut,score:state.score});if(contact.length>200)contact.shift();}
-    if(capture && loops===3)await screenshot(page,evidenceName+'-first-contact');
-    if(capture && loops===8)await screenshot(page,evidenceName+'-damage-progress');
-    if(capture && loops===16)await screenshot(page,evidenceName+'-after-cuts');
+    if(capture && loops===1)await screenshot(page,evidenceName+'-first-contact');
+    if(capture && loops===2)await screenshot(page,evidenceName+'-damage-progress');
+    if(capture && loops===5)await screenshot(page,evidenceName+'-after-cuts');
     if(virtual)await page.clock.fastForward(230);
   }
   const r=await page.evaluate(()=>globalThis.__FORGE_ARENA?.run?.result);
@@ -244,7 +244,10 @@ try {
     await screenshot(page,'v41-small-paused');
     const resume=page.getByRole('button',{name:/继续/}).last();
     await resume.click({force:true});
-    await page.clock.fastForward(300);
+    // fastForward invokes only the last RAF; after a remount its first frame
+    // has delta=0. runFor actually exercises the resumed animation frames.
+    assert.equal(await page.evaluate(()=>__FORGE_ARENA.run.paused),false);
+    await page.clock.runFor(600);
     assert.ok(await page.evaluate(()=>__FORGE_ARENA.run.elapsed)>at);
     return {overflow:false,pauseFreezes:true};
   },{width:320,height:568});
