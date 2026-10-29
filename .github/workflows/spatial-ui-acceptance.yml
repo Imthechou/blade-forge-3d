@@ -33,6 +33,10 @@ jobs:
       - name: WebGL, mobile layouts, complete forge and modals
         working-directory: game
         run: node tools/spatial-ui-acceptance.mjs
+      - name: Home / forge UI, direct 3D drag, reset and card preview screenshots
+        if: always()
+        working-directory: game
+        run: node tools/home-forge-stage-acceptance.mjs
       - name: 54 card-name doodle stickers, gallery screenshot and uniqueness
         if: always()
         working-directory: game
@@ -43,5 +47,6 @@ jobs:
           name: spatial-ui-evidence
           path: |
             game/spatial-ui-evidence/
+            game/home-forge-stage-evidence/
             ui-server.log
           retention-days: 14
