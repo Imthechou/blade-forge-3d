@@ -654,7 +654,7 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
     const source = Core.progress.bladeById(match.blade.id) || match.blade;
     const created = Challenge.createChallenge(source, {
       seed: ((Number(match.seed) || 1) ^ Math.imul(task.index + 1, 2654435761)) >>> 0,
-      mode: 'formal', seconds: Challenge.CHALLENGE_SECONDS, encounter:{...encounter,structure:true,styleId:match.styleId,styleIds:match.styleIds}, styleId:match.styleId, targetScore:match.definition.targetScore,
+      mode: 'formal', seconds: task.rule.seconds, encounter:{...encounter,structure:true,styleId:match.styleId,styleIds:match.styleIds}, styleId:match.styleId, targetScore:match.definition.targetScore,
     });
     if (!created.ok) {
       mount(body, [el('p', { class: 'arena-note', text: created.reason || '无法创建切割测试' })]);
@@ -692,7 +692,7 @@ function renderUnifiedFormalCut(match, task, submit, abandon, encounter = null) 
       el('small', { text: '剩余时间' }), el('b', { class: 'mono', text: run.remaining.toFixed(1) }), el('span', { text: '秒' }),
     ]),
     el('div', { class: 'quick-hud-score' }, [
-      el('small', { text: '当前切割分' }), el('b', { class: 'mono', text: String(Math.floor(run.score)).padStart(4, '0') }),
+      el('small', { text: '结构得分' }), el('b', { class: 'mono', text: String(Math.floor(run.score)).padStart(4, '0') }),
     ]),
     el('div', { class: 'quick-hud-vitals' }, [
       el('small', { text: '临时刀况' }), el('b', { text: `${Math.round(run.health / Math.max(1,run.maxHealth) * 100)}%` }),
