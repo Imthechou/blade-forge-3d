@@ -440,13 +440,17 @@ export function finishApex(match) {
   const completed = match.rounds.filter((r) => r.status === 'complete' && r.result);
   const wins = completed.filter((r) => r.result.win).length;
   const composite = round1(completed.reduce((a, r) => a + num(r.result.composite), 0));
-  const win = completed.length === match.rounds.length && wins >= 2;
+  // V4.1 world title requires all three physical structures and 2700 total.
+  // A weak round may be offset by a stronger one: no hidden 900-per-round gate.
+  const primaryValid=completed.every(r=>r.result?.cut?.structure?.completed===true);
+  const win=completed.length===match.rounds.length && primaryValid && composite>=2700;
 
   match.done = true;
   match.result = {
     version: FORMAL_MATCH_VERSION,
     win,
     wins,
+    primaryValid,
     rounds: completed.length,
     honors:[...new Set(completed.flatMap(r=>r.result.honors || [])),...(wins===3?['三刀全胜']:[])],
     composite,
