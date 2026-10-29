@@ -277,19 +277,14 @@ try {
       await centered(page,'.sheet');await shot(page,`${width}-compare`);
       await page.keyboard.press('Escape');await page.locator('.sheet-mask').waitFor({state:'detached'});
     });
-    await check(`${width}: arena modes and centered augment`,async()=>{
+    await check(`${width}: V4.1 arena modes, forged traits and pause glass`,async()=>{
       await page.evaluate(async()=>(await import('/src/ui/pages/arena.js')).openTournament());
       await shot(page,`${width}-arena`);
       await page.evaluate(async()=>(await import('/src/ui/pages/arena.js')).openQuickChallenge('mean-150'));
       await page.getByRole('button',{name:'开始自由快赛',exact:true}).click();
-      await page.locator('[data-augment-id]').first().waitFor();
-      await centered(page,'.quick-choice-panel');
-      await shot(page,`${width}-augment`);
-      const before=await page.evaluate(()=>window.__FORGE_ARENA.run.elapsed);
-      await page.waitForTimeout(150);
-      assert.equal(await page.evaluate(()=>window.__FORGE_ARENA.run.elapsed),before);
-      await page.locator('[data-augment-id]').first().click();
-      await page.locator('.quick-choice-overlay').waitFor({state:'detached'});
+      await page.locator('.quick-canvas').waitFor();
+      assert.equal(await page.locator('[data-augment-id]').count(),0,
+        'V4.1 removes interruptions and allows forged traits to persist');
       await fit(page,'.quick-hud');
       const traitsView = await page.evaluate(() => ({
         id: window.__FORGE_ARENA?.run?.blade?.id,
@@ -301,6 +296,7 @@ try {
       await shot(page,`${width}-cutting`);
       await page.getByRole('button',{name:'暂停',exact:true}).click();
       await centered(page,'.quick-choice-panel');
+      await shot(page,`${width}-paused`);
       await page.getByRole('button',{name:/继续挑战/}).click();
       assert.equal(await page.locator('.quick-choice-overlay').count(),0);
     });
