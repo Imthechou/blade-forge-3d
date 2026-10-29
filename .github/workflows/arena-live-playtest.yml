@@ -84,6 +84,12 @@ jobs:
           sleep 2
           curl -fsS http://127.0.0.1:8124/ > /dev/null
           node tools/arena-v41-compare-main.mjs
+      - name: V4.1 deterministic 25000 forge outcomes and career economy report
+        if: always()
+        working-directory: game
+        env:
+          FORGE_SIM_SEEDS: 5000
+        run: node tools/arena-v41-simulate.mjs
       - name: Validate horizontal, diagonal and vertical fracture silhouettes
         working-directory: game
         run: node tools/arena-prop-visual-qa.mjs
