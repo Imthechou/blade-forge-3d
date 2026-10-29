@@ -160,6 +160,11 @@ export function render() {
     arenaMode = 'challenge';
     return renderChallengeReport();
   }
+  if (challengeRun?.mode==='sample') {
+    // Collection trials are isolated practice, even if a career cup happens
+    // to be checkpointed. No saved cup or its roster is overwritten.
+    return challengeRun.done ? renderChallengeReport() : renderChallenge();
+  }
   if (!Game._careerV41ResumeChecked) {
     Game._careerV41ResumeChecked=true;
     Game.resumeCareerV41();
