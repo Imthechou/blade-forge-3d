@@ -269,7 +269,7 @@ export function tierOf(quality) {
  * Each sample encodes the shortest on-screen distance to the ACTUAL contour:
  * .5 means perfect contact, 1 means outside the 28 px soft band.
  */
-export function contourPreview(samples, attemptsUsed = 1) {
+export function contourPreview(samples, attemptsUsed = 1, specialist = null) {
   const normalized = normalizeSamples(samples, CONTOUR_SAMPLES);
   const coverage = normalized.coverage;
   const deviations = [];
@@ -279,13 +279,14 @@ export function contourPreview(samples, attemptsUsed = 1) {
   const fit = deviations.length ? clamp01(1 - deviations.reduce((a,b)=>a+b,0) / deviations.length) : 0;
   const eligible = coverage >= .78 && normalized.gaps <= 2;
   const attempts = Math.max(1,Math.min(3,Math.round(Number(attemptsUsed)||1)));
-  const multiplier = CONTOUR_ATTEMPT_MULTIPLIERS[attempts-1];
+  const multiplier = attempts===2 && specialist?.id==='edge'
+    ? specialist.boost : CONTOUR_ATTEMPT_MULTIPLIERS[attempts-1];
   const baseSharp = eligible ? Math.round(120 * fit) : 0;
   const sharp = Math.min(EDGE_SHARP_CAP, Math.round(baseSharp * multiplier));
   return {fit,coverage,eligible,attempts,multiplier,baseSharp,bonus:sharp-baseSharp,sharp};
 }
 function submitContour(run,samples,{skipped=false,attemptsUsed=1}={}) {
-  const score = contourPreview(skipped?[]:samples,attemptsUsed);
+  const score = contourPreview(skipped?[]:samples,attemptsUsed,run.specialist);
   const prev = run.edge || {sharp:0,craft:0};
   const delta = score.sharp - (prev.sharp||0);
   if(delta>0) run.stats.sharpness = Math.max(0,(run.stats.sharpness||0)+delta);
