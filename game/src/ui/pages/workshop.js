@@ -87,6 +87,9 @@ export function render() {
   }))); 
   body.setAttribute('aria-labelledby', `workshopTab-${tab}`);
   disconnectCollectionPreviews();
+  // Switching away from the archive inside Workshop also frees its idle GPU
+  // renderer; leaving the route is handled by leave().
+  if (tab !== 'collection') releaseCollectionPreviewStage();
   clear(body);
   ({ collection: renderCollection, achievements: renderAchievements, bonuses: renderBonuses, codex: renderCodex })[tab]();
 }
