@@ -199,6 +199,36 @@ function paintBackdrop(ctx,w,h,stream=false){
   ctx.fillStyle='#87D9C3';ctx.fillRect(w*.325,benchY,w*.37,3);
   ctx.fillStyle='#E9B491';ctx.fillRect(w*.705,benchY,w*.26,3);
 }
+/** Tiny identity sticker per material, drawn outside the photo's central silhouette. */
+function drawMaterialMark(ctx,type,x,y,u,color){
+  ctx.save();ctx.translate(x,y);ctx.strokeStyle=color;ctx.fillStyle=color;
+  ctx.lineWidth=Math.max(1.4,u*.031);ctx.lineJoin='round';ctx.lineCap='round';
+  const r=Math.max(4,u*.11);
+  ctx.beginPath();
+  if(type==='rope'){
+    ctx.ellipse(0,0,r*.73,r*.45,-.4,0,TAU);ctx.moveTo(-r*.4,r*.62);ctx.lineTo(r*.48,-r*.62);
+  }else if(type==='foam'){
+    ctx.arc(-r*.35,r*.16,r*.43,0,TAU);ctx.moveTo(r*.4-r*.34,-r*.36);
+    ctx.arc(r*.4,-r*.36,r*.34,0,TAU);ctx.moveTo(r*.42+r*.19,r*.45);
+    ctx.arc(r*.42,r*.45,r*.19,0,TAU);
+  }else if(type==='wood'){
+    ctx.moveTo(-r*.5,r*.7);ctx.quadraticCurveTo(.4*r,-.25*r,r*.55,-r*.7);
+    ctx.moveTo(0,0);ctx.quadraticCurveTo(-r,-r*.5,-r*.65,-r*.8);
+    ctx.quadraticCurveTo(r*.08,-r*.74,0,0);
+  }else if(type==='plastic'){
+    ctx.moveTo(0,-r);ctx.lineTo(r,0);ctx.lineTo(0,r);ctx.lineTo(-r,0);ctx.closePath();
+    ctx.moveTo(-r*.42,0);ctx.lineTo(r*.45,0);
+  }else if(type==='ice'){
+    for(let i=0;i<3;i++){
+      const a=i*Math.PI/3;ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+      ctx.lineTo(-Math.cos(a)*r,-Math.sin(a)*r);
+    }
+  }else{
+    ctx.moveTo(-r*.2,-r);ctx.lineTo(r*.62,-r*.25);ctx.lineTo(0,0);
+    ctx.lineTo(r*.42,r*.22);ctx.lineTo(-r*.44,r);
+  }
+  ctx.stroke();ctx.restore();
+}
 function drawSpecimenPlate(ctx,type,x,y,bw,bh,unit){
   const p=SPECIMEN[type]||SPECIMEN.metal;
   const width=bw*1.37,height=bh*1.12,left=x-width/2,top=y-height*.53;
@@ -212,6 +242,7 @@ function drawSpecimenPlate(ctx,type,x,y,bw,bh,unit){
   ctx.globalAlpha=.7;ctx.strokeStyle=p.pop;ctx.lineWidth=Math.max(1.6,unit*.035);
   ctx.beginPath();ctx.arc(x,y,unit*.56,-.74,Math.PI*.83);ctx.stroke();
   ctx.globalAlpha=.75;sketchStar(ctx,left+width*.14,top+height*.18,unit*.065,p.ink,1.5,.13);
+  drawMaterialMark(ctx,type,left+width*.81,top+height*.19,unit,p.ink);
   ctx.fillStyle=p.ink;ctx.globalAlpha=.35;
   for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(left+width*.83+i*unit*.065,top+height*.15,1.2,0,TAU);ctx.fill();}
   ctx.restore();
@@ -906,7 +937,7 @@ function drawTrail(ctx, trail, now, w, h, reduced) {
         ctx.strokeStyle = `rgba(23,52,75,${alpha * .12 * taper})`;
         ctx.lineWidth = (reduced ? 6 : 14) * alpha * taper + .6;
       } else if (pass === 1) {
-        ctx.strokeStyle = `rgba(34,122,135,${alpha * .50 * taper})`;
+        ctx.strokeStyle = `rgba(132,99,205,${alpha * .64 * taper})`;
         ctx.lineWidth = (reduced ? 2.6 : 5.4) * alpha * taper + .4;
       } else {
         ctx.strokeStyle = `rgba(255,255,255,${alpha * .92 * taper})`;
@@ -1067,8 +1098,14 @@ function drawLabels(ctx, labels, now, w, h, reduced) {
       : ev === 'blocked' ? `受阻 ${Math.round((hit.progress || 0) * 100)}%`
       : ev === 'deflect' ? `弹刃 ${Math.round((hit.progress || 0) * 100)}%`
       : `${hit.followup ? '补刀' : '切入'} ${Math.round((hit.progress || 0) * 100)}%`;
-    ctx.fillStyle = color;
-    ctx.fillText(mainText, x, y, w * .28);
+    // Small outlined screen-print sticker: score stays readable on light glass.
+    const mainW=Math.min(w*.29,ctx.measureText(mainText).width+15);
+    ctx.fillStyle=hit.complete?'rgba(255,251,242,.92)':'rgba(255,255,255,.87)';
+    roundedRect(ctx,x-mainW*.5,y-12,mainW,24,11);ctx.fill();
+    ctx.strokeStyle=hit.complete?'rgba(219,158,90,.56)':'rgba(151,129,200,.36)';
+    ctx.lineWidth=1;roundedRect(ctx,x-mainW*.5,y-12,mainW,24,11);ctx.stroke();
+    ctx.fillStyle=color;
+    ctx.fillText(mainText,x,y,w*.28);
     ctx.font = `650 ${clamp(w * .026, 9, 11)}px system-ui, sans-serif`;
     let detail = QUALITY_NAMES[hit.quality] || '';
     if (hit.complete && hit.combo > 1) detail += `${detail ? ' · ' : ''}连斩 ×${hit.combo}`;
@@ -1102,9 +1139,9 @@ function drawLabels(ctx, labels, now, w, h, reduced) {
 function drawPointer(ctx, pointer, w, h, reduced) {
   const x = pointer.x * w, y = pointer.y * h;
   ctx.save();
-  ctx.strokeStyle = 'rgba(227,252,250,.72)'; ctx.lineWidth = 1.3;
+  ctx.strokeStyle = 'rgba(122,95,205,.88)'; ctx.lineWidth = 1.3;
   ctx.beginPath(); ctx.arc(x, y, reduced ? 5 : 7, 0, TAU); ctx.stroke();
-  ctx.fillStyle = 'rgba(102,219,220,.30)'; ctx.beginPath(); ctx.arc(x, y, 2, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(109,207,188,.55)'; ctx.beginPath(); ctx.arc(x, y, 2, 0, TAU); ctx.fill();
   ctx.restore();
 }
 
