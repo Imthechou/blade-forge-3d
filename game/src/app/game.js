@@ -1082,15 +1082,7 @@ class Session {
     if (!this.sliceMatch) return { ok: false, reason: '当前没有进行中的比赛' };
     const m = this.sliceMatch;
     const r = Core.arenaSlice.finishRun(m, performance);
-    // 断刀：当场移入断刀册（后续轮次换刀继续；单刀/全国赛则整场结束）
-    if (r.ok && r.run?.fractured && r.run.bladeId) {
-      const info = {
-        stageId: 'arena', stageName: '赛事切割', risk: 100, peakRisk: 100, chance: 1,
-        cause: '硬靶负荷累积导致结构失效', matchId: m.id,
-      };
-      const saved = Core.progress.fractureBlade(r.run.bladeId, info);
-      if (!saved.ok) (m.pendingFractures ||= []).push({ bladeId: r.run.bladeId, info });
-    }
+    // V4.1: local blade failure only affects this round, not the owner's collection.
     this._settleSliceIfDone();
     return r;
   }
@@ -1105,12 +1097,8 @@ class Session {
   /** 整场收场后一次性结算：CR、成就、断刀迁移。用 settled 保证只跑一次。 */
   _settleSliceIfDone() {
     const m = this.sliceMatch;
-    while (m?.pendingFractures?.length) {
-      const pending = m.pendingFractures[0];
-      const saved = Core.progress.fractureBlade(pending.bladeId, pending.info);
-      if (!saved.ok) return saved;
-      m.pendingFractures.shift();
-    }
+    // Legacy pending battlefield fractures are deliberately not migrated to the collection.
+    if (m?.pendingFractures?.length) m.pendingFractures = [];
     if (!m || !m.done || m.settled) return null;
     const result = m.result;
     // 组队赛沿用 Apex 档（120/30），单刀与全国赛按各自层级
@@ -1123,7 +1111,7 @@ class Session {
       matchId: m.id,
       rewardTarget: m.kind === 'national' ? 70 * (result.wins || 0) + ((result.losses || 0) > 0 ? 20 : 0) : null,
       // 断过的刀已经从藏刀阁移走，传 bladeId 会被判"失去资格"而拿 0 奖励
-      bladeId: (m.kind === 'team' || m.fractured) ? null : m.blade.id,
+      bladeId: m.kind === 'team' ? null : m.blade.id,
       matchRecord: { seed: m.seed, opponent: m.opponent, runs: result.runs, buffs: result.buffs, result },
     });
     if (recount?.error || recount?.ok === false) return recount;
