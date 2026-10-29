@@ -117,6 +117,42 @@ try {
   assert.ok(disk.ok && disk.rows > 0 && disk.bytes > 100,
     'persistent archive thumbnail must contain a real saved WebP: '+JSON.stringify(disk));
   report.cases.push({name:'IndexedDB contains reusable versioned WebGL thumbnails',disk});
+
+  // Simulate a 121-knife archive without mutating the user's persistent save.
+  // Rendering/sorting 121 heavyweight blade cards used to occur synchronously.
+  await page.evaluate(async () => {
+    const progress = await import('/src/core/progress.js');
+    const workshop = await import('/src/ui/pages/workshop.js');
+    const items = progress.get().collection;
+    const original = items[0];
+    for (let n = 1; n <= 120; n++) {
+      items.push({ ...original, id: 'stress-blade-' + n, bladeName: '压力测试刀' + n,
+        createdAt: 1700000000000 + n, seed: n + 10000 });
+    }
+    workshop.render();
+  });
+  const countCards = () => page.locator('.ws-collection-grid .blade-card-v2').count();
+  assert.equal(await countCards(),24,'must bound archive DOM to 24 cards per page');
+  await page.getByRole('button',{name:'下一页',exact:true}).click();
+  assert.equal(await countCards(),24);
+  await page.getByRole('button',{name:'末页',exact:true}).click();
+  assert.equal(await countCards(),1,'last page contains only last archived knife');
+  await page.getByRole('button',{name:'首页',exact:true}).click();
+  assert.equal(await countCards(),24);
+  report.cases.push({name:'121 knives remain bounded to 24 rendered cards',pages:6,maxDOMCards:24});
+
+  // Leaving must release the extra hidden GPU context (even when previews were
+  // queued and invalidated by pagination). The game's main context survives.
+  await page.evaluate(async () => (await import('/src/ui/router.js')).go('home'));
+  await page.waitForFunction(async() =>
+    (await import('/src/render/v2/studioEnv.js')).studioEnvInfo()?.contexts === 1,
+    null,{timeout:30000});
+  const stats=await page.evaluate(async() => ({
+    studioContexts:(await import('/src/render/v2/studioEnv.js')).studioEnvInfo()?.contexts,
+    pending:(await import('/src/render/collectionPreview.js')).collectionStageStats()?.inFlight || 0,
+  }));
+  assert.equal(stats.studioContexts,1,'archive context must be released after leaving');
+  report.cases.push({name:'archive GPU context released on route exit',...stats});
   await context.close();
 } catch(e) {
   report.failure=String(e.stack||e);
