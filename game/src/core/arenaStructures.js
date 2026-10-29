@@ -4,28 +4,47 @@
  * overlays that fake damage or hidden branch difficulty multipliers.
  */
 const clamp=(n,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(n)?n:0));
-export const STRUCTURE_VERSION='arena-structure-v2';
+export const STRUCTURE_VERSION='arena-structure-v3';
 const MATERIAL_ARMOR=Object.freeze({foam:0,rope:0,wood:.16,plastic:.26,ice:.11,metal:.40});
-const nodes=materials=>[
- ['a',materials[0],.27,.30,'coupling'],
- ['b',materials[1],.73,.30,'coupling'],
- ['c',materials[2],.33,.51,'support'],
- ['d',materials[3],.67,.51,'support'],
- ['e',materials[4],.38,.73,'joint'],
- ['f',materials[5],.62,.73,'joint'],
-];
-const make=(id,name,materials,kind='frame')=>Object.freeze({
- id,name,kind,parts:nodes(materials),
- joins:[['a','b'],['a','c'],['b','d'],['c','d'],['c','e'],['d','f'],['e','f']],
- routes:[['a','c','e'],['b','d','f']],
+// Each school has its own authored silhouette, physical join graph and two
+// playable dismantling routes. These coordinates ARE hit-test coordinates,
+// not decorative overlays. Composite preserves its established training rig.
+const make=(id,name,materials,kind,layout,joins,routes,protectedAt=[.50,.53])=>Object.freeze({
+ id,name,kind,protectedAt,
+ parts:layout.map(([key,x,y,role],i)=>[key,materials[i],x,y,role]),
+ joins,routes,
 });
 export const STRUCTURE_TEMPLATES=Object.freeze({
- edge:make('tension-rig','双向高张力绳索架',['rope','rope','foam','wood','rope','foam'],'tension'),
- press:make('load-bearing','木质复合承重架',['wood','wood','metal','wood','plastic','wood'],'frame'),
- precise:make('protected-plate','内置标牌的精切架',['plastic','metal','wood','plastic','foam','rope'],'protected'),
- quench:make('crystal-cluster','分段冰晶连结阵',['ice','ice','ice','plastic','ice','metal'],'crystal'),
- composite:make('composite-frame','多材料复合试刀架',['metal','plastic','wood','wood','rope','ice'],'frame'),
- overload:make('alloy-frame','高负载合金锁扣架',['metal','metal','wood','plastic','metal','rope'],'alloy'),
+  edge:make('tension-rig','双向高张力绳索架',
+    ['rope','rope','foam','wood','rope','foam'],'tension',
+    [['a',.22,.29,'coupling'],['b',.78,.29,'coupling'],['c',.30,.48,'support'],['d',.70,.48,'support'],['e',.23,.71,'joint'],['f',.77,.71,'joint']],
+    [['a','b'],['a','c'],['b','d'],['c','d'],['c','e'],['d','f']],
+    [['a','c','e'],['b','d','f']]),
+  press:make('load-bearing','木质复合承重架',
+    ['wood','wood','metal','wood','plastic','wood'],'frame',
+    [['a',.36,.27,'coupling'],['b',.65,.27,'coupling'],['c',.23,.51,'support'],['d',.78,.51,'support'],['e',.35,.74,'joint'],['f',.66,.74,'joint']],
+    [['a','b'],['a','c'],['b','d'],['c','d'],['c','e'],['d','f'],['a','d'],['b','c'],['e','f']],
+    [['a','c','e'],['b','d','f']]),
+  precise:make('protected-plate','内置标牌的精切架',
+    ['plastic','metal','wood','plastic','foam','rope'],'protected',
+    [['a',.25,.29,'coupling'],['b',.75,.29,'coupling'],['c',.23,.50,'support'],['d',.77,.51,'support'],['e',.32,.73,'joint'],['f',.68,.73,'joint']],
+    [['a','c'],['a','d'],['b','d'],['b','c'],['c','e'],['d','f'],['e','f']],
+    [['a','c','e'],['b','d','f']],[.50,.51]),
+  quench:make('crystal-cluster','分段冰晶连结阵',
+    ['ice','ice','ice','plastic','ice','metal'],'crystal',
+    [['a',.48,.25,'coupling'],['b',.21,.39,'coupling'],['c',.79,.39,'support'],['d',.32,.62,'support'],['e',.68,.62,'joint'],['f',.51,.77,'joint']],
+    [['a','b'],['a','c'],['b','d'],['c','e'],['d','f'],['e','f'],['b','e']],
+    [['b','d','f'],['a','c','e']],[.50,.53]),
+  composite:make('composite-frame','多材料复合试刀架',
+    ['metal','plastic','wood','wood','rope','ice'],'frame',
+    [['a',.27,.30,'coupling'],['b',.73,.30,'coupling'],['c',.33,.51,'support'],['d',.67,.51,'support'],['e',.38,.73,'joint'],['f',.62,.73,'joint']],
+    [['a','b'],['a','c'],['b','d'],['c','d'],['c','e'],['d','f'],['e','f']],
+    [['a','c','e'],['b','d','f']],[.50,.53]),
+  overload:make('alloy-frame','高负载合金锁扣架',
+    ['metal','metal','wood','plastic','metal','rope'],'alloy',
+    [['a',.23,.32,'coupling'],['b',.77,.32,'coupling'],['c',.39,.49,'support'],['d',.65,.51,'support'],['e',.24,.73,'joint'],['f',.78,.73,'joint']],
+    [['a','c'],['b','d'],['c','d'],['c','e'],['d','f'],['a','e'],['b','f'],['e','f']],
+    [['a','c','e'],['b','d','f']],[.50,.77]),
 });
 const id=key=>'struct-'+key;
 export function createStructure(seed=1,styleId='composite',gradient=0){
@@ -46,7 +65,7 @@ export function createStructure(seed=1,styleId='composite',gradient=0){
  const protective=['precise','composite','overload'].includes(styleId)||tier>=2;
  if(protective)parts.push({
    id:id('p'),key:'p',type:'plastic',role:'protected',isProtected:true,
-   x:.50,y:.53,baseX:.50,baseY:.53,slot:1,row:1,layout:'structure',
+   x:spec.protectedAt[0],y:spec.protectedAt[1],baseX:spec.protectedAt[0],baseY:spec.protectedAt[1],slot:1,row:1,layout:'structure',
    alive:true,progress:0,cuts:[],lastAngle:null,createdAt:0,
    difficulty:1,armorLeft:.2,layer:0,variation:0,weakX:0,weakY:0,
  });
