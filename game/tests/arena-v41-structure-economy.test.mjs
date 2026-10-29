@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createStructure,updateStructure,structureScore,structureSnapshot,STRUCTURE_TEMPLATES} from '../src/core/arenaStructures.js';
-import {createChallenge,beginSwipe,swipe} from '../src/core/arenaChallenge.js';
+import {createChallenge,beginSwipe,swipe,finish} from '../src/core/arenaChallenge.js';
 import {sampleBlade} from '../tools/arena-v3-simulate.mjs';
 import {careerRewardPlan,SCHOOL_CR,SCHOOL_FIRST_CR,isV41Match} from '../src/core/arenaV41Rewards.js';
 const blade=sampleBlade(100);
@@ -129,4 +129,33 @@ test('Six school rigs have distinct playable silhouettes and physical join graph
    assert.equal(JSON.stringify(createStructure(73,school,2)),initial,school+' seed not deterministic');
  }
  assert.equal(signatures.size,6);
+});
+
+test('Formal structure completion allows an explicit bank-or-continue choice with real score',()=>{
+ const run=createChallenge(blade,{mode:'formal',seed:390,seconds:90,
+   encounter:{structure:true,styleId:'composite',gradient:1},styleId:'composite'}).run;
+ const route=run.structure.routes[0];
+ for(const key of route.slice(0,2)){
+   const part=run.targets.find(t=>t.id===key);
+   part.alive=false;part.progress=1;
+ }
+ const last=run.targets.find(t=>t.id===route[2]);
+ last.progress=.999;last.armorLeft=0;
+ updateStructure(run.structure,run.targets);
+ assert.equal(run.structure.completed,false);
+ beginSwipe(run);
+ const cut=swipe(run,{x:last.x-.09,y:last.y},{x:last.x+.09,y:last.y},{duration:.14});
+ assert.equal(cut.ok,true);
+ assert.ok(cut.hits.some(hit=>hit.target.id===last.id));
+ assert.equal(run.structure.completed,true);
+ assert.equal(run.done,false,'finishing the objective must not force immediate departure');
+ assert.ok(run.targets.some(t=>t.alive&&!t.isProtected),'an optional component remains');
+ const points=run.score;
+ assert.ok(points>0);
+ const result=finish(run,'collected');
+ assert.equal(run.done,true);
+ assert.equal(result.reason,'collected');
+ assert.equal(result.score,points,'player banks already earned score, with no fabricated bonus');
+ assert.equal(result.structure.completed,true);
+ assert.equal(finish(run,'collected'),result,'cannot settle same run twice');
 });
