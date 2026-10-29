@@ -37,6 +37,10 @@ jobs:
         if: always()
         working-directory: game
         run: node tools/home-forge-stage-acceptance.mjs
+      - name: Collection thumbnail and detail studio reflections (multi-context WebGL)
+        if: always()
+        working-directory: game
+        run: node tools/collection-reflection-acceptance.mjs
       - name: 54 card-name doodle stickers, gallery screenshot and uniqueness
         if: always()
         working-directory: game
@@ -48,5 +52,6 @@ jobs:
           path: |
             game/spatial-ui-evidence/
             game/home-forge-stage-evidence/
+            game/collection-reflection-evidence/
             ui-server.log
           retention-days: 14
