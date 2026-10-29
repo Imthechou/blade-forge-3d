@@ -46,6 +46,8 @@ let arenaMode = 'tournament';
 let challengeRun = null;
 // 仅保留当前页的结算回执；重绘不重试，失败也不改写或丢弃原 run。
 const quickChallengeSettlements = new WeakMap();
+// Short trial comparisons are transient observations, not saved progression.
+const recentSampleTrials=new Map();
 let quickChallengeSettlingRun = null;
 
 function pendingQuickChallenge() {
@@ -561,7 +563,7 @@ function renderChallenge() {
     el('div', { class: 'quick-hud-vitals' }, [el('small', { text: run.mode==='sample'?'模拟刀况':'快赛模式' }), el('b', { text: run.mode==='sample'?`${Math.round(run.health)}%`:'∞' }), el('i', { style: { transform: `scaleX(${run.health / 100})` } })]),
   ]);
   const canvas = el('canvas', { class: 'quick-canvas', 'aria-label': '2D 切割赛场；按住并划过材料靶完成切割' });
-  const mission = el('div', { class: 'quick-stage-label' }, [el('b', { text: '热身连切' }), el('span', { text: '划过靶具，一笔连切' })]);
+  const mission = el('div', { class: 'quick-stage-label' }, [el('b', { text: run.mode==='sample'?'六材料标准试刀':'热身连切' }), el('span', { text: run.mode==='sample'?'同靶序 · 记录切口、刀损和完成时间':'划过靶具，一笔连切' })]);
   const footer = el('div', { class: 'quick-footer' }, [
     el('span', { class: 'quick-combo', text: `斩断 ${run.kills} · 连击 ×${run.combo}` }),
     el('span', { class: 'quick-time-label', text: run.blade.name }),
@@ -581,6 +583,7 @@ function renderChallenge() {
   }
   body.appendChild(stage);
   const updateMission = () => {
+    if(run.mode==='sample') {mission.querySelector('b').textContent='六材料标准试刀';mission.querySelector('span').textContent=`已切断 ${run.kills}/6 · 有效接触 ${run.primaryContacts||0} · 临时刀况 ${Math.round(100*run.health/Math.max(1,run.maxHealth))}%`;return;}
     mission.querySelector('b').textContent = ({ warmup: '热身连切', route: run.route?.name || '路线挑战', speed: '节奏提速', finale: run.finale?.name || '压轴测试', 'route-choice': '赛道选择', 'finale-choice': '压轴选择' })[run.phase] || '赛事进行中';
     mission.querySelector('span').textContent = run.phase === 'warmup' ? (run.elapsed < 3 && !run.kills ? '划过靶具，一笔连切' : '软靶连切 · 建立节奏') : run.phase === 'route' ? `模拟负荷 · 不会断刀 · 当前路线加成 ×${run.route?.bonus}` : run.phase === 'speed' ? '加快节奏，善用连切与刀路' : run.phase === 'finale' ? `模拟负荷 · 不会断刀 · 压轴倍率 ×${run.finale?.bonus}` : '选择后继续计时';
   };
@@ -1131,19 +1134,27 @@ function settleQuickChallenge() {
 }
 
 function renderCollectionTrialReport(run){
-  const r=run.result;
-  const max=run.maxHealth||100;
+  const r=run.result,max=run.maxHealth||100;
+  const current={id:run.blade.id,name:run.blade.name,cuts:r.primaryContacts||0,
+    kills:r.kills,loss:Math.round(max-r.health),
+    seconds:r.reason==='sample-complete'?Number(r.elapsedSeconds).toFixed(1):null};
+  const previous=[...recentSampleTrials.values()].filter(t=>t.id!==current.id).at(-1)||null;
+  recentSampleTrials.delete(current.id);recentSampleTrials.set(current.id,current);
+  const comparison=previous
+    ? `同一组六材料 · 上把「${previous.name}」：切断 ${previous.kills}/6、接触 ${previous.cuts} 次、刀损 ${previous.loss}、用时 ${previous.seconds===null?'未全部切断':previous.seconds+' 秒'}。操作刀路不同，成绩仅供练习对比。`
+    : '同一组六材料（泡棉、绳束、塑板、木材、冰晶、金属），可返回藏刀阁选择另一把刀复测。';
   mount(body,[el('section',{class:'quick-report'},[
-    el('div',{class:'quick-kicker',text:'藏刀阁 · 12 秒短试刀'}),
-    el('h2',{text:'试刀完成'}),
-    el('p',{class:'arena-note',text:run.blade.name+' · 此处仅模拟短试刀，不产生 CR、工坊经验或永久刀损'}),
+    el('div',{class:'quick-kicker',text:'藏刀阁 · 12 秒标准短试刀'}),
+    el('h2',{text:r.reason==='sample-complete'?'六材料试刀完成':'试刀结束 · 保留实际成绩'}),
+    el('p',{class:'arena-note',text:run.blade.name+' · 真实切割引擎；只计算临时损耗，不发 CR/XP，不损伤收藏'}),
     el('div',{class:'quick-result-stats'},[
-      ['切断数',r.kills],['最高连切',r.maxCombo],['本次刀损',Math.round(max-r.health)],
-      ['模拟刀况',Math.round(r.health/max*100)+'%'],
+      ['切断样品',r.kills+'/6'],['有效接触',current.cuts],['本次刀损',current.loss],
+      ['完成用时',current.seconds===null?'未完成':current.seconds+'秒'],
     ].map(([name,value])=>el('div',{},[el('small',{text:name}),el('b',{text:String(value)})]))),
+    el('p',{class:'arena-note',text:comparison}),
     el('div',{class:'quick-report-actions'},[
       el('button',{class:'btn btn--primary',text:'同刀再试',onclick:()=>openCollectionSample(run.blade.id)}),
-      el('button',{class:'btn',text:'返回藏刀阁',onclick:()=>{challengeRun=null;router.go('workshop');}}),
+      el('button',{class:'btn',text:'返回藏刀阁 · 换刀对照',onclick:()=>{challengeRun=null;router.go('workshop');}}),
     ]),
   ])]);
 }
