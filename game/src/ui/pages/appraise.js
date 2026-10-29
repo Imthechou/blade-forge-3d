@@ -176,7 +176,7 @@ function renderReveal(rec) {
       el('div', { class: 'ap-stats ap-stats--three' }, [
         stat(1, '峰值风险', riskValue(rec.riskPeak, riskBand)),
         stat(2, '永久特性', value(`${rec.traits.length} 条`)),
-        stat(3, 'S7 开刃', value(edgeView?.label || '未开刃', edgeView ? `贴合度 ${edgeView.fitText}` : null)),
+        stat(3, 'S7 贴合度', value(edgeView?.fitText || '未开刃', edgeView?.label || null)),
       ]),
     ]),
     /* ★★ rework T13.3：揭晓顺序按基线 2.4 ——

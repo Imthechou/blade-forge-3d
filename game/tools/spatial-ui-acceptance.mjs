@@ -216,7 +216,7 @@ try {
         const rec=await page.evaluate(async()=>(await import('/src/app/game.js')).default.record);
         assert.ok(rec&&!rec.fractured,'seed must complete a real blade');
         assert.equal(rec.edge.tier,'contour');
-        assert.ok((await page.locator('.ap-stats').innerText()).includes('轮廓开刃'),'completed contour must not be shown as unsharpened');
+        assert.ok((await page.locator('.ap-stats').innerText()).includes(Math.round(rec.edge.fit*100)+'%'),'completed contour must show its measured fit');
         await fit(page,'.ap-try');await shot(page,'390-appraise');
         await page.getByRole('button',{name:'作品操作'}).click();
         await centered(page,'.sheet');await shot(page,'390-appraise-actions');

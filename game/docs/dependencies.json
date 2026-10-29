@@ -3046,7 +3046,7 @@
   },
   {
     "file": "src/ui/pages/appraise.js",
-    "bytes": 29565,
+    "bytes": 29544,
     "lines": 649,
     "imports": [
       "src/app/game.js",
