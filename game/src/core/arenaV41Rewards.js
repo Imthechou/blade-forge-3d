@@ -15,7 +15,7 @@ export function effectivePrimary(record){
  const cut=record?.result?.cut||record?.cut||record?.detail||{};
  return clamp(cut?.structure?.primary??record?.structure?.primary??0);
 }
-export function careerRewardPlan(tier,win,gradient,record,matchId){
+export function careerRewardPlan(tier,win,gradient,record,matchId,styleId=null){
  const base={cr:0,xp:0,first:[],reason:'not-v41'};
  if(!isV41Match(record))return base;
  const events=[];
@@ -24,7 +24,7 @@ export function careerRewardPlan(tier,win,gradient,record,matchId){
    const p=effectivePrimary(record);
    events.push({key:'match:'+matchId,cr:win?SCHOOL_CR[i]:Math.floor(SCHOOL_CR[i]*.35*p),
      xp:win?SCHOOL_XP[i]:Math.floor(SCHOOL_XP[i]*.35*p)});
-   if(win)events.push({key:'first:school:'+(record?.styleId||'')+':'+i,
+   if(win)events.push({key:'first:school:'+(styleId||record?.styleId||'')+':'+i,
      cr:SCHOOL_FIRST_CR[i],xp:SCHOOL_FIRST_XP[i],first:true});
  }else if(['national','apex'].includes(tier)){
    const rounds=Array.isArray(record?.rounds)?record.rounds:[];
