@@ -4,7 +4,7 @@
  * overlays that fake damage or hidden branch difficulty multipliers.
  */
 const clamp=(n,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(n)?n:0));
-export const STRUCTURE_VERSION='arena-structure-v3';
+export const STRUCTURE_VERSION='arena-structure-v4';
 const MATERIAL_ARMOR=Object.freeze({foam:0,rope:0,wood:.16,plastic:.26,ice:.11,metal:.40});
 // Each school has its own authored silhouette, physical join graph and two
 // playable dismantling routes. These coordinates ARE hit-test coordinates,
@@ -60,7 +60,9 @@ export function createStructure(seed=1,styleId='composite',gradient=0){
    layer:0,variation:0,weakX:0,weakY:0,attached:true,
    // Protectors are physical connectors: open them first for more efficient
    // cutting; a very strong knife can instead force the direct route.
-   coveredBy:key==='c'?'a':key==='d'?'b':key==='e'?'c':key==='f'?'d':null,
+   // Apprentice teaches free access; higher tiers reveal guards first.
+   coveredBy:tier>=1&&key==='c'?'a':tier>=1&&key==='d'?'b':
+     tier>=2&&key==='e'?'c':tier>=2&&key==='f'?'d':null,
  }));
  const protective=['precise','composite','overload'].includes(styleId)||tier>=2;
  if(protective)parts.push({
@@ -69,8 +71,23 @@ export function createStructure(seed=1,styleId='composite',gradient=0){
    alive:true,progress:0,cuts:[],lastAngle:null,createdAt:0,
    difficulty:1,armorLeft:.2,layer:0,variation:0,weakX:0,weakY:0,
  });
- const routes=spec.routes.map(path=>path.map(id));
- const joins=spec.joins.map(pair=>pair.map(id));
+ // Master requires a visible cross-brace dismantle. Legendary also
+ // requires a central support, not more invisible HP. Both preserve routes.
+ const routes=spec.routes.map((path,index)=>{
+   const keys=[...path];
+   if(tier>=3)keys.push(index===0?'f':'e');
+   if(tier>=4)keys.push(index===0?'d':'c');
+   return [...new Set(keys)].map(id);
+ });
+ const extra=tier>=3?[['c','f'],['d','e']]:[];
+ if(tier>=4)extra.push(['a','d'],['b','c']);
+ const joined=[...spec.joins,...extra];
+ const seen=new Set();
+ const joins=joined.filter(pair=>{
+   const key=[...pair].sort().join(':');
+   if(seen.has(key))return false;
+   seen.add(key);return true;
+ }).map(pair=>pair.map(id));
  return {
    version:STRUCTURE_VERSION,id:spec.id,name:spec.name,kind:spec.kind,styleId,
    seed,gradient:tier,parts,routes,joins,
