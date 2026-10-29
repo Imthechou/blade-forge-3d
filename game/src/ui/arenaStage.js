@@ -51,6 +51,7 @@ export function drawArenaStage(ctx, run, w, h, effects = {}) {
   pruneInPlace(debris, now, DEBRIS_LIFE, MAX_COUNTS.debris);
 
   drawBackdrop(ctx, w, h, (run.targets || []).some((t) => t && t.layout === 'stream'));
+  if (run.structure) drawStructureAssembly(ctx, run.structure, run.targets, w, h);
   drawGuideHeader(ctx, run.guide, w, h);
 
   const targets = run.targets || EMPTY;
@@ -59,7 +60,7 @@ export function drawArenaStage(ctx, run, w, h, effects = {}) {
   if (shake && (shake.x || shake.y)) ctx.translate(shake.x, shake.y);
 
   drawRoute(ctx, run, targets, w, h);
-  drawEmptySlots(ctx, run, targets, now, w, h, reduced);
+  if (!run.structure) drawEmptySlots(ctx, run, targets, now, w, h, reduced);
   for (let i = 0; i < targets.length; i++) {
     const t = targets[i];
     if (!t || !t.alive) continue;
@@ -104,6 +105,70 @@ function pruneInPlace(list, now, life, limit) {
   }
   list.splice(write);
   if (list.length > limit) list.splice(0, list.length - limit);
+}
+
+/**
+ * Structural stage assembled from the same data that controls hit detection.
+ * Fractured links stay broken on subsequent frames; the visual effect queue can
+ * expire without restoring the original structure.
+ */
+function drawStructureAssembly(ctx, structure, targets, w, h) {
+  const byId=new Map((targets||[]).map(t=>[t.id,t]));
+  const severed=new Set((structure.failedJoins||[]).map(([a,b])=>[a,b].sort().join(':')));
+  const size=Math.min(w,h);
+  ctx.save();
+  // A grounded specimen fixture with quiet depth rather than sci-fi ornaments.
+  const railTop=h*.215,railBottom=h*.875;
+  const tray=ctx.createLinearGradient(0,railTop,0,railBottom);
+  tray.addColorStop(0,'rgba(251,253,254,.58)');
+  tray.addColorStop(.55,'rgba(223,232,240,.29)');
+  tray.addColorStop(1,'rgba(188,204,214,.22)');
+  ctx.fillStyle=tray;
+  ctx.strokeStyle='rgba(114,137,154,.24)';
+  ctx.lineWidth=1;
+  roundedRect(ctx,w*.12,railTop,w*.76,railBottom-railTop,size*.06);
+  ctx.fill();ctx.stroke();
+  // The two routes are embodied as a physical assembly, not a UI list of HP.
+  for(const [left,right] of structure.joins) {
+    const a=byId.get(left),b=byId.get(right);
+    if(!a||!b)continue;
+    const ax=a.x*w,ay=a.y*h,bx=b.x*w,by=b.y*h;
+    const broken=severed.has([left,right].sort().join(':'));
+    const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
+    const nx=-dy/len,ny=dx/len;
+    ctx.lineCap='round';
+    ctx.beginPath();
+    if (broken) {
+      // Two exposed stubs and a permanent daylight gap at the failed joint.
+      for(const [u,v] of [[.12,.40],[.60,.88]]) {
+        ctx.moveTo(ax+dx*u,ay+dy*u);ctx.lineTo(ax+dx*v,ay+dy*v);
+      }
+    } else {ctx.moveTo(ax,ay);ctx.lineTo(bx,by);}
+    ctx.strokeStyle=broken?'rgba(135,147,158,.45)':'rgba(85,101,115,.36)';
+    ctx.lineWidth=Math.max(7,size*.021);
+    ctx.stroke();
+    ctx.beginPath();
+    if (broken) {for(const [u,v] of [[.12,.40],[.60,.88]]) {
+      ctx.moveTo(ax+dx*u+nx*2,ay+dy*u+ny*2);ctx.lineTo(ax+dx*v+nx*2,ay+dy*v+ny*2);
+    }} else {ctx.moveTo(ax+nx*2,ay+ny*2);ctx.lineTo(bx+nx*2,by+ny*2);}
+    ctx.lineWidth=Math.max(1.2,size*.004);
+    ctx.strokeStyle='rgba(251,254,255,.59)';ctx.stroke();
+    if(broken) {
+      const cx=(ax+bx)*.5,cy=(ay+by)*.5;
+      ctx.strokeStyle='rgba(75,90,106,.38)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(cx-5*nx-3,cy-5*ny);ctx.lineTo(cx+5*nx+3,cy+5*ny);ctx.stroke();
+    }
+  }
+  // Permanent visible marks where a severed object used to be attached.
+  for(const t of targets||[])if(!t.alive) {
+    const x=t.x*w,y=t.y*h,r=Math.max(6,size*.021);
+    ctx.fillStyle='rgba(79,99,114,.18)';
+    ctx.strokeStyle='rgba(89,110,122,.43)';ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.ellipse(x,y,r*1.8,r*.65,0,0,TAU);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x-r*.7,y-r*.3);ctx.lineTo(x+r*.2,y+r*.35);
+    ctx.moveTo(x-r*.1,y-r*.45);ctx.lineTo(x+r*.9,y+r*.15);ctx.stroke();
+  }
+  ctx.restore();
 }
 
 /* ══ 场景 ═══════════════════════════════════════════════ */
@@ -371,8 +436,19 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
   ctx.translate(x+pose.x,bodyTop-hangGap(unit)+pose.y);
   ctx.rotate(pose.angle);ctx.scale(pose.scaleX,pose.scaleY);
   ctx.translate(-x,-bodyTop+hangGap(unit));
-  drawSpecimenPlate(ctx,t.type,x,y,bodyW,bodyH,unit);
-  drawHanger(ctx, x, bodyTop, unit);
+  if (t.layout === 'structure') {
+    // Real material remains exposed; no floating glass identification plaque
+    // between the user's stroke and its collision surface.
+    ctx.save();
+    ctx.fillStyle='rgba(38,59,74,.16)';
+    ctx.strokeStyle='rgba(35,55,75,.26)';
+    ctx.lineWidth=Math.max(2,unit*.048);
+    roundedRect(ctx,x-bodyW*.55,bodyTop+unit*.1,bodyW*1.1,bodyH*.92,unit*.1);
+    ctx.fill();ctx.stroke();ctx.restore();
+  } else {
+    drawSpecimenPlate(ctx,t.type,x,y,bodyW,bodyH,unit);
+    drawHanger(ctx, x, bodyTop, unit);
+  }
 
   // The target is now a genuine prebaked transparent WebP material sprite.
   // Retain existing Canvas illustration ONLY if the atlas is unavailable.
@@ -406,7 +482,7 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
     roundedRect(ctx, x - railW / 2, railY, railW * progress, railH, railH / 2); ctx.fill();
   }
 
-  drawTargetCaption(ctx, t, data, index, x, y, unit, guided, w, bodyH, progress);
+  if (t.layout !== 'structure') drawTargetCaption(ctx, t, data, index, x, y, unit, guided, w, bodyH, progress);
   ctx.restore();
 }
 
