@@ -213,23 +213,23 @@ function sketchLoop(ctx,x,y,r,color,width=1.8){
 /** One cached pastel glass arena, with ink accents kept out of the touch area. */
 function paintBackdrop(ctx,w,h,stream=false){
   const bg=ctx.createLinearGradient(0,0,w,h);
-  bg.addColorStop(0,'#F2E7FF');bg.addColorStop(.47,'#F7F4FF');
-  bg.addColorStop(.76,'#E6F7F8');bg.addColorStop(1,'#E4EAFE');
+  bg.addColorStop(0,'#F7F9FC');bg.addColorStop(.47,'#F4F7FC');
+  bg.addColorStop(.76,'#ECF5F6');bg.addColorStop(1,'#F2F5FB');
   ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
-  ctx.save();ctx.globalAlpha=.78;
+  ctx.save();ctx.globalAlpha=.28;
   ctx.fillStyle='#E3D2FF';ctx.beginPath();ctx.ellipse(-w*.09,h*.16,w*.36,h*.26,-.45,0,TAU);ctx.fill();
   ctx.fillStyle='#C8F2E7';ctx.beginPath();ctx.ellipse(w*1.03,h*.72,w*.36,h*.33,.24,0,TAU);ctx.fill();
   ctx.fillStyle='#FFE1D1';ctx.beginPath();ctx.ellipse(w*.1,h*.86,w*.25,h*.19,.14,0,TAU);ctx.fill();
   ctx.restore();
   const px=w*.035,py=h*.025,pw=w*.93,ph=h*.895,r=Math.min(26,w*.055);
-  ctx.save();ctx.shadowColor='rgba(80,75,142,.16)';ctx.shadowBlur=24;ctx.shadowOffsetY=9;
+  ctx.save();ctx.shadowColor='rgba(62,75,108,.09)';ctx.shadowBlur=24;ctx.shadowOffsetY=9;
   ctx.fillStyle='rgba(255,255,255,.76)';
   roundedRect(ctx,px,py,pw,ph,r);ctx.fill();ctx.restore();
   ctx.save();roundedRect(ctx,px,py,pw,ph,r);ctx.clip();
   const pane=ctx.createLinearGradient(0,py,0,py+ph);
   pane.addColorStop(0,'rgba(255,255,255,.91)');
-  pane.addColorStop(.44,'rgba(245,244,255,.68)');
-  pane.addColorStop(1,'rgba(232,248,250,.78)');
+  pane.addColorStop(.44,'rgba(247,249,253,.80)');
+  pane.addColorStop(1,'rgba(235,245,249,.83)');
   ctx.fillStyle=pane;ctx.fillRect(px,py,pw,ph);
   for(const [sx,sw,c] of [[.11,.18,'#A88BE9'],[.40,.15,'#6DCDBE'],[.70,.18,'#E9AB8B']]){
     ctx.fillStyle=c;roundedRect(ctx,px+pw*sx,py,w*sw,5,3);ctx.fill();
@@ -252,24 +252,12 @@ function paintBackdrop(ctx,w,h,stream=false){
   ctx.restore();
   ctx.strokeStyle='rgba(136,116,194,.33)';ctx.lineWidth=1.2;
   roundedRect(ctx,px,py,pw,ph,r);ctx.stroke();
-  sketchStar(ctx,w*.12,h*.14,Math.min(w*.024,10),'#A38ADC',2,-.13);
-  sketchStar(ctx,w*.88,h*.225,Math.min(w*.016,7),'#EBAB8F',1.8,.15);
-  sketchStar(ctx,w*.82,h*.795,Math.min(w*.025,10),'#65BEB1',2,.13);
-  sketchLoop(ctx,w*.16,h*.77,Math.min(w*.055,19),'rgba(145,121,201,.44)');
-  sketchLoop(ctx,w*.83,h*.105,Math.min(w*.033,14),'rgba(82,176,168,.42)');
-  // Faint hand-drawn slash ribbons use the quiet lower half as breathing room.
-  // Kept behind real targets and deliberately low contrast for later waves.
-  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
-  ctx.strokeStyle='rgba(139,107,201,.14)';ctx.lineWidth=Math.max(3,w*.011);
-  ctx.beginPath();ctx.moveTo(w*.23,h*.83);
-  ctx.bezierCurveTo(w*.35,h*.73,w*.56,h*.79,w*.76,h*.65);ctx.stroke();
-  ctx.strokeStyle='rgba(77,187,174,.17)';ctx.lineWidth=Math.max(2,w*.006);
-  ctx.beginPath();ctx.moveTo(w*.28,h*.87);
-  ctx.bezierCurveTo(w*.44,h*.77,w*.58,h*.84,w*.79,h*.72);ctx.stroke();
-  ctx.strokeStyle='rgba(230,167,132,.23)';ctx.lineWidth=Math.max(2,w*.006);
-  ctx.beginPath();ctx.moveTo(w*.38,h*.85);ctx.quadraticCurveTo(w*.57,h*.76,w*.69,h*.79);ctx.stroke();
-  ctx.restore();
-  sketchStar(ctx,w*.71,h*.685,Math.min(11,w*.029),'rgba(147,122,205,.37)',2,.25);
+  // Graffiti is reserved for successful feats; no permanent ornamental star cluster.
+
+
+
+
+  // Open stage floor: reserve visual contrast for real material gashes and fragments.
   const benchY=h*.92,bench=ctx.createLinearGradient(0,benchY,0,h);
   bench.addColorStop(0,'rgba(255,255,255,.94)');bench.addColorStop(1,'#D7D7F0');
   ctx.fillStyle=bench;ctx.fillRect(0,benchY,w,h-benchY);
@@ -388,14 +376,18 @@ function isGuideTarget(guide, t) {
 
 /* ══ 靶具 ═══════════════════════════════════════════════ */
 
-function targetMetrics(w, h, stream = false) {
-  // 连续投放是三排并存，单件要小一点、行距才能拉开，否则上下两排的标题会互相压住
-  const unit = stream ? Math.min(w * .16, h * .16, 62) : Math.min(w * .19, h * .21, 82);
-  return { unit, half: unit * .5, bodyW: unit * .94, bodyH: Math.min(unit * 1.55, h * (stream ? .145 : .21)) };
+function targetMetrics(w, h, stream = false, structure = false) {
+  // V4.1: sprites stand on their own material silhouette rather than on
+  // small hanging UI cards. Slightly larger structure components remain
+  // within the same authored collision centers and clear of neighboring joints.
+  const unit = structure ? Math.min(w*.23,h*.21,96)
+    : stream ? Math.min(w*.18,h*.165,72) : Math.min(w*.19,h*.21,82);
+  return {unit,half:unit*.5,bodyW:unit*.94,
+    bodyH:Math.min(unit*1.48,h*(stream?.15:structure?.195:.21))};
 }
 
 function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY, reduced = false, age = 1) {
-  const { unit, half, bodyW, bodyH } = targetMetrics(w, h, t.layout === 'stream');
+  const { unit, half, bodyW, bodyH } = targetMetrics(w, h, t.layout === 'stream',t.layout === 'structure');
   const bodyTop = y - bodyH * .49;
   const progress = clamp(Number(t.progress) || 0, 0, 1);
 
@@ -436,18 +428,11 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
   ctx.translate(x+pose.x,bodyTop-hangGap(unit)+pose.y);
   ctx.rotate(pose.angle);ctx.scale(pose.scaleX,pose.scaleY);
   ctx.translate(-x,-bodyTop+hangGap(unit));
-  if (t.layout === 'structure') {
-    // Real material remains exposed; no floating glass identification plaque
-    // between the user's stroke and its collision surface.
-    ctx.save();
-    ctx.fillStyle='rgba(38,59,74,.16)';
-    ctx.strokeStyle='rgba(35,55,75,.26)';
-    ctx.lineWidth=Math.max(2,unit*.048);
-    roundedRect(ctx,x-bodyW*.55,bodyTop+unit*.1,bodyW*1.1,bodyH*.92,unit*.1);
-    ctx.fill();ctx.stroke();ctx.restore();
-  } else {
+  if (t.layout!=='stream' && t.layout!=='structure') {
+    // Legacy static practice props can retain the information plaque. V4.1
+    // moving material and structural targets must show bare material geometry.
     drawSpecimenPlate(ctx,t.type,x,y,bodyW,bodyH,unit);
-    drawHanger(ctx, x, bodyTop, unit);
+    drawHanger(ctx,x,bodyTop,unit);
   }
 
   // The target is now a genuine prebaked transparent WebP material sprite.
@@ -474,15 +459,16 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
   }
   ctx.restore();
 
-  const railW = bodyW * .88, railY = bodyTop - Math.max(9, unit * .15), railH = Math.max(3, unit * .05);
-  const sampleColor=(SPECIMEN[t.type]||SPECIMEN.metal).ink;
-  ctx.fillStyle = 'rgba(110,104,166,.18)'; roundedRect(ctx, x - railW / 2, railY, railW, railH, railH / 2); ctx.fill();
-  if (progress > 0) {
-    ctx.fillStyle = progress >= 1 ? '#51BAA0' : sampleColor;
-    roundedRect(ctx, x - railW / 2, railY, railW * progress, railH, railH / 2); ctx.fill();
+  if(t.layout!=='structure' && t.layout!=='stream') {
+    const railW=bodyW*.88,railY=bodyTop-Math.max(9,unit*.15),railH=Math.max(3,unit*.05);
+    ctx.fillStyle='rgba(110,104,166,.18)';
+    roundedRect(ctx,x-railW/2,railY,railW,railH,railH/2);ctx.fill();
+    if(progress>0){
+      ctx.fillStyle=(SPECIMEN[t.type]||SPECIMEN.metal).ink;
+      roundedRect(ctx,x-railW/2,railY,railW*progress,railH,railH/2);ctx.fill();
+    }
+    drawTargetCaption(ctx,t,data,index,x,y,unit,guided,w,bodyH,progress);
   }
-
-  if (t.layout !== 'structure') drawTargetCaption(ctx, t, data, index, x, y, unit, guided, w, bodyH, progress);
   ctx.restore();
 }
 
@@ -944,7 +930,7 @@ function drawDebris(ctx, debris, now, w, h) {
   if (!debris.length) return;
   for (let i = 0; i < debris.length; i++) {
     const d = debris[i];
-    const { unit, bodyW, bodyH } = targetMetrics(w, h, d.layout === 'stream');
+    const { unit, bodyW, bodyH } = targetMetrics(w, h, d.layout === 'stream',d.layout === 'structure');
     const age = now - d.at;
     if (age < 0 || age > DEBRIS_LIFE) continue;
     const p = age / DEBRIS_LIFE;
