@@ -103,7 +103,7 @@ async function main() {
   Shell.create($('#topbar'));
 
   router.register('home', Home);
-  router.register('forge', Forge);
+  router.register('forge', { ...Forge, canEnter: () => !!(Game.run && !Game.run.finished) });
   router.register('appraise', Appraise);
   router.register('arena', Arena);
   router.register('workshop', Workshop);
