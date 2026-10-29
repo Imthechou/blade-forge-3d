@@ -43,6 +43,21 @@ export const FORGE_BONUSES = Object.freeze([
     /** 生效回执文案 —— 玩家必须看得到它真的生效了 */
     receipt: '备料余裕：已免费重抽本阶段候选',
   },
+  // V4.1 six specialization slots. Every definition is unlockable by
+  // its corresponding school; none lock a forging decision card.
+  ...[
+    ['press','锻压·稳锤','第十一锤起，进一步减小实际断裂概率'],
+    ['edge','锋刃·精研','第二次描线可获得更高锋利收益'],
+    ['precise','精密·定向','指定属性与有效阶段，提高匹配卡权重'],
+    ['quench','淬彩·调色','S5/S6 指定冷相/热相/氧化倾向'],
+    ['composite','复合·共鸣','已成型基础标签的限定次数候选偏好'],
+    ['overload','过载·豪赌','高风险检查成功后，强化下一次卡池稀有度'],
+  ].map(([id,name,desc])=>({
+    id:'specialty_'+id,name,desc,detail:desc,icon:'◇',
+    timing:BONUS_TIMING.beforeStart,usesPerRun:1,
+    unlock:{kind:'school',branchId:id,gradient:1},unlockText:'对应流派达到能手',
+    receipt:name+'：本局已冻结专精快照',
+  })),
   {
     id: 'combo_insight',
     name: '匠人直觉',
@@ -55,7 +70,8 @@ export const FORGE_BONUSES = Object.freeze([
        初版把解锁挂在「已发现 1 条隐藏组合」上，新档两页都是锁 → 实际只有一项能用。
        它只给**线索**（不给完整配方、不动数值），属于设定允许的「信息」类开局能力，
        因此与「备料余裕」并列作为默认可用项。 */
-    unlock: { kind: 'always' },
+    unlock: { kind: 'never' },
+    reserved: true, // V4.1 discovered Combo knowledge is permanently available, no slot cost.
     unlockText: '默认解锁',
     receipt: '匠人直觉：已显示可接近的组合线索',
   },
