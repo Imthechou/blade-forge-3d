@@ -324,7 +324,7 @@ function finish(match) {
     momentum: match.momentum,
     momentumName: momentumName(match.momentum),
     /** 普通落败不触发断刀，实际结构失效才失去参赛资格。 */
-    bladeDestroyed: !!match.fractureInfo,
+    bladeDestroyed: false, // V4.1 match failure is temporary; never consume a collectible.
     fractureInfo: match.fractureInfo || null,
     canDestroy: ARENA_CAN_DESTROY_BLADE,
     report: buildReport(match, {
