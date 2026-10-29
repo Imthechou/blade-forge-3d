@@ -138,11 +138,11 @@ test('S3 billet card engraving stays legible while the entire forging chain has 
   assert.match(viewer,/const STAGE_ENV_GAIN = \[0\.88, 0\.90, 0\.80, 0\.88, 1\.00, 1\.04, 1\.08, 1\.10, 1\.12\]/);
   assert.match(viewer,/Math\.min\(1\.48, M\.envIntensity \* stageEnvGain\)/);
   assert.doesNotMatch(viewer,/0\.90 \+ 0\.1025 \* \(g - 1\)/);
-  assert.match(lights,/toneMappingExposure = 0\\.87/);
+  assert.match(lights,/toneMappingExposure = 0\.87/);
   // The archive is intentionally a touch darker than forging, without
   // changing the BRDF, environment shape or S3 engraving energy.
   const archive=readFileSync(new URL('../src/render/collectionPreview.js',import.meta.url),'utf8');
-  assert.match(archive,/COLLECTION_EXPOSURE = 0\\.84/);
+  assert.match(archive,/COLLECTION_EXPOSURE = 0\.84/);
   assert.match(archive,/archive-image-v4/);
 });
 
