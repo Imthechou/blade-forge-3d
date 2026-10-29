@@ -448,3 +448,36 @@
 @media(prefers-reduced-motion:reduce){
   .quick-hero::before,.quick-hero::after{transform:none}
 }
+
+/* Hand-drawn symbols on the three in-match augment tickets. */
+.arena-augment-overlay .quick-choice-card,.arena-augment-overlay.is-inline .quick-choice-card{
+  overflow:hidden;isolation:isolate;
+  box-shadow:0 5px 13px rgba(95,84,145,.07),inset 0 1px rgba(255,255,255,.93);
+}
+.arena-augment-overlay .quick-choice-card:not(.augment--gold):not(.augment--prismatic):nth-child(3n+1){
+  background:linear-gradient(112deg,rgba(255,255,255,.96),#F0E8FF);
+}
+.arena-augment-overlay .quick-choice-card:not(.augment--gold):not(.augment--prismatic):nth-child(3n+2){
+  background:linear-gradient(112deg,rgba(255,255,255,.96),#E1F8EE);
+}
+.arena-augment-overlay .quick-choice-card:not(.augment--gold):not(.augment--prismatic):nth-child(3n){
+  background:linear-gradient(112deg,rgba(255,255,255,.96),#FFF0E7);
+}
+.arena-augment-overlay .quick-choice-card::after{
+  content:'✧';position:absolute;right:14px;top:9px;z-index:0;
+  color:#A48BD9;font-size:36px;font-weight:400;line-height:1;
+  opacity:.47;transform:rotate(14deg);pointer-events:none;
+}
+.arena-augment-overlay .quick-choice-card:nth-child(3n+2)::after{
+  content:'◎';color:#4EBFA9;font-size:32px;transform:rotate(-14deg);
+}
+.arena-augment-overlay .quick-choice-card:nth-child(3n)::after{
+  content:'✳';color:#E5A176;font-size:30px;transform:rotate(15deg);
+}
+.arena-augment-overlay .quick-choice-card>b,
+.arena-augment-overlay .quick-choice-card>span,
+.arena-augment-overlay .quick-choice-card>small,
+.arena-augment-overlay .quick-choice-card>strong{position:relative;z-index:1}
+@media(prefers-reduced-motion:reduce){
+  .arena-augment-overlay .quick-choice-card::after{transform:none}
+}
