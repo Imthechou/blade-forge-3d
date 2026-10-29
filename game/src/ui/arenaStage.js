@@ -964,7 +964,7 @@ function drawDebris(ctx, debris, now, w, h) {
     for (const side of [-1, 1]) {
       ctx.save();
       // 吊挂靶具：法线朝上的那一半还挂在线上（小幅摆动），另一半掉下去
-      const hanging = ny * side < 0;
+      const hanging = d.layout !== 'structure' && ny * side < 0;
       if (hanging) {
         const sway = Math.sin(p * 7) * unit * .05 * (1 - p);
         ctx.translate(cx + nx * sep * side * .22 + sway, cy + ny * sep * side * .22 + p * bodyH * .06);
@@ -1056,22 +1056,24 @@ function drawBursts(ctx, bursts, now, w, h, reduced) {
     if(age<(b.flashMs||90)) {
       const f=1-age/(b.flashMs||90);
       // Generated per-material 2.5D impact texture, on top of short low-cost light pulse.
-      if(!reduced)drawFlashSprite(ctx,b.type,x,y,72+hard*75,f*.58,angle);
+      if(!reduced && (b.complete || b.objective))
+        drawFlashSprite(ctx,b.type,x,y,56+hard*36,f*.23,angle);
       const r=(reduced?9:12+hard*20)*(1-f*.15);
       const gradient=ctx.createRadialGradient(x,y,0,x,y,r);
-      gradient.addColorStop(0,`rgba(255,255,255,${(.75+hard*.15)*f})`);
+      gradient.addColorStop(0,`rgba(255,255,255,${(.26+hard*.14)*f})`);
       gradient.addColorStop(.35,`rgba(214,244,251,${.30*f})`);
       gradient.addColorStop(1,'rgba(255,255,255,0)');
       ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();
     }
     // 从切口法线向外扩张，不再所有材料画一个同款圆。
     const ringAge=clamp(age/(reduced?155:235),0,1);
-    ctx.globalAlpha=(1-ringAge)*(.25+.46*hard);
+    ctx.globalAlpha=(b.complete || b.objective ? (1-ringAge)*(.12+.21*hard) : 0);
     ctx.strokeStyle=color;ctx.lineWidth=1+hard;
     ctx.beginPath();ctx.ellipse(x,y,(8+ringAge*(12+hard*17)),
       (3+ringAge*(7+hard*8)),angle,0,TAU);ctx.stroke();
     if(!reduced) {
-      const count=Math.max(2,Math.min(16,Number(b.particleCount)||4));
+      const requested = Number(b.particleCount);
+      const count = Math.max(0,Math.min(5,Number.isFinite(requested) ? requested : 2));
       for(let k=0;k<count;k++){
         // 每个碎片确定性，避免每帧重新掷随机导致闪烁/乱跳。
         const sign=k%2?1:-1;
@@ -1112,7 +1114,7 @@ function drawBursts(ctx, bursts, now, w, h, reduced) {
         ctx.beginPath();ctx.moveTo(cx-Math.cos(angle)*6,cy-Math.sin(angle)*6);
         ctx.lineTo(cx+Math.cos(angle)*6,cy+Math.sin(angle)*6);ctx.stroke();
       }
-      if(hard>.4&&!reduced)sketchStar(ctx,x+nx*25,y+ny*25,5+hard*5,(SPECIMEN[b.type]||SPECIMEN.metal).pop,1.7,angle);
+      if(b.objective && hard>.4 && !reduced)sketchStar(ctx,x+nx*18,y+ny*18,4+hard*2,(SPECIMEN[b.type]||SPECIMEN.metal).pop,1.1,angle);
     }
     if(b.objective){ctx.globalAlpha=power*.7;ctx.strokeStyle='#4CC7B0';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(x,y,16+age*.045,0,TAU);ctx.stroke();}
     ctx.restore();
