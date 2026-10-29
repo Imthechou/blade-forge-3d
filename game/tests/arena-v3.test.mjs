@@ -135,7 +135,13 @@ test('全国五轮不同风格且不累积强化；失败/放弃不毁刀，三�
     assert.ok(F.nationalSubmit(n,payload(1000,F.nationalCurrentRound(n).roundMatch.definition.rules[0].seconds)).ok);
   }
   assert.equal(n.result.champion,true);assert.equal(n.result.bladeDestroyed,false);
-  const lost=F.createNationalMatch({blade}).match;F.nationalStartRound(lost,[blade]);F.nationalSubmit(lost,payload(0,F.nationalCurrentRound(lost).roundMatch.definition.rules[0].seconds));assert.equal(lost.result.reason,'eliminated');
+  const lost=F.createNationalMatch({blade}).match;F.nationalStartRound(lost,[blade]);const failed=F.nationalSubmit(lost,payload(0,F.nationalCurrentRound(lost).roundMatch.definition.rules[0].seconds));
+  assert.equal(failed.retry,true,'loss keeps same-seed round instead of ending cup');
+  assert.equal(lost.roundIndex,0);
+  assert.equal(lost.rounds[0].attempts,1);
+  assert.equal(lost.done,false);
+  assert.ok(F.nationalStartRound(lost,[blade]).ok);
+  assert.equal(lost.rounds[0].roundMatch.seed,(lost.seed+0*7919)>>>0);
   const abandoned=F.createNationalMatch({blade}).match;F.nationalAbandon(abandoned);assert.equal(abandoned.result.reason,'abandoned');
   const blades=[blade,{...sampleBlade(150),id:'b'},{...sampleBlade(150),id:'c'}],a=F.createApexMatch({blades}).match;
   assert.equal(F.apexDispatch(a,[{...blade,id:'outside'}],'outside').ok,false);
