@@ -40,6 +40,7 @@ export function createRun({
   mode = 'normal',
   cr = CR_START,
   unlockedCardIds = null,
+  workshopSnapshot = null,
   daily = null,
 } = {}) {
   const s = (seed != null ? (Number(seed) >>> 0) : ((Date.now() % 100000000) >>> 0));
@@ -57,6 +58,8 @@ export function createRun({
     cr,
     rerollCountByStage: {},
     rerollTotal: 0,
+    paidRerollsUsed: 0,
+    workshop: workshopSnapshot ? {...workshopSnapshot} : null,
 
     candidates: [],
     history: [],
@@ -211,7 +214,7 @@ export function submitEdge(run, path, opts = {}) {
 /* ── 风险检查与阶段推进 ────────────────────────────────── */
 
 function checkRisk(run, stageId) {
-  const check = Risk.check(run.risk.current, run.rng, run.daily?.breakScale || 1);
+  const check = Risk.check(run.risk.current, run.rng, (run.daily?.breakScale || 1) * (1 - (run.workshop?.riskReduction || 0)));
   run.lastRiskCheck = { stageId, ...check };
   if (check.fractured) markFractured(run, stageId, '风险检查失败');
   return check;
