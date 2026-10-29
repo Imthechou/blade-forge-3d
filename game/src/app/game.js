@@ -75,6 +75,7 @@ class Session {
          所以旧档的 218 张内容不会被拿走（详见 core/cards.js 注释）。 */
       unlockedCardIds: Array.isArray(save.unlockedCardIds) ? save.unlockedCardIds : null,
       workshopSnapshot: Core.arenaV41Growth.workshopSnapshot(save),
+      specialistSnapshot: Core.arenaV41Specialties.specialtySnapshot(save,save.forgeBonus?.equippedId),
     });
     /* ★ rework T11：开锻前装备的有限加成绑定到本局。
        只做两件事：① 把选择的加成快照到 run.bonus（不写永久属性）；
@@ -363,7 +364,8 @@ class Session {
     const freeReroll = this._canUseFreeReroll();
     // 赛事可能已增加主档 CR；旧 run 只提供刷新次数，不能反写余额。
     const draft = { ...this.run, cr: Core.progress.get().cr, freeRerollOverride: !!freeReroll,
-      rerollCountByStage: { ...this.run.rerollCountByStage } };
+      rerollCountByStage: { ...this.run.rerollCountByStage },
+      specialist: this.run.specialist ? JSON.parse(JSON.stringify(this.run.specialist)) : null };
     const r = Core.cards.reroll(draft);
     if (!r.ok) return r;
     let paid;
@@ -377,7 +379,8 @@ class Session {
       if (!paid.ok) return paid;
     }
     Object.assign(this.run, { cr: paid.cr, rerollCountByStage: draft.rerollCountByStage,
-      rerollTotal: draft.rerollTotal, paidRerollsUsed: draft.paidRerollsUsed, candidates: draft.candidates });
+      rerollTotal: draft.rerollTotal, paidRerollsUsed: draft.paidRerollsUsed, candidates: draft.candidates,
+      specialist: draft.specialist });
     bus.emit(EVENTS.CR_CHANGED, { cr: paid.cr });
     this.preview = null; // the previous candidate is no longer in this pool
     this.syncStage();
