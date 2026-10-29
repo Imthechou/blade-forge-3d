@@ -924,7 +924,7 @@ class Session {
       const apex=Core.progress.activeCareerV41('apex');
       if(apex) {
         this.apexMatch=apex;
-        if(apex.done&&!apex.settled&&apex.result?.win)this._settleApexIfDone();
+        // Completed world cups remain claimable and replayable until the player accepts the result.
       }
     }
     return {national:!!this.nationalMatch,apex:!!this.apexMatch};
@@ -971,7 +971,7 @@ class Session {
     if(!r?.ok)return r;
     const saved=Core.progress.checkpointCareerV41('apex',this.apexMatch);
     if(!saved.ok){this.apexMatch=before;return saved;}
-    if(r.done&&this.apexMatch.result?.win)this._settleApexIfDone();
+    // Do not auto-claim: completed world rounds can be replayed for the best legal score.
     return r;
   }
 
