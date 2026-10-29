@@ -153,7 +153,7 @@ test('新快赛纪录独立版本分组，旧纪录与未知存档内容保留',
   assert.equal(updateQuickRecord(records,r),true);
   assert.equal(records.byChallenge['quick:free'].bestScore,99999);
   assert.equal(records.byChallenge['quick:v41:free'].bestScore,100);
-  assert.equal(normalizeQuickRecords(records).byChallenge['quick:v3:free'].bestScore,100);
+  assert.equal(normalizeQuickRecords(records).byChallenge['quick:v41:free'].bestScore,100);
 });
 
 
