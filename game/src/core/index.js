@@ -24,6 +24,7 @@ import * as bladeAdapter from './bladeAdapter.js';
 import * as testScoring from './testScoring.js';
 import * as events from './events.js';
 import * as forgeBonuses from './forgeBonuses.js';
+import * as arenaV41Growth from './arenaV41Growth.js';
 import * as daily from './daily.js';
 import * as economy from './economy.js';
 import * as progress from './progress.js';
@@ -32,7 +33,7 @@ import * as recipe from './recipe.js';
 export {
   attributes, risk, tags, traits, combos, cards, forge, hammer, edge,
   scoring, appraise, arena, arenaTeam, arenaSlice, arenaFormal,
-  bladeAdapter, testScoring, events, forgeBonuses,
+  bladeAdapter, testScoring, events, forgeBonuses, arenaV41Growth,
   daily, economy, progress, recipe,
 };
 
