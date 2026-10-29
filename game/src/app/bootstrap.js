@@ -10,6 +10,7 @@
 
 import { env, audio, bus, EVENTS } from '../platform/index.js';
 import * as Progress from '../core/progress.js';
+import Game from './game.js';
 import * as Settings from './settings.js';
 import { getStage, ensureS3TextureData } from '../render/index.js';
 import { gpuLedger } from '../render/resourceLedger.js';
