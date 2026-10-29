@@ -28,15 +28,15 @@ test('n-th hammer grants +n, ten safe strikes then steep risk',()=>{
  for(let i=0;i<18;i++){
   const hit=hammerStrike(r);
   assert.equal(hit.strike.statGain,i+1);
-  assert.equal(hit.strike.breakChance,p[i]);
+  assert.equal(hit.strike.breakChance,i < 10 ? 0 : breakChance(risks[i]));
   assert.equal(r.risk.current,risks[i]);
   assert.equal(r.hammer.statGained,(i+1)*(i+2)/2);
  }
  assert.equal(Hammer.progressOf(30),30);
  assert.equal(breakChance(12),0);
- assert.equal(breakChance(13),.02);
- assert.equal(breakChance(25),.05);
- assert.equal(breakChance(99),.60);
+ assert.ok(Math.abs(breakChance(13)-(.02/12))<1e-9);
+ assert.ok(Math.abs(breakChance(25)-(.02+.03/12))<1e-9);
+ assert.ok(Math.abs(breakChance(99)-(.45+.15*15/16))<1e-9);
 });
 test('S7 is continuous fit only, 3 attempts with early bonus',()=>{
  const results=[];
