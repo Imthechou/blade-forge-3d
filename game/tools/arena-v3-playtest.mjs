@@ -1,6 +1,7 @@
 /** V4.1 actual Chromium pointer flow; software WebGL. Virtual clock accelerates test scenarios; recordings are not phone/human validation. */
 import fs from 'node:fs';
 import path from 'node:path';
+import {pathToFileURL} from 'node:url';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {loadPlaywright,browserExecutable} from './lib/browser.mjs';
@@ -143,6 +144,54 @@ try {
     assert.ok(stored.quickChallengeRecords.byChallenge['quick:v41:free']);
     return {score:r.score,kills:r.kills,choices:r.choices,contacts:r.contacts.length};
   },{virtual:process.env.ARENA_REALTIME==='1'?false:true});
+  await scenario('six-material-2_5d-render-contact-gallery',async({page})=>{
+    // This gallery is a deterministic renderer-state fixture. It is not
+    // presented as human input or a real structural victory recording.
+    await page.getByRole('button',{name:'快速挑战',exact:true}).click({force:true});
+    await page.getByRole('button',{name:'开始自由快赛',exact:true}).click({force:true});
+    await page.locator('.quick-canvas').waitFor();
+    const images=[];
+    for(const type of ['foam','rope','wood','plastic','ice','metal']) {
+      for(const state of ['intact','damage','severed']){
+        await page.evaluate(({type,state})=>{
+          const bridge=globalThis.__FORGE_ARENA,run=bridge.run,effects=bridge.effects;
+          const t={
+            id:'fixture-'+type,type,x:.5,y:.52,slot:1,row:1,layout:'structure',
+            progress:state==='damage'?.48:0,
+            armorLeft:0,alive:state!=='severed',
+            cuts:state==='damage'?[{angle:-.35,y:.03,progress:.48}]:[],
+            lastAngle:-.35,variation:.03,createdAt:run.elapsed
+          };
+          run.targets=state==='severed'?[]:[t];
+          run.spawnMode='structure';run.structure=null;run.refillAt=null;
+          effects.debris.length=0;effects.bursts.length=0;effects.hitLabels.length=0;
+          if(state==='severed')effects.debris.push({
+            type,x:t.x,y:t.y,angle:t.lastAngle,layout:'structure',at:performance.now(),
+          });
+        },{type,state});
+        // Allow the existing animation scheduler to draw this precise state.
+        await page.waitForTimeout(35);
+        const file='materials-'+type+'-'+state+'.png';
+        await page.locator('.quick-canvas').screenshot({path:path.join(out,file)});
+        images.push(file);
+      }
+    }
+    const rows=['foam','rope','wood','plastic','ice','metal'];
+    const labels={foam:'泡棉',rope:'绳束',wood:'木材',plastic:'工程塑料',ice:'冰晶',metal:'金属'};
+    const grid=rows.map(type=>'<section><h3>'+labels[type]+'</h3><div class="row">'+
+      ['intact','damage','severed'].map((st,i)=>'<figure><img src="materials-'+type+'-'+st+'.png"><figcaption>'+['完整','持久切槽','分离断面'][i]+'</figcaption></figure>').join('')+
+      '</div></section>').join('');
+    const html='<!DOCTYPE html><html lang="zh"><meta charset="utf-8"><title>V4.1 六材料损伤/断面对照（渲染状态夹具）</title><style>body{font:16px system-ui;background:#f4f6fa;color:#28314c;max-width:1100px;margin:24px auto}h1{font-size:22px}p{color:#68758c}section{border-top:1px solid #dde3ea;padding:12px 0}h3{margin:5px}.row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}figure{margin:0}img{width:100%;border-radius:12px}figcaption{text-align:center;color:#52627a}</style><h1>六材料：完整 / 受损 / 断面</h1><p>当前提交 Canvas/2.5D 渲染状态夹具；非真人、非实际手机、非实际赛局通过证据。</p>'+grid+'</html>';
+    const htmlPath=path.join(out,'v41-six-material-contact-sheet.html');
+    fs.writeFileSync(htmlPath,html);
+    const gallery=await page.context().newPage();
+    await gallery.setViewportSize({width:1060,height:780});
+    await gallery.goto(pathToFileURL(htmlPath).href);
+    await gallery.screenshot({path:path.join(out,'v41-six-material-contact-sheet.png'),fullPage:true});
+    await gallery.close();
+    return {materials:rows,states:3,files:images.length,
+      evidence:'renderer state fixtures, not real playtest'};
+  },{virtual:false});
   await scenario('school-six-branches',async({page,virtual})=>{
     const results=[];
     for(const branch of ['锻压','锋刃','精密','淬彩','复合','过载']) {
