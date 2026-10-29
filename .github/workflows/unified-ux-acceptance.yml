@@ -26,12 +26,17 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq fonts-wqy-microhei
           echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          path: .ux-baseline
       - name: Static and core checks
         working-directory: game
         run: npm run verify
       - name: Run original WebGL game
         run: |
           nohup node game/serve.cjs 8123 127.0.0.1 > ux-server.log 2>&1 &
+          nohup node .ux-baseline/game/serve.cjs 8124 127.0.0.1 > ux-baseline-server.log 2>&1 &
           sleep 2
           curl -fsS http://127.0.0.1:8123/ > /dev/null
       - name: Narrow-phone interactions and all workshop dialogs
@@ -46,6 +51,10 @@ jobs:
           ARENA_CASE: quick-45s-real-pointer
           ARENA_QA_OUT: unified-ux-evidence/realtime
         run: node tools/arena-v3-playtest.mjs
+      - name: Compare warmed previews against main on this runner
+        if: always()
+        working-directory: game
+        run: node tools/preview-performance.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

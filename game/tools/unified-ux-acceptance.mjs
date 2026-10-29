@@ -56,7 +56,9 @@ try {
   await test(`${width} forge preview + details + response latency`,async()=>{
    await page.getByRole('button',{name:'返回首页',exact:true}).click();await page.getByRole('button',{name:'开始锻刀',exact:true}).click();await page.locator('.dcard').first().waitFor();
    await fit('#forgeStage');await fit('.page.is-active .actions');await fit('.page.is-active .cards');
-   await page.locator('.dcard').first().click();await shot(`${width}-forge`);
+   await page.locator('.dcard').first().click();
+   const clearance=await page.locator('.dcard').evaluateAll(cards=>cards.map(c=>{const track=c.querySelector('.dcard-tier,.dcard-instant-action');return !track||track.getBoundingClientRect().bottom<=c.getBoundingClientRect().bottom-4;}));assert.ok(clearance.every(Boolean),'card progress cropped');
+   await shot(`${width}-forge`);
    const timings=await page.evaluate(async()=>{const samples=[];for(let i=0;i<12;i++){const start=performance.now();document.querySelectorAll('.dcard')[i%3].click();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));samples.push(performance.now()-start);}return samples;});
    const sorted=timings.slice().sort((a,b)=>a-b);report.performance.push({width,kind:'two-RAF DOM response, SwiftShader CI, not phone GPU',samples:timings,p50:sorted[6],p95:sorted[11]});
    await page.locator('.dcard-more').first().click();await dialog();await shot(`${width}-card-detail`);await close();
