@@ -9,6 +9,7 @@ import { deriveCutParams } from './cutParams.js';
 import { adaptBlade } from './bladeAdapter.js';
 import { applyForgeCutTraits } from './forgeTraitCuts.js';
 import { createEncounter, selectEncounterMaterial, phaseQuota, stageSpawnInterval } from './arenaEncounters.js';
+import { createStructure, updateStructure, structureScore, structureSnapshot } from './arenaStructures.js';
 
 import { ARENA_V3, ARENA_MATERIALS, ARENA_STAT_CEILING, arenaStat } from '../data/balance.js';
 import { rollBuffChoices, resonanceOf, BUFF_BY_ID } from '../data/arena/buffs.js';
@@ -71,6 +72,9 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
     effectSummary: adaptation.effectSummary,
   };
   const plan = encounter ? createEncounter({...encounter, styleId: styleId || encounter.styleId}) : null;
+  const structure = mode === 'formal' && encounter?.structure === true
+    ? createStructure(actualSeed, styleId || encounter.styleId || 'composite', encounter.gradient || encounter.round || 0)
+    : null;
   // V4.1: forged blade traits are the build. Neither mode interrupts play for random augment offers.
   augments = false;
   const total = seconds == null ? CHALLENGE_SECONDS : clamp(Number(seconds) || CHALLENGE_SECONDS, 5, CHALLENGE_SECONDS);
@@ -104,7 +108,7 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
     encounterHistory: plan ? Object.fromEntries(['warmup','route','speed','finale'].map(phase=>[
       phase,{spawned:0,materials:{}}])) : null,
     total, elapsed: 0, remaining: total, phase: 'warmup', paused: false, done: false, result: null,
-    spawnMode: 'stream',
+    spawnMode: structure ? 'structure' : 'stream', structure,
     score: 0, kills: 0, combo: 0, maxCombo: 0, bestSwipe: 0, gestureKills: 0, misses: 0,
     health: params.healthMax, maxHealth: params.healthMax, damage: 0,
     fractureChecks: 0, riskStop: false, fractured: false, carry: [],
@@ -115,7 +119,10 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
       message: mode === 'formal' ? '正式测试可能断刀；留意硬靶受力与累积受损' : '快速挑战完全安全，不会断刀',
       failure: null, lastContact: null },
   };
-  if (run.spawnMode === 'stream') {
+  if (run.spawnMode === 'structure') {
+    run.targets = structure.parts;
+    run.guide = null;
+  } else if (run.spawnMode === 'stream') {
     /* 开场不空场：一进来就有 3 件可切，第一刀就有连击机会（原型 §5「几秒内感受到爽感」）。 */
     if (run.encounter) enterSpawnStage(run, 'warmup', 3);
     else run.nextSpawnAt = 0.22;
@@ -123,7 +130,7 @@ export function createChallenge(blade, { seed = null, daily = false, mode = 'qui
   } else {
     spawnWave(run);
   }
-  run.guide = makeGuide(run);
+  if (!structure) run.guide = makeGuide(run);
   if (augments) openAugmentChoice(run);
   return { ok: true, run };
 }
@@ -338,6 +345,8 @@ export function tick(run, seconds) {
   } else run.metrics.emptyGap=0;
   run.elapsed+=dt; run.remaining=Math.max(0,run.total-run.elapsed);
   if(run.elapsed>=run.total-1e-7) return finish(run);
+  // Formal assemblies persist every cut and connection until destroyed or timed out.
+  if (run.spawnMode === 'structure') return run;
   const phase=run.elapsed>=30?'finale':run.elapsed>=23?'speed':run.elapsed>=8?'route':'warmup';
   if(run.phase!==phase) {
     run.phase=phase;
@@ -704,6 +713,15 @@ export function swipe(run, a, b, { duration = .12, angle = null } = {}) {
     }
   }
   run.bestSwipe=Math.max(run.bestSwipe,run.gestureKills);
+  if (run.structure) {
+    updateStructure(run.structure,run.targets);
+    run.score=structureScore(run.structure,run.elapsed,run.total,run.health,run.maxHealth);
+    if (run.structure.completed) {
+      run.log.push({type:'structure-terminated',at:run.elapsed,route:run.structure.routeComplete,
+        completed:[...run.structure.completedIds]});
+      return {ok:true,hits,done:finish(run,'structure-complete')};
+    }
+  }
   if(run.health<=0)return {ok:true,hits,done:finish(run,'wearout')};
   return {ok:true,hits};
 }
@@ -747,6 +765,10 @@ function applySecondary(run,t,power) {
 }
 function targetDifficulty(t) { return t.difficulty || 1; }
 export function finish(run, reason='time') {
+  if (run?.structure) {
+    updateStructure(run.structure,run.targets);
+    run.score=structureScore(run.structure,run.elapsed,run.total,run.health,run.maxHealth);
+  }
   if (!run) return null;
   ensureRuntime(run);
   // 缺少 mode 的旧快速局也安全；旧 reason/标志不能绕过这条边界。
@@ -785,7 +807,8 @@ export function finish(run, reason='time') {
     perfects:run.perfects,weakHits:run.weakHits,armorBreaks:run.armorBreaks,crossCuts:run.crossCuts,
     secondaryKills:run.secondaryKills,secondaryScore:run.secondaryScore,metrics:copy(run.metrics),
     objectives:run.objectives,materials:[...(run.materialSet||[])],
-    mode:run.mode || 'quick',total:run.total,risk:copy(run.risk || {}),log:copy(run.log)};
+    mode:run.mode || 'quick',total:run.total,risk:copy(run.risk || {}),log:copy(run.log),
+    structure:structureSnapshot(run.structure),rulesVersion:run.rulesVersion};
   if (run.mode !== 'formal' && reason !== 'manual') emit(EVENTS.QUICK_CHALLENGE_FINISHED, run);
   return run.result;
 }
