@@ -454,14 +454,10 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
   if (previous) return { cr: previous.reward, duplicate: true };
   const blade = bladeId ? s.collection.find((b) => b.id === bladeId) : null;
   if (bladeId && (!blade || blade.fractured || blade.canEnterArena === false)) return { cr: 0, error: '参赛刀已失去资格' };
-  const destroyed = !!(matchRecord?.result?.bladeDestroyed
-    && matchRecord?.result?.fractureInfo?.bladeId === bladeId
-    && matchRecord?.result?.fractureInfo?.matchId === matchId
-    && hasStructuralFailure(matchRecord?.fieldTest?.result?.performance)
-    && JSON.stringify(matchRecord.result.fractureInfo.evidence)
-      === JSON.stringify(matchRecord.fieldTest.result.performance.risk));
-  if (matchRecord?.result?.bladeDestroyed && !destroyed) return { cr: 0, error: '断刀结算缺少一致的实际接触履历' };
-  if (destroyed) win = false;
+  // V4.1: arena exhaustion is a per-round outcome, never a mutation of a forged collectible.
+  // Legacy incident evidence may remain in match history for diagnostics.
+  const destroyed = false;
+  if (matchRecord?.result?.bladeDestroyed) win = false;
   if (win) a.matchWins += 1; else a.matchLosses += 1;
 
   if (tier === 'school' && styleId) {
@@ -668,19 +664,7 @@ export function completeTeamRound(teamId) {
     // 履历保留，但每轮不记录单刀胜负进度、不解锁成就、不发 CR。
     const history = teamCopy({ ...match, teamId, mode: 'team3', reward: 0, recordedAt: Date.now() });
     (blade.arenaHistory ||= []).push(history);
-    if (match.result.bladeDestroyed && live) {
-      blade.fractured = true;
-      blade.canEnterArena = false;
-      blade.fractureInfo = teamCopy(match.result.fractureInfo);
-      save.collection.splice(save.collection.indexOf(blade), 1);
-      save.fractured.unshift(blade);
-      save.stats.fractureCount += 1;
-      unlockCodex(save, 'fracture', blade.id);
-      if (save.showcaseId === blade.id) {
-        save.showcaseId = save.collection.reduce((best, item) => !best || (item.score || 0) > (best.score || 0) ? item : best, null)?.id || null;
-        save.showcasePinned = false;
-      }
-    }
+    // V4.1: the roster stays in the collection even if this round failed.
     return { ok: true, team: teamCopy(team), round: teamCopy(round), result: team.result ? teamCopy(team.result) : null };
   });
 }
