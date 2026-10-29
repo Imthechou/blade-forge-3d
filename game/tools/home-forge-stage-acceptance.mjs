@@ -86,7 +86,7 @@ try {
       assert.equal(await page.locator('.stage-badge span').innerText(),'原料');
       assert.equal(await page.locator('.stage-question').count(),0);
       assert.equal(await page.locator('.stage-badge i').count(),0);
-      assert.equal(await page.locator('.stage-inspect-reset').count(),1);
+      assert.equal(await page.locator('#forgeStage .stage-inspect-reset').count(),1);
       assert.equal(await page.locator('.stage-inspect-toggle').count(),0);
       const chips = await page.locator('.stage-badge,.stage-traits').evaluateAll(
         nodes => nodes.map(n => {const b=n.getBoundingClientRect();return {y:b.y,height:b.height};}));
