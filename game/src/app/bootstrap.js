@@ -173,7 +173,6 @@ async function main() {
       const hdr = await stage.loadEnvironment();
       if (!hdr?.ok) prep.problems.push('HDR environment unavailable');
 
-
       setNote('正在解析刀具模型…');
       const processes = ['ore_small', 'molten_sphere_small', 'blank_ingot_small'];
       // Keep only first-stage ore in the blocking set. The showcase model is
@@ -258,21 +257,21 @@ async function main() {
       if (!s3) prep.problems.push('S3 supplied textures unavailable');
       const readyTextures = await K3DTextureReady(stage);
       prep.textures = readyTextures.uploaded;
-      /* 账本：S3 的 24 张 512² 程序化贴图（每张 RGBA，按 createTexture 的 mip 设置估算）。 */
-      try {
-        const maps = globalThis.K3D?.s3TexMaps;
-        const n = maps?.ids?.length || 0;
-        const size = maps?.SIZE || 512;
-        if (n) {
-          gpuLedger.track('s3-textures', {
-            kind: 's3-textures', renderer: stage.viewer?.renderer,
-            bytesMiB: (n * size * size * 4 * (4 / 3)) / 1048576,
-            optional: true, evictable: false,
-            note: `${n} 张 ${size}² S3 纹理（含 mip 估算）`,
-          });
-        }
-      } catch (_) { /* 诊断件 */ }
-      if (readyTextures.uploaded !== readyTextures.total) prep.problems.push('S3 texture upload incomplete');
+      /* 账本：S3 的 24 张 512² 程序化贴图（每张 RGBA，按 createTexture 的 mip 设置估算）。 */
+      try {
+        const maps = globalThis.K3D?.s3TexMaps;
+        const n = maps?.ids?.length || 0;
+        const size = maps?.SIZE || 512;
+        if (n) {
+          gpuLedger.track('s3-textures', {
+            kind: 's3-textures', renderer: stage.viewer?.renderer,
+            bytesMiB: (n * size * size * 4 * (4 / 3)) / 1048576,
+            optional: true, evictable: false,
+            note: `${n} 张 ${size}² S3 纹理（含 mip 估算）`,
+          });
+        }
+      } catch (_) { /* 诊断件 */ }
+      if (readyTextures.uploaded !== readyTextures.total) prep.problems.push('S3 texture upload incomplete');
       prep.readyStages.assetsReady = prep.readyStages.assetsReady && !!s3;
       prep.readyStages.uploadSubmitted = prep.readyStages.uploadSubmitted
         && readyTextures.uploaded === readyTextures.total;
