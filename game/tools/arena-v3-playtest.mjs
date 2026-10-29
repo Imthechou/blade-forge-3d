@@ -20,7 +20,7 @@ async function screenshot(page,name){await page.screenshot({path:path.join(out,n
 async function newGame(name,{width=390,height=844,virtual=true}={}) {
   const context=await browser.newContext({viewport:{width,height},isMobile:true,hasTouch:true,deviceScaleFactor:2,recordVideo:{dir:path.join(out,'videos'),size:{width,height}},locale:'zh-CN',reducedMotion:'reduce'});
   const records=[sampleBlade(150),{...sampleBlade(150),id:'blade-b',bladeName:'破甲刀'},{...sampleBlade(150),id:'blade-c',bladeName:'综合刀'}];
-  await context.addInitScript(records=>localStorage.setItem('bladeforge.save',JSON.stringify({version:1,cr:2000,collection:records,settings:{tutorialSeen:true,sound:false,motion:'reduced',hintsSeen:{}}})),records);
+  await context.addInitScript(records=>localStorage.setItem('bladeforge.save',JSON.stringify({version:1,cr:2000,collection:records,arena:{school:{edge:{cleared:[0,1,2]},press:{cleared:[0,1,2]},composite:{cleared:[0,1,2]}},history:[{id:'qa-national-crown',tier:'national',result:{champion:true}}]},settings:{tutorialSeen:true,sound:false,motion:'reduced',hintsSeen:{}}})),records);
   const page=await context.newPage();
   page.on('pageerror',e=>report.errors.push({name,error:String(e)}));
   page.on('requestfailed',r=>{if(!r.failure()?.errorText?.includes('ERR_ABORTED'))report.requestFailures.push({name,url:r.url(),error:r.failure()?.errorText});});
