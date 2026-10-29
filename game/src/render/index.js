@@ -1490,10 +1490,9 @@ export class BladeStage {
       if (this.viewer.controls) {
         if (this._interactive == null) {
           /* 页面级默认值：只有用户从未动过开关时才生效。 */
-          const forgeIdle = pageKey === 'forge';
-          const homeIdle = pageKey === 'home';
-          this.viewer.controls.enableRotate = !forgeIdle && !homeIdle;
-          this.viewer.controls.enableZoom = !forgeIdle && pageKey !== 'appraise' && !homeIdle;
+          // 默认可拖拽，S4/S7 的游戏手势由页面阶段守卫关闭。
+          this.viewer.controls.enableRotate = true;
+          this.viewer.controls.enableZoom = pageKey !== 'appraise';
         } else {
           /* 尊重开关：开就开、关就关。 */
           this.viewer.controls.enableRotate = !!this._interactive;
