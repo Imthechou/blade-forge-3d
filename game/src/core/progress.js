@@ -25,6 +25,7 @@ import { makeQuickRecords, normalizeQuickRecords, quickChallengeKey, updateQuick
 import * as Arena from './arena.js';
 import * as Events from './events.js';
 import * as ForgeBonuses from './forgeBonuses.js';
+import * as V41Growth from './arenaV41Growth.js';
 import * as CodexCatalog from '../data/codexCatalog.js';
 import { COUNTED_CATEGORIES } from '../data/codexCatalog.js';
 import { commitSave } from './saveTransaction.js';
@@ -144,10 +145,13 @@ export function settleQuickChallenge(run) {
     draft = quickCopy(original);
     updateQuickRecord(draft.quickChallengeRecords, run);
     const credited = Economy.addCr(draft, run.result.reward, 'arena-quick-challenge');
+    const effectiveKills=Math.max(0,Number(run.result.kills)||0);
+    if (effectiveKills>0 && run.result.reason==='time')
+      V41Growth.awardWorkshopXp(draft,Math.min(10,4+Math.floor((Number(run.result.score)||0)/1200)), 'quick:'+run.id);
     /* ★ rework T10.1：快赛完成事件与 CR 同一次写盘。
        run.id 是稳定身份，同局重试不会二次计任务/成就。
        注意：快赛**永久安全**——事件只记录完成，不改永久属性、不触发断刀。 */
-    const evt = Events.settle(draft, Events.EVENT.QUICK_COMPLETED, { challengeId: run.id }, {
+    const evt = (Number(run.result.kills)||0) === 0 ? {duplicate:true,cr:0,tasks:[]} : Events.settle(draft, Events.EVENT.QUICK_COMPLETED, { challengeId: run.id }, {
       score: run.result.score, grade: run.result.grade,
     });
     const taskCr = evt.duplicate ? 0 : evt.cr;
@@ -232,6 +236,7 @@ export function archive(record, { mode = 'normal' } = {}) {
     // CR 奖励：断刀也给少量（V2.1 §1「失败也有记录」），成刀按稀有度
     let reward = record.fractured ? 10 : Economy.forgeReward(record.rarity);
     Economy.addCr(s, reward, 'forge');
+    if (!record.fractured && mode !== 'daily') V41Growth.awardWorkshopXp(s,10,'forge:'+record.id);
 
     if (mode === 'daily') {
       // 挑战成绩只进 dailyScores，不入藏刀阁
@@ -458,6 +463,20 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
   // Legacy incident evidence may remain in match history for diagnostics.
   const destroyed = false;
   if (matchRecord?.result?.bladeDestroyed) win = false;
+  // XP is awarded within the same atomic save transaction and keyed by match ID.
+  const wasSchoolClear=tier==='school' && styleId
+    ? !!a.school[styleId]?.cleared?.includes(gradient) : false;
+  if (matchId) {
+    const baseXp=tier==='school'?[18,24,32,40,48][Math.min(4,Math.max(0,gradient|0))]
+      : tier==='national'?48:70;
+    const winXp=win?baseXp:Math.floor(baseXp*.35*
+      Math.max(0,Math.min(1,(Number(matchRecord?.result?.structure?.primary)
+        ||Number(matchRecord?.result?.composite)||0)/1000)));
+    V41Growth.awardWorkshopXp(s,winXp,'match:'+matchId);
+    if (win && tier==='school' && !wasSchoolClear)
+      V41Growth.awardWorkshopXp(s,[50,75,110,160,220][Math.min(4,Math.max(0,gradient|0))],
+        'first:school:'+styleId+':'+gradient);
+  }
   if (win) a.matchWins += 1; else a.matchLosses += 1;
 
   if (tier === 'school' && styleId) {
