@@ -91,6 +91,34 @@ try {
     return {contexts:studioEnvInfo()?.contexts,mainReady:!!getStage().viewer?.envMap};
   });
   assert.ok(after.mainReady,'closing archive detail must not destroy main stage reflection');
+  // IndexedDB images must survive a full page reload without allocating an
+  // additional thumbnail WebGL context or replaying historical skin shaders.
+  await page.waitForFunction(async () =>
+    (await import('/src/render/collectionCache.js')).thumbnailCacheStats().writes > 0,
+    null,{timeout:20000,polling:250});
+  const startupBefore = await page.evaluate(() => ({
+    firstInteractiveMs: window.__FORGE_PREP?.firstInteractiveMs,
+    fullReadyMs: window.__FORGE_PREP?.elapsedMs,
+  }));
+  assert.ok(startupBefore.firstInteractiveMs > 0
+    && startupBefore.firstInteractiveMs <= startupBefore.fullReadyMs, JSON.stringify(startupBefore));
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(() => window.__FORGE_PREP?.ready && !document.querySelector('#boot'),
+    null,{timeout:120000});
+  await page.getByRole('button',{name:'藏刀阁',exact:true}).click();
+  await page.waitForFunction(async () => {
+    const stats = (await import('/src/render/collectionCache.js')).thumbnailCacheStats();
+    return stats.hits > 0 && document.querySelector('.blade-thumb img')?.complete;
+  },null,{timeout:30000});
+  const disk = await page.evaluate(async () => {
+    const stats = (await import('/src/render/collectionCache.js')).thumbnailCacheStats();
+    const info = (await import('/src/render/v2/studioEnv.js')).studioEnvInfo();
+    return { ...stats, contexts: info?.contexts, thumbnailRendererCreated: !!document.querySelector('.collection-thumb-renderer') };
+  });
+  assert.ok(disk.hits > 0 && disk.contexts === 1 && !disk.thumbnailRendererCreated,
+    'persistent image should avoid additional archive WebGL renderers: ' + JSON.stringify(disk));
+  report.cases.push({name:'persistent thumbnail cache across reload avoids GPU work', startupBefore, disk});
+
   assert.deepEqual(report.errors,[]);
   report.cases.push({name:'detail disposal keeps main and thumbnail reflections',during,after});
   await context.close();
