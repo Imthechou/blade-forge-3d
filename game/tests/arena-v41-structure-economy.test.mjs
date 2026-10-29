@@ -48,7 +48,7 @@ test('formal score earns quality only from completed real contacts, never blank 
 });
 test('formal cover access makes a different first cut more effective, with no direct stat mean gate',()=>{
   const run=createChallenge(blade,{mode:'formal',seed:7,seconds:90,
-    encounter:{structure:true,styleId:'press',gradient:2},styleId:'press'}).run;
+    encounter:{structure:true,styleId:'edge',gradient:2},styleId:'edge'}).run;
   const a=run.targets.find(x=>x.key==='a'),c=run.targets.find(x=>x.key==='c');
   assert.equal(c.coveredBy,'a');
   const routeCut=t=>{
