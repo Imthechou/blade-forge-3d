@@ -3,7 +3,7 @@ import { SAVE_VERSION } from '../platform/storage.js';
 import { CR_START, STAT_KEYS } from '../data/balance.js';
 import * as Daily from './daily.js';
 import { makeQuickRecords } from './quickChallengeRecords.js';
-import { makeWorkshopV41, normalizeWorkshopV41 } from './arenaV41Growth.js';
+import { makeWorkshopV41, normalizeWorkshopV41, migrateVerifiedLegacyGrowth } from './arenaV41Growth.js';
 import { makeCareerV41, normalizeCareerV41 } from './arenaCareerV41.js';
 
 /**
@@ -169,6 +169,7 @@ export function normalizeSave(raw) {
   }
   for (const key of ['matchWins', 'matchLosses']) out.arena[key] = count(out.arena[key]);
   out.arena.history = list(out.arena.history).filter(object);
+  if(!object(src.workshopV41)) out.workshopV41=migrateVerifiedLegacyGrowth(out.workshopV41,out);
   const daily = map(src.daily);
   out.daily = { ...defaults.daily, ...daily };
   out.daily.dayKey = typeof daily.dayKey === 'string' ? daily.dayKey : defaults.daily.dayKey;
