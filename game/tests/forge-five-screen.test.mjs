@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRun, confirmCard, endHammer, submitEdge, snapshot } from '../src/core/forge.js';
-import { FORGE_FLOW_VERSION,FORGE_CHAPTERS,chapterState,isFiveScreen } from '../src/core/forgeChapters.js';
+import { FORGE_FLOW_VERSION,FORGE_CHAPTERS,chapterState,isFiveScreen,forgeStageStatDelta } from '../src/core/forgeChapters.js';
+import { specialtyFlowCue } from '../src/core/arenaV41Specialties.js';
+import { BY_STAGE } from '../src/data/cards.js';
+import { previewPick } from '../src/core/cards.js';
 import { makeSave, normalizeSave } from '../src/core/saveSchema.js';
 import { workshopSnapshot } from '../src/core/arenaV41Growth.js';
 
@@ -61,4 +64,46 @@ test('old run and daily forge still perform S2 risk check',()=>{
     assert.equal(confirmCard(run,run.candidates[0]).ok,true);
     assert.equal(run.lastRiskCheck?.stageId,'S2');
   }
+});
+
+test('five-screen payouts preserve authored rarity budgets and shift stage-specific roles',()=>{
+  const run=createRun({seed:98123,flowVersion:FORGE_FLOW_VERSION});
+  const old=createRun({seed:98123});
+  const side=['toughness','craft','design','spirit'];
+  for(const stage of ['S1','S2','S3','S4','S5','S6','S7','S8','S9']){
+    run.stageId=stage;old.stageId=stage;
+    for(const card of (BY_STAGE[stage]||[]).slice(0,8)){
+      const adapted=forgeStageStatDelta(run,card);
+      const legacy=forgeStageStatDelta(old,card);
+      assert.equal(legacy,card.statDelta,'legacy balances do not change');
+      const sum=x=>side.reduce((a,k)=>a+(Number(x[k])||0),0);
+      assert.ok(Math.abs(sum(adapted)-sum(card.statDelta))<.011,stage+' must retain total side-stat budget');
+      assert.equal(adapted.strength,card.statDelta.strength);
+      assert.equal(adapted.sharpness,card.statDelta.sharpness);
+      const projected=previewPick(run,card);
+      for(const k of side)assert.ok(Math.abs((projected.stats[k]||0)-(adapted[k]||0))<.011);
+    }
+  }
+  const specimen=BY_STAGE.S8[0];
+  run.stageId='S8';
+  const assembled=forgeStageStatDelta(run,specimen);
+  assert.ok(assembled.design>assembled.toughness,'assembly increases design emphasis');
+  run.stageId='S5';
+  const quenched=forgeStageStatDelta(run,BY_STAGE.S5[0]);
+  assert.ok(quenched.toughness>quenched.design,'quench increases toughness emphasis');
+});
+test('all six specialists map to their real forge operation, without stacking bonus',()=>{
+  const run={stageId:'S4',specialist:{id:'press',level:1,boost:.05,options:{}}};
+  assert.equal(specialtyFlowCue(run).active,true);
+  run.stageId='S5';assert.equal(specialtyFlowCue(run).active,false);
+  run.specialist={id:'edge',level:2,boost:1.10,options:{}};
+  run.stageId='S7';assert.equal(specialtyFlowCue(run).active,true);
+  run.specialist={id:'precise',level:1,boost:.10,options:{stages:['S2','S8'],stat:'design'}};
+  run.stageId='S2';assert.equal(specialtyFlowCue(run).active,true);
+  run.specialist={id:'quench',level:1,boost:.15,options:{}};
+  run.stageId='S6';assert.equal(specialtyFlowCue(run).active,true);
+  run.specialist={id:'composite',level:1,boost:.15,options:{}};
+  run.stageId='S8';assert.equal(specialtyFlowCue(run).active,true);
+  run.specialist={id:'overload',level:1,boost:.10,options:{}};
+  run.stageId='S3';assert.equal(specialtyFlowCue(run).active,true);
 });
