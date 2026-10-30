@@ -53,6 +53,8 @@ test('empty, mismatched, replayed and legacy team rounds do not mint blade maste
   assert.deepEqual(Mastery.verifiedApexBladeRounds(old),[]);
   submit('AP-empty',empty);submit('AP-bad',bad);submit('AP-old',old);
   for(const id of ['A','B','C'])assert.equal(Mastery.masteryView(Progress.bladeById(id)).qualifiedMatches,0);
+  assert.equal(Progress.get().materialsV1.receipts['material:formal:AP-empty'],undefined);
+  assert.equal(Progress.get().materialsV1.receipts['material:formal:AP-bad'],undefined);
 });
 test('completion and 20 percent participation count; no credit for standby or sub-threshold',()=>{
   start();
