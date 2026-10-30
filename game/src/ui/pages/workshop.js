@@ -359,7 +359,7 @@ function inspect(blade) {
         try {
           await detailStage.viewer?._compilePromise;
           if(detailSequence!==sequence||!detailStage?.viewer?.root)throw new Error('刀具预览已关闭');
-          const shot=detailStage.snapshot(540,690);
+          const shot=detailStage.snapshot(720,960);
           const {downloadCollectiblePoster}=await import('../bladeCardExport.js');
           const current=Core.progress.bladeById(blade.id)||blade;
           await downloadCollectiblePoster(bladeCardModel(current),shot);
