@@ -11,6 +11,7 @@ import { icon } from '../icons.js';
 import { cardDoodle, doodleSpec } from '../cardDoodles.js';
 import { STAGES } from '../../data/stages.js';
 import { chapterState, isFiveScreen, FORGE_CHAPTERS } from '../../core/forgeChapters.js';
+import { specialtyFlowCue } from '../../core/arenaV41Specialties.js';
 import { HAMMER_TIERS } from '../../data/balance.js';
 import { tagName, BASE_TAGS, SPECIAL_TAGS } from '../../data/tags.js';
 import { CUT_TRAIT_STYLES } from '../../core/forgeTraitCuts.js';
@@ -156,6 +157,15 @@ function renderStageHead(run) {
   badge.appendChild(el('b', { text: String(five?chapter.number:idx + 1).padStart(2, '0') }));
   badge.appendChild(el('span', { text: five?chapter.name:(def.name || '') }));
   if(five)badge.appendChild(el('i',{class:'forge-flow-substep',text:`${chapter.step}/${chapter.steps} · ${def.name} · ${chapter.subtitle}`}));
+  const spec=five?specialtyFlowCue(run):null;
+  badge.title=spec ? `工坊专精：${spec.name} Lv.${spec.level} · ${spec.effect}` : '';
+  let specialistNode=$('.forge-specialty-cue',bar);
+  if(spec){
+    if(!specialistNode){specialistNode=el('div',{class:'chip forge-specialty-cue'});bar.appendChild(specialistNode);}
+    specialistNode.textContent=`${spec.name} Lv.${spec.level}${spec.active?' · 本步有效':''}`;
+    specialistNode.title=spec.effect;
+    specialistNode.classList.toggle('is-active',spec.active);
+  }else specialistNode?.remove();
   // 左上角仅留阶段序号与名称；底部图形进度条承担进度说明。
   $('.stage-question', bar)?.remove();
 
