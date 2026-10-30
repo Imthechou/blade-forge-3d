@@ -110,6 +110,15 @@ export function openTab(id) {
 function renderCollection() {
   const list = Core.progress.collection();
   const fractures = Core.progress.fracturedList();
+  const workshopGrowth=Core.arenaV41Growth.workshopSnapshot(Core.progress.get());
+  const namedBlades=list.filter(b=>(b.mastery?.qualifiedMatches||0)>=5).length;
+  body.appendChild(el('div',{class:'ws-archive-growth'},[
+    el('div',{class:'ws-archive-growth-copy'},[
+      el('b',{text:`工坊 Lv.${workshopGrowth.level} · ${workshopGrowth.nextXp===null?'满级':`${workshopGrowth.xp}/${workshopGrowth.nextXp} XP`}`}),
+      el('span',{text:`名刃 ${namedBlades} 把 · 珍藏 ${list.filter(b=>b.favorite===true).length} 把`}),
+    ]),
+    el('button',{class:'chip',type:'button',text:'工坊成长',onclick:()=>{tab='bonuses';root.scrollTop=0;render();}}),
+  ]));
   body.appendChild(el('div',{class:'ws-collection-head'},[
     el('span',{class:'muted tiny',text:`成刀 ${list.length} 把`}),
     el('button',{
