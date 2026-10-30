@@ -236,13 +236,13 @@ function renderStageHead(run) {
   }
 }
 
-/** 只允许本局已掌握的配方卡，不购买不消耗；选中后仍需二次确认。 */
+/** 永久掌握或真实库存的配方直选：只有材料库存直选才会在确认时消耗1份。 */
 function openKnownRecipeSheet(run,cards){
   if(run!==Game.run||run.phase!=='select')return;
   let dialog;
   const copy=run.stageId==='S1'?'材料':run.stageId==='S2'?'主工艺':'刀型';
   const nodes=cards.map(card=>el('button',{class:'btn forge-recipe-option',type:'button',
-    text:`${card.name} · ${card.rarityCn}`,
+    text:`${card.name} · ${card.rarityCn}${run.stageId==='S1'&&(!run.recipeChoiceIds||!run.recipeChoiceIds.includes(card.id))?' · 库存 '+(run.materialInventory?.[card.id]||0):''}`, 
     onclick:()=>{
       if(Game.run!==run){dialog.close();return;}
       const result=Game.chooseRecipeCard(card.id);
@@ -253,7 +253,7 @@ function openKnownRecipeSheet(run,cards){
     },
   }));
   dialog=sheet({title:'工坊已掌握的'+copy,body:el('div',{class:'stack forge-recipe-sheet'},[
-    el('p',{class:'muted tiny',text:'本次可直接指定，下次仍可使用。未掌握的卡牌依然可能随机出现。'}),
+    el('p',{class:'muted tiny',text:run.stageId==='S1'?'基础材料及已掌握材料无限可用；库存稀有锻材仅在确认选择时消耗1份，随机抽取不扣库存。':'已掌握工艺可永久直选，所有原卡仍有概率随机出现。'}),
     ...nodes,
   ])});
 }
