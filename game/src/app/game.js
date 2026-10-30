@@ -1010,7 +1010,7 @@ class Session {
       matchId: m.id,
       // 三刀赛不属于单把刀，不把荣誉写进某一把刀
       bladeId: null,
-      matchRecord: { version: m.result.version, rounds: m.result.roundsDetail, report: m.result.report, result: m.result },
+      matchRecord: { version: m.result.version, kind:'apex', roster:m.roster, rounds: m.result.roundsDetail, report: m.result.report, result: m.result },
     });
     if (record?.error || record?.ok === false) return record;
     m.reward = record?.cr ?? 0;
