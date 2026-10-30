@@ -1712,6 +1712,8 @@ function renderApexReport() {
       : null,
   ].filter(Boolean)));
   const saveFail = m.done && !m.settled;
+  const materialId=m.settled?Core.progress.get().materialsV1?.receipts?.['material:formal:'+m.id]:null;
+  const awardedMaterial=materialId?CARD_BY_ID[materialId]:null;
   mount(body, [
     el('section', { class: `circuit-verdict ${r.win ? 'is-win' : 'is-lose'}` }, [
       el('div', { class: 'quick-kicker', text: 'GLOBAL APEX · 三刀巅峰赛' }),
@@ -1722,6 +1724,7 @@ function renderApexReport() {
       el('div', { class: 'section-title', text: '各轮成绩' }),
       ...rows,
       ...((r.report?.lines || []).map((line) => el('p', { class: 'arena-note', text: line }))),
+      awardedMaterial?el('p',{class:'arena-note',text:'赛事获得锻材：'+awardedMaterial.name+' ×1 · 可在工坊指定选择'}):null,
       el('p', { class: 'arena-note', text: '本场仅消耗局内刀况，不影响永久藏刀；三刀按赛前顺序出战，通关或确认退出后写入荣誉记录。' }),
     ]),
     saveFail ? el('p', { class: 'arena-note', text: '本届成绩尚未领奖；可按固定顺序和种子补考，历史最佳成绩不降低。' }) : null,
