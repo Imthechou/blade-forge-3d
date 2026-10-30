@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 const root = path.resolve(process.cwd(), 'visual-acceptance');
 await fs.mkdir(root, {recursive:true});
 
-const report={date:new Date().toISOString(),checks:[],consoleErrors:[],failedRequests:[],failures:[],screenshots:[]};
+const report={date:new Date().toISOString(),checks:[],consoleErrors:[],failedRequests:[],baselineErrors:[],baselineFailedRequests:[],failures:[],screenshots:[]};
 const candidate='http://127.0.0.1:8123/';
 const before='https://imthechou.github.io/blade-forge-3d/';
 const sizes=[{width:390,height:844},{width:390,height:740},{width:390,height:680},{width:375,height:667},{width:1280,height:900}];
@@ -17,9 +17,13 @@ async function capture(label,url,viewport,check) {
   const mobile=viewport.width<600;
   const context=await browser.newContext({viewport,deviceScaleFactor:mobile?2:1,isMobile:mobile,hasTouch:mobile,locale:'zh-CN',reducedMotion:'reduce'});
   const page=await context.newPage();
-  page.on('pageerror',err=>report.consoleErrors.push({label,message:String(err)}));
-  page.on('console',msg=>{if(msg.type()==='error') report.consoleErrors.push({label,message:msg.text()});});
-  page.on('response',resp=>{if(resp.status()>=400) report.failedRequests.push({label,status:resp.status(),url:resp.url()});});
+  // External main-branch baseline is a comparison reference, not this PR's executable.
+  // Keep its errors visible in the JSON but never fail the candidate build because baseline is unavailable.
+  const errors=label==='BEFORE'?report.baselineErrors:report.consoleErrors;
+  const requests=label==='BEFORE'?report.baselineFailedRequests:report.failedRequests;
+  page.on('pageerror',err=>errors.push({label,message:String(err)}));
+  page.on('console',msg=>{if(msg.type()==='error')errors.push({label,message:msg.text()});});
+  page.on('response',resp=>{if(resp.status()>=400)requests.push({label,status:resp.status(),url:resp.url()});});
   await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
   await page.waitForFunction(()=>window.__FORGE_PREP?.ready && document.querySelector('#boot.is-gone'),null,{timeout:100000});
   // The guide is scheduled after first paint: wait for that async overlay before clicking.
