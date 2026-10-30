@@ -28,7 +28,7 @@ export function applyCollectionLighting(stage) {
 function fingerprint(record) {
   return JSON.stringify(['archive-image-v4',
     record.id, record.knifeTypeId, record.knifeType, record.seed,
-    record.visualRecipe, record.history, record.pendingSkin,
+    record.visualRecipe, record.history, record.pendingSkin, record.shapeProfile,
   ]);
 }
 
@@ -83,6 +83,7 @@ async function draw(record, visual, isCurrent = () => true) {
   try { shown = await stage.show(modelId, { viewPreset: visual.viewPreset || 'forge' }); }
   finally { stage.deferSkin = false; }
   if (!shown?.ok || !isCurrent()) return null;
+  stage.applyShape(record.shapeProfile || null);
   stage.applySkin(visual.skin, { coverAll: !visual.handle?.explicit });
   stage.applyHandle(visual.handle?.explicit ? visual.handle : null, visual.skin);
   stage.applyGlow(visual.glowCardId || null);
