@@ -39,6 +39,25 @@ export function masteryView(blade) {
   return {...m,tier:tier.tier,name:tier.name,bonus:tier.bonus,
     projectName:TEST_PROJECTS[m.specialtyProject].name,nextRequired:next};
 }
+/**
+ * 使用与 V4.1 CR/XP 相同的“实际结构目标完成度”判断磨合资格。
+ * 全国赛与巅峰赛有 rounds[]，不能只读取流派赛的顶层 cut 字段。
+ */
+export function qualifyingFormalMatch(record,tier) {
+  const isV41=record?.version==='formal-v4.1'||record?.result?.version==='formal-v4.1';
+  if(!isV41)return false;
+  const clamp=n=>Math.max(0,Math.min(1,Number(n)||0));
+  const cut=record?.result?.cut||record?.cut||record?.detail||{};
+  const single=clamp(cut?.structure?.primary??record?.structure?.primary);
+  if(single>=.20)return true;
+  if(!['national','apex'].includes(tier))return false;
+  const rounds=Array.isArray(record?.rounds)?record.rounds:Array.isArray(record?.result?.rounds)?record.result.rounds:[];
+  return rounds.some(r=>{
+    if(!r||typeof r!=='object')return false;
+    if(r.primaryCompleted===true)return true;
+    return clamp(r.primary??r.cut?.structure?.primary??r.result?.cut?.structure?.primary)>=.20;
+  });
+}
 /** 只用于同一笔正式赛事存档事务，外层已按 matchId 完成幂等检查。 */
 export function creditBladeMastery(blade) {
   const original=masteryView(blade);
