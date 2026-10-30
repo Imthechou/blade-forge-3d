@@ -98,3 +98,49 @@ test('save write failure cannot grant mastery; successful retry remains idempote
   assert.equal(P.recordMatch('school',args).duplicate,true);
   assert.equal(M.masteryView(P.bladeById('retry')).qualifiedMatches,1);
 });
+
+test('real completed 45s quick-cut challenge advances only its selected blade and cannot be replayed',()=>{
+  P.resetAll();
+  P.get().collection.push(makeBlade('quick-A'),makeBlade('quick-B'));
+  P.persist();
+  const run=(id,bladeId='quick-A',options={})=>({
+    id,mode:options.mode||'quick',rulesVersion:'arena-v4.1',daily:false,
+    done:true,elapsed:options.elapsed??45,health:100,
+    blade:{id:bladeId},result:{mode:'quick',reason:'time',score:2400,grade:'B',reward:5,kills:options.kills??12},
+  });
+  const a=run('C-quick-first');
+  assert.equal(P.settleQuickChallenge(a).ok,true);
+  assert.equal(M.masteryView(P.bladeById('quick-A')).qualifiedMatches,1);
+  assert.equal(M.masteryView(P.bladeById('quick-B')).qualifiedMatches,0);
+  assert.equal(P.settleQuickChallenge(a).duplicate,true);
+  const b=run('C-quick-second');
+  assert.equal(P.settleQuickChallenge(b).ok,true);
+  assert.equal(M.masteryView(P.bladeById('quick-A')).qualifiedMatches,2);
+  // A previously settled run cannot be replayed after a newer run overwrites last.
+  assert.equal(P.settleQuickChallenge(run('C-quick-first')).duplicate,true);
+  assert.equal(M.masteryView(P.bladeById('quick-A')).qualifiedMatches,2);
+});
+test('idle, early exit, and 12-second sample do not create quick-match blade proficiency',()=>{
+  P.resetAll();P.get().collection.push(makeBlade('idle-fast'));P.persist();
+  const create=(id,elapsed,kills,mode='quick')=>({
+    id,mode,rulesVersion:'arena-v4.1',done:true,elapsed,health:100,
+    blade:{id:'idle-fast'},result:{mode,reason:'time',score:100,grade:'C',reward:0,kills},
+  });
+  assert.equal(P.settleQuickChallenge(create('C-quick-zero',45,0)).ok,true);
+  assert.equal(M.masteryView(P.bladeById('idle-fast')).qualifiedMatches,0);
+  assert.equal(P.settleQuickChallenge(create('C-quick-aborted',12,4)).ok,false);
+  assert.equal(P.settleQuickChallenge(create('C-short-trial',12,4,'sample')).ok,false);
+  assert.equal(M.masteryView(P.bladeById('idle-fast')).qualifiedMatches,0);
+});
+test('failed quick-match storage is not a credited blade mastery receipt',()=>{
+  P.resetAll();P.get().collection.push(makeBlade('quick-retry'));P.persist();
+  const run={id:'C-storage-retry',mode:'quick',rulesVersion:'arena-v4.1',
+    done:true,elapsed:45,health:100,blade:{id:'quick-retry'},
+    result:{mode:'quick',reason:'time',score:321,grade:'B',reward:4,kills:8}};
+  blocked=true;
+  try{assert.equal(P.settleQuickChallenge(run).code,'PERSIST_FAILED');}
+  finally{blocked=false;}
+  assert.equal(M.masteryView(P.bladeById('quick-retry')).qualifiedMatches,0);
+  assert.equal(P.settleQuickChallenge(run).ok,true);
+  assert.equal(M.masteryView(P.bladeById('quick-retry')).qualifiedMatches,1);
+});
