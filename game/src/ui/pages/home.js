@@ -71,7 +71,7 @@ export function render() {
       ICONS.forge(true),
       el('div', { class: 'home-start-copy' }, [
         el('span', { class: 'home-start-title', text: canResume ? '继续锻刀' : '开始锻刀' }),
-        el('small', { text: canResume ? '接续工序 · 保留当前构筑' : '十道工序 · 自由构筑' }),
+        el('small', { text: canResume ? '接续工序 · 保留当前构筑' : '五屏锻造 · 五次关键选择 · 自由锤打' }),
       ]),
       el('b', { text: '→', 'aria-hidden': 'true' }),
     ]),
