@@ -158,10 +158,11 @@ function renderStageHead(run) {
   badge.innerHTML = '';
   badge.appendChild(el('b', { text: String(five?chapter.number:idx + 1).padStart(2, '0') }));
   badge.appendChild(el('span', { text: five?chapter.name:(def.name || '') }));
-  if(five)badge.appendChild(el('i',{class:'forge-flow-substep',text:`${chapter.step}/${chapter.steps} · ${def.name} · ${chapter.subtitle}`}));
+  if(five)badge.appendChild(el('i',{class:'forge-flow-substep',text:`${chapter.step}/${chapter.steps}`}));
   const spec=five?specialtyFlowCue(run):null;
   const lastAssist=five?run.assistedSteps?.at(-1):null;
-  badge.title=[spec?`工坊专精：${spec.name} Lv.${spec.level} · ${spec.effect}`:null,
+  badge.title=[five?`${chapter.step}/${chapter.steps} · ${def.name} · ${chapter.subtitle}`:null,
+    spec?`工坊专精：${spec.name} Lv.${spec.level} · ${spec.effect}`:null,
     lastAssist?`${lastAssist.name}：${lastAssist.cardName} · 风险 ${lastAssist.riskBefore} → ${lastAssist.riskAfter}`:null]
     .filter(Boolean).join('\n');
   let specialistNode=$('.forge-specialty-cue',bar);
