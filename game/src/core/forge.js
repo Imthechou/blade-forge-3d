@@ -44,6 +44,7 @@ export function createRun({
   mode = 'normal',
   cr = CR_START,
   unlockedCardIds = null,
+  materialInventory = null,
   workshopSnapshot = null,
   specialistSnapshot = null,
   flowVersion = null,
@@ -104,6 +105,8 @@ export function createRun({
        只存 id 数组，不存 UI 状态，不写回存档。 */
     unlockedCardIds: Array.isArray(unlockedCardIds) ? unlockedCardIds.slice() : [],
     recipeChoiceIds: flowVersion===FORGE_FLOW_VERSION ? guaranteedRecipes(workshopSnapshot,unlockedCardIds) : [],
+    materialInventory: materialInventory && typeof materialInventory==='object'?{...materialInventory}:{},
+    materialReservation:null,
     createdAt: Date.now(),
   };
 
