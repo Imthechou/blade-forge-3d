@@ -1705,7 +1705,10 @@ function renderApexReport() {
     el('span', { class: x.win ? 'chip chip--accent' : 'chip', text: x.win === null ? '未进行' : x.win ? '胜' : '负' }),
     el('span', { class: 'mono', text: x.composite === null ? '—' : `${x.composite}` }),
     el('span', { class: 'muted tiny', text: x.bladeId || '未派刀' }),
-  ]));
+    m.settled && x.status==='complete' && x.bladeId
+      ? el('span', { class: 'chip', text: x.primaryCompleted || Number(x.primary)>=.20 ? '磨合 +1' : '进度不足' })
+      : null,
+  ].filter(Boolean)));
   const saveFail = m.done && !m.settled;
   mount(body, [
     el('section', { class: `circuit-verdict ${r.win ? 'is-win' : 'is-lose'}` }, [
