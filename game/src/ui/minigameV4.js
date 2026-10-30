@@ -58,7 +58,14 @@ export function renderHammerV4({body,run,stage,Game,getStage,router,render}) {
   }
   hit.addEventListener('click',e=>{
     if(router.currentKey()!=='forge'||Game.run!==run||run.phase!=='hammer')return;
-    const result=Game.hammerStrike();
+    const rect=hit.getBoundingClientRect();
+    const impact={
+      x:rect.width>0?(e.clientX-rect.left)/rect.width:.5,
+      y:rect.height>0?(e.clientY-rect.top)/rect.height:.5,
+    };
+    // Keyboard-triggered clicks have no pointer coordinates; use the central anvil.
+    if(!e.detail || !Number.isFinite(impact.x)||!Number.isFinite(impact.y)){impact.x=.5;impact.y=.5;}
+    const result=Game.hammerStrike(impact);
     if(!result?.ok)return;
     const box=hit.getBoundingClientRect();
     hit.style.setProperty('--hit-x',(e.detail>0?e.clientX-box.x:box.width*.5)+'px');
