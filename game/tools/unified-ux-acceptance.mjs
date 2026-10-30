@@ -81,8 +81,9 @@ try {
     await page.getByRole('button',{name:'确认工艺 →',exact:true}).click();
     assert.match(await page.locator('.stage-badge').innerText(),/锻打成型/);
     assert.equal(await page.locator('.stage-progress .sp-dot.active').count(),1);
-    assert.equal(await page.evaluate(async()=> (await import('/src/app/game.js')).default.run.lastRiskCheck),undefined,
-      'recipe stage transfers accumulated risk, without an early break roll');
+    assert.equal(await page.evaluate(async()=> (await import('/src/app/game.js')).default.run.lastRiskCheck?.stageId),'S3',
+      'support forge now checks carried risk in screen 2, not during recipe');
+    assert.equal(await page.evaluate(async()=> (await import('/src/app/game.js')).default.run.assistedSteps?.[0]?.stageId),'S3');
     await shot(`${width}-five-screen-forging`);
   });
   if(width===375)await test('375 rare material inventory: pin, preview, spend only on confirm',async()=>{
