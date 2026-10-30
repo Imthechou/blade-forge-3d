@@ -158,7 +158,20 @@ for(const entry of report.stages){
       errors.push(entry.stage+' cancellation left old model');
   }
 }
-if(report.stages.length!==9)errors.push('Expected S1-S9; reached '+report.stages.length);
+// Five manual card choices, all nine original cards are still written by the
+// normal engine (S3/S6/S7/S9 are assisted). Never mistake fewer prompts for a
+// missing PBR layer or a skipped fracture roll.
+const finalRun=await page.evaluate(async()=>{
+  const run=(await import('/src/app/game.js')).default.run;
+  return {history:run?.history||[],assisted:run?.assistedSteps||[],phase:run?.phase,
+    stageId:run?.stageId,visualRecipe:run?.visualRecipe||[]};
+});
+if(report.stages.length!==5)errors.push('Expected 5 manual decisions; reached '+report.stages.length);
+if(finalRun.history.length!==9||finalRun.visualRecipe.length!==9)
+  errors.push('Missing original card or PBR stage after assisted craft: '+JSON.stringify(finalRun));
+if(finalRun.assisted.map(x=>x.stageId).join(',')!=='S3,S6,S7,S9')
+  errors.push('Wrong automated support stages: '+JSON.stringify(finalRun.assisted));
+if(finalRun.stageId!=='S10')errors.push('Did not arrive at appraisal: '+finalRun.stageId);
 errors.push(...report.errors);
 report.assertionErrors=errors;
 console.log('P0_ASSERTIONS',JSON.stringify({ok:errors.length===0,errors}).slice(0,17000));
