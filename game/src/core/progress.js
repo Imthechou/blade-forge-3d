@@ -631,7 +631,10 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
     })));
   }
   // 仅真实 V4.1 正式赛事中有有效结构破坏才掉落锻材；无效/旧版不凭分数兑奖。
-  if (v41 && matchId && qualifyingFormalMatch(matchRecord,tier))
+  // 组刀结算只认合法阵容中真实达标的分刀，错误刀位不能领整场锻材。
+  const materialEligible=tier==='apex' && matchRecord?.kind==='apex'
+    ? apexCredits.length>0 : qualifyingFormalMatch(matchRecord,tier);
+  if (v41 && matchId && materialEligible)
     Materials.grantMaterial(s,'material:formal:'+matchId,tier);
   if (destroyed && blade) {
     // 原档整体转移：外观配方、锻造过程、荣誉和全部赛事履历不裁剪、不重算。
