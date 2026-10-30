@@ -64,7 +64,10 @@ try {
   await dismiss();
   await page.evaluate(async()=>{
     const g=(await import('/src/app/game.js')).default;
-    g.startForge({mode:'normal',seed:20261024});
+    // This fixture audits every legacy shader stage S1–S9 manually, while the
+    // actual five-screen player flow is separately exercised by the forge/UX suites.
+    // Use the retained daily-compatible core path for both main and PR snapshots.
+    g.startForge({mode:'daily',seed:20261024});
     (await import('/src/ui/router.js')).default.go('forge');
   });
   await page.locator('.page.is-active .dcard').first().waitFor();
