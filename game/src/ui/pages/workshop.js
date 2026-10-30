@@ -485,11 +485,25 @@ function renderBonuses() {
   const state = Core.progress.get();
   const view = Core.progress.forgeBonusView();
   const growth = Core.arenaV41Growth.workshopSnapshot(state);
+  const nextTier=Core.arenaV41Growth.WORKSHOP_TIERS[growth.level]||null;
+  const floor=Core.arenaV41Growth.XP_THRESHOLDS[growth.level-1]??0;
+  const xpPercent=growth.nextXp===null?100:Math.min(100,Math.max(0,(growth.xp-floor)/(growth.nextXp-floor)*100));
+  const nextBenefits=[];
+  if(nextTier){
+    if(nextTier.riskReduction>growth.riskReduction)nextBenefits.push(`断裂相对减免提高至 ${Math.round(nextTier.riskReduction*100)}%`);
+    if(nextTier.discount>growth.discount)nextBenefits.push(`刷新费用优惠提高至 ${Math.round(nextTier.discount*100)}%`);
+    if(nextTier.rarity!==growth.rarity)nextBenefits.push('更容易遇见高稀有度工艺');
+  }
   body.appendChild(el('section',{class:'card stack', 'aria-label':'工坊等级'},[
     el('div',{class:'row row--between'},[
       el('b',{text:'工坊 · Lv.'+growth.level}),
       el('span',{class:'chip',text:growth.nextXp===null?'已满级':growth.xp+' / '+growth.nextXp+' XP'}),
     ]),
+    el('div',{class:'ws-workshop-progress',role:'progressbar','aria-label':'工坊升级进度','aria-valuemin':0,'aria-valuemax':100,'aria-valuenow':Math.round(xpPercent)},[
+      el('i',{style:{width:`${xpPercent}%`}}),
+    ]),
+    el('div',{class:'muted tiny',text:growth.nextXp===null?'工坊等级已满':`距离 Lv.${growth.level+1} 还需 ${growth.nextXp-growth.xp} XP`}),
+    nextBenefits.length?el('div',{class:'report-line',text:`下一级：${nextBenefits.join(' · ')}`}):null,
     el('div',{class:'report-line',text:'本次锻造：付费刷新优惠 '+Math.round(growth.discount*100)+'% · 断裂相对减免 '+Math.round(growth.riskReduction*100)+'%'}),
     el('div',{class:'muted tiny',text:'稀有度加权 '+(growth.rarity==='none'?'未开放':growth.rarity+'档')+' · 仅影响新开锻造；原有成刀属性不变'}),
   ]));
