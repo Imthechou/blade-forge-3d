@@ -5,6 +5,7 @@ import * as Daily from './daily.js';
 import { makeQuickRecords } from './quickChallengeRecords.js';
 import { makeWorkshopV41, normalizeWorkshopV41, migrateVerifiedLegacyGrowth } from './arenaV41Growth.js';
 import { makeCareerV41, normalizeCareerV41 } from './arenaCareerV41.js';
+import { normalizeBladeMastery } from './bladeMastery.js';
 
 /**
  * 设置项默认值（唯一真源）。
@@ -123,6 +124,8 @@ function normalizeBlade(raw) {
   blade.stats = map(blade.stats);
   for (const key of STAT_KEYS) blade.stats[key] = count(blade.stats[key]);
   blade.score = count(blade.score);
+  blade.mastery = normalizeBladeMastery(blade.mastery,blade);
+  blade.favorite = blade.favorite === true;
   return blade;
 }
 
