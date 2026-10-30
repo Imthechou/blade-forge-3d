@@ -61,3 +61,22 @@ test('corrupted stock cannot create phantom items or negative counts',()=>{
   assert.equal(normalized.counts.S2_01,undefined);
   assert.equal(Materials.spendMaterialInDraft({materialsV1:normalized},'S2_01').ok,false);
 });
+
+test('full inventory does not claim new loot or permit retroactive replay after spending',()=>{
+  const save=makeSave();
+  const key='material:formal:full-storage';
+  const card=Materials.materialDropFor(key,'apex');
+  save.materialsV1.counts[card.id]=9;
+  const result=Materials.grantMaterial(save,key,'apex');
+  assert.equal(result.credited,0);
+  assert.equal(save.materialsV1.receipts[key],'none:'+card.id);
+  Materials.spendMaterialInDraft(save,card.id);
+  assert.equal(Materials.stockedCount(save,card.id),8);
+  const again=Materials.grantMaterial(save,key,'apex');
+  assert.equal(again.duplicate,true);
+  assert.equal(again.credited,0);
+  assert.equal(again.cardId,card.id);
+  assert.equal(Materials.stockedCount(save,card.id),8);
+  const normalized=Materials.normalizeMaterialsV1(save.materialsV1);
+  assert.equal(normalized.receipts[key],'none:'+card.id);
+});
