@@ -26,7 +26,17 @@ try {
   await test(`${width} home + real WebGL`,async()=>{assert.equal(await page.locator('#homeStage canvas').count(),1);await fit('.home-start');await shot(`${width}-home`);});
   await test(`${width} switches, focus and nested guide`,async()=>{
    await page.getByRole('button',{name:'设置',exact:true}).click();await dialog();
-   for(const item of await page.locator('.switch,.seg-btn').all()){const b=await item.boundingBox();assert.ok(b.height>=44&&b.width>=44);}
+   // A freshly opened sheet can still be at scale(.97); measure targets after its entrance settles.
+   await page.waitForFunction(() => {
+    const sheet=document.querySelector('.sheet-mask.is-in .sheet');
+    if(!sheet) return false;
+    const transform=getComputedStyle(sheet).transform;
+    return transform==='none'||transform==='matrix(1, 0, 0, 1, 0, 0)';
+   },null,{timeout:5000});
+   for(const item of await page.locator('.switch,.seg-btn').all()){
+    const b=await item.boundingBox();
+    assert.ok(b&&b.height>=44&&b.width>=44,JSON.stringify({target:await item.getAttribute('aria-label')||await item.textContent(),bounds:b}));
+   }
    await page.getByRole('switch',{name:'音效',exact:true}).click();assert.equal(await page.getByRole('switch',{name:'音效',exact:true}).getAttribute('aria-checked'),'true');
    assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('aria-label')),'音效');
    assert.equal(await page.getByRole('slider',{name:'音量'}).count(),1);
