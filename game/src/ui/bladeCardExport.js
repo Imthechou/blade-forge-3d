@@ -51,6 +51,89 @@ function loadImage(url) {
     img.onerror=()=>reject(new Error('刀具图像解码失败'));img.src=url;
   });
 }
+/**
+ * Safely locate the real knife in a transparent offscreen WebGL image.  Avoid
+ * rotating or cropping images with opaque backgrounds, where that would expose
+ * a visibly tilted screenshot rectangle. The source bitmap stays unmodified.
+ */
+function transparentKnifeBounds(img) {
+  try {
+    const probe=document.createElement('canvas');
+    const w=192,h=Math.max(32,Math.round(img.naturalHeight*w/img.naturalWidth));
+    probe.width=w;probe.height=h;
+    const ctx=probe.getContext('2d',{willReadFrequently:true});
+    if(!ctx)return null;
+    ctx.drawImage(img,0,0,w,h);
+    const data=ctx.getImageData(0,0,w,h).data;
+    const alphaAt=(x,y)=>data[(y*w+x)*4+3];
+    const corners=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]];
+    if(corners.some(([x,y])=>alphaAt(x,y)>32))return null;
+    let left=w,top=h,right=0,bottom=0,n=0;
+    for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2){
+      if(alphaAt(x,y)<=55)continue;
+      left=Math.min(left,x);top=Math.min(top,y);
+      right=Math.max(right,x);bottom=Math.max(bottom,y);n++;
+    }
+    if(n<12||n> w*h*.13)return null;
+    const rx=img.naturalWidth/w,ry=img.naturalHeight/h;
+    const pad=8;
+    const x=Math.max(0,(left-pad)*rx),y=Math.max(0,(top-pad)*ry);
+    const x2=Math.min(img.naturalWidth,(right+pad)*rx);
+    const y2=Math.min(img.naturalHeight,(bottom+pad)*ry);
+    if(x2-x<8||y2-y<8)return null;
+    return {x,y,w:x2-x,h:y2-y};
+  }catch(_){return null;} // old/tainted canvas: use original unrotated photograph.
+}
+
+/** Frame the actual knife diagonally when transparency allows it, without
+ * touching its shader/material color. An opaque legacy capture uses the safe
+ * rectangular fallback on a light exhibition background. */
+function paintKnifeGallery(ctx,pic,tone) {
+  const field={x:92,y:197,w:896,h:811},silhouette=transparentKnifeBounds(pic);
+  const bg=ctx.createLinearGradient(112,200,950,975);
+  if(silhouette){
+    bg.addColorStop(0,'#293851');bg.addColorStop(.56,'#34445f');bg.addColorStop(1,'#172338');
+  }else{
+    bg.addColorStop(0,'#e5ecf5');bg.addColorStop(.56,'#dce4f1');bg.addColorStop(1,'#becbdb');
+  }
+  rounded(ctx,field.x,field.y,field.w,field.h,33);
+  ctx.fillStyle=bg;ctx.fill();
+  ctx.save();rounded(ctx,field.x,field.y,field.w,field.h,33);ctx.clip();
+  // Museum softbox: subtle environment behind the PBR knife, not a material filter.
+  if(silhouette){
+    const halo=ctx.createRadialGradient(550,545,70,550,580,610);
+    halo.addColorStop(0,'rgba(208,225,247,.30)');
+    halo.addColorStop(.6,'rgba(143,167,203,.095)');
+    halo.addColorStop(1,'rgba(143,167,203,0)');
+    ctx.fillStyle=halo;ctx.fillRect(92,197,896,811);
+  }
+  ctx.strokeStyle=silhouette?'rgba(220,233,249,.13)':'rgba(80,96,124,.12)';
+  ctx.lineWidth=2;
+  for(const radius of [304,382]){
+    ctx.beginPath();ctx.arc(540,597,radius,0,2*Math.PI);ctx.stroke();
+  }
+  ctx.save();
+  if(silhouette) {
+    // Sword tip: upper right. Hilt: lower left. Content-fit is based on the
+    // *visible* knife pixels, not the large transparent WebGL camera viewport.
+    const targetLength=770;
+    const scale=Math.min(targetLength/silhouette.h,670/silhouette.w);
+    ctx.translate(540,594);ctx.rotate(27*Math.PI/180);
+    const w=silhouette.w*scale,h=silhouette.h*scale;
+    ctx.shadowColor='rgba(3,10,24,.34)';
+    ctx.shadowBlur=20;ctx.shadowOffsetX=10;ctx.shadowOffsetY=12;
+    ctx.drawImage(pic,silhouette.x,silhouette.y,silhouette.w,silhouette.h,-w/2,-h/2,w,h);
+  }else{
+    const area={x:136,y:236,w:808,h:730};
+    const scale=Math.min(area.w/pic.naturalWidth,area.h/pic.naturalHeight);
+    const w=pic.naturalWidth*scale,h=pic.naturalHeight*scale;
+    ctx.drawImage(pic,area.x+(area.w-w)/2,area.y+(area.h-h)/2,w,h);
+  }
+  ctx.restore();ctx.restore();
+  ctx.strokeStyle=silhouette?'rgba(174,194,228,.22)':'rgba(58,64,91,.10)';
+  rounded(ctx,field.x,field.y,field.w,field.h,33);ctx.stroke();
+  return !!silhouette;
+}
 export async function renderCollectiblePoster(model,dataUrl) {
   const pic=await loadImage(dataUrl),info=posterInfo(model);
   const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
@@ -71,19 +154,10 @@ export async function renderCollectiblePoster(model,dataUrl) {
   ctx.fillText('BLADE FORGE  /  PERSONAL ARCHIVE',94,154);
   ctx.font='600 25px system-ui, sans-serif';ctx.fillStyle=info.tone[0];ctx.textAlign='right';
   ctx.fillText(info.rarity,976,154);
-  // The 3D capture retains the original material, reflection and camera treatment.
-  const field=ctx.createLinearGradient(110,208,936,970);field.addColorStop(0,'#eaf0f7');
-  field.addColorStop(.63,'#e5e8f1');field.addColorStop(1,'#ccd5e3');
-  rounded(ctx,92,197,896,811,33);ctx.fillStyle=field;ctx.fill();
-  ctx.save();rounded(ctx,92,197,896,811,33);ctx.clip();
-  ctx.strokeStyle='rgba(80,96,124,.12)';ctx.lineWidth=2;
-  ctx.beginPath();ctx.arc(540,597,286,0,2*Math.PI);ctx.stroke();
-  ctx.beginPath();ctx.arc(540,597,360,0,2*Math.PI);ctx.stroke();
-  const region={x:136,y:236,w:808,h:730};
-  const scale=Math.min(region.w/pic.naturalWidth,region.h/pic.naturalHeight);
-  const dw=pic.naturalWidth*scale,dh=pic.naturalHeight*scale;
-  ctx.drawImage(pic,region.x+(region.w-dw)/2,region.y+(region.h-dh)/2,dw,dh);
-  ctx.restore();
+  // Camera/lighting and steel texture are still the *original* real 3D render.
+  // A transparent capture gets a stronger diagonal exhibition composition.
+  const angled=paintKnifeGallery(ctx,pic,info.tone);
+  canvas.dataset.artworkLayout=angled?'real-knife-diagonal':'opaque-safe-fallback';
   ctx.textAlign='left';ctx.fillStyle='#272f42';
   ctx.font='700 64px system-ui, "Microsoft YaHei", sans-serif';
   ctx.fillText(fitText(ctx,info.name,700),102,1106);
