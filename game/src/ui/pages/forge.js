@@ -341,7 +341,7 @@ function renderSelect(body, run) {
     }));
     // 选中后即时显示准确的六维增量/目标值，非选中保持紧凑趋势。
     mount(statsNode, statGrid(projected?.stats || Game.run.stats, pickedCard?.directions || null,
-      !!projected, projected ? { before: Game.run.stats, delta: pickedCard.statDelta } : null));
+      !!projected, projected ? { before: Game.run.stats, delta: projected.statDelta } : null));
     // 卡（选中时另两张降权，把注意力收到选中那张）
     cardsRow.classList.toggle('is-picking', !!pickedCard);
     const previewStage = $('#forgeStage', root);
