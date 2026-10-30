@@ -614,6 +614,22 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
       }
     }
   }
+  // 巅峰正式三刀赛按锁定阵容和三轮实际结构进度，分别结算每把参赛刀。
+  // 整场 matchId 的幂等守卫已在本函数开头；本段随 CR/掉落在同一事务写盘。
+  const apexCredits = (tier==='apex' && v41 && !bladeId)
+    ? verifiedApexBladeRounds(matchRecord) : [];
+  for(const earned of apexCredits){
+    const participant=s.collection.find(item=>item.id===earned.bladeId
+      && !item.fractured && item.canEnterArena!==false);
+    if(!participant)continue;
+    creditBladeMastery(participant);
+    (participant.arenaHistory ||= []).push(JSON.parse(JSON.stringify({
+      id:matchId+':blade:'+earned.bladeId,matchId,teamId:matchId,
+      tier:'apex',kind:'apex-v4.1-round',round:earned.round,
+      primary:earned.primary,primaryCompleted:earned.primaryCompleted,
+      bladeId:earned.bladeId,recordedAt:Date.now(),
+    })));
+  }
   // 仅真实 V4.1 正式赛事中有有效结构破坏才掉落锻材；无效/旧版不凭分数兑奖。
   if (v41 && matchId && qualifyingFormalMatch(matchRecord,tier))
     Materials.grantMaterial(s,'material:formal:'+matchId,tier);
