@@ -152,6 +152,19 @@ export function settleQuickChallenge(run) {
     const effectiveKills=Math.max(0,Number(run.result.kills)||0);
     if (effectiveKills>0 && run.result.reason==='time')
       V41Growth.awardWorkshopXp(draft,Math.min(10,4+Math.floor((Number(run.result.score)||0)/1200)), 'quick:'+run.id);
+    // 同一份存档事务结算单刀磨合：只奖励完成完整快赛且实际切中目标的出战刀。
+    // 独立稳定 runId 作为持久收据，防止新快赛覆盖 last 后重放旧局刷磨合。
+    const masteryKey='mastery:quick:'+run.id;
+    const contestantId=run.blade?.id;
+    if(run.mode==='quick' && effectiveKills>0 && run.result.reason==='time'
+      && typeof contestantId==='string' && contestantId && !draft.eventLedger?.[masteryKey]){
+      const blade=draft.collection.find(item=>item.id===contestantId && !item.fractured && item.canEnterArena!==false);
+      if(blade){
+        creditBladeMastery(blade);
+        draft.eventLedger ||= {};
+        draft.eventLedger[masteryKey]={type:'BLADE_MASTERY',at:Date.now(),bladeId:contestantId};
+      }
+    }
     /* ★ rework T10.1：快赛完成事件与 CR 同一次写盘。
        run.id 是稳定身份，同局重试不会二次计任务/成就。
        注意：快赛**永久安全**——事件只记录完成，不改永久属性、不触发断刀。 */
