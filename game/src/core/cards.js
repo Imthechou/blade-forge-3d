@@ -74,6 +74,8 @@ export function rollCandidates(run, { unlockedIds = null } = {}) {
     if(run.specialist.id==='overload'){run.specialist.consumed=true;run.specialist.ready=false;}
   }
   run.candidates = picked;
+  // 保留本轮天然抽到的 3 张身份；强制指定不能伪装为随机免费卡。
+  run.naturalCandidateIds = picked.map(c=>c.id);
   /* 供 UI/诊断：本阶段池内实际享受加成解锁的卡数（不参与判定） */
   run.candidatePool = { size: base.length, unlockedInPool: unlockedCount };
   return picked;
