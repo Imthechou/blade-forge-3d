@@ -430,9 +430,9 @@ class Session {
     return Core.forgeBonuses.snapshot(this.run);
   }
 
-  hammerStrike() {
+  hammerStrike(contact = null) {
     if (!this.run) return null;
-    const r = Core.forge.hammerStrike(this.run);
+    const r = Core.forge.hammerStrike(this.run, contact);
     /* ★ rework T14：S4 触感要能区分「成功落锤 / 升档 / 危险 / 断裂」。
        改造前无论升档还是临界，都只给同一声 hammer ——
        玩家无法从反馈判断刚才那一锤是“普通一下”还是“升了一个档”。
@@ -1348,6 +1348,7 @@ class Session {
     stage._skinState = nextSkin;
     stage._handle = nextHandle;
     stage._coverAll = !hGate; // async model restore must use the new region ownership too
+    stage._shapeProfile = this.run?.shapeProfile || null;
     const apply = () => {
       if (visualSeq !== this._visualSeq || stage.modelId !== modelId) return;
       /* coverAll = !hGate：S1–S7 整刀刀身材质；S8 起把握柄放给刀柄材质（护手仍归刀身） */
@@ -1359,6 +1360,7 @@ class Session {
          完全同语义（见 core/recipe.js#deriveHandleMask 的 explicit 注释）。 */
       stage.applyHandle(nextHandle, nextSkin);
       stage.applyGlow(glowCardId);
+      stage.applyShape(this.run?.shapeProfile || null);
       // Mark completion only after the target model and every visible effect
       // are assigned. The normal animation loop records the first full draw.
       if (cardId && startedAt != null && stage.viewer) {
@@ -1419,6 +1421,7 @@ class Session {
   showDefault() {
     const stage = getStage();
     const modelId = 'knife_tangdao';
+    stage.applyShape(null); // Never carry a previous blade's unique silhouette to the demo.
     this._visualSeq = (this._visualSeq || 0) + 1;
     if (stage.modelId !== modelId) stage.show(modelId);
     stage.applyGlow(null);
@@ -1449,6 +1452,7 @@ class Session {
        `[render] 未找到刀型：folding` 且主视觉空白。统一走 resolveModelId 归一。 */
     const modelId = resolveModelId(record, record.knifeTypeId);
     const seq = this._visualSeq = (this._visualSeq || 0) + 1;
+    stage._shapeProfile = record.shapeProfile || null;
     const shown = modelId ? stage.show(modelId) : Promise.resolve();
     /* ★ 2026-10-15：整份 record 交给 recipe —— 它自带 history / visualRecipe，
        逐卡视觉指纹（uCardFx）才能按"当初选了哪几张卡"复现。
@@ -1462,6 +1466,7 @@ class Session {
       stage.applySkin(skin, { coverAll: !recHandle.explicit });
       stage.applyHandle(recHandle.explicit ? recHandle : null, skin);
       stage.applyGlow(visual.glowCardId);
+      stage.applyShape(record.shapeProfile || null);
       stage.setGhost(false);
     };
     // Keep the cached recipe ready for show()'s deferred replay, then apply
