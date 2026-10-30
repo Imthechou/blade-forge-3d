@@ -34,10 +34,13 @@ const SORTS = [
   { id: 'score', name: '评分' },
   { id: 'recent', name: '最新' },
   { id: 'arena', name: '赛事经历' },
+  { id: 'mastery', name: '磨合' },
   { id: 'name', name: '名称' },
 ];
 const FILTERS = [
   { id: 'all', name: '全部' },
+  { id: 'favorite', name: '珍藏' },
+  { id: 'mastery', name: '名刃' },
   { id: 'arena', name: '有赛事经历' },
   { id: 'trait', name: '有高阶特性' },
 ];
@@ -150,7 +153,9 @@ function renderCollection() {
 
   /* 筛选 → 排序（只影响展示顺序，不改存档） */
   let shown = list.slice();
-  if (collectionFilter === 'arena') shown = shown.filter((b) => (b.arenaHistory || []).length > 0);
+  if (collectionFilter === 'favorite') shown = shown.filter(b => b.favorite === true);
+  else if (collectionFilter === 'mastery') shown = shown.filter(b => (b.mastery?.qualifiedMatches || 0) >= 5);
+  else if (collectionFilter === 'arena') shown = shown.filter((b) => (b.arenaHistory || []).length > 0);
   else if (collectionFilter === 'trait') {
     shown = shown.filter((b) => (b.tagTiers || []).some((t) => (t.effectiveLayers ?? t.layers ?? 0) >= 6)
       || (b.traits || []).some((id) => getTrait(id)?.kind === 'SPECIAL_TAG'));
@@ -159,6 +164,7 @@ function renderCollection() {
     if (collectionSort === 'recent') return (b.createdAt || 0) - (a.createdAt || 0);
     if (collectionSort === 'name') return String(a.bladeName || a.id).localeCompare(String(b.bladeName || b.id), 'zh');
     if (collectionSort === 'arena') return (b.arenaHistory || []).length - (a.arenaHistory || []).length;
+    if (collectionSort === 'mastery') return (b.mastery?.qualifiedMatches || 0) - (a.mastery?.qualifiedMatches || 0);
     return (b.score || 0) - (a.score || 0);
   });
 
@@ -341,6 +347,15 @@ function inspect(blade) {
         if(!result?.ok){toast(result?.reason||'当前无法试刀','warn');return;}
         detailSheet.close();
       }}),
+      el('button', {
+        class: 'btn', text: blade.favorite ? '★ 取消珍藏' : '☆ 加入珍藏',
+        onclick: () => {
+          const result=Core.progress.toggleFavorite(blade.id);
+          if (!result.ok) { toast('收藏标记保存失败，请重试','warn'); return; }
+          toast(result.favorite ? '已加入珍藏' : '已取消珍藏','good');
+          detailSheet.close();render();
+        },
+      }),
       el('button', {
         class: 'btn', text: '设为代表作',
         onclick: () => { if (Core.progress.setShowcase(blade.id)) toast('已设为代表作', 'good'); },
