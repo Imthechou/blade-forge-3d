@@ -522,3 +522,10 @@ button.blade-card-v2 { cursor: pointer; width: 100%; }
 .ws-collection-page-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:7px; width:100%; }
 .ws-collection-page-actions>.chip { min-height:44px; min-width:62px; padding-inline:12px; }
 .ws-collection-page-actions>.chip:disabled { opacity:.36; cursor:default; }
+
+/* One compact hub for player-level workshop progress and blade-level mastery. */
+.ws-archive-growth{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding:11px 12px;border:1px solid var(--glass-border);border-radius:var(--r-lg);background:var(--surface-glass);}
+.ws-archive-growth-copy{display:grid;gap:4px;min-width:0;}
+.ws-archive-growth-copy b{font-size:13px;color:var(--face);}
+.ws-archive-growth-copy span{font-size:11px;color:var(--face-3);}
+.ws-archive-growth > button{flex-shrink:0;min-height:40px;}
