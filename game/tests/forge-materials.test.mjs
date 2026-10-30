@@ -80,3 +80,36 @@ test('full inventory does not claim new loot or permit retroactive replay after 
   const normalized=Materials.normalizeMaterialsV1(save.materialsV1);
   assert.equal(normalized.receipts[key],'none:'+card.id);
 });
+
+test('repeated forced recipe selection never turns paid stock into a free random candidate',()=>{
+  const save=makeSave(),drop=Materials.grantMaterial(save,'material:formal:rare-test','national');
+  const run=createRun({seed:42,flowVersion:FORGE_FLOW_VERSION,workshopSnapshot:{level:1},materialInventory:save.materialsV1.counts});
+  assert.ok(!run.naturalCandidateIds.includes(drop.cardId),'this test must exercise an off-roll stock');
+  assert.equal(pinRecipeChoice(run,drop.cardId).requiresMaterial,true);
+  assert.equal(pinRecipeChoice(run,drop.cardId).requiresMaterial,true,'re-pinning the inserted card cannot waive stock');
+  assert.equal(run.materialReservation,drop.cardId);
+  const other=selectableRecipes(run).find(c=>c.id!==drop.cardId && run.recipeChoiceIds.includes(c.id));
+  assert.ok(other);
+  assert.equal(pinRecipeChoice(run,other.id).requiresMaterial,false,'a permanent selection cancels reservation');
+  assert.equal(pinRecipeChoice(run,drop.cardId).requiresMaterial,true,'switching back to stock does not make it free');
+});
+test('materials randomly appearing in the three original choices remain free even if stocked',()=>{
+  let roll,card;
+  for(let seed=1;seed<=300;seed++){
+    const candidate=createRun({seed,flowVersion:FORGE_FLOW_VERSION,workshopSnapshot:{level:1}});
+    const found=candidate.candidates.find(c=>['fine','rare','epic','legend','mythic'].includes(c.rarity)&&!candidate.recipeChoiceIds.includes(c.id));
+    if(found){roll=candidate;card=found;break;}
+  }
+  assert.ok(card,'need a natural nonpermanent material candidate');
+  roll.materialInventory[card.id]=1;
+  assert.ok(roll.naturalCandidateIds.includes(card.id));
+  assert.equal(pinRecipeChoice(roll,card.id).requiresMaterial,false);
+  assert.equal(roll.materialReservation,null);
+});
+test('invalid or cross-stage cards never mutate forging state',()=>{
+  const run=createRun({seed:246,flowVersion:FORGE_FLOW_VERSION});
+  const before=JSON.stringify({history:run.history,stats:run.stats,risk:run.risk,skin:run.pendingSkin});
+  assert.equal(confirmCard(run,BY_STAGE.S2[0]).ok,false);
+  assert.equal(confirmCard(run,{...run.candidates[0],stage:'S9'}).ok,false);
+  assert.equal(JSON.stringify({history:run.history,stats:run.stats,risk:run.risk,skin:run.pendingSkin}),before);
+});
