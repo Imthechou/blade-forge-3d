@@ -28,6 +28,7 @@ import * as Combos from './combos.js';
 import * as Hammer from './hammer.js';
 import * as Edge from './edge.js';
 import { guaranteedRecipes } from './forgeRecipeAccess.js';
+import { assistedCard,isAssistedStage,ASSISTED_STAGES } from './forgeAssist.js';
 
 export const PHASE = Object.freeze({
   SELECT: 'select',      // 选卡
@@ -107,6 +108,7 @@ export function createRun({
     recipeChoiceIds: flowVersion===FORGE_FLOW_VERSION ? guaranteedRecipes(workshopSnapshot,unlockedCardIds) : [],
     materialInventory: materialInventory && typeof materialInventory==='object'?{...materialInventory}:{},
     materialReservation:null,
+    assistedSteps:[],
     createdAt: Date.now(),
   };
 
@@ -167,14 +169,14 @@ export function confirmCard(run, card) {
   // 第2屏 S3 按累计风险首次检查，避免在准备阶段突然断刀。
   // 旧存档、每日模式保持原来的逐阶段检查口径。
   if ((isFiveScreen(run) && def.id==='S2') || !def.riskCheck) {
-    advance(run);
-    return { ok: true, phase: run.phase };
+    const next=advance(run);
+    return next ? { ...next, phase:run.phase, fractured:!!run.fractured } : { ok: true, phase: run.phase };
   }
 
   const check = checkRisk(run, def.id);
   if (check.fractured) return { ok: true, phase: run.phase, riskCheck: check, fractured: true };
-  advance(run);
-  return { ok: true, phase: run.phase, riskCheck: check };
+  const next=advance(run);
+  return { ok: true, phase:run.phase, riskCheck: next?.riskCheck || check, fractured:!!run.fractured };
 }
 
 /* ── S4 自由锻打 ───────────────────────────────────────── */
@@ -270,6 +272,20 @@ function advance(run) {
   run.stageId = STAGES[run.stageIndex].id;
   run.phase = PHASE.SELECT;
   Cards.rollCandidates(run);
+  if(isFiveScreen(run)&&isAssistedStage(run.stageId)) {
+    const card=assistedCard(run);
+    if(!card)return;
+    const receipt={stageId:run.stageId,name:ASSISTED_STAGES[run.stageId],cardId:card.id,cardName:card.name,
+      riskBefore:run.risk.current,riskAfter:null,fractured:false};
+    run.assistedSteps ||= [];
+    run.assistedSteps.push(receipt);
+    // The same normal commit resolves attrs, risk, hidden combos, PBR and the
+    // S7 contour phase. The helper never forges results or bypasses checks.
+    const result=confirmCard(run,card);
+    receipt.riskAfter=run.risk.current;
+    receipt.fractured=!!run.fractured;
+    return result;
+  }
 }
 
 /* ── 只读快照（给 UI / 渲染用，不含可变引用） ────────────── */
@@ -283,6 +299,7 @@ export function snapshot(run) {
     stageName: stageDef(run).name,
     stageQuestion: stageDef(run).question,
     chapter: chapterState(run),
+    assistedSteps:(run.assistedSteps||[]).map(x=>({...x})),
     phase: run.phase,
     finished: run.finished,
     fractured: run.fractured,
