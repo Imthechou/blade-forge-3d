@@ -48,7 +48,26 @@ try{
       return {phase:r.phase,count:r.hammer.count,risk:r.risk.current,gained:r.hammer.statGained};});
    assert.equal(hammer.phase,'hammer');assert.equal(hammer.count,10);
    assert.ok(hammer.gained>=50&&hammer.gained<=80);
-   await shot(width+'-hammer-ten');report.cases.push({width,hammer});
+   const shape=await page.evaluate(async()=>{
+     const G=(await import('/src/app/game.js')).default;
+     const st=(await import('/src/render/index.js')).getStage();
+     const run=G.run,info=st.engine?.loaded?.get(st.modelId);
+     let mesh=null;
+     st.viewer?.root?.traverse(o=>{if(!mesh&&o.isMesh&&o.geometry?.getAttribute('aRegion'))mesh=o;});
+     const current=mesh?.geometry?.getAttribute('position')?.array;
+     const source=info?.meshData?.positions;
+     const changed=current&&source&&current.length===source.length?
+       Array.from(current).some((v,i)=>Math.abs(v-source[i])>1e-8):false;
+     const shaped=st.applyShape(run.shapeProfile),cloned=mesh?.geometry?.getAttribute('position')?.array!==source;
+     st.applyShape(null);
+     const restored=mesh?.geometry?.getAttribute('position')?.array===source;
+     st.applyShape(run.shapeProfile);
+     return {marks:run.shapeProfile?.marks?.length||0,vertices:shaped.vertices||0,changed,cloned,restored};
+   });
+   assert.equal(shape.marks,10,'S4 contact points are saved once per real hammer hit');
+   assert.ok(shape.vertices>0&&shape.changed&&shape.cloned&&shape.restored,
+     'Real blade deformation must be copy-on-write, visible and reversible: '+JSON.stringify(shape));
+   await shot(width+'-hammer-ten');report.cases.push({width,hammer,shape});
    await page.evaluate(async()=>{
      const G=(await import('/src/app/game.js')).default;
      const F=await import('/src/core/forge.js');
