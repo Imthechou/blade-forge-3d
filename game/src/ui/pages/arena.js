@@ -5,6 +5,7 @@ import { icon } from '../icons.js';
 import { el, $, clear, mount, toast, countUp, sheet } from '../dom.js';
 import * as Core from '../../core/index.js';
 import { BRANCHES, GRADIENTS } from '../../data/arena/branches.js';
+import { CARD_BY_ID } from '../../data/cards.js';
 import { TIERS, NATIONAL_ROUNDS, THEMES } from '../../data/arena/tournaments.js';
 import { FACES } from '../../data/balance.js';
 import Game from '../../app/game.js';
@@ -1546,6 +1547,8 @@ function renderFormalReport() {
     el('span', { class: 'mono', text: `×${(r.weights?.[p.kind] ?? 0).toFixed(2)}` }),
   ]));
   const saveFail = m.done && !m.settled;
+  const forgeDropId = m.settled ? Core.progress.get().materialsV1?.receipts?.['material:formal:'+m.id] : null;
+  const forgeDropCard = forgeDropId ? CARD_BY_ID[forgeDropId] : null;
   mount(body, [
     el('section', { class: `circuit-verdict ${r.win ? 'is-win' : 'is-lose'}` }, [
       el('div', { class: 'quick-kicker', text: `${d.branchName || '正式赛'} · ${d.gradientName || ''}` }),
@@ -1571,6 +1574,7 @@ function renderFormalReport() {
       ...((r.report?.lines || []).map((line) => el('p', { class: 'arena-note', text: line }))),
       el('p', { class: 'arena-note', text: '刀况耗尽将结束本轮；临时损伤不影响收藏刀具。' }),
     ]),
+    forgeDropCard ? el('p', { class: 'arena-note', text: '赛事收获：锻材 '+forgeDropCard.name+' ×1 · 在工坊可定向选材' }) : null,
     saveFail ? el('p', { class: 'arena-note', text: '本场记录尚未保存。' }) : null,
     /* ★ rework T12：赛后也给出“下一步”。
        任务书要求「首页、**赛后**和图鉴可追踪一个下一步目标」，
