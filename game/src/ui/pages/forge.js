@@ -10,7 +10,8 @@ import { riskBar, statGrid, decisionCard, traitItem, rarityBadge } from '../comp
 import { icon } from '../icons.js';
 import { cardDoodle, doodleSpec } from '../cardDoodles.js';
 import { STAGES } from '../../data/stages.js';
-import { chapterState, isFiveScreen, FORGE_CHAPTERS } from '../../core/forgeChapters.js';
+import { chapterState, isFiveScreen, FORGE_CHAPTERS, forgeStageStatDelta } from '../../core/forgeChapters.js';
+import { directionOf } from '../../data/cards.js';
 import { specialtyFlowCue } from '../../core/arenaV41Specialties.js';
 import { HAMMER_TIERS } from '../../data/balance.js';
 import { tagName, BASE_TAGS, SPECIAL_TAGS } from '../../data/tags.js';
@@ -451,8 +452,9 @@ function previewChance() {
 function showDetail(card) {
   const art = doodleSpec(card);
   const stats = ['strength', 'toughness', 'sharpness', 'craft', 'design', 'spirit'];
+  const applied=forgeStageStatDelta(Game.run,card);
   const statNodes = stats.map(key => {
-    const direction = card.directions?.[key];
+    const direction = isFiveScreen(Game.run) ? directionOf(applied[key]) : card.directions?.[key];
     const dirKey = direction?.key || 'flat';
     const type = dirKey.startsWith('up') ? 'is-positive' : dirKey.startsWith('down') ? 'is-negative' : 'is-neutral';
     const symbol = type === 'is-positive' ? '↗' : type === 'is-negative' ? '↘' : '—';
