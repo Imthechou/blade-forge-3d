@@ -37,7 +37,8 @@ test('five player choices plus hammer/edge resolve all nine card ledgers with re
   assert.equal(run.lastRiskCheck,undefined);
   const afterRecipe=manual('S2');
   assert.equal(run.stageId,'S4','S3 is automatically crafted inside forge screen 2');
-  assert.equal(afterRecipe.riskCheck?.stageId,'S3','assist performs actual first fracture roll');
+  assert.ok(afterRecipe.riskCheck,'assist performs actual first fracture roll');
+  assert.equal(run.lastRiskCheck?.stageId,'S3');
   assert.deepEqual(run.assistedSteps.map(x=>x.stageId),['S3']);
   manual('S4');
   assert.equal(run.phase,'hammer');
