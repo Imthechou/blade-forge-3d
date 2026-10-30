@@ -176,6 +176,17 @@ try {
    await page.locator('.ap-archive-view3d').click();
    const cardRect=await card.boundingBox();const viewport=page.viewportSize();
    assert.ok(cardRect&&cardRect.width>0&&cardRect.x>=-1&&cardRect.x+cardRect.width<=viewport.width+1,'收藏卡不得横向溢出手机屏幕');
+   // This is a real PNG downloaded from the live PBR image, not a placeholder knife.
+   const exported=page.waitForEvent('download',{timeout:30000});
+   await page.locator('.ap-archive-export').click();
+   const download=await exported;
+   assert.match(download.suggestedFilename(),/锻刀大赛.*收藏卡\.png/);
+   const saved=await download.path();
+   const image=fs.readFileSync(saved);
+   assert.ok(image.length>50000,'收藏卡必须包含实际刀具画面');
+   assert.equal(image.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+   assert.equal(image.readUInt32BE(16),1080);
+   assert.equal(image.readUInt32BE(20),1520);
    await shot(`${width}-appraisal-collectible`);
   });
   await test(`${width} loadout preview + pause focus + real cutting input`,async()=>{
