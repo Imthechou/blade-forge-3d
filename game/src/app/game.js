@@ -13,6 +13,7 @@ import { bus, EVENTS, audio, haptics } from '../platform/index.js';
 import { getStage } from '../render/index.js';
 import { candidateWarmNeedsVisualRestore } from '../render/gpuPreparation.js';
 import { KNIFE_BY_ID, resolveModelId } from '../data/knifeTypes.js';
+import { FORGE_FLOW_VERSION } from '../core/forgeChapters.js';
 
 function immutableTeamView(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -66,6 +67,8 @@ class Session {
     this.run = Core.forge.createRun({
       seed: seed != null ? seed : (mode === 'daily' ? Core.daily.seedOfDay() : null),
       mode,
+      // 正常锻刀改为五屏；每日挑战保留旧随机阶段的验收与平衡。
+      flowVersion: mode==='normal' ? FORGE_FLOW_VERSION : null,
       cr: save.cr,
       daily,
       /* ★ rework T10.4：把存档里的内容解锁接进候选抽取。
