@@ -187,6 +187,9 @@ try {
    assert.equal(image.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
    assert.equal(image.readUInt32BE(16),1080);
    assert.equal(image.readUInt32BE(20),1520);
+   // Upload the *actual downloaded poster* so visual reviewers can inspect its PBR knife,
+   // typography and composition, not just a screenshot of the download button.
+   fs.copyFileSync(saved,path.join(out,`${width}-collectible-export.png`));
    await shot(`${width}-appraisal-collectible`);
   });
   await test(`${width} loadout preview + pause focus + real cutting input`,async()=>{
