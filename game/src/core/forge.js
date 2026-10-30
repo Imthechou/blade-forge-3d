@@ -134,8 +134,12 @@ export function confirmCard(run, card) {
   if (run.phase !== PHASE.SELECT) return { ok: false, reason: '当前不在选卡阶段' };
   // 强制物料必须先核实此卡确为本轮真实候选，避免错误阶段/伪造卡造成
   // 钱包已扣料而锻造失败、或未通过选卡直接写属性/视觉状态。
-  if (!card || card.stage !== run.stageId || !run.candidates?.some(c=>c.id===card.id))
-    return { ok:false, reason:'不是当前工序的有效候选卡' };
+  if (isFiveScreen(run)) {
+    const candidate=run.candidates?.find(c=>c.id===card?.id);
+    if (!candidate || candidate.stage !== run.stageId || card?.stage !== run.stageId)
+      return { ok:false, reason:'不是当前工序的有效候选卡' };
+    card=candidate; // 只按原始卡池对象结算，防止同 ID 替换数值或视觉参数。
+  }
 
   const r = Cards.commit(run, card);
   if (!r.ok) return { ok: false, reason: r.reason };
