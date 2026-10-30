@@ -348,11 +348,13 @@ class Session {
   confirmCard(card) {
     if (!this.run || !card) return null;
     const before = this.run.stageId;
+    const actual=this.run.candidates?.find(c=>c.id===card.id);
+    if(!actual||actual.stage!==before||this.run.phase!=='select')
+      return {ok:false,reason:'当前工序不能确认这张卡'};
+    // 任何付费动作前先锁定真实候选对象，不能利用伪造的同 ID 卡越过结算。
+    card=actual;
     const reservation=before==='S1'&&this.run.materialReservation===card.id;
     if(reservation){
-      // 不得对不在当前选择中的卡扣料；持久化失败时原局状态完全不变。
-      if(this.run.phase!=='select'||!this.run.candidates?.some(c=>c.id===card.id))
-        return {ok:false,reason:'这份材料已不在当前候选中'};
       const paid=Core.progress.spendForgeMaterial(card.id);
       if(!paid.ok)return paid;
       this.run.materialInventory[card.id]=paid.remaining;
