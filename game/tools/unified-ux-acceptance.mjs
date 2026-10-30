@@ -153,6 +153,13 @@ try {
    await card.waitFor({timeout:30000});
    await page.locator('.ap-archive-card').scrollIntoViewIfNeeded();
    await page.waitForFunction(()=>{const image=document.querySelector('.ap-archive-card .blade-thumb-image');return image?.complete && image.naturalWidth>0;},null,{timeout:90000});
+   // Keep the unmodified offscreen PBR source for objective art-direction comparison.
+   const actualCapture=await page.locator('.ap-archive-card .blade-thumb-image').evaluate(n=>n.src);
+   if(actualCapture.startsWith('data:image/')){
+     const raw=actualCapture.split(',')[1];
+     const ext=actualCapture.startsWith('data:image/webp')?'webp':'png';
+     fs.writeFileSync(path.join(out,`${width}-collectible-source.${ext}`),Buffer.from(raw,'base64'));
+   }
    assert.equal(await page.locator('.ap-archive-card .bcv-name').innerText(),'霜镜 · 唐刀');
    assert.ok(await page.locator('.ap-archive-card .bcv-score').isVisible());
    await page.waitForFunction(()=>document.querySelector('.page[data-page="appraise"]')?.classList.contains('is-archive-revealed'));
