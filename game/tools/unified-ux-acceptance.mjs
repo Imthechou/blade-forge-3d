@@ -94,6 +94,14 @@ try {
     assert.equal(await page.evaluate(async()=> (await import('/src/app/game.js')).default.run.lastRiskCheck?.stageId),'S3',
       'support forge now checks carried risk in screen 2, not during recipe');
     assert.equal(await page.evaluate(async()=> (await import('/src/app/game.js')).default.run.assistedSteps?.[0]?.stageId),'S3');
+    const chipLayout=await page.locator('.stage-chipbar').evaluate(bar=>{
+      const stage=bar.closest('.stage'),bounds=stage.getBoundingClientRect();
+      const children=[...bar.children].filter(n=>n.getClientRects().length>0)
+        .map(n=>({className:n.className,text:n.textContent?.trim().slice(0,32),left:n.getBoundingClientRect().left,right:n.getBoundingClientRect().right}));
+      return {left:bounds.left,right:bounds.right,children};
+    });
+    assert.ok(chipLayout.children.every(c=>c.left>=chipLayout.left-1&&c.right<=chipLayout.right+1),
+      `Forge stage chip clipped at ${width}px: ${JSON.stringify(chipLayout)}`);
     await shot(`${width}-five-screen-forging`);
   });
   if(width===375)await test('375 rare material inventory: pin, preview, spend only on confirm',async()=>{
