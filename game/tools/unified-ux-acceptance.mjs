@@ -51,7 +51,7 @@ try {
    const archiveActions=await page.locator('.blade-detail-sheet>.blade-detail-actions .btn').evaluateAll(els=>els.map(e=>{
      const b=e.getBoundingClientRect();return {w:b.width,h:b.height,x:b.x,right:b.right,text:e.textContent.trim()};
    }));
-   assert.ok(archiveActions.length===5&&archiveActions.every(b=>b.w>=44&&b.h>=44&&b.x>=0&&b.right<=innerWidth+1),
+   assert.ok(archiveActions.length===5&&archiveActions.every(b=>b.w>=44&&b.h>=44&&b.x>=0&&b.right<=width+1),
      'Narrow archive actions must remain reachable: '+JSON.stringify(archiveActions));
    await shot(`${width}-blade-detail`);
    const workshopDownload=page.waitForEvent('download',{timeout:30000});
