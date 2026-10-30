@@ -97,7 +97,9 @@ async function capture(label,url,viewport,check) {
       const btn=page.getByRole('button',{name:'确认工艺 →',exact:true});
       await btn.click({timeout:16000});
       await page.waitForTimeout(650);
-      progressed=(await page.locator('.page.is-active .stage-badge').innerText()).includes('02');
+      // 新流程第 1 屏包含 S1 原料与 S2 主工艺；确认第一张后为 1 屏第 2 子步骤。
+      const badge=await page.locator('.page.is-active .stage-badge').innerText();
+      progressed=badge.includes('开炉配方')&&badge.includes('2/2');
       await page.screenshot({path:path.join(root,prefix+'-stage2.png'),fullPage:false,animations:'disabled'});
       report.screenshots.push(prefix+'-stage2.png');
     }
