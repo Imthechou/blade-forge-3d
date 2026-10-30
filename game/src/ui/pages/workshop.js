@@ -351,6 +351,22 @@ function inspect(blade) {
     /* 卡背：六维、特性（标注赛场职责）、连携、赛事经历、工艺与档案 */
     bladeCardDetail(model),
     el('div', { class: 'blade-detail-actions' }, [
+      el('button',{class:'btn',text:'保存收藏卡 PNG','aria-label':'下载本刀真实3D外观收藏卡',onclick:async(event)=>{
+        const button=event.currentTarget;
+        if(button.disabled)return;
+        if(!detailStage?.ready||detailStage.modelId!==modelId){toast('刀具预览正在加载，请稍后再保存','warn');return;}
+        button.disabled=true;button.textContent='生成收藏卡…';
+        try {
+          await detailStage.viewer?._compilePromise;
+          if(detailSequence!==sequence||!detailStage?.viewer?.root)throw new Error('刀具预览已关闭');
+          const shot=detailStage.snapshot(540,690);
+          const {downloadCollectiblePoster}=await import('../bladeCardExport.js');
+          const current=Core.progress.bladeById(blade.id)||blade;
+          await downloadCollectiblePoster(bladeCardModel(current),shot);
+          toast('收藏卡已生成，可保存图片','good');
+        }catch(err){toast(err?.message||'收藏卡生成失败，请重试','warn');}
+        finally{if(button.isConnected){button.disabled=false;button.textContent='保存收藏卡 PNG';}}
+      }}),
       el('button',{class:'btn btn--primary',text:'12秒短试刀',onclick:async()=>{
         const Arena=await import('./arena.js');
         const result=Arena.openCollectionSample(blade.id);
