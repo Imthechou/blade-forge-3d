@@ -6,6 +6,7 @@ import { el, $, clear, mount, toast, countUp, sheet } from '../dom.js';
 import * as Core from '../../core/index.js';
 import { BRANCHES, GRADIENTS } from '../../data/arena/branches.js';
 import { CARD_BY_ID } from '../../data/cards.js';
+import { verifiedApexBladeRounds } from '../../core/bladeMastery.js';
 import { TIERS, NATIONAL_ROUNDS, THEMES } from '../../data/arena/tournaments.js';
 import { FACES } from '../../data/balance.js';
 import Game from '../../app/game.js';
@@ -1700,13 +1701,14 @@ function renderApexReport() {
   const r = m?.result;
   if (!r) { mount(body, [el('p', { class: 'arena-note', text: '没有可显示的战报。' })]); return; }
   body.className = 'arena-body arena-view-quick-report';
+  const eligibleApex=new Set(verifiedApexBladeRounds({version:r.version,kind:'apex',roster:m.roster,rounds:r.roundsDetail,result:r}).map(x=>x.bladeId));
   const rows = (r.roundsDetail || []).map((x) => el('div', { class: 'report-line' }, [
     el('span', { text: x.label }),
     el('span', { class: x.win ? 'chip chip--accent' : 'chip', text: x.win === null ? '未进行' : x.win ? '胜' : '负' }),
     el('span', { class: 'mono', text: x.composite === null ? '—' : `${x.composite}` }),
     el('span', { class: 'muted tiny', text: x.bladeId || '未派刀' }),
     m.settled && x.status==='complete' && x.bladeId
-      ? el('span', { class: 'chip', text: x.primaryCompleted || Number(x.primary)>=.20 ? '磨合 +1' : '进度不足' })
+      ? el('span', { class: 'chip', text: eligibleApex.has(x.bladeId) ? '磨合 +1' : '进度不足' })
       : null,
   ].filter(Boolean)));
   const saveFail = m.done && !m.settled;
