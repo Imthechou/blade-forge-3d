@@ -137,6 +137,10 @@ export function settleQuickChallenge(run) {
       record: previous ? quickCopy(previous) : null, reason,
     });
   if (receipt) return duplicate('CURRENT_PAGE_COMMITTED', true, receipt.reward);
+  // 历史纪录只保存 last：后续快赛覆盖 last 后，旧局仍可能被重新提交。
+  // 用稳定 runId 持久收据覆盖此边界，CR、工坊 XP、名刀磨合必须同时幂等。
+  const priorReceipt = original.eventLedger?.['quick:settled:'+run.id];
+  if (priorReceipt) return duplicate('PERSISTED_RUN', true, priorReceipt.reward||0);
   if (previous?.last?.runId === run.id) {
     if (previous.last.score !== run.result.score || previous.last.grade !== run.result.grade) {
       return quickSettlementResult(run, key, { reason: '相同局 ID 的纪录摘要不一致，无法结算' });
@@ -178,6 +182,8 @@ export function settleQuickChallenge(run) {
       record: quickCopy(draft.quickChallengeRecords.byChallenge[key]), reason: null,
       tasks: evt.tasks || [],
     });
+    draft.eventLedger ||= {};
+    draft.eventLedger['quick:settled:'+run.id]={type:'QUICK_SETTLED',at:Date.now(),reward:result.reward};
     if (Storage.save(draft) !== true) throw new Error('Quick settlement was not saved');
   } catch (_) {
     return quickSettlementResult(run, key, {
