@@ -64,6 +64,27 @@ try {
    await page.locator('.dcard-more').first().click();await dialog();await shot(`${width}-card-detail`);await close();
    await page.locator('.stage-traits').click();await dialog();await shot(`${width}-build`);await close();
   });
+  await test(`${width} five-screen recipe and role-based risk flow`,async()=>{
+    assert.equal(await page.locator('.stage-progress .sp-dot').count(),5,'normal forge uses five screens');
+    assert.match(await page.locator('.stage-badge').innerText(),/开炉配方/);
+    await page.locator('.forge-recipe-direct').click();
+    const known=page.locator('.forge-recipe-option');
+    assert.ok(await known.count()>=2,'workshop offers learned materials');
+    await known.first().click();
+    await page.locator('.dcard').first().click();
+    await page.getByRole('button',{name:'确认工艺 →',exact:true}).click();
+    assert.match(await page.locator('.forge-flow-substep').innerText(),/2\/2/);
+    assert.equal(await page.evaluate(async()=> (await import('/src/app/game.js')).default.run.lastRiskCheck),undefined);
+    await page.locator('.forge-recipe-direct').click();
+    await page.locator('.forge-recipe-option').first().click();
+    await page.locator('.dcard').first().click();
+    await page.getByRole('button',{name:'确认工艺 →',exact:true}).click();
+    assert.match(await page.locator('.stage-badge').innerText(),/锻打成型/);
+    assert.equal(await page.locator('.stage-progress .sp-dot.active').count(),1);
+    assert.equal(await page.evaluate(async()=> (await import('/src/app/game.js')).default.run.lastRiskCheck),undefined,
+      'recipe stage transfers accumulated risk, without an early break roll');
+    await shot(`${width}-five-screen-forging`);
+  });
   await test(`${width} real appraisal collectible identity card`,async()=>{
    await page.evaluate(async()=>{
      const [gameMod,routerMod,coreMod]=await Promise.all([
