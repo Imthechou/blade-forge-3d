@@ -12,7 +12,7 @@ import { tagName } from '../../data/tags.js';
 import { getTrait } from '../../data/traits.js';
 import { Game } from '../../app/game.js';
 import { BladeStage } from '../../render/index.js';
-import { mountCollectionPreview, disconnectCollectionPreviews, releaseCollectionPreviewStage, applyCollectionLighting } from '../../render/collectionPreview.js';
+import { mountCollectionPreview, disconnectCollectionPreviews, releaseCollectionPreviewStage, applyCollectionLighting, applyCollectionPose } from '../../render/collectionPreview.js';
 import * as CodexCatalog from '../../data/codexCatalog.js';
 import router from '../router.js';
 
@@ -451,6 +451,7 @@ function inspect(blade) {
       return;
     }
     stage.applyShape(blade.shapeProfile || null);
+    applyCollectionPose(stage);
     stage.applySkin(visual.skin, { coverAll: !visual.handle?.explicit });
     stage.applyHandle(visual.handle?.explicit ? visual.handle : null, visual.skin);
     stage.applyGlow(visual.glowCardId || null);
