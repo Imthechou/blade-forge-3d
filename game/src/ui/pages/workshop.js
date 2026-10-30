@@ -450,6 +450,7 @@ function inspect(blade) {
       if (detailStage === stage) detailStage = null;
       return;
     }
+    stage.applyShape(blade.shapeProfile || null);
     stage.applySkin(visual.skin, { coverAll: !visual.handle?.explicit });
     stage.applyHandle(visual.handle?.explicit ? visual.handle : null, visual.skin);
     stage.applyGlow(visual.glowCardId || null);
