@@ -685,3 +685,8 @@
 
 .forge-specialty-cue{font-size:10px;max-width:154px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;opacity:.72;}
 .forge-specialty-cue.is-active{opacity:1;background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--accent);}
+
+.forge-recipe-direct{margin-left:auto;min-height:38px;padding:5px 10px;border:1px solid var(--accent-line);border-radius:999px;background:var(--surface-glass);color:var(--accent);font:650 11px var(--font);cursor:pointer;}
+.forge-recipe-direct:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.forge-recipe-sheet{max-height:min(65vh,450px);overflow-y:auto;}
+.forge-recipe-option{min-height:44px;width:100%;text-align:left;justify-content:flex-start;}
