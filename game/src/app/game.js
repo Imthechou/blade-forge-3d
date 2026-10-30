@@ -404,7 +404,7 @@ class Session {
     }
     Object.assign(this.run, { cr: paid.cr, rerollCountByStage: draft.rerollCountByStage,
       rerollTotal: draft.rerollTotal, paidRerollsUsed: draft.paidRerollsUsed, candidates: draft.candidates,
-      specialist: draft.specialist,materialReservation:null });
+      specialist: draft.specialist,materialReservation:null,naturalCandidateIds:draft.naturalCandidateIds });
     bus.emit(EVENTS.CR_CHANGED, { cr: paid.cr });
     this.preview = null; // the previous candidate is no longer in this pool
     this.syncStage();
