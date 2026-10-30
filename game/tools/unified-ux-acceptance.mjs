@@ -85,6 +85,35 @@ try {
       'recipe stage transfers accumulated risk, without an early break roll');
     await shot(`${width}-five-screen-forging`);
   });
+  if(width===375)await test('375 rare material inventory: pin, preview, spend only on confirm',async()=>{
+    const chosen=await page.evaluate(async()=>{
+      const [{Game},routerMod,coreMod,cardsMod]=await Promise.all([
+        import('/src/app/game.js'),import('/src/ui/router.js'),
+        import('/src/core/index.js'),import('/src/data/cards.js'),
+      ]);
+      const card=cardsMod.BY_STAGE.S1.find(c=>c.rarity==='rare');
+      const save=coreMod.progress.get();
+      save.materialsV1 ||= {version:1,counts:{},receipts:{}};
+      save.materialsV1.counts[card.id]=1;
+      if(!coreMod.progress.persist())throw Error('failed to seed mobile inventory');
+      routerMod.default.go('home');
+      Game.startForge({mode:'normal',seed:55331});
+      routerMod.default.go('forge');
+      return {id:card.id,name:card.name};
+    });
+    await page.locator('.forge-recipe-direct').waitFor();
+    await page.locator('.forge-recipe-direct').click();
+    await page.locator('.forge-recipe-option').filter({hasText:chosen.name}).click();
+    assert.equal(await page.evaluate(id=>import('/src/app/game.js').then(m=>m.default.run.materialReservation===id),chosen.id),true);
+    assert.equal(await page.evaluate(id=>import('/src/core/index.js').then(m=>m.progress.get().materialsV1.counts[id]),chosen.id),1,
+      'not consumed while previewing');
+    await shot('375-rare-stock-pick');
+    await page.locator('.dcard').first().click();
+    await page.getByRole('button',{name:'确认工艺 →',exact:true}).click();
+    assert.equal(await page.evaluate(id=>import('/src/core/index.js').then(m=>m.progress.get().materialsV1.counts[id]||0),chosen.id),0);
+    assert.equal(await page.evaluate(()=>import('/src/app/game.js').then(m=>m.default.run.stageId)),'S2');
+    await shot('375-rare-stock-spent');
+  });
   await test(`${width} real appraisal collectible identity card`,async()=>{
    await page.evaluate(async()=>{
      const [gameMod,routerMod,coreMod]=await Promise.all([
