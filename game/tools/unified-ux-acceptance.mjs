@@ -133,6 +133,19 @@ try {
     assert.equal(await page.evaluate(()=>import('/src/app/game.js').then(m=>m.default.run.stageId)),'S2');
     await shot('375-rare-stock-spent');
   });
+  if(width===375)await test('collectible gallery rotates transparent blades and preserves opaque old captures',async()=>{
+    const modes=await page.evaluate(async()=>{
+      const {renderCollectiblePoster}=await import('/src/ui/bladeCardExport.js');
+      const sample=document.createElement('canvas');sample.width=200;sample.height=340;
+      const g=sample.getContext('2d');
+      g.fillStyle='#d0d8e3';g.fillRect(88,25,24,285);
+      const real=await renderCollectiblePoster({name:'刀具',rarityTone:'rare'},sample.toDataURL('image/png'));
+      g.fillStyle='#e4e8ed';g.fillRect(0,0,200,340);
+      const legacy=await renderCollectiblePoster({name:'刀具',rarityTone:'rare'},sample.toDataURL('image/png'));
+      return {real:real.dataset.artworkLayout,legacy:legacy.dataset.artworkLayout};
+    });
+    assert.deepEqual(modes,{real:'real-knife-diagonal',legacy:'opaque-safe-fallback'});
+  });
   await test(`${width} real appraisal collectible identity card`,async()=>{
    await page.evaluate(async()=>{
      const [gameMod,routerMod,coreMod]=await Promise.all([
