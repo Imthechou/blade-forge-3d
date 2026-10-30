@@ -377,7 +377,10 @@ function renderSelect(body, run) {
       band,
     }));
     // 选中后即时显示准确的六维增量/目标值，非选中保持紧凑趋势。
-    mount(statsNode, statGrid(projected?.stats || Game.run.stats, pickedCard?.directions || null,
+    const actualDirections=projected&&isFiveScreen(Game.run)
+      ? Object.fromEntries(Object.entries(projected.statDelta||{}).map(([key,value])=>[key,directionOf(value)]))
+      : pickedCard?.directions || null;
+    mount(statsNode, statGrid(projected?.stats || Game.run.stats, actualDirections,
       !!projected, projected ? { before: Game.run.stats, delta: projected.statDelta } : null));
     // 卡（选中时另两张降权，把注意力收到选中那张）
     cardsRow.classList.toggle('is-picking', !!pickedCard);
