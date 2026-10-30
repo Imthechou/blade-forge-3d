@@ -28,7 +28,8 @@ import * as ForgeBonuses from './forgeBonuses.js';
 import * as V41Growth from './arenaV41Growth.js';
 import * as V41Specialties from './arenaV41Specialties.js';
 import * as CareerV41 from './arenaCareerV41.js';
-import { careerRewardPlan, isV41Match } from './arenaV41Rewards.js';
+import { careerRewardPlan, isV41Match, effectivePrimary } from './arenaV41Rewards.js';
+import { normalizeBladeMastery, creditBladeMastery } from './bladeMastery.js';
 import * as CodexCatalog from '../data/codexCatalog.js';
 import { COUNTED_CATEGORIES } from '../data/codexCatalog.js';
 import { commitSave } from './saveTransaction.js';
@@ -204,6 +205,8 @@ export function archive(record, { mode = 'normal' } = {}) {
       // 断刀册为永久历史：锻造与正式赛事断刀共存，禁止静默裁剪。
       note('fracture', record.id);
     } else {
+      record.mastery = normalizeBladeMastery(record.mastery,record);
+      record.favorite = record.favorite === true;
       s.collection.unshift(record);
       /* ★ 2026-10-14（用户：首页「有刀的时候展示评分最高的刀」）：
          原来是 `if (!s.showcaseId) s.showcaseId = record.id` —— 把**第一把**刀永久钉成
@@ -287,6 +290,16 @@ export function setShowcase(id) {
     return { ok: true };
   });
   return result.ok;
+}
+
+/** 珍藏标记与首页代表作互不影响。 */
+export function toggleFavorite(id) {
+  return commitSave(load(), s => {
+    const blade=s.collection.find(b=>b.id===id);
+    if(!blade)return {ok:false};
+    blade.favorite=blade.favorite!==true;
+    return {ok:true,favorite:blade.favorite};
+  });
 }
 
 export function renameBlade(id, name) {
@@ -541,6 +554,8 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
     history.push(entry);
     if (blade) {
       (blade.arenaHistory ||= []).push(JSON.parse(JSON.stringify(entry)));
+      // 只认结构目标确实有进展的 V4.1 正式赛；不靠重复战报或单纯分数刷经验。
+      if (v41 && effectivePrimary(matchRecord)>=.20) creditBladeMastery(blade);
       /* ★ rework T12：把分项成绩写进**每把刀的个人纪录**。
 
          要修什么：改造前赛事只知道“整场合成分”，
