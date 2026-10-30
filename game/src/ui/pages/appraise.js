@@ -506,6 +506,9 @@ export function enter() {
     if (s.view) s.view('forge', { duration: 0 });
     if (s.autoRotate) s.autoRotate(false);
     if (s.resize) s.resize();
+    // 首帧着色器/纹理可能仍在编译，必须等待；否则截图得到未上材质的刀。
+    try { await s.viewer?._compilePromise; } catch (_) { /* 允许使用已可见的降级材质 */ }
+    if (epoch !== entryEpoch) return;
     // 复用鉴定页已加载的真实 3D 舞台截图，避免再建一个并行 WebGL 场景。
     const art=root.querySelector('.ap-archive-art');
     if (art && typeof s.snapshot==='function' && epoch===entryEpoch) {
