@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 const items=new Map();
+let blocked=false;
 globalThis.localStorage={
   getItem:key=>items.get(key)??null,
-  setItem:(key,value)=>items.set(key,value),
+  setItem:(key,value)=>{if(blocked)throw new Error('quota exceeded');items.set(key,value);},
   removeItem:key=>items.delete(key),
 };
 const P=await import('../src/core/progress.js');
@@ -67,4 +68,33 @@ test('favorite persists as separate collection marker and respects save transact
   assert.equal(P.toggleFavorite('favorite').favorite,true);
   assert.equal(P.normalizeSave(JSON.parse(items.get('bladeforge.save'))).collection[0].favorite,true);
   assert.equal(P.toggleFavorite('favorite').favorite,false);
+});
+
+test('national and apex count only real multi-round structural participation',()=>{
+  P.resetAll();P.get().collection.push(makeBlade('multi'));P.persist();
+  const noAction={version:'formal-v4.1',result:{version:'formal-v4.1'},rounds:[{round:0,primary:0}]};
+  assert.equal(M.qualifyingFormalMatch(noAction,'national'),false);
+  assert.equal(M.qualifyingFormalMatch({version:'legacy',rounds:[{primary:1}]},'national'),false);
+  assert.equal(M.qualifyingFormalMatch({version:'formal-v4.1',rounds:[{round:0,primary:.5}]},'national'),true);
+  assert.equal(M.qualifyingFormalMatch({version:'formal-v4.1',rounds:[{round:1,primaryCompleted:true}]},'apex'),true);
+  P.recordMatch('national',{win:false,matchId:'none-1',bladeId:'multi',matchRecord:noAction});
+  assert.equal(P.bladeById('multi').mastery.qualifiedMatches,0);
+  const real={version:'formal-v4.1',result:{version:'formal-v4.1'},rounds:[{round:0,primary:.6,primaryCompleted:true}]};
+  P.recordMatch('national',{win:false,matchId:'multi-1',bladeId:'multi',matchRecord:real});
+  assert.equal(P.bladeById('multi').mastery.qualifiedMatches,1);
+  assert.equal(P.recordMatch('national',{win:false,matchId:'multi-1',bladeId:'multi',matchRecord:real}).duplicate,true);
+  assert.equal(P.bladeById('multi').mastery.qualifiedMatches,1);
+});
+test('save write failure cannot grant mastery; successful retry remains idempotent',()=>{
+  P.resetAll();P.get().collection.push(makeBlade('retry'));P.persist();
+  const args={win:false,matchId:'retry-1',bladeId:'retry',styleId:'press',gradient:0,
+    matchRecord:{version:'formal-v4.1',result:{version:'formal-v4.1',cut:{structure:{primary:.8}}}}};
+  blocked=true;
+  try {assert.equal(P.recordMatch('school',args).code,'PERSIST_FAILED');}
+  finally{blocked=false;}
+  assert.equal(M.masteryView(P.bladeById('retry')).qualifiedMatches,0);
+  P.recordMatch('school',args);
+  assert.equal(M.masteryView(P.bladeById('retry')).qualifiedMatches,1);
+  assert.equal(P.recordMatch('school',args).duplicate,true);
+  assert.equal(M.masteryView(P.bladeById('retry')).qualifiedMatches,1);
 });
