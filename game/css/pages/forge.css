@@ -678,7 +678,7 @@
 }
 
 /* Five-screen flow: preserve one continuous 3D stage, show the current operation as a small badge subtitle. */
-.stage-badge .forge-flow-substep{display:block;max-width:min(58vw,220px);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:10px;font-style:normal;color:var(--face-3);font-weight:550;}
+.stage-badge .forge-flow-substep{display:block;max-width:86px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:10px;font-style:normal;color:var(--face-3);font-weight:550;}
 .page[data-page="forge"] .stage-progress:has(>.sp-dot:nth-child(5):last-child){gap:4px;}
 .page[data-page="forge"] .stage-progress:has(>.sp-dot:nth-child(5):last-child) .sp-title{font-size:10px;}
 @media(max-width:360px){.stage-badge .forge-flow-substep{max-width:135px}}
