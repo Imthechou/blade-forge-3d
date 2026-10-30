@@ -5,6 +5,7 @@ import { FORGE_FLOW_VERSION,FORGE_CHAPTERS,chapterState,isFiveScreen,forgeStageS
 import { specialtyFlowCue } from '../src/core/arenaV41Specialties.js';
 import { BY_STAGE } from '../src/data/cards.js';
 import { previewPick } from '../src/core/cards.js';
+import { guaranteedRecipes,selectableRecipes,pinRecipeChoice } from '../src/core/forgeRecipeAccess.js';
 import * as Attr from '../src/core/attributes.js';
 import { makeSave, normalizeSave } from '../src/core/saveSchema.js';
 import { workshopSnapshot } from '../src/core/arenaV41Growth.js';
@@ -108,4 +109,40 @@ test('all six specialists map to their real forge operation, without stacking bo
   run.stageId='S8';assert.equal(specialtyFlowCue(run).active,true);
   run.specialist={id:'overload',level:1,boost:.10,options:{}};
   run.stageId='S3';assert.equal(specialtyFlowCue(run).active,true);
+});
+
+test('workshop growth unlocks reliable recipe selection without narrowing random card pools',()=>{
+  const lv1=guaranteedRecipes(1);
+  const lv5=guaranteedRecipes(5);
+  const lv9=guaranteedRecipes(9);
+  assert.ok(lv1.length>=6);
+  assert.ok(lv5.length>lv1.length);
+  assert.ok(lv9.length>lv5.length);
+  const newcomer=createRun({seed:42,flowVersion:FORGE_FLOW_VERSION,workshopSnapshot:{level:1}});
+  assert.equal(newcomer.candidates.length,3);
+  assert.ok(selectableRecipes(newcomer).length>=2);
+  const learned=selectableRecipes(newcomer)[0];
+  const before=JSON.stringify(newcomer.stats);
+  const select=pinRecipeChoice(newcomer,learned.id);
+  assert.equal(select.ok,true);
+  assert.equal(newcomer.candidates[0].id,learned.id);
+  assert.equal(JSON.stringify(newcomer.stats),before,'selecting a blueprint never mints stats');
+  const unlearned=(BY_STAGE.S1||[]).find(c=>!newcomer.recipeChoiceIds.includes(c.id));
+  if(unlearned)assert.equal(pinRecipeChoice(newcomer,unlearned.id).ok,false);
+  assert.equal(confirmCard(newcomer,learned).ok,true);
+  assert.equal(newcomer.stageId,'S2');
+  const craft=selectableRecipes(newcomer)[0];
+  assert.ok(craft);
+  assert.equal(pinRecipeChoice(newcomer,craft.id).ok,true);
+  assert.equal(confirmCard(newcomer,craft).ok,true);
+  assert.equal(newcomer.lastRiskCheck,undefined);
+  assert.equal(newcomer.stageId,'S3');
+  assert.equal(pinRecipeChoice(newcomer,learned.id).ok,false,'cannot insert owned material into unrelated stage');
+});
+test('existing card unlock tokens remain freely selectable and can be migrated',()=>{
+  const rare=(BY_STAGE.S2||[]).find(x=>x.rarity==='rare'||x.rarity==='legend');
+  assert.ok(rare);
+  const list=guaranteedRecipes(1,[rare.id,'some-unknown-id']);
+  assert.ok(list.includes(rare.id));
+  assert.ok(!list.includes('some-unknown-id'));
 });
