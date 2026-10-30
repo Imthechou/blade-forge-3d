@@ -201,16 +201,24 @@
 .ap-detail-content.card,.ap-details { background:var(--surface-glass); border-color:var(--glass-border); border-radius:var(--r-md); }
 .ap-archive-receipt { border:1px solid var(--glass-border); background:var(--surface-glass); color:var(--risk-safe); }
 /* 最终收藏卡与藏刀阁共用 bladeCard，鉴定页只负责展示与容器布局。 */
-.ap-archive-heading{margin:4px 0 10px;font-size:13px;font-weight:700;color:var(--face-2);text-align:center;}
+ .ap-archive-heading{margin:4px 0 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;font-weight:700;color:var(--face-2);}
+.ap-archive-view3d{flex-shrink:0;border:1px solid var(--glass-border);background:var(--surface-glass);border-radius:999px;min-height:38px;padding:6px 10px;color:var(--accent);font:600 12px var(--font);cursor:pointer;}
+.ap-archive-view3d:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 .ap-archive-card{width:min(100%,310px);margin:0 auto 10px;}
 .ap-archive-card .blade-card-v2{width:100%;padding:14px;border:1px solid var(--glass-border);border-radius:22px;box-shadow:var(--shadow-2),inset 0 1px rgba(255,255,255,.8);}
-.ap-archive-card .bcv-art,.ap-archive-card .bcv-art>.blade-thumb{min-height:210px;height:210px;max-height:none;}
+ .ap-archive-card .bcv-art,.ap-archive-card .bcv-art>.blade-thumb{min-height:168px;height:168px;max-height:none;}
 .ap-archive-card .bcv-art{border-radius:16px;background:rgba(255,255,255,.24);}
 .ap-archive-card .blade-thumb{flex-basis:auto;max-width:100%;}
 .ap-archive-card .blade-thumb-image{width:100%;height:100%;object-fit:contain;}
 .ap-archive-card .bcv-name{font-size:18px;}
 .ap-archive-card .bcv-score b{font-size:28px;}
-@media (max-width:360px){.ap-archive-card{width:min(100%,286px);}}
+/* 典藏揭晓：从 3D 演示转为真正的收藏卡。保留可随时切回的 3D 鉴赏。 */
+.page[data-page="appraise"].is-active.is-archive-revealed{grid-template-rows:0 minmax(0,1fr) auto;}
+.page[data-page="appraise"].is-archive-revealed .ap-stage{visibility:hidden;margin:0;border:0;min-height:0;overflow:hidden;}
+.page[data-page="appraise"].is-archive-revealed .ap-body{gap:10px;}
+.page[data-page="appraise"].is-archive-revealed.is-archive-3d{grid-template-rows:minmax(0,1.1fr) minmax(0,1fr) auto;}
+.page[data-page="appraise"].is-archive-revealed.is-archive-3d .ap-stage{visibility:visible;margin:0 12px 9px;border:1px solid var(--glass-border);border-radius:28px;}
+@media (max-width:360px){.ap-archive-card{width:min(100%,286px);} .ap-archive-card .bcv-art,.ap-archive-card .bcv-art>.blade-thumb{min-height:148px;height:148px;} .ap-archive-heading{font-size:12px;}}
 
 .ap-tabs { padding:4px; border-radius:var(--r-md); }
 .ap-tab { font-size:13px; border-radius:12px; }
