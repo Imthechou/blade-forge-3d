@@ -5,6 +5,7 @@ import { FORGE_FLOW_VERSION,FORGE_CHAPTERS,chapterState,isFiveScreen,forgeStageS
 import { specialtyFlowCue } from '../src/core/arenaV41Specialties.js';
 import { BY_STAGE } from '../src/data/cards.js';
 import { previewPick } from '../src/core/cards.js';
+import * as Attr from '../src/core/attributes.js';
 import { makeSave, normalizeSave } from '../src/core/saveSchema.js';
 import { workshopSnapshot } from '../src/core/arenaV41Growth.js';
 
@@ -81,7 +82,8 @@ test('five-screen payouts preserve authored rarity budgets and shift stage-speci
       assert.equal(adapted.strength,card.statDelta.strength);
       assert.equal(adapted.sharpness,card.statDelta.sharpness);
       const projected=previewPick(run,card);
-      for(const k of side)assert.ok(Math.abs((projected.stats[k]||0)-(adapted[k]||0))<.011);
+      const expected=Attr.make();Attr.apply(expected,adapted);
+      for(const k of side)assert.ok(Math.abs((projected.stats[k]||0)-(expected[k]||0))<.011);
     }
   }
   const specimen=BY_STAGE.S8[0];
