@@ -14,6 +14,7 @@ import { getStage } from '../render/index.js';
 import { candidateWarmNeedsVisualRestore } from '../render/gpuPreparation.js';
 import { KNIFE_BY_ID, resolveModelId } from '../data/knifeTypes.js';
 import { FORGE_FLOW_VERSION } from '../core/forgeChapters.js';
+import { pinRecipeChoice } from '../core/forgeRecipeAccess.js';
 
 function immutableTeamView(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -141,6 +142,15 @@ class Session {
   }
 
   previewVisual(card) { return this.resolveVisual(card, { preview: true }); }
+
+  /** 直选已掌握的材料/主工艺/刀型；候选替换并不修改任何结算数据。 */
+  chooseRecipeCard(cardId) {
+    const result=pinRecipeChoice(this.run,cardId);
+    if(!result.ok)return result;
+    this.clearPreview();
+    this.prewarmCandidates();
+    return result;
+  }
 
   /**
    * 补一次透射族预热（M15–M18 晶体）。
