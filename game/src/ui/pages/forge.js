@@ -376,7 +376,7 @@ function renderSelect(body, run) {
       priorCurrent: projected ? Game.run.risk.current : null,
       peak: Math.max(Game.run.risk.peak, riskNow),
       // 第1屏配方 S1/S2 只积累风险；断刀掷骰从第2屏 S3 开始。
-      chance: isFiveScreen(Game.run) && ['S1','S2'].includes(Game.run.stageId) ? 0 : (projected ? projected.breakChanceAfter : breakChance(riskNow, (Game.run.daily?.breakScale || 1) * (1-(Game.run.workshop?.riskReduction || 0)))),
+      chance: isFiveScreen(Game.run) && ['S1','S2','S4'].includes(Game.run.stageId) ? 0 : (projected ? projected.breakChanceAfter : breakChance(riskNow, (Game.run.daily?.breakScale || 1) * (1-(Game.run.workshop?.riskReduction || 0)))),
       band,
     }));
     // 选中后即时显示准确的六维增量/目标值，非选中保持紧凑趋势。
@@ -422,12 +422,14 @@ function renderSelect(body, run) {
     confirmButton.textContent = pickedCard ? '确认工艺 →' : '选择工艺卡';
     confirmButton.disabled = !pickedCard;
     selectionStatus.classList.toggle('has-selection', !!pickedCard);
+    const assistedNext=isFiveScreen(Game.run)?({S2:'随后系统预锻将首次判险',S5:'随后系统回火会再判一次风险',S8:'随后系统调校会再判一次风险'})[Game.run.stageId]:null;
     selectionStatus.textContent = pickedCard
-      ? `预览：${pickedCard.name} · ${Game.run.materialReservation===pickedCard.id?'确认将消耗库存锻材1份':'尚未生效，确认后写入'}`
+      ? `预览：${pickedCard.name} · ${Game.run.materialReservation===pickedCard.id?'确认消耗库存锻材1份':(assistedNext||'尚未生效，确认后写入')}`
       : (isFiveScreen(Game.run) && ['S1','S2'].includes(Game.run.stageId)
-        ? '准备阶段不判定断裂，风险带入下一屏锻打'
-        : (isFiveScreen(Game.run) && Game.run.stageId==='S4' && Game.run.assistedSteps?.at(-1)?.stageId==='S3'
-          ? `系统已预锻：${Game.run.assistedSteps.at(-1).cardName} · 已继承其纹理、属性和风险` : ''));
+        ? (assistedNext||'开炉配方不判裂，风险会带入锻打')
+        : isFiveScreen(Game.run) && Game.run.stageId==='S4'
+          ? `系统已预锻：${Game.run.assistedSteps?.at(-1)?.cardName||'完成'} · 前10锤安全，之后每锤增加风险`
+          : (assistedNext||''));
     // 从首张卡开始常驻可见；选卡时构筑进度与六维一起预览。
     renderStageTraits(Game.run, pickedCard);
 
