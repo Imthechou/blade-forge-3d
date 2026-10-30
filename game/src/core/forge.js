@@ -14,6 +14,7 @@
  */
 
 import { STAGES, stageAt } from '../data/stages.js';
+import { FORGE_FLOW_VERSION, chapterState, isFiveScreen } from './forgeChapters.js';
 import { CR_START } from '../data/balance.js';
 import * as RNG from '../platform/rng.js';
 import * as Attr from './attributes.js';
@@ -44,12 +45,14 @@ export function createRun({
   unlockedCardIds = null,
   workshopSnapshot = null,
   specialistSnapshot = null,
+  flowVersion = null,
   daily = null,
 } = {}) {
   const s = (seed != null ? (Number(seed) >>> 0) : ((Date.now() % 100000000) >>> 0));
   const run = {
     seed: s,
     mode,
+    flowVersion: flowVersion===FORGE_FLOW_VERSION ? FORGE_FLOW_VERSION : null,
     rng: RNG.stream(s, 'run'),
     stageIndex: 0,
     stageId: 'S1',
@@ -147,8 +150,10 @@ export function confirmCard(run, card) {
     return { ok: true, phase: run.phase };
   }
 
-  // S1 不检查（§9.2）
-  if (!def.riskCheck) {
+  // 五屏模式：开炉配方完全安全。S2 的风险仍进入 run.risk，
+  // 第2屏 S3 按累计风险首次检查，避免在准备阶段突然断刀。
+  // 旧存档、每日模式保持原来的逐阶段检查口径。
+  if ((isFiveScreen(run) && def.id==='S2') || !def.riskCheck) {
     advance(run);
     return { ok: true, phase: run.phase };
   }
@@ -264,6 +269,7 @@ export function snapshot(run) {
     stageId: run.stageId,
     stageName: stageDef(run).name,
     stageQuestion: stageDef(run).question,
+    chapter: chapterState(run),
     phase: run.phase,
     finished: run.finished,
     fractured: run.fractured,
