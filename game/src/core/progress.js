@@ -29,7 +29,7 @@ import * as V41Growth from './arenaV41Growth.js';
 import * as V41Specialties from './arenaV41Specialties.js';
 import * as CareerV41 from './arenaCareerV41.js';
 import { careerRewardPlan, isV41Match } from './arenaV41Rewards.js';
-import { normalizeBladeMastery, creditBladeMastery, qualifyingFormalMatch } from './bladeMastery.js';
+import { normalizeBladeMastery, creditBladeMastery, qualifyingFormalMatch, verifiedApexBladeRounds } from './bladeMastery.js';
 import * as Materials from './forgeMaterials.js';
 import * as CodexCatalog from '../data/codexCatalog.js';
 import { COUNTED_CATEGORIES } from '../data/codexCatalog.js';
