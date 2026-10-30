@@ -58,6 +58,36 @@ export function qualifyingFormalMatch(record,tier) {
     return clamp(r.primary??r.cut?.structure?.primary??r.result?.cut?.structure?.primary)>=.20;
   });
 }
+/**
+ * Verify the V4.1 world three-blade match against its locked roster.
+ * Only a physically completed round with >=20% real structure progress grants
+ * the particular participating blade proficiency. Reject ALL credits when
+ * any round identity disagrees with the fixed 0/1/2 roster slots.
+ *
+ * Legacy team3 and unversioned imported histories deliberately receive none.
+ */
+export function verifiedApexBladeRounds(record) {
+  if(record?.kind!=='apex'||record?.version!=='formal-v4.1'
+    ||record?.result?.version!=='formal-v4.1')return [];
+  const roster=record.roster,rounds=record.rounds;
+  if(!Array.isArray(roster)||roster.length!==3||!Array.isArray(rounds)||rounds.length!==3)return [];
+  const ids=roster.map(x=>x?.id);
+  if(ids.some(x=>typeof x!=='string'||!x)||new Set(ids).size!==3)return [];
+  const verified=[];
+  for(let i=0;i<3;i++){
+    const r=rounds[i];
+    if(!r||r.round!==i)return [];
+    if(r.status!=='complete'){
+      if(r.bladeId!=null && r.bladeId!==ids[i])return [];
+      continue;
+    }
+    if(r.bladeId!==ids[i]||typeof r.win!=='boolean')return [];
+    const progress=Math.max(0,Math.min(1,Number(r.primary)||0));
+    if(r.primaryCompleted===true||progress>=.20)
+      verified.push({bladeId:ids[i],round:i,primary:progress,primaryCompleted:r.primaryCompleted===true});
+  }
+  return verified;
+}
 /** 只用于同一笔正式赛事存档事务，外层已按 matchId 完成幂等检查。 */
 export function creditBladeMastery(blade) {
   const original=masteryView(blade);
