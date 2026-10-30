@@ -469,6 +469,14 @@ button.blade-card-v2 { cursor: pointer; width: 100%; }
 .ws-collection-grid .bcv-compare-btn[aria-pressed="true"] { background:var(--accent-soft); color:var(--accent); border-color:var(--accent-line); }
 .blade-detail-hero { background:var(--showcase-surface); border-color:var(--glass-border); }
 .blade-detail-sheet>.blade-detail-actions { background:var(--control-face); }
+/* Two primary actions + three compact secondary actions give the PBR viewer
+   one extra row of breathing room on 320–390px phones. Every target stays 44px+. */
+.blade-detail-sheet>.blade-detail-actions .btn { flex:1 1 calc(50% - 4px); min-width:0; min-height:44px; }
+.blade-detail-sheet>.blade-detail-actions .btn:nth-child(n+3) {
+  flex:1 1 calc(33.333% - 6px);
+  padding-inline:3px;
+  font-size:clamp(11px,3.15vw,13px);
+}
 .ws-heading { padding:10px 4px 6px; }
 .ws-eyebrow { color:var(--accent); font-size:12px; font-weight:650; }
 .ws-heading h2 { font-size:23px; letter-spacing:-.04em; line-height:1.4; margin:8px 0; }
