@@ -26,6 +26,7 @@ import * as Cards from './cards.js';
 import * as Traits from './traits.js';
 import * as Combos from './combos.js';
 import * as Hammer from './hammer.js';
+import { noteHammerShape } from './forgeShape.js';
 import * as Edge from './edge.js';
 import { guaranteedRecipes } from './forgeRecipeAccess.js';
 import { assistedCard,isAssistedStage,ASSISTED_STAGES } from './forgeAssist.js';
@@ -97,6 +98,7 @@ export function createRun({
     visualRecipe: [],
 
     hammer: Hammer.makeState(),
+    shapeProfile: null,  // serialized, bounded S4 blade-silhouette corrections
     edge: null,
 
     daily: daily ? { ...daily } : null,
@@ -181,11 +183,13 @@ export function confirmCard(run, card) {
 
 /* ── S4 自由锻打 ───────────────────────────────────────── */
 
-export function hammerStrike(run) {
+export function hammerStrike(run, contact = null) {
   if (run.phase !== PHASE.HAMMER) return { ok: false, reason: '当前不在锻打阶段' };
   const res = Hammer.strike(run, run.rng);
   if (!res.ok) return res;
   run.peakRisk = run.risk.peak;
+  // Successful S4 impacts can subtly reshape the real blade edge; risk/stats stay in Hammer.strike.
+  if (!res.fractured) noteHammerShape(run, contact);
   if (res.fractured) {
     /* ★ 断刀记录必须记「这一锤实际用掉的概率」。
        每锤的判定发生在 Hammer.strike 内部（唯一判定入口），以前没有回写
