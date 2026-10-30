@@ -30,6 +30,7 @@ import * as V41Specialties from './arenaV41Specialties.js';
 import * as CareerV41 from './arenaCareerV41.js';
 import { careerRewardPlan, isV41Match } from './arenaV41Rewards.js';
 import { normalizeBladeMastery, creditBladeMastery, qualifyingFormalMatch } from './bladeMastery.js';
+import * as Materials from './forgeMaterials.js';
 import * as CodexCatalog from '../data/codexCatalog.js';
 import { COUNTED_CATEGORIES } from '../data/codexCatalog.js';
 import { commitSave } from './saveTransaction.js';
@@ -75,6 +76,11 @@ export function spendForgeReroll(cost) {
   } catch (_) { return { ok: false, code: 'PERSIST_FAILED', reason: '保存失败，本次操作未生效，请重试' }; }
   original.cr = draft.cr;
   return { ok: true, cr: original.cr };
+}
+
+/** 原子扣除库存直选材料。随机出现与历史永久掌握的材料不调用此接口。 */
+export function spendForgeMaterial(cardId){
+  return commitSave(load(),save=>Materials.spendMaterialInDraft(save,cardId));
 }
 
 export function resetAll() {
@@ -156,6 +162,9 @@ export function settleQuickChallenge(run) {
     const effectiveKills=Math.max(0,Number(run.result.kills)||0);
     if (effectiveKills>0 && run.result.reason==='time')
       V41Growth.awardWorkshopXp(draft,Math.min(10,4+Math.floor((Number(run.result.score)||0)/1200)), 'quick:'+run.id);
+    // 快赛只在真正完整45秒且命中4个目标时有少量材料掉落，结算原子化。
+    if(run.rulesVersion==='arena-v4.1' && run.result.reason==='time'&&run.elapsed>=45 && effectiveKills>=4)
+      Materials.grantMaterial(draft,'material:quick:'+run.id,'quick');
     // 同一份存档事务结算单刀磨合：只奖励完成完整快赛且实际切中目标的出战刀。
     // 独立稳定 runId 作为持久收据，防止新快赛覆盖 last 后重放旧局刷磨合。
     const masteryKey='mastery:quick:'+run.id;
@@ -604,6 +613,9 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
       }
     }
   }
+  // 仅真实 V4.1 正式赛事中有有效结构破坏才掉落锻材；无效/旧版不凭分数兑奖。
+  if (v41 && matchId && qualifyingFormalMatch(matchRecord,tier))
+    Materials.grantMaterial(s,'material:formal:'+matchId,tier);
   if (destroyed && blade) {
     // 原档整体转移：外观配方、锻造过程、荣誉和全部赛事履历不裁剪、不重算。
     blade.fractured = true;
