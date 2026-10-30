@@ -86,6 +86,11 @@ try {
    await page.waitForFunction(()=>{const image=document.querySelector('.ap-archive-card .blade-thumb-image');return image?.complete && image.naturalWidth>0;},null,{timeout:90000});
    assert.equal(await page.locator('.ap-archive-card .bcv-name').innerText(),'霜镜 · 唐刀');
    assert.ok(await page.locator('.ap-archive-card .bcv-score').isVisible());
+   await page.waitForFunction(()=>document.querySelector('.page[data-page="appraise"]')?.classList.contains('is-archive-revealed'));
+   assert.equal(await page.locator('.page[data-page="appraise"] .ap-stage').isVisible(),false,'最终成品卡成为视觉主角，不与大 3D 舞台重复');
+   await page.locator('.ap-archive-view3d').click();
+   assert.equal(await page.locator('.page[data-page="appraise"] .ap-stage').isVisible(),true,'玩家可返回 3D 鉴赏');
+   await page.locator('.ap-archive-view3d').click();
    const cardRect=await card.boundingBox();const viewport=page.viewportSize();
    assert.ok(cardRect&&cardRect.width>0&&cardRect.x>=-1&&cardRect.x+cardRect.width<=viewport.width+1,'收藏卡不得横向溢出手机屏幕');
    await shot(`${width}-appraisal-collectible`);
