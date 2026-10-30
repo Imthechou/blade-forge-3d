@@ -6,6 +6,13 @@ import { makeSave,normalizeSave } from '../src/core/saveSchema.js';
 import { createRun,confirmCard } from '../src/core/forge.js';
 import { FORGE_FLOW_VERSION } from '../src/core/forgeChapters.js';
 import { selectableRecipes,pinRecipeChoice,guaranteedRecipes } from '../src/core/forgeRecipeAccess.js';
+const offRollStockRun=(cardId,inventory)=>{
+  for(let seed=1;seed<=400;seed++){
+    const run=createRun({seed,flowVersion:FORGE_FLOW_VERSION,workshopSnapshot:{level:1},materialInventory:inventory});
+    if(!run.naturalCandidateIds.includes(cardId))return run;
+  }
+  throw Error('cannot find seeded off-roll candidate');
+};
 
 test('legacy saves migrate empty material stock without deleting any other progress',()=>{
   const old={cr:521,unlockedCardIds:['S1_01'],collection:[],workshopV41:{version:1,xp:100,receipts:{}}};
@@ -32,7 +39,7 @@ test('rare material stock allows reliable one-use pick; random rolls and learned
   const saved=makeSave();
   const drop=Materials.grantMaterial(saved,'material:formal:rare-test','national');
   assert.equal(drop.ok,true);
-  const run=createRun({seed:42,flowVersion:FORGE_FLOW_VERSION,workshopSnapshot:{level:1},materialInventory:saved.materialsV1.counts});
+  const run=offRollStockRun(drop.cardId,saved.materialsV1.counts);
   const chosen=selectableRecipes(run).find(c=>c.id===drop.cardId);
   assert.ok(chosen,'stocked rare material can be selected directly');
   assert.equal(run.recipeChoiceIds.includes(chosen.id),false,'rare stock is not permanent blueprint');
@@ -83,7 +90,7 @@ test('full inventory does not claim new loot or permit retroactive replay after 
 
 test('repeated forced recipe selection never turns paid stock into a free random candidate',()=>{
   const save=makeSave(),drop=Materials.grantMaterial(save,'material:formal:rare-test','national');
-  const run=createRun({seed:42,flowVersion:FORGE_FLOW_VERSION,workshopSnapshot:{level:1},materialInventory:save.materialsV1.counts});
+  const run=offRollStockRun(drop.cardId,save.materialsV1.counts);
   assert.ok(!run.naturalCandidateIds.includes(drop.cardId),'this test must exercise an off-roll stock');
   assert.equal(pinRecipeChoice(run,drop.cardId).requiresMaterial,true);
   assert.equal(pinRecipeChoice(run,drop.cardId).requiresMaterial,true,'re-pinning the inserted card cannot waive stock');
