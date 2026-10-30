@@ -78,7 +78,7 @@ test('national and apex count only real multi-round structural participation',()
   assert.equal(M.qualifyingFormalMatch({version:'formal-v4.1',rounds:[{round:0,primary:.5}]},'national'),true);
   assert.equal(M.qualifyingFormalMatch({version:'formal-v4.1',rounds:[{round:1,primaryCompleted:true}]},'apex'),true);
   P.recordMatch('national',{win:false,matchId:'none-1',bladeId:'multi',matchRecord:noAction});
-  assert.equal(P.bladeById('multi').mastery.qualifiedMatches,0);
+  assert.equal(M.masteryView(P.bladeById('multi')).qualifiedMatches,0);
   const real={version:'formal-v4.1',result:{version:'formal-v4.1'},rounds:[{round:0,primary:.6,primaryCompleted:true}]};
   P.recordMatch('national',{win:false,matchId:'multi-1',bladeId:'multi',matchRecord:real});
   assert.equal(P.bladeById('multi').mastery.qualifiedMatches,1);
