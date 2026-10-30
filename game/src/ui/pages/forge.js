@@ -160,7 +160,10 @@ function renderStageHead(run) {
   badge.appendChild(el('span', { text: five?chapter.name:(def.name || '') }));
   if(five)badge.appendChild(el('i',{class:'forge-flow-substep',text:`${chapter.step}/${chapter.steps} · ${def.name} · ${chapter.subtitle}`}));
   const spec=five?specialtyFlowCue(run):null;
-  badge.title=spec ? `工坊专精：${spec.name} Lv.${spec.level} · ${spec.effect}` : '';
+  const lastAssist=five?run.assistedSteps?.at(-1):null;
+  badge.title=[spec?`工坊专精：${spec.name} Lv.${spec.level} · ${spec.effect}`:null,
+    lastAssist?`${lastAssist.name}：${lastAssist.cardName} · 风险 ${lastAssist.riskBefore} → ${lastAssist.riskAfter}`:null]
+    .filter(Boolean).join('\n');
   let specialistNode=$('.forge-specialty-cue',bar);
   if(spec){
     if(!specialistNode){specialistNode=el('div',{class:'chip forge-specialty-cue'});bar.appendChild(specialistNode);}
@@ -421,7 +424,10 @@ function renderSelect(body, run) {
     selectionStatus.classList.toggle('has-selection', !!pickedCard);
     selectionStatus.textContent = pickedCard
       ? `预览：${pickedCard.name} · ${Game.run.materialReservation===pickedCard.id?'确认将消耗库存锻材1份':'尚未生效，确认后写入'}`
-      : (isFiveScreen(Game.run) && ['S1','S2'].includes(Game.run.stageId) ? '准备阶段不判定断裂，风险带入下一屏锻打' : '');
+      : (isFiveScreen(Game.run) && ['S1','S2'].includes(Game.run.stageId)
+        ? '准备阶段不判定断裂，风险带入下一屏锻打'
+        : (isFiveScreen(Game.run) && Game.run.stageId==='S4' && Game.run.assistedSteps?.at(-1)?.stageId==='S3'
+          ? `系统已预锻：${Game.run.assistedSteps.at(-1).cardName} · 已继承其纹理、属性和风险` : ''));
     // 从首张卡开始常驻可见；选卡时构筑进度与六维一起预览。
     renderStageTraits(Game.run, pickedCard);
 
