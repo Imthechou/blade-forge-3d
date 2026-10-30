@@ -373,7 +373,7 @@ function renderSelect(body, run) {
       priorCurrent: projected ? Game.run.risk.current : null,
       peak: Math.max(Game.run.risk.peak, riskNow),
       // 第1屏配方 S1/S2 只积累风险；断刀掷骰从第2屏 S3 开始。
-      chance: isFiveScreen(Game.run) && ['S1','S2'].includes(Game.run.stageId) ? 0 : (projected ? projected.breakChanceAfter : breakChance(riskNow, Game.run.daily?.breakScale || 1)),
+      chance: isFiveScreen(Game.run) && ['S1','S2'].includes(Game.run.stageId) ? 0 : (projected ? projected.breakChanceAfter : breakChance(riskNow, (Game.run.daily?.breakScale || 1) * (1-(Game.run.workshop?.riskReduction || 0)))),
       band,
     }));
     // 选中后即时显示准确的六维增量/目标值，非选中保持紧凑趋势。
