@@ -158,6 +158,14 @@ try {
     await page.getByRole('button',{name:'快速挑战',exact:true}).click({force:true});
     await page.getByRole('button',{name:'开始自由快赛',exact:true}).click({force:true});
     await page.locator('.quick-canvas').waitFor();
+    // A renderer-state fixture may take far longer than 45 real seconds on software WebGL.
+    // Extend this isolated QA run only; player quick matches stay at their 45s rule.
+    await page.evaluate(()=>{
+      const run=globalThis.__FORGE_ARENA?.run;
+      if(!run||run.done)throw Error('Material gallery requires an active canvas');
+      run.total=Math.max(run.total,600);
+      run.remaining=Math.max(0,run.total-run.elapsed);
+    });
     const images=[];
     for(const type of ['foam','rope','wood','plastic','ice','metal']) {
       for(const state of ['intact','damage','severed']){
@@ -180,7 +188,9 @@ try {
         // Allow the existing animation scheduler to draw this precise state.
         await page.waitForTimeout(35);
         const file='materials-'+type+'-'+state+'.png';
-        await page.locator('.quick-canvas').screenshot({path:path.join(out,file)});
+        const box=await page.locator('.quick-canvas').boundingBox();
+        assert.ok(box?.width>100&&box?.height>100,`Canvas missing in ${type}/${state} fixture`);
+        await page.screenshot({path:path.join(out,file),clip:box,timeout:20000});
         images.push(file);
       }
     }
