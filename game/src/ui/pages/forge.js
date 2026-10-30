@@ -242,7 +242,7 @@ function openKnownRecipeSheet(run,cards){
   let dialog;
   const copy=run.stageId==='S1'?'材料':run.stageId==='S2'?'主工艺':'刀型';
   const nodes=cards.map(card=>el('button',{class:'btn forge-recipe-option',type:'button',
-    text:`${card.name} · ${card.rarityCn}${run.stageId==='S1'&&(!run.recipeChoiceIds||!run.recipeChoiceIds.includes(card.id))?' · 库存 '+(run.materialInventory?.[card.id]||0):''}`, 
+    text:`${card.name} · ${card.rarityCn}${run.stageId==='S1'&&(!run.recipeChoiceIds||!run.recipeChoiceIds.includes(card.id))?(run.naturalCandidateIds?.includes(card.id)?' · 本轮随机免费':' · 库存 '+(run.materialInventory?.[card.id]||0)+'份 / 确认消耗1份'):''}`, 
     onclick:()=>{
       if(Game.run!==run){dialog.close();return;}
       const result=Game.chooseRecipeCard(card.id);
@@ -372,7 +372,8 @@ function renderSelect(body, run) {
       current: riskNow,
       priorCurrent: projected ? Game.run.risk.current : null,
       peak: Math.max(Game.run.risk.peak, riskNow),
-      chance: isFiveScreen(Game.run) && Game.run.stageId==='S2' ? 0 : (projected ? projected.breakChanceAfter : breakChance(riskNow, Game.run.daily?.breakScale || 1)),
+      // 第1屏配方 S1/S2 只积累风险；断刀掷骰从第2屏 S3 开始。
+      chance: isFiveScreen(Game.run) && ['S1','S2'].includes(Game.run.stageId) ? 0 : (projected ? projected.breakChanceAfter : breakChance(riskNow, Game.run.daily?.breakScale || 1)),
       band,
     }));
     // 选中后即时显示准确的六维增量/目标值，非选中保持紧凑趋势。
@@ -416,8 +417,8 @@ function renderSelect(body, run) {
     confirmButton.disabled = !pickedCard;
     selectionStatus.classList.toggle('has-selection', !!pickedCard);
     selectionStatus.textContent = pickedCard
-      ? `预览：${pickedCard.name} · 尚未生效，确认后写入`
-      : (isFiveScreen(Game.run) && Game.run.stageId==='S2' ? '配方准备不判定断裂，已积累的风险带入锻打阶段' : '');
+      ? `预览：${pickedCard.name} · ${Game.run.materialReservation===pickedCard.id?'确认将消耗库存锻材1份':'尚未生效，确认后写入'}`
+      : (isFiveScreen(Game.run) && ['S1','S2'].includes(Game.run.stageId) ? '准备阶段不判定断裂，风险带入下一屏锻打' : '');
     // 从首张卡开始常驻可见；选卡时构筑进度与六维一起预览。
     renderStageTraits(Game.run, pickedCard);
 
