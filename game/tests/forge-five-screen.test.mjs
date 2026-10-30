@@ -78,6 +78,40 @@ test('automatic first-risk fracture is reported by the manual smelting confirmat
   assert.equal(run.assistedSteps[0].fractured,true);
   assert.equal(run.history.length,3,'support card should still be on ledger when fracture occurs');
 });
+test('auto temper and final calibration propagate their own fracture receipt, not the prior user choice',()=>{
+  const run=createRun({seed:7371,flowVersion:FORGE_FLOW_VERSION});
+  run.rng=()=>.999999;
+  confirmCard(run,run.candidates[0]);confirmCard(run,run.candidates[0]);
+  confirmCard(run,run.candidates[0]);endHammer(run);
+  assert.equal(run.stageId,'S5');
+  run.risk.current=100;run.risk.peak=100;
+  let rolls=0;
+  run.rng=()=>++rolls===1 ? .999999 : 0;
+  const temper=confirmCard(run,run.candidates[0]);
+  assert.equal(temper.fractured,true);
+  assert.equal(temper.riskCheck?.fractured,true);
+  assert.equal(run.fractureInfo.stageId,'S6');
+  assert.equal(run.assistedSteps.at(-1).stageId,'S6');
+  assert.equal(run.assistedSteps.at(-1).fractured,true);
+
+  // Separate run: S8 must succeed, automatic S9 is allowed to fracture.
+  const second=createRun({seed:7371,flowVersion:FORGE_FLOW_VERSION});
+  second.rng=()=>.999999;
+  confirmCard(second,second.candidates[0]);
+  confirmCard(second,second.candidates[0]);
+  confirmCard(second,second.candidates[0]);endHammer(second);
+  confirmCard(second,second.candidates[0]);
+  submitEdge(second,null,{skipped:true});
+  assert.equal(second.stageId,'S8');
+  second.risk.current=100;second.risk.peak=100;
+  rolls=0;second.rng=()=>++rolls===1 ? .999999 : 0;
+  const tune=confirmCard(second,second.candidates[0]);
+  assert.equal(tune.fractured,true);
+  assert.equal(tune.riskCheck?.fractured,true);
+  assert.equal(second.fractureInfo.stageId,'S9');
+  assert.equal(second.assistedSteps.at(-1).stageId,'S9');
+  assert.equal(second.assistedSteps.at(-1).fractured,true);
+});
 test('old run and daily forge still perform S2 risk check',()=>{
   for(const options of [{seed:12},{seed:12,mode:'daily'}]){
     const run=createRun(options);run.rng=()=>.999999;
