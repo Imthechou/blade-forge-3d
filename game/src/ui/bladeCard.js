@@ -74,6 +74,14 @@ export function bladeCardModel(blade, { kind = 'collection' } = {}) {
   const knifeType = KNIFE_BY_ID[src.knifeTypeId] || null;
   const stats = {};
   for (const k of STAT_KEYS) stats[k] = num(src.stats?.[k]);
+  // Old imported blades may have all six valid stats but no statMean field.
+  // Derive only the display mean; never recalculate scoring or write to saves.
+  const completeStats = STAT_KEYS.every(k => src.stats?.[k] != null && Number.isFinite(Number(src.stats[k])));
+  const storedMean = src.statMean != null && Number.isFinite(Number(src.statMean)) ? Number(src.statMean) : null;
+  const derivedMean = completeStats
+    ? Math.round((STAT_KEYS.reduce((sum,k)=>sum+stats[k],0)/STAT_KEYS.length)*100)/100
+    : null;
+  const statMean = storedMean ?? derivedMean;
 
   const traits = Array.isArray(src.traits) ? src.traits : [];
   const combos = Array.isArray(src.combos) ? src.combos : [];
@@ -136,7 +144,7 @@ export function bladeCardModel(blade, { kind = 'collection' } = {}) {
 
     /* 卡背/详情 */
     stats,
-    statMean: num(src.statMean),
+    statMean,
     allTraits: traitEntries,
     combos: combos.map((cid) => ({
       id: cid,
@@ -276,7 +284,7 @@ export function bladeCardDetail(model) {
     : [el('div', { class: 'muted tiny', text: '尚无赛事经历。带这把刀去赛事中心，胜场会写进这里。' })];
 
   return el('div', { class: 'bcv-detail' }, [
-    el('div', { class: 'section-title', text: `六维（均值 ${model.statMean || '—'}）` }),
+    el('div', { class: 'section-title', text: `六维（均值 ${model.statMean ?? '—'}）` }),
     statRail(model.stats, null, true),
 
     el('div', { class: 'section-title', text: `永久特性 ${model.traitCount}` }),

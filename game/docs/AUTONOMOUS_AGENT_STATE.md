@@ -8,7 +8,8 @@
 ## 当前状态
 
 - **PR：** #32 open Draft；main 尚未合并 V3.4。沿用 Five-Screen + Nine-stage ledger / original Three.js-PBR/GLB shader/caches/saves。改动小步提交同一 PR 分支。
-- **上一可用 SHA：** `faefa0b2`，GitHub Actions 8 项中 7 项 PASS，`Whole-game mobile UX acceptance` FAIL，运行 [#41102747136](https://github.com/Imthechou/blade-forge-3d/actions/runs/41102747136)；`game/tools/unified-ux-acceptance.mjs:54` 在 Node 作用域误写 `innerWidth` 导致 ReferenceError。其他 7 项包括 S1–S9 材质/Playwright、iPhone、WebGL、赛事、P0 视觉成功。**不可把这称作 8/8。**
+- **最近完整通过的代码 SHA：** `71e9488`，其 8/8 GitHub Actions 全部 PASS：全游戏 320/375px UX [#41105231708](https://github.com/Imthechou/blade-forge-3d/actions/runs/41105231708)、S4/S7 WebGL、P0 视觉、iPhone、空间 UI、45s 赛事、S1–S9 材质、构建。上轮的 `innerWidth` 阻塞已真正解决且没有降低 44px 阈值。
+- **本次后续小修：** 旧藏刀记录六维齐全但 `statMean` 缺失时，卡背会错误显示“均值 —”。只做只读展示均值的安全推导；原 score/原始 stats/存档/公式不改。局部工作副本 `npm run check` 通过且 `npm test` 156/156 PASS；**新提交的 8 项 CI 仍待以最新 SHA 验证**。
 - **本轮修复：** 将 Node 范围检查中的 `innerWidth` 换成经真实 `page.viewportSize` 传入的当前测试宽度 `width`，保留原 `44px` 尺寸、五按钮数量和左右边界断言，绝不降低阈值。此项提交后**待新 SHA 的完整 CI 实际完成**。
 - **已实现待细查：** S4 limited copy-on-write knife edge shaping、PNG 收藏卡 1080×1520（720×960 真实 PBR 截图）、透明图库斜向展陈、藏刀详情 3D 轻倾角、五屏收藏经济和单刀磨合；所有商用品质/实体手机体验须以截图及硬件验收为准。
 - **独立设备局限：** CI 的 Playwright Chromium/SwiftShader 是“真浏览器+软件 WebGL”，不是实体手机；不能宣称触觉/散热/真实 GPU FPS 已验证。
@@ -17,12 +18,13 @@
 
 | ID | 优先级 | 状态 | 任务和严格验收条件 | 连续失败数 |
 |---|---|---|---|---:|
-| BF-P0-01 | P0 | **已修复，待验收** | 修复 Actions 全游戏 UX Node 变量 `innerWidth`；最新 SHA 的全游戏 UX 320/375px、导出 PNG、五个按钮尺寸须 PASS，并检查 Artifact | 0 |
-| BF-P0-02 | P0 | 待执行 | 核对最新 SHA 八项 Actions 均 PASS，读日志/真实画面。失败不得仅复用旧 SHA 的成功结果；逐图审查截图，若卡面刀具偏小/失焦需修正并重新跑 | 0 |
-| BF-P1-03 | P1 | 待执行 | 商业级收藏卡构图与不同刀型材质保真；至少对 3 种刀型/不同底材，核对高清 PNG 截图、字层次、刀体可见性、旧数据兼容；不加常驻 WebGL | 0 |
+| BF-P0-01 | P0 | **完成（71e9488）** | 触控/五按钮断言没有降低标准，全游戏 UX #41105231708 PASS | 0 |
+| BF-P0-02 | P0 | **完成（71e9488）** | 8/8 Actions PASS；真实 Artifact 的 720×960 透明 PBR 画面与 1080×1520 PNG 逐图复核，斜向展陈完整、无矩形边框；320px 详情按钮两行不越界 | 0 |
+| BF-P1-03 | P1 | **进行中** | 唐刀一款已验斜向图（#41105231708），尚须至少 2 种不同刀型/材质与真正设备上的高光/边缘清晰度复核，不增加常驻 WebGL | 0 |
 | BF-P1-04 | P1 | 待执行 | S4 真形变效果的可感知性和一局内手感：对比 0/10/20 次落锤图片，检查刀刃变化、PBR 不受损、缓存释放、手机峰值运行耗时；收益有限则优化反馈而非无故扩大几何量 | 0 |
 | BF-P1-05 | P1 | 待执行 | 五屏+赛事循环的实际乐趣/数值：验证稀有材料回收节奏、工坊直选、单刀磨合是否产生不同决策；加入防伪通过的随机种子/端到端测例，仅针对已证实的问题调整 | 0 |
 | BF-P1-06 | P1 | 外部阻塞 | 真实 iOS/Android 中低端机 30/45/60fps、长局温升、触控及无障碍反馈；需要真实设备能力，不允许把 SwiftShader 结果当真机 | 0 |
+| BF-P1-08 | P1 | **本次修复，待新 CI** | 旧档六维均值仅展示层缺失时安全派生：存档、真实评分不变，需新 Node/浏览器数据一致性测试 PASS | 0 |
 | BF-P2-07 | P2 | 待执行 | 逐页删除冗余文字、审核弹窗焦点/回退、改良 320px 长文本与图鉴可读性；需实际截图支持 | 0 |
 
 ## 本轮记录
@@ -41,3 +43,10 @@
 4. 严格保证**同一 SHA**的通过结果；测试失败最多连续修复 3 次，再把失败数与证据写到任务表，转入下一安全任务。任何风险/授权阻塞不得绕过。
 5. 尽量连续推进多项任务，但每轮控制 GitHub CI 成本、变更文件数与 GPU/云运行，不反复提交空内容，不合并或自动部署正式站。
 6. 每轮结束：更新此文件的状态/优先级/失败次数/运行链接/当前 HEAD/明确下一任务（提交成功才算交接完成），在 PR #32 留下同内容摘要，不重复创建定时任务。每次自动化运行也要从本文件继续，而非重新规划全工程。
+
+## 续轮记录（2026-10-31 第二阶段）
+
+- GitHub `71e9488` 全部 8/8 Actions 完成：Build #41105231795、P0 #41105231670、WebGL #41105231814、UX #41105231708、iPhone #41105231911、Spatial #41105231991、Arena #41105231958、S1–S9 #41105231676，均 success。**CI PASS 是 GitHub CI 软件渲染，不是实体手机测试。**
+- 从 [UX Artifact #13002150029](https://github.com/Imthechou/blade-forge-3d/actions/runs/41105231708/artifacts/13002150029) 取出真实 `375-collectible-export.png` 和 `375-collectible-hires-source.webp`：原图透明背景、PNG 1080×1520，观察到高清斜向刀具占比明显高于旧版；320px 藏刀详情 5 个按钮未截断。
+- 发现真实旧存档样例卡背文字 `六维（均值 —）`，尽管六维完整。仅展示层做均值兜底、保留权威 `statMean`、0 值仍显示 0，缺失任意一维则继续为未知；补 3 个 Node 测例，本地工作副本 156/156 PASS、静态检查 0 错误。提交后等待 GitHub 新 SHA 的实际验收，**不能复用 71e 的 8/8 宣称最新 SHA 已通过**。
+- **下一轮默认先检查** 新 SHA 的 8 项 Actions 与下载工件；如果成功，继续 BF-P1-03 多刀型真实收藏卡审美验收，再做 BF-P1-04 S4 手感和性能；如果失败按 P0 优先修复，连续失败上限 3 次。
