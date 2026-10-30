@@ -89,6 +89,12 @@ try {
    await page.waitForFunction(()=>document.querySelector('.page[data-page="appraise"]')?.classList.contains('is-archive-revealed'));
    assert.equal(await page.locator('.page[data-page="appraise"] .ap-stage').isVisible(),false,'最终成品卡成为视觉主角，不与大 3D 舞台重复');
    await page.locator('.ap-archive-view3d').click();
+   // 0px 网格行在同一 click 任务中可能仍返回上一次计算样式，等下一帧完成布局。
+   await page.waitForFunction(()=>{
+     const root=document.querySelector('.page[data-page="appraise"]');
+     const stage=root?.querySelector('.ap-stage');
+     return root?.classList.contains('is-archive-3d') && stage && getComputedStyle(stage).visibility==='visible' && stage.getBoundingClientRect().height>0;
+   },null,{timeout:3500}).catch(()=>{});
    const restored=await page.locator('.page[data-page="appraise"] .ap-stage').isVisible();
    const layout=await page.evaluate(()=>{
      const root=document.querySelector('.page[data-page="appraise"]');
