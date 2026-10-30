@@ -8,6 +8,7 @@ globalThis.localStorage={
 };
 const Progress=await import('../src/core/progress.js');
 const Mastery=await import('../src/core/bladeMastery.js');
+const Formal=await import('../src/core/arenaFormal.js');
 const makeBlade=id=>({id,bladeName:'三刀测试 '+id,knifeTypeId:'folding',score:201,rarity:'rare',
   stats:{strength:70,toughness:80,sharpness:65,craft:70,design:60,spirit:80},
   traits:[],combos:[],history:[],arenaHistory:[],visualRecipe:[{id:'untouched'}]});
@@ -75,4 +76,27 @@ test('failed atomic save cannot grant any team blade experience; retry only once
   for(const id of ['A','B','C'])assert.equal(Mastery.masteryView(Progress.bladeById(id)).qualifiedMatches,1);
   assert.equal(submit('AP-retry',record).duplicate,true);
   for(const id of ['A','B','C'])assert.equal(Mastery.masteryView(Progress.bladeById(id)).qualifiedMatches,1);
+});
+
+test('official V4.1 apex match generator emits roster/round identities compatible with atomic proficiency credit',()=>{
+  start();
+  const generated=Formal.createApexMatch({blades:['A','B','C'].map(id=>Progress.bladeById(id)),seed:10112});
+  assert.equal(generated.ok,true);
+  const apex=generated.match;
+  for(let i=0;i<3;i++){
+    const round=apex.rounds[i];
+    round.status='complete';round.dispatchedBladeId=['A','B','C'][i];
+    round.result={version:'formal-v4.1',win:i!==2,composite:i===2?80:980,
+      cut:{structure:{primary:i===2?.08:.72,completed:false}},
+      projectScores:[],honors:[]};
+  }
+  assert.equal(Formal.finishApex(apex).ok,true);
+  const official={version:apex.result.version,kind:'apex',roster:apex.roster,
+    rounds:apex.result.roundsDetail,report:apex.result.report,result:apex.result};
+  assert.deepEqual(Mastery.verifiedApexBladeRounds(official).map(x=>x.bladeId),['A','B']);
+  const credit=submit(apex.id,official);
+  assert.equal(credit.error,undefined);
+  assert.equal(Mastery.masteryView(Progress.bladeById('A')).qualifiedMatches,1);
+  assert.equal(Mastery.masteryView(Progress.bladeById('B')).qualifiedMatches,1);
+  assert.equal(Mastery.masteryView(Progress.bladeById('C')).qualifiedMatches,0);
 });
