@@ -218,6 +218,19 @@ function renderReveal(rec) {
     sec('archive', [
       el('div',{class:'ap-archive-heading'},[
         el('span',{text:'专属收藏卡 · 已正式入藏'}),
+        el('button',{class:'ap-archive-export',type:'button','aria-label':'导出当前刀具的收藏卡 PNG',text:'保存卡片',onclick:async()=>{
+          const btn=root.querySelector('.ap-archive-export');
+          if(btn?.disabled)return;
+          if(btn){btn.disabled=true;btn.textContent='生成中…';}
+          try {
+            const art=root.querySelector('.ap-archive-art .blade-thumb-image');
+            const imageUrl=art?.complete&&art.naturalWidth?art.src:getStage().snapshot(540,690);
+            const {downloadCollectiblePoster}=await import('../bladeCardExport.js');
+            await downloadCollectiblePoster(bladeCardModel(Core.progress.bladeById(rec.id)||rec),imageUrl);
+            toast('收藏卡已生成，可保存图片','good');
+          }catch(err){toast(err?.message||'真实刀具截图尚未准备好，请重试','warn');}
+          finally{if(btn?.isConnected){btn.disabled=false;btn.textContent='保存卡片';}}
+        }}),
         el('button',{class:'ap-archive-view3d',type:'button',text:'欣赏 3D 成刀',onclick:()=>{
           const active=root.classList.toggle('is-archive-3d');
           // 鉴赏直接恢复原来完整的 3D 布局，避免 0 高度行在某些浏览器中不恢复。
