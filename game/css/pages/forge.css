@@ -682,3 +682,6 @@
 .page[data-page="forge"] .stage-progress:has(>.sp-dot:nth-child(5):last-child){gap:4px;}
 .page[data-page="forge"] .stage-progress:has(>.sp-dot:nth-child(5):last-child) .sp-title{font-size:10px;}
 @media(max-width:360px){.stage-badge .forge-flow-substep{max-width:135px}}
+
+.forge-specialty-cue{font-size:10px;max-width:154px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;opacity:.72;}
+.forge-specialty-cue.is-active{opacity:1;background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--accent);}
