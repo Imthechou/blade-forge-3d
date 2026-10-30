@@ -10,6 +10,7 @@ import { riskBar, statGrid, decisionCard, traitItem, rarityBadge } from '../comp
 import { icon } from '../icons.js';
 import { cardDoodle, doodleSpec } from '../cardDoodles.js';
 import { STAGES } from '../../data/stages.js';
+import { chapterState, isFiveScreen, FORGE_CHAPTERS } from '../../core/forgeChapters.js';
 import { HAMMER_TIERS } from '../../data/balance.js';
 import { tagName, BASE_TAGS, SPECIAL_TAGS } from '../../data/tags.js';
 import { CUT_TRAIT_STYLES } from '../../core/forgeTraitCuts.js';
@@ -123,8 +124,10 @@ function padFor(body) {
 function renderStageHead(run) {
   const stage = $('#forgeStage', root);
   if (!run || !stage) return;
-  const total = STAGES.length;          // 10 段（S1..S10）
+  const five=isFiveScreen(run);
+  const total=five?FORGE_CHAPTERS.length:STAGES.length;
   const idx = run.stageIndex;
+  const chapter=five?chapterState(run):null;
   const def = STAGES[idx] || {};
 
   /* ★ 阶段切换反馈：只有**阶段号真的变了**才播一次过渡。
@@ -150,8 +153,9 @@ function renderStageHead(run) {
     bar.appendChild(badge);
   }
   badge.innerHTML = '';
-  badge.appendChild(el('b', { text: String(idx + 1).padStart(2, '0') }));
-  badge.appendChild(el('span', { text: def.name || '' }));
+  badge.appendChild(el('b', { text: String(five?chapter.number:idx + 1).padStart(2, '0') }));
+  badge.appendChild(el('span', { text: five?chapter.name:(def.name || '') }));
+  if(five)badge.appendChild(el('i',{class:'forge-flow-substep',text:`${chapter.step}/${chapter.steps} · ${def.name} · ${chapter.subtitle}`}));
   // 左上角仅留阶段序号与名称；底部图形进度条承担进度说明。
   $('.stage-question', bar)?.remove();
 
@@ -164,15 +168,16 @@ function renderStageHead(run) {
   }
   prog.innerHTML = '';
   for (let i = 0; i < total; i++) {
-    const isDone = !!run.finished || i < idx;
+    const displayStage=five?FORGE_CHAPTERS[i]:STAGES[i];
+    const progressIndex=five?chapter.number-1:idx;
+    const isDone = !!run.finished || i < progressIndex;
     prog.appendChild(el('div', {
-      // ★ 类名表达式写在 class: 里（不先存局部变量）——
-      //   让 tools/audit-classes.mjs 能抽到 sp-dot / done / active 三个类名。
-      class: 'sp-dot' + (isDone ? ' done' : (i === idx ? ' active' : '')),
-      title: STAGES[i].name,
+      // 类名保持原样以复用 WebGL 舞台的原进度条布局。
+      class: 'sp-dot' + (isDone ? ' done' : (i === progressIndex ? ' active' : '')),
+      title: displayStage.name,
     }, [
       el('span', { class: 'sp-num', text: String(i + 1) }),
-      el('span', { class: 'sp-title', text: STAGES[i].name }),
+      el('span', { class: 'sp-title', text: displayStage.name }),
     ]));
     if (i < total - 1) prog.appendChild(el('div', { class: 'sp-line' }));
   }
@@ -199,8 +204,8 @@ function renderStageHead(run) {
     /* 中央浮层：给“我确实进入了下一阶段”一个可读回执 */
     stage.querySelector('.stage-advance-toast')?.remove();
     const flash = el('div', { class: 'stage-advance-toast', role: 'status', 'aria-live': 'polite' }, [
-      el('b', { text: `第 ${idx + 1} 阶段` }),
-      el('span', { text: def.name || '' }),
+      el('b', { text: five?`${chapter.number}/5`:`第 ${idx + 1} 阶段` }),
+      el('span', { text: five?`${chapter.name} · ${def.name}`:(def.name || '') }),
     ]);
     stage.appendChild(flash);
     window.setTimeout(() => flash.remove(), 1400);
@@ -321,7 +326,7 @@ function renderSelect(body, run) {
       current: riskNow,
       priorCurrent: projected ? Game.run.risk.current : null,
       peak: Math.max(Game.run.risk.peak, riskNow),
-      chance: projected ? projected.breakChanceAfter : breakChance(riskNow, Game.run.daily?.breakScale || 1),
+      chance: isFiveScreen(Game.run) && Game.run.stageId==='S2' ? 0 : (projected ? projected.breakChanceAfter : breakChance(riskNow, Game.run.daily?.breakScale || 1)),
       band,
     }));
     // 选中后即时显示准确的六维增量/目标值，非选中保持紧凑趋势。
@@ -366,7 +371,7 @@ function renderSelect(body, run) {
     selectionStatus.classList.toggle('has-selection', !!pickedCard);
     selectionStatus.textContent = pickedCard
       ? `预览：${pickedCard.name} · 尚未生效，确认后写入`
-      : '';
+      : (isFiveScreen(Game.run) && Game.run.stageId==='S2' ? '配方准备不判定断裂，已积累的风险带入锻打阶段' : '');
     // 从首张卡开始常驻可见；选卡时构筑进度与六维一起预览。
     renderStageTraits(Game.run, pickedCard);
 
