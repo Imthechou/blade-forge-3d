@@ -18,6 +18,9 @@ export function guaranteedRecipes(workshopOrLevel,unlockedIds=[]) {
   for(const tier of TIERS) {
     if(level<tier.level)continue;
     for(const stage of RECIPE_STAGES) {
+      // 稀有原材料仅从已拥有库存/历史永久解锁获得直选；工坊等级
+      // 仍提高其随机出现机会，S2 主工艺及 S4 刀型永久解锁不受影响。
+      if(stage==='S1' && !['common','fine'].includes(tier.rarity))continue;
       const selected=(BY_STAGE[stage]||[]).filter(x=>x.rarity===tier.rarity);
       for(const card of selected.slice(0,tier.count[stage]||0))ids.add(card.id);
     }
@@ -31,6 +34,7 @@ export function guaranteedRecipes(workshopOrLevel,unlockedIds=[]) {
 export function selectableRecipes(run) {
   if(!RECIPE_STAGES.includes(run?.stageId))return [];
   const allow=new Set(Array.isArray(run.recipeChoiceIds)?run.recipeChoiceIds:[]);
+  if(run.stageId==='S1')for(const [id,count] of Object.entries(run.materialInventory||{}))if(count>0)allow.add(id);
   return (BY_STAGE[run.stageId]||[]).filter(x=>allow.has(x.id));
 }
 /** 纯候选状态变更：确认以前不扣 CR、不加属性、不抽风险。 */
@@ -38,8 +42,12 @@ export function pinRecipeChoice(run,cardId) {
   if(!run||run.phase!=='select'||!run.flowVersion||!RECIPE_STAGES.includes(run.stageId))
     return {ok:false,reason:'当前阶段不能指定配方'};
   const card=CARD_BY_ID[cardId];
-  if(!card||card.stage!==run.stageId||!run.recipeChoiceIds?.includes(card.id))
+  const permanent=run.recipeChoiceIds?.includes(cardId);
+  const stocked=run.stageId==='S1'&&Number(run.materialInventory?.[cardId])>0;
+  if(!card||card.stage!==run.stageId||(!permanent&&!stocked))
     return {ok:false,reason:'尚未掌握该材料、工艺或刀型'};
   run.candidates=[card,...(run.candidates||[]).filter(c=>c.id!==card.id)].slice(0,3);
-  return {ok:true,card};
+  // 只有“库存直选”要花资源；随机出现的同一材料、永久传承配方免费。
+  run.materialReservation=stocked&&!permanent?cardId:null;
+  return {ok:true,card,requiresMaterial:!!run.materialReservation};
 }
