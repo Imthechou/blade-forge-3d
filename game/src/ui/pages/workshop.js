@@ -7,6 +7,7 @@ import * as Core from '../../core/index.js';
 import { ACHIEVEMENTS, ACHIEVEMENT_GROUPS } from '../../data/achievements.js';
 import { COMBOS } from '../../data/combos.js';
 import { KNIFE_TYPES, resolveModelId } from '../../data/knifeTypes.js';
+import { CARD_BY_ID } from '../../data/cards.js';
 import { tagName } from '../../data/tags.js';
 import { getTrait } from '../../data/traits.js';
 import { Game } from '../../app/game.js';
@@ -506,6 +507,19 @@ function renderBonuses() {
     nextBenefits.length?el('div',{class:'report-line',text:`下一级：${nextBenefits.join(' · ')}`}):null,
     el('div',{class:'report-line',text:'本次锻造：付费刷新优惠 '+Math.round(growth.discount*100)+'% · 断裂相对减免 '+Math.round(growth.riskReduction*100)+'%'}),
     el('div',{class:'muted tiny',text:'稀有度加权 '+(growth.rarity==='none'?'未开放':growth.rarity+'档')+' · 仅影响新开锻造；原有成刀属性不变'}),
+  ]));
+  const storedMaterials=Object.entries(state.materialsV1?.counts||{})
+    .map(([id,n])=>({card:CARD_BY_ID[id],count:Number(n)||0}))
+    .filter(x=>x.card?.stage==='S1'&&x.count>0)
+    .sort((a,b)=>b.count-a.count);
+  body.appendChild(el('section',{class:'card stack','aria-label':'锻材库存'},[
+    el('div',{class:'row row--between'},[
+      el('b',{text:'锻材库存'}),
+      el('span',{class:'chip',text:storedMaterials.reduce((a,x)=>a+x.count,0)+' 份'}),
+    ]),
+    el('div',{class:'muted tiny',text:'普通材料无限可用。完成有效赛事可获得稀有锻材；库存只用于指定选择，随机选材免费。'}),
+    ...(storedMaterials.length?storedMaterials.slice(0,12).map(x=>el('div',{class:'report-line',text:x.card.name+' · '+x.card.rarityCn+' ×'+x.count})):
+      [el('div',{class:'report-line',text:'暂未获得稀有锻材 · 参加赛事后可收集'})]),
   ]));
   body.appendChild(el('header',{class:'ws-heading'},[
     el('span',{class:'ws-eyebrow',text:'开锻准备'}),
