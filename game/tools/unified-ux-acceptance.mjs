@@ -48,6 +48,11 @@ try {
   await test(`${width} card buttons, archive preview and rename`,async()=>{
    await cabinet('collection');await readyThumbs('.ws-collection-grid .blade-thumb');assert.equal(await page.locator('button button').count(),0);await shot(`${width}-collection`);
    await page.locator('.bcv-open').first().click();await dialog();await page.locator('.blade-detail-stage-status').waitFor({state:'detached',timeout:90000});await fit('.blade-detail-actions');assert.ok((await page.locator('.blade-detail-sheet').innerText()).includes('轮廓开刃（贴合 97%'));await shot(`${width}-blade-detail`);
+   const workshopDownload=page.waitForEvent('download',{timeout:30000});
+   await page.getByRole('button',{name:'下载本刀真实3D外观收藏卡'}).click();
+   const workshopPng=await workshopDownload;
+   assert.match(workshopPng.suggestedFilename(),/收藏卡\.png/);
+   assert.ok(fs.statSync(await workshopPng.path()).size>50000,'Workshop uses actual full-resolution knife image');
    await page.getByRole('button',{name:'重命名',exact:true}).click();await page.getByRole('textbox',{name:'新的刀名'}).fill('霜镜 · 唐刀');await page.getByRole('button',{name:'保存刀名'}).click();await page.waitForFunction(()=>document.querySelectorAll('.sheet-mask').length===1);
    assert.equal(await page.locator('.blade-detail-sheet .sheet-title').innerText(),'霜镜 · 唐刀');await close();
    assert.equal(await page.locator('.bcv-name').first().innerText(),'霜镜 · 唐刀');
@@ -197,8 +202,15 @@ try {
    const cardRect=await card.boundingBox();const viewport=page.viewportSize();
    assert.ok(cardRect&&cardRect.width>0&&cardRect.x>=-1&&cardRect.x+cardRect.width<=viewport.width+1,'收藏卡不得横向溢出手机屏幕');
    // This is a real PNG downloaded from the live PBR image, not a placeholder knife.
+   await page.evaluate(async()=>{
+     const s=(await import('/src/render/index.js')).getStage();
+     const original=s.snapshot.bind(s);
+     s.snapshot=(w,h)=>{window.__QA_EXPORT_RESOLUTION=[w,h];return original(w,h);};
+   });
    const exported=page.waitForEvent('download',{timeout:30000});
    await page.locator('.ap-archive-export').click();
+   assert.deepEqual(await page.evaluate(()=>window.__QA_EXPORT_RESOLUTION),[720,960],
+     'Appraisal must render at export resolution rather than upscaling the 288px thumbnail');
    const download=await exported;
    assert.match(download.suggestedFilename(),/锻刀大赛.*收藏卡\.png/);
    const saved=await download.path();
