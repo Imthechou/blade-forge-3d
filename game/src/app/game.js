@@ -78,6 +78,7 @@ class Session {
          `rollCandidates` 已改为「只提升已解锁卡的权重、绝不缩减卡池」，
          所以旧档的 218 张内容不会被拿走（详见 core/cards.js 注释）。 */
       unlockedCardIds: Array.isArray(save.unlockedCardIds) ? save.unlockedCardIds : null,
+      materialInventory: save.materialsV1?.counts || {}, 
       workshopSnapshot: Core.arenaV41Growth.workshopSnapshot(save),
       specialistSnapshot: Core.arenaV41Specialties.specialtySnapshot(save,save.forgeBonus?.equippedId),
     });
@@ -347,8 +348,18 @@ class Session {
   confirmCard(card) {
     if (!this.run || !card) return null;
     const before = this.run.stageId;
+    const reservation=before==='S1'&&this.run.materialReservation===card.id;
+    if(reservation){
+      // 不得对不在当前选择中的卡扣料；持久化失败时原局状态完全不变。
+      if(this.run.phase!=='select'||!this.run.candidates?.some(c=>c.id===card.id))
+        return {ok:false,reason:'这份材料已不在当前候选中'};
+      const paid=Core.progress.spendForgeMaterial(card.id);
+      if(!paid.ok)return paid;
+      this.run.materialInventory[card.id]=paid.remaining;
+    }
     const res = Core.forge.confirmCard(this.run, card);
     if (!res.ok) return res;
+    this.run.materialReservation=null;
     /* ★ rework T11：S1 首次确认卡后锁定加成一—本局不能再换。 */
     if (before === 'S1') Core.forgeBonuses.lockBonus(this.run);
     this.preview = null;
@@ -393,7 +404,7 @@ class Session {
     }
     Object.assign(this.run, { cr: paid.cr, rerollCountByStage: draft.rerollCountByStage,
       rerollTotal: draft.rerollTotal, paidRerollsUsed: draft.paidRerollsUsed, candidates: draft.candidates,
-      specialist: draft.specialist });
+      specialist: draft.specialist,materialReservation:null });
     bus.emit(EVENTS.CR_CHANGED, { cr: paid.cr });
     this.preview = null; // the previous candidate is no longer in this pool
     this.syncStage();
