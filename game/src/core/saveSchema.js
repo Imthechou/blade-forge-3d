@@ -6,6 +6,7 @@ import { makeQuickRecords } from './quickChallengeRecords.js';
 import { makeWorkshopV41, normalizeWorkshopV41, migrateVerifiedLegacyGrowth } from './arenaV41Growth.js';
 import { makeCareerV41, normalizeCareerV41 } from './arenaCareerV41.js';
 import { normalizeBladeMastery } from './bladeMastery.js';
+import { makeMaterialsV1,normalizeMaterialsV1 } from './forgeMaterials.js';
 
 /**
  * 设置项默认值（唯一真源）。
@@ -63,6 +64,7 @@ export function makeSave() {
     showcasePinned: false, // ★ 玩家是否**手动**点过「设为代表作」（false = 首页自动用最高分那把）
     teamArena: { version: 1, active: null, history: [] }, // 可选原型，独立于旧单刀记录
     workshopV41: makeWorkshopV41(),
+    materialsV1: makeMaterialsV1(), // 稀有材料可消耗库存，普通锻材无限供给
     arenaCareerV41: makeCareerV41(), // V4.1 workshop XP and idempotent rewards
     quickChallengeRecords: makeQuickRecords(), // provisional：紧凑个人纪录，不保存逐局日志
     nationalRuns: { version: 1, nextSerial: 1, active: null, history: [] }, // provisional 全国赛连赛游标
@@ -136,6 +138,7 @@ export function normalizeSave(raw) {
   const out = { ...defaults, ...src };
   out.cr = count(src.cr, defaults.cr);
   out.workshopV41 = normalizeWorkshopV41(src.workshopV41);
+  out.materialsV1 = normalizeMaterialsV1(src.materialsV1);
   out.arenaCareerV41 = normalizeCareerV41(src.arenaCareerV41);
   out.createdAt = count(src.createdAt, defaults.createdAt);
   for (const key of ['collection', 'fractured']) {
