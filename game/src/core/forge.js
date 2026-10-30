@@ -27,6 +27,7 @@ import * as Traits from './traits.js';
 import * as Combos from './combos.js';
 import * as Hammer from './hammer.js';
 import * as Edge from './edge.js';
+import { guaranteedRecipes } from './forgeRecipeAccess.js';
 
 export const PHASE = Object.freeze({
   SELECT: 'select',      // 选卡
@@ -102,6 +103,7 @@ export function createRun({
        如果只在 createRun 时传一次，重铸后解锁权重就静默消失。
        只存 id 数组，不存 UI 状态，不写回存档。 */
     unlockedCardIds: Array.isArray(unlockedCardIds) ? unlockedCardIds.slice() : [],
+    recipeChoiceIds: flowVersion===FORGE_FLOW_VERSION ? guaranteedRecipes(workshopSnapshot,unlockedCardIds) : [],
     createdAt: Date.now(),
   };
 
