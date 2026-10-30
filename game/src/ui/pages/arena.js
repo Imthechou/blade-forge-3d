@@ -1188,6 +1188,7 @@ function renderChallengeReport() {
     el('div', { class: 'quick-result-heading' }, [el('div', { class: 'quick-grade', text: r.grade }), el('div', {}, [el('h2', { text: r.reason==='manual' ? '提前收刀 · 本局成绩' : run.daily ? '每日挑战完成' : '切割挑战完成' }), el('p', { text: `${run.blade.name} · ${r.route} → ${r.finale}` })]), el('div', { class: 'quick-total' }, [el('small', { text: '赛事得分' }), el('b', { class: 'mono', text: String(r.score).padStart(4, '0') }), el('span', { text: 'PTS' })])]),
     stats,
     el('div', { class: 'quick-reward' }, [el('span', { text: r.reason==='manual' ? '主动结束 · 无奖励' : settled ? '信用点结算' : '信用点未确认到账' }), el('b', { text: r.reason==='manual' ? '0 CR' : settled ? `+${settlement.settledReward} CR` : `本局奖励 ${r.reward} CR（未确认到账）` })]),
+    settled && settlement.materialDrop ? el('div',{class:'quick-settlement-note',role:'status',text:'获得稀有锻材：'+settlement.materialDrop.name+' ×'+settlement.materialDrop.count+' · 可在工坊指定选材'}) : null,
     el('div', { class: 'quick-settlement-note', role: 'status', text: settlementNote }),
     el('div', { class: 'quick-report-actions' }, [
       retryable ? el('button', { class: 'btn btn--primary', text: '重试结算', onclick: () => {
