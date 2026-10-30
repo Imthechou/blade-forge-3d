@@ -217,6 +217,8 @@ function renderReveal(rec) {
         el('span',{text:'专属收藏卡 · 已正式入藏'}),
         el('button',{class:'ap-archive-view3d',type:'button',text:'欣赏 3D 成刀',onclick:()=>{
           const active=root.classList.toggle('is-archive-3d');
+          // 鉴赏直接恢复原来完整的 3D 布局，避免 0 高度行在某些浏览器中不恢复。
+          root.classList.toggle('is-archive-revealed',!active);
           const button=root.querySelector('.ap-archive-view3d');
           if(button)button.textContent=active?'返回收藏卡':'欣赏 3D 成刀';
           if(active){try{getStage().resize();}catch(_){} }
