@@ -12,6 +12,7 @@ import { cardDoodle, doodleSpec } from '../cardDoodles.js';
 import { STAGES } from '../../data/stages.js';
 import { chapterState, isFiveScreen, FORGE_CHAPTERS, forgeStageStatDelta } from '../../core/forgeChapters.js';
 import { directionOf } from '../../data/cards.js';
+import { selectableRecipes } from '../../core/forgeRecipeAccess.js';
 import { specialtyFlowCue } from '../../core/arenaV41Specialties.js';
 import { HAMMER_TIERS } from '../../data/balance.js';
 import { tagName, BASE_TAGS, SPECIAL_TAGS } from '../../data/tags.js';
@@ -167,6 +168,18 @@ function renderStageHead(run) {
     specialistNode.title=spec.effect;
     specialistNode.classList.toggle('is-active',spec.active);
   }else specialistNode?.remove();
+  // 已掌握的配方可直选，但随机卡池、风险与其他锻造步骤不删改。
+  bar.querySelector('.forge-recipe-direct')?.remove();
+  const learned=five&&run.phase==='select'?selectableRecipes(run):[];
+  if(learned.length){
+    const label=run.stageId==='S1'?'选材料':run.stageId==='S2'?'选主工艺':'选刀型';
+    bar.appendChild(el('button',{class:'chip forge-recipe-direct',type:'button',
+      'aria-label':label+'（工坊已掌握）',
+      text:label,
+      onclick:()=>openKnownRecipeSheet(run,learned),
+    }));
+  }
+
   // 左上角仅留阶段序号与名称；底部图形进度条承担进度说明。
   $('.stage-question', bar)?.remove();
 
@@ -221,6 +234,28 @@ function renderStageHead(run) {
     stage.appendChild(flash);
     window.setTimeout(() => flash.remove(), 1400);
   }
+}
+
+/** 只允许本局已掌握的配方卡，不购买不消耗；选中后仍需二次确认。 */
+function openKnownRecipeSheet(run,cards){
+  if(run!==Game.run||run.phase!=='select')return;
+  let dialog;
+  const copy=run.stageId==='S1'?'材料':run.stageId==='S2'?'主工艺':'刀型';
+  const nodes=cards.map(card=>el('button',{class:'btn forge-recipe-option',type:'button',
+    text:`${card.name} · ${card.rarityCn}`,
+    onclick:()=>{
+      if(Game.run!==run){dialog.close();return;}
+      const result=Game.chooseRecipeCard(card.id);
+      if(!result.ok){toast(result.reason||'此配方暂不可指定','warn');return;}
+      dialog.close();
+      render();
+      toast('已指定'+copy+'：'+card.name,'good');
+    },
+  }));
+  dialog=sheet({title:'工坊已掌握的'+copy,body:el('div',{class:'stack forge-recipe-sheet'},[
+    el('p',{class:'muted tiny',text:'本次可直接指定，下次仍可使用。未掌握的卡牌依然可能随机出现。'}),
+    ...nodes,
+  ])});
 }
 
 /**
