@@ -64,6 +64,31 @@ try {
    await page.locator('.dcard-more').first().click();await dialog();await shot(`${width}-card-detail`);await close();
    await page.locator('.stage-traits').click();await dialog();await shot(`${width}-build`);await close();
   });
+  await test(`${width} real appraisal collectible identity card`,async()=>{
+   await page.evaluate(async()=>{
+     const [gameMod,routerMod,coreMod]=await Promise.all([
+       import('/src/app/game.js'),import('/src/ui/router.js'),import('/src/core/index.js')
+     ]);
+     const Game=gameMod.default, router=routerMod.default, Core=coreMod;
+     const saved=Core.progress.collection()[0];
+     const rec=JSON.parse(JSON.stringify(saved));
+     rec._archived=true;rec.canEnterArena=true;
+     rec.scoreDetail={mean:100,baseMult:1,specialMult:1,peakMult:1,breakdown:{base:[],special:[]}};
+     rec.riskPeak=rec.riskPeak||12;rec.riskCurrent=rec.riskCurrent||12;
+     rec.combos=rec.combos||[];rec.traits=rec.traits||[];
+     rec.hammerCount=10;rec.hammerTierName='稳锻';
+     Game.record=rec;Game.run=null;
+     router.go('appraise');
+   });
+   const card=page.locator('.ap-archive-card .blade-card-v2');
+   await card.waitFor({timeout:30000});
+   await page.locator('.ap-archive-card').scrollIntoViewIfNeeded();
+   await page.waitForFunction(()=>{const image=document.querySelector('.ap-archive-card .blade-thumb-image');return image?.complete && image.naturalWidth>0;},null,{timeout:90000});
+   assert.equal(await page.locator('.ap-archive-card .bcv-name').innerText(),'霜镜 · 唐刀');
+   assert.ok(await page.locator('.ap-archive-card .bcv-score').isVisible());
+   await fit('.ap-archive-card');
+   await shot(`${width}-appraisal-collectible`);
+  });
   await test(`${width} loadout preview + pause focus + real cutting input`,async()=>{
    await page.evaluate(async()=>(await import('/src/ui/pages/arena.js')).openTournament());await readyThumbs('.arena-loadout .blade-thumb');await shot(`${width}-arena`);
    await page.getByRole('button',{name:'更换参赛刀'}).click();await dialog();await shot(`${width}-loadout`);await close();
