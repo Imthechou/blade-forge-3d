@@ -52,8 +52,12 @@ export function renderHammerV4({body,run,stage,Game,getStage,router,render}) {
       el('span',{text:'下一锤 +'+nextGain.toFixed(1)+' 强度'}),
       el('span',{class:chance>=.15?'hammer-risk-hot':'',text:'断裂 '+(chance*100).toFixed(1)+'%'})
     ]);
-    caption.textContent=strike?.tierUp?'强化升级 · '+Hammer.tierName(strike.tierUp):
+    const feedback=strike?.tierUp?'强化升级 · '+Hammer.tierName(strike.tierUp):
       h.count<10?'前十锤安全 · 自由挥锤':'越锤越强，也越危险';
+    const shapeCount=run.shapeProfile?.marks?.length||0;
+    caption.textContent=run.flowVersion==='five-screen-v1'
+      ? feedback+` · 刀缘微调 ${Math.min(24,shapeCount)}/24`
+      : feedback;
     stage.classList.toggle('hammer-is-risky',run.risk.current>=60);
   }
   hit.addEventListener('click',e=>{
