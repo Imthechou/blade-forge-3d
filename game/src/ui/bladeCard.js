@@ -20,6 +20,7 @@
 import { el } from './dom.js';
 import { rarityBadge, statRail } from './components.js';
 import { STAT_KEYS, STAT_META } from '../data/balance.js';
+import { masteryView } from '../core/bladeMastery.js';
 import { KNIFE_BY_ID, KNIFE_BY_MODEL } from '../data/knifeTypes.js';
 import { getTrait } from '../data/traits.js';
 import { COMBOS } from '../data/combos.js';
@@ -121,6 +122,8 @@ export function bladeCardModel(blade, { kind = 'collection' } = {}) {
 
     /* 价值 */
     score: Math.round(num(src.score)),
+    favorite: src.favorite === true,
+    mastery: masteryView(src),
     rarity: src.rarity || 'common',
     rarityName: src.rarityName || null,
     rarityTone: RARITY_TONE[src.rarity] || 'common',
@@ -211,6 +214,9 @@ export function bladeCard(model, {
   const artNode = el('div', { class: 'bcv-art', 'aria-hidden': 'true' });
   if (art) artNode.appendChild(art);
 
+  const masteryChip = model.mastery.tier > 0
+    ? el('span', {class:'bcv-mastery', text:`${model.mastery.name} · ${model.mastery.projectName} +${Math.round(model.mastery.bonus*100)}%`})
+    : null;
   const honorChip = model.honors.some((h) => h.champion)
     ? el('span', { class: 'bcv-honor', text: '冠军' })
     : model.arenaWins > 0 ? el('span', { class: 'bcv-honor', text: `${model.arenaWins} 胜` }) : null;
@@ -218,6 +224,7 @@ export function bladeCard(model, {
   const face = el(tag, onOpen ? {...props, class:'bcv-open'} : props, [
     el('div', { class: 'bcv-top' }, [
       rarityBadge(model.rarity, model.rarityName),
+      model.favorite ? el('span', {class:'bcv-favorite',title:'已珍藏',text:'★'}) : null,
       honorChip,
       actionLabel ? el('span', {
         class: 'bcv-action',
@@ -232,6 +239,7 @@ export function bladeCard(model, {
          再写一次 `${knifeTypeName} · ${quality}` 就会在卡面重复同名。
          只有刀名里没有刀型词时才补刀型，避免「马来剑 / 马来剑 · B」。 */
       el('div', { class: 'bcv-sub', text: sublineOf(model) }),
+      masteryChip,
       compact ? null : el('div', { class: 'bcv-traits' }, model.coreTraits.length
         ? model.coreTraits.map((t) => el('span', { class: 'bcv-trait', text: t.name }))
         : [el('span', { class: 'bcv-trait is-empty', text: '无核心特性' })]),
@@ -282,6 +290,14 @@ export function bladeCardDetail(model) {
     el('div', { class: 'section-title', text: '隐藏连携' }),
     el('div', { class: 'report-line', text: model.combos.length ? model.combos.map((c) => c.name).join('、') : '无' }),
 
+    el('div', { class: 'section-title', text: '实战磨合' }),
+    line('当前阶段', `${model.mastery.name} · ${model.mastery.projectName} +${Math.round(model.mastery.bonus*100)}%`),
+    line('有效参赛', model.mastery.nextRequired === null
+      ? `${model.mastery.qualifiedMatches} 场 · 已达到最高磨合` : `${model.mastery.qualifiedMatches} / ${model.mastery.nextRequired} 场`),
+    el('div', {class:'bcv-mastery-track',role:'progressbar','aria-label':'名刀磨合进度',
+      'aria-valuenow':Math.min(5,model.mastery.qualifiedMatches),'aria-valuemin':0,'aria-valuemax':5},[
+      el('i',{style:{width:`${Math.min(100,model.mastery.qualifiedMatches/5*100)}%`}}),
+    ]),
     el('div', { class: 'section-title', text: '赛事经历' }),
     ...honorRows,
     line('参赛场次', model.arenaMatches),
@@ -325,6 +341,7 @@ export function compareModels(models) {
       best: pickIndex(models, (m) => m.stats[key]),
     });
   }
+  rows.push({ label:'实战磨合', values:models.map(m=>`${m.mastery.name} ${m.mastery.projectName} +${Math.round(m.mastery.bonus*100)}%`),best:null });
   rows.push({
     label: '专属特性',
     values: models.map((m) => (m.coreTraits.length ? m.coreTraits.map((t) => t.name).join('、') : '—')),
