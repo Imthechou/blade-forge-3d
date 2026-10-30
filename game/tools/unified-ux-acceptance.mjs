@@ -89,7 +89,15 @@ try {
    await page.waitForFunction(()=>document.querySelector('.page[data-page="appraise"]')?.classList.contains('is-archive-revealed'));
    assert.equal(await page.locator('.page[data-page="appraise"] .ap-stage').isVisible(),false,'最终成品卡成为视觉主角，不与大 3D 舞台重复');
    await page.locator('.ap-archive-view3d').click();
-   assert.equal(await page.locator('.page[data-page="appraise"] .ap-stage').isVisible(),true,'玩家可返回 3D 鉴赏');
+   const restored=await page.locator('.page[data-page="appraise"] .ap-stage').isVisible();
+   const layout=await page.evaluate(()=>{
+     const root=document.querySelector('.page[data-page="appraise"]');
+     const stage=root.querySelector('.ap-stage');const rect=stage.getBoundingClientRect();
+     return {classes:root.className,inlineRows:root.style.gridTemplateRows,computedRows:getComputedStyle(root).gridTemplateRows,
+       stageVisibility:getComputedStyle(stage).visibility,stageDisplay:getComputedStyle(stage).display,
+       rect:{width:rect.width,height:rect.height},stageMinHeight:stage.style.minHeight};
+   });
+   assert.equal(restored,true,'玩家可返回 3D 鉴赏：'+JSON.stringify(layout));
    await page.locator('.ap-archive-view3d').click();
    const cardRect=await card.boundingBox();const viewport=page.viewportSize();
    assert.ok(cardRect&&cardRect.width>0&&cardRect.x>=-1&&cardRect.x+cardRect.width<=viewport.width+1,'收藏卡不得横向溢出手机屏幕');
