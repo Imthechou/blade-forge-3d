@@ -9,6 +9,7 @@
 
 import { el, $, clear, mount, countUp, sheet, toast } from '../dom.js';
 import { qualitySeal, statRail, traitItem } from '../components.js';
+import { bladeCardModel, bladeCard, bladeCardDetail } from '../bladeCard.js';
 /* ★ rework T13.1：鉴定页也读**同一份**成刀展示模型与卡片，
    不再自己拼一套（否则同一把刀在鉴定页与藏刀阁长得不一样）。 */
 import { resultView as edgeResultView } from '../../core/edge.js';
@@ -158,6 +159,8 @@ function renderReveal(rec) {
   scoreEl = el('div', { class: 'ap-stat-v is-score', text: '—' });
   const riskBand = Core.risk.band(rec.riskPeak);
   const edgeView = edgeResultView(rec.edge);
+  const archiveArt = el('div',{class:'blade-thumb ap-archive-art','aria-label':'当前作品的真实刀具图像'});
+  const archiveModel=bladeCardModel(rec,{kind:'appraise'});
   mount(body, [
     sec('top', [
       el('div', { class: 'ap-head' }, [
@@ -207,7 +210,12 @@ function renderReveal(rec) {
     /* ★ rework T13.3 最后一步：收藏卡/档案。
        这里直接渲染**共用收藏卡**（卡面：刀具主视觉 + 名称/稀有度/评分 + 核心特性），
        玩家在鉴定页看到的卡，与入藏后在藏刀阁看到的是同一个组件、同一份数据。 */
-    sec('archive', [el('div', { class: 'ap-archive-receipt', text: rec.canEnterArena ? '✓ 已收录藏刀阁' : '✓ 已保存鉴定记录' })]),
+    sec('archive', [
+      el('div',{class:'ap-archive-heading',text:'专属收藏卡 · 已正式入藏'}),
+      el('div',{class:'ap-archive-card'},[
+        bladeCard(archiveModel,{art:archiveArt,onOpen:()=>sheet({title:rec.bladeName||'名刀档案',body:bladeCardDetail(bladeCardModel(Core.progress.bladeById(rec.id)||rec))})}),
+      ]),
+    ]),
     freshSection(rec),
 
   ]);
@@ -498,6 +506,18 @@ export function enter() {
     if (s.view) s.view('forge', { duration: 0 });
     if (s.autoRotate) s.autoRotate(false);
     if (s.resize) s.resize();
+    // 复用鉴定页已加载的真实 3D 舞台截图，避免再建一个并行 WebGL 场景。
+    const art=root.querySelector('.ap-archive-art');
+    if (art && typeof s.snapshot==='function' && epoch===entryEpoch) {
+      try {
+        const data=s.snapshot(288,346);
+        if(data && typeof data==='string' && data.startsWith('data:image/')){
+          const pic=el('img',{class:'blade-thumb-image',alt:`${rec.bladeName||'成刀'}的真实档案外观`});
+          pic.src=data;
+          art.replaceChildren(pic);
+        }
+      }catch(err){console.warn('[appraise] 收藏卡截图暂不可用',err);}
+    }
   };
   boot();
 
