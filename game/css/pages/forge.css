@@ -683,6 +683,18 @@
 .page[data-page="forge"] .stage-progress:has(>.sp-dot:nth-child(5):last-child) .sp-title{font-size:10px;}
 @media(max-width:360px){.stage-badge .forge-flow-substep{max-width:135px}}
 
+/* 320–374px: the long chapter subtitle used to push recipe/skill chips offscreen.
+   Keep the full operation detail in the badge title; never clip clickable chips. */
+@media (max-width:374px) {
+  .page[data-page="forge"] .stage-chipbar { flex-wrap:wrap; align-content:flex-start; gap:5px; }
+  .page[data-page="forge"] .stage-badge { flex:0 1 auto; min-width:0; max-width:100%; overflow:hidden; }
+  .page[data-page="forge"] .stage-badge > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .page[data-page="forge"] .stage-traits { flex:0 1 auto; max-width:100%; margin-left:0; }
+  .page[data-page="forge"] .forge-specialty-cue { flex:0 1 auto; min-width:0; max-width:86px; }
+  .page[data-page="forge"] .forge-recipe-direct { flex:0 0 auto; margin-left:0; }
+}
+
+
 .forge-specialty-cue{font-size:10px;max-width:154px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;opacity:.72;}
 .forge-specialty-cue.is-active{opacity:1;background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--accent);}
 
