@@ -223,8 +223,15 @@ function renderReveal(rec) {
           if(btn?.disabled)return;
           if(btn){btn.disabled=true;btn.textContent='生成中…';}
           try {
-            const art=root.querySelector('.ap-archive-art .blade-thumb-image');
-            const imageUrl=art?.complete&&art.naturalWidth?art.src:getStage().snapshot(540,690);
+            // The on-card image is intentionally tiny (288×346) for fast UI.
+            // Export must render a fresh high-resolution PBR frame only on demand.
+            const stage=getStage();
+            try { await stage.viewer?._compilePromise; } catch (_) { /* fall back below */ }
+            let imageUrl=stage.snapshot(720,960);
+            if(!imageUrl?.startsWith('data:image/')){
+              const art=root.querySelector('.ap-archive-art .blade-thumb-image');
+              imageUrl=art?.complete&&art.naturalWidth?art.src:null;
+            }
             const {downloadCollectiblePoster}=await import('../bladeCardExport.js');
             await downloadCollectiblePoster(bladeCardModel(Core.progress.bladeById(rec.id)||rec),imageUrl);
             toast('收藏卡已生成，可保存图片','good');
