@@ -28,8 +28,8 @@ import * as ForgeBonuses from './forgeBonuses.js';
 import * as V41Growth from './arenaV41Growth.js';
 import * as V41Specialties from './arenaV41Specialties.js';
 import * as CareerV41 from './arenaCareerV41.js';
-import { careerRewardPlan, isV41Match, effectivePrimary } from './arenaV41Rewards.js';
-import { normalizeBladeMastery, creditBladeMastery } from './bladeMastery.js';
+import { careerRewardPlan, isV41Match } from './arenaV41Rewards.js';
+import { normalizeBladeMastery, creditBladeMastery, qualifyingFormalMatch } from './bladeMastery.js';
 import * as CodexCatalog from '../data/codexCatalog.js';
 import { COUNTED_CATEGORIES } from '../data/codexCatalog.js';
 import { commitSave } from './saveTransaction.js';
@@ -555,7 +555,7 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
     if (blade) {
       (blade.arenaHistory ||= []).push(JSON.parse(JSON.stringify(entry)));
       // 只认结构目标确实有进展的 V4.1 正式赛；不靠重复战报或单纯分数刷经验。
-      if (v41 && effectivePrimary(matchRecord)>=.20) creditBladeMastery(blade);
+      if (v41 && qualifyingFormalMatch(matchRecord,tier)) creditBladeMastery(blade);
       /* ★ rework T12：把分项成绩写进**每把刀的个人纪录**。
 
          要修什么：改造前赛事只知道“整场合成分”，
