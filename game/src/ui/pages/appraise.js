@@ -62,6 +62,8 @@ export function render() {
   if (!body) return;
   clear(body);
   clear(actions);
+  root.classList.remove('is-archive-revealed');
+  root.dataset.revealComplete='0';
   actions.classList.remove('ap-actions--try');
   scoreEl = null;
 
@@ -211,7 +213,16 @@ function renderReveal(rec) {
        这里直接渲染**共用收藏卡**（卡面：刀具主视觉 + 名称/稀有度/评分 + 核心特性），
        玩家在鉴定页看到的卡，与入藏后在藏刀阁看到的是同一个组件、同一份数据。 */
     sec('archive', [
-      el('div',{class:'ap-archive-heading',text:'专属收藏卡 · 已正式入藏'}),
+      el('div',{class:'ap-archive-heading'},[
+        el('span',{text:'专属收藏卡 · 已正式入藏'}),
+        el('button',{class:'ap-archive-view3d',type:'button',text:'欣赏 3D 成刀',onclick:()=>{
+          const active=root.classList.toggle('is-archive-3d');
+          const button=root.querySelector('.ap-archive-view3d');
+          if(button)button.textContent=active?'返回收藏卡':'欣赏 3D 成刀';
+          if(active){try{getStage().resize();}catch(_){} }
+          body.scrollTop=0;
+        }}),
+      ]),
       el('div',{class:'ap-archive-card'},[
         bladeCard(archiveModel,{art:archiveArt,onOpen:()=>sheet({title:rec.bladeName||'名刀档案',body:bladeCardDetail(bladeCardModel(Core.progress.bladeById(rec.id)||rec))})}),
       ]),
@@ -521,6 +532,7 @@ export function enter() {
         }
       }catch(err){console.warn('[appraise] 收藏卡截图暂不可用',err);}
     }
+    if(root.dataset.revealComplete==='1')focusArchiveCard();
   };
   boot();
 
@@ -532,8 +544,20 @@ export function leave() {
   ++entryEpoch;
   for (const t of timers) clearTimeout(t);
   timers = [];
+  root?.classList.remove('is-archive-revealed','is-archive-3d');
   const s = getStage();
   if (s && s.autoRotate) s.autoRotate(false);
+}
+
+/** 结算因果链播放完毕才聚焦真正的收藏奖励；原始六维仍可向下滚动回看。 */
+function focusArchiveCard(){
+  if(!root||!body||root.classList.contains('is-archive-revealed'))return;
+  const archive=body.querySelector('.ap-sec[data-step="archive"]');
+  if(!archive)return;
+  body.prepend(archive);
+  root.classList.add('is-archive-revealed');
+  root.classList.remove('is-archive-3d');
+  body.scrollTop=0;
 }
 
 function play(reduce, rec) {
@@ -568,6 +592,9 @@ function play(reduce, rec) {
 /** After the sequence, the real score becomes the work's permanent summary. */
 function finishReveal() {
   $('.ap-skip', root)?.remove();
+  root.dataset.revealComplete='1';
+  // 只有刀具截图准备好后才切换，避免截图时 WebGL 画布被折叠。
+  if(root.querySelector('.ap-archive-art img'))focusArchiveCard();
   const score = $('.ap-final-score', root);
   const heading = $('.ap-sec[data-step="top"]', root);
   if (score && heading && score.parentElement !== heading) heading.appendChild(score);
