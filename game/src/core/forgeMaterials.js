@@ -22,7 +22,7 @@ export function normalizeMaterialsV1(raw){
   }
   const receipts=raw?.receipts&&typeof raw.receipts==='object'&&!Array.isArray(raw.receipts)?raw.receipts:{};
   for(const [key,v] of Object.entries(receipts)){
-    if(key.length<160 && typeof key==='string' && key && typeof v==='string' && ownedId(v))out.receipts[key]=v;
+    if(key.length<160 && typeof key==='string' && key && typeof v==='string' && (ownedId(v)||(v.startsWith('none:')&&ownedId(v.slice(5)))))out.receipts[key]=v;
   }
   return out;
 }
@@ -51,14 +51,18 @@ export function grantMaterial(save,receipt,tier='school'){
     return {ok:false,reason:'掉落事件无效'};
   save.materialsV1=normalizeMaterialsV1(save.materialsV1);
   const inv=save.materialsV1;
-  if(inv.receipts[receipt])return {ok:true,duplicate:true,cardId:inv.receipts[receipt],credited:0};
+  if(inv.receipts[receipt]){
+    const prior=inv.receipts[receipt];
+    return {ok:true,duplicate:true,cardId:prior.startsWith('none:')?prior.slice(5):prior,credited:0};
+  }
   const card=materialDropFor(receipt,tier);
   if(!card)return {ok:false,reason:'材料池为空'};
   const current=stockedCount(save,card.id);
   const total=Object.values(inv.counts).reduce((a,b)=>a+b,0);
   const credited=current>=MAX_PER||total>=MAX_ALL?0:1;
   if(credited)inv.counts[card.id]=current+1;
-  inv.receipts[receipt]=card.id;
+  // 满仓也记录已处理事件，防止事后消耗库存又拿同一局补领奖。
+  inv.receipts[receipt]=credited?card.id:'none:'+card.id;
   return {ok:true,cardId:card.id,name:card.name,credited};
 }
 /** Save-level decrement; allow only real S1 stocked material, never negative. */
