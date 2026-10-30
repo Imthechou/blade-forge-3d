@@ -211,7 +211,7 @@ try {
    await page.evaluate(async()=>{
      const s=(await import('/src/render/index.js')).getStage();
      const original=s.snapshot.bind(s);
-     s.snapshot=(w,h)=>{window.__QA_EXPORT_RESOLUTION=[w,h];return original(w,h);};
+     s.snapshot=(w,h)=>{window.__QA_EXPORT_RESOLUTION=[w,h];const data=original(w,h);window.__QA_EXPORT_HIRES=data;return data;};
    });
    const exported=page.waitForEvent('download',{timeout:30000});
    await page.locator('.ap-archive-export').click();
@@ -225,6 +225,11 @@ try {
    assert.equal(image.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
    assert.equal(image.readUInt32BE(16),1080);
    assert.equal(image.readUInt32BE(20),1520);
+   const hiResSource=await page.evaluate(()=>window.__QA_EXPORT_HIRES);
+   assert.ok(hiResSource?.startsWith('data:image/'),'Capture must be from the real PBR renderer');
+   const ext=hiResSource.startsWith('data:image/webp')?'webp':'png';
+   fs.writeFileSync(path.join(out,`${width}-collectible-hires-source.${ext}`),
+     Buffer.from(hiResSource.split(',')[1],'base64'));
    // Upload the *actual downloaded poster* so visual reviewers can inspect its PBR knife,
    // typography and composition, not just a screenshot of the download button.
    fs.copyFileSync(saved,path.join(out,`${width}-collectible-export.png`));
