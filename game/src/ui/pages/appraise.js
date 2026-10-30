@@ -62,7 +62,10 @@ export function render() {
   if (!body) return;
   clear(body);
   clear(actions);
-  root.classList.remove('is-archive-revealed');
+  root.classList.remove('is-archive-revealed','is-archive-3d');
+  root.style.gridTemplateRows='';
+  const stageEl=root.querySelector('.ap-stage');
+  if(stageEl){stageEl.style.visibility='';stageEl.style.minHeight='';}
   root.dataset.revealComplete='0';
   actions.classList.remove('ap-actions--try');
   scoreEl = null;
@@ -219,6 +222,10 @@ function renderReveal(rec) {
           const active=root.classList.toggle('is-archive-3d');
           // 鉴赏直接恢复原来完整的 3D 布局，避免 0 高度行在某些浏览器中不恢复。
           root.classList.toggle('is-archive-revealed',!active);
+          // 使用明确的布局尺寸恢复 WebGL：仅切 class 时 Safari/Chromium 的零高 grid 行偶发不恢复。
+          root.style.gridTemplateRows=active?'minmax(160px,1.1fr) minmax(0,1fr) auto':'0 minmax(0,1fr) auto';
+          const stage=root.querySelector('.ap-stage');
+          if(stage){stage.style.visibility=active?'visible':'hidden';stage.style.minHeight=active?'160px':'0';}
           const button=root.querySelector('.ap-archive-view3d');
           if(button)button.textContent=active?'返回收藏卡':'欣赏 3D 成刀';
           if(active){try{getStage().resize();}catch(_){} }
@@ -547,6 +554,7 @@ export function leave() {
   for (const t of timers) clearTimeout(t);
   timers = [];
   root?.classList.remove('is-archive-revealed','is-archive-3d');
+  if(root){root.style.gridTemplateRows='';const stage=root.querySelector('.ap-stage');if(stage){stage.style.visibility='';stage.style.minHeight='';}}
   const s = getStage();
   if (s && s.autoRotate) s.autoRotate(false);
 }
@@ -559,6 +567,9 @@ function focusArchiveCard(){
   body.prepend(archive);
   root.classList.add('is-archive-revealed');
   root.classList.remove('is-archive-3d');
+  root.style.gridTemplateRows='0 minmax(0,1fr) auto';
+  const stage=root.querySelector('.ap-stage');
+  if(stage){stage.style.visibility='hidden';stage.style.minHeight='0';}
   body.scrollTop=0;
 }
 
