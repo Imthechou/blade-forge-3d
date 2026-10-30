@@ -163,8 +163,8 @@ export function settleQuickChallenge(run) {
     if (effectiveKills>0 && run.result.reason==='time')
       V41Growth.awardWorkshopXp(draft,Math.min(10,4+Math.floor((Number(run.result.score)||0)/1200)), 'quick:'+run.id);
     // 快赛只在真正完整45秒且命中4个目标时有少量材料掉落，结算原子化。
-    if(run.rulesVersion==='arena-v4.1' && run.result.reason==='time'&&run.elapsed>=45 && effectiveKills>=4)
-      Materials.grantMaterial(draft,'material:quick:'+run.id,'quick');
+    const materialDrop = run.rulesVersion==='arena-v4.1' && run.result.reason==='time'&&run.elapsed>=45 && effectiveKills>=4
+      ? Materials.grantMaterial(draft,'material:quick:'+run.id,'quick') : null;
     // 同一份存档事务结算单刀磨合：只奖励完成完整快赛且实际切中目标的出战刀。
     // 独立稳定 runId 作为持久收据，防止新快赛覆盖 last 后重放旧局刷磨合。
     const masteryKey='mastery:quick:'+run.id;
@@ -190,6 +190,7 @@ export function settleQuickChallenge(run) {
       settledReward: credited.delta + taskCr, cr: draft.cr,
       record: quickCopy(draft.quickChallengeRecords.byChallenge[key]), reason: null,
       tasks: evt.tasks || [],
+      materialDrop:materialDrop?.credited?{cardId:materialDrop.cardId,name:materialDrop.name,count:materialDrop.credited}:null,
     });
     draft.eventLedger ||= {};
     draft.eventLedger['quick:settled:'+run.id]={type:'QUICK_SETTLED',at:Date.now(),reward:result.reward};
