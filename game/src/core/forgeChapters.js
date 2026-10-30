@@ -20,3 +20,39 @@ export function chapterState(run){
   const sub=Math.max(0,ch.stages.indexOf(run?.stageId));
   return {...ch,step:sub+1,steps:ch.stages.length,done:ch.number-1};
 }
+
+/*
+ * 五屏的六维分工：只对原卡片的 4 项辅助属性重新分配正收益。
+ * 原卡的强度/锋利专属收益、总辅助收益、稀有度、风险、卡名、标签、材质完全不变。
+ * 保留 35% 原卡自身倾向，避免同阶段各卡变成同一个数值模板。
+ * 旧 S1/S2 配方仍由原卡决定属性底子；旧版/每日流程完全不调用此转换。
+ */
+const SIDE_STATS=['toughness','craft','design','spirit'];
+const ROLE_WEIGHTS=Object.freeze({
+  S3:{toughness:.20,craft:.46,design:.24,spirit:.10},
+  S4:{toughness:.12,craft:.36,design:.40,spirit:.12},
+  S5:{toughness:.56,craft:.25,design:.03,spirit:.16},
+  S6:{toughness:.54,craft:.24,design:.02,spirit:.20},
+  S7:{toughness:.26,craft:.40,design:.12,spirit:.22},
+  S8:{toughness:.04,craft:.13,design:.57,spirit:.26},
+  S9:{toughness:.02,craft:.18,design:.40,spirit:.40},
+});
+export function forgeStageStatDelta(run,card) {
+  const source=card?.statDelta||{};
+  if(!isFiveScreen(run)||!ROLE_WEIGHTS[run.stageId])return source;
+  const positive=SIDE_STATS.reduce((sum,k)=>sum+Math.max(0,Number(source[k])||0),0);
+  if(positive<=0)return source;
+  const target=ROLE_WEIGHTS[run.stageId];
+  const result={...source};
+  let total=0;
+  for(let i=0;i<SIDE_STATS.length;i++){
+    const k=SIDE_STATS[i];
+    const raw=Math.max(0,Number(source[k])||0)/positive;
+    const value=i===SIDE_STATS.length-1
+      ?Math.round((positive-total)*100)/100
+      :Math.round(positive*(.35*raw+.65*target[k])*100)/100;
+    result[k]=value+Math.min(0,Number(source[k])||0);
+    if(i!==SIDE_STATS.length-1)total+=value;
+  }
+  return result;
+}
