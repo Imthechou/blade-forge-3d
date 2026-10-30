@@ -46,8 +46,10 @@ export function pinRecipeChoice(run,cardId) {
   const stocked=run.stageId==='S1'&&Number(run.materialInventory?.[cardId])>0;
   if(!card||card.stage!==run.stageId||(!permanent&&!stocked))
     return {ok:false,reason:'尚未掌握该材料、工艺或刀型'};
+  const natural=Array.isArray(run.naturalCandidateIds)?run.naturalCandidateIds.includes(cardId):false;
   run.candidates=[card,...(run.candidates||[]).filter(c=>c.id!==card.id)].slice(0,3);
-  // 只有“库存直选”要花资源；随机出现的同一材料、永久传承配方免费。
-  run.materialReservation=stocked&&!permanent?cardId:null;
+  // 即便玩家连续指定同一张、先取消再指定，也不准把强制选材伪装成随机免费。
+  // 而天然候选、历史永久解锁永远免消耗。
+  run.materialReservation=stocked&&!permanent&&!natural?cardId:null;
   return {ok:true,card,requiresMaterial:!!run.materialReservation};
 }
