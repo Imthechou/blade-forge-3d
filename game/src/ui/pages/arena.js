@@ -109,6 +109,10 @@ export function leave() {
   if (run && !run.done) Challenge.setPaused(run, true);
   Formal.pauseFormalStage();
   stopChallengeFrame();
+  // A hidden arena page must not retain an expensive full-resolution
+  // backing store and its pointer listeners. The challenge run itself stays
+  // in memory and is rebuilt into a fresh canvas on re-entry.
+  if (body) clear(body);
 }
 
 /** Legacy Daily navigation now lands on the arena's fixed-seed quick challenge. */

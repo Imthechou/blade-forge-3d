@@ -271,6 +271,7 @@ try {
       }
       assert.equal(away.diagnosticCanvas,false,'retained obsolete Canvas on exit #'+i);
       assert.equal(away.diagnosticEffects,false,'retained visual FX buffers on exit #'+i);
+      assert.equal(away.arenaCanvases,0,'hidden arena keeps a canvas backing store on exit #'+i);
       assert.equal(away.paused,true,'navigation away must freeze live arena timer');
       // The home page legitimately owns separate listeners/observers. Never
       // compare different page types to a supposed global "zero" baseline.
@@ -300,6 +301,7 @@ try {
     assert.deepEqual(end.listeners,awayReference.listeners);
     assert.equal(end.diagnosticCanvas,false);
     assert.equal(end.diagnosticEffects,false);
+    assert.equal(end.arenaCanvases,0);
     assert.equal(end.cr,baseline.cr,'exiting must not award unearned CR');
     await screenshot(page,'v41-arena-lifecycle-home-10');
     return {cycles:10,initial:baseline,active:first,final:end,
