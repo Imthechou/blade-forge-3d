@@ -62,6 +62,16 @@ export function progressOf(strikeIndex) {
 /** 下一锤的 Risk 增量（UI 提示用，与 strike() 用同一函数） */
 export const nextRiskDelta = (count) => hammerRiskDelta(count + 1);
 
+/** One authoritative preview: identical protection and post-hit risk to strike().
+ * A safe strike still has 0% fracture even when risk was high before S4. */
+export function previewNextBreakChance(run) {
+  if (!run?.hammer || run.hammer.count < 10) return 0;
+  const risk = Math.min(100, (Number(run.risk?.current) || 0) + nextRiskDelta(run.hammer.count));
+  return Risk.breakChance(risk, effectiveRiskScale(run.workshop,
+    run.specialist?.id === 'press' ? run.specialist.boost : 0,
+    run.daily?.breakScale || 1));
+}
+
 /**
  * 锤一击。
  * @param {object} run RunState
@@ -124,10 +134,7 @@ export function strike(run, rng) {
       direction: run.hammer.direction,
       /** 下一锤的风险提示（V2.1 §10.2 第 4 条） */
       nextRiskDelta: nextRiskDelta(run.hammer.count),
-      nextBreakChance: run.hammer.count < 10 ? 0 : Risk.breakChance(
-        Math.min(100, run.risk.current + nextRiskDelta(run.hammer.count)),
-        run.daily?.breakScale || 1,
-      ),
+      nextBreakChance: previewNextBreakChance(run),
       /** 下一档距离与收手保留内容（rework T04.4：不泄露隐藏精确六维） */
       nextTier: toNextTier(run.hammer.progress),
       keepOnStop: {

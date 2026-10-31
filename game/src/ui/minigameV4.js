@@ -6,7 +6,6 @@ import { renderHoningArtwork } from './edgeHoningArtwork.js';
 import * as Audio from '../platform/audio.js';
 import { HAMMER_TIERS } from '../data/balance.js';
 import * as Hammer from '../core/hammer.js';
-import { breakChance } from '../core/risk.js';
 import * as Edge from '../core/edge.js';
 function put(parent,items){mount(parent,items);}
 export function renderHammerV4({body,run,stage,Game,getStage,router,render}) {
@@ -31,9 +30,7 @@ export function renderHammerV4({body,run,stage,Game,getStage,router,render}) {
       onclick:()=>{if(Game.run!==run||run.phase!=='hammer')return;Game.endHammer();render();}})
   ]));
   function refresh(strike=null){
-    const h=run.hammer,scale=run.daily?.breakScale||1;
-    const futureRisk=Math.min(100,run.risk.current+Hammer.nextRiskDelta(h.count));
-    const chance=h.count<10?0:breakChance(futureRisk,scale);
+    const h=run.hammer, chance=Hammer.previewNextBreakChance(run);
     const nextGain=Hammer.progressOf(h.count+1);
     put(hud,[
       el('div',{class:'hammer-hud-value'},[el('small',{text:'本轮强度'}),el('b',{text:'+'+(h.statGained||0).toFixed(1)})]),

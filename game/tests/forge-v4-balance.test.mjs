@@ -69,3 +69,20 @@ test('S7 contour and legacy archives have readable, non-mutating result labels',
  assert.equal(Edge.resultView({tier:'miss',acc:0}).label,'失误');
  assert.equal(Edge.resultView(null),null);
 });
+
+test('S4 next hit preview exactly matches applied risk checks with workshop and specialist protection',()=>{
+  const r=createRun({seed:216,workshopSnapshot:{riskReduction:.10}});
+  r.stageIndex=3;r.stageId='S4';r.phase='select';
+  confirmCard(r,CARDS.find(c=>c.stage==='S4'));r.rng=()=>.999999;
+  r.specialist={id:'press',boost:.12};
+  assert.equal(Hammer.previewNextBreakChance(r),0);
+  for(let i=0;i<20;i++){
+    const preview=Hammer.previewNextBreakChance(r);
+    const hit=hammerStrike(r);
+    assert.equal(hit.strike.breakChance,preview,'S4 preview must equal next actual roll at hit '+(i+1));
+    assert.equal(hit.strike.nextBreakChance,Hammer.previewNextBreakChance(r));
+    assert.equal(hit.fractured,false);
+  }
+  const unprotected=breakChance(r.risk.current);
+  assert.ok(Hammer.previewNextBreakChance(r)<unprotected);
+});

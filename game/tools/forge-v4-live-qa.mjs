@@ -42,6 +42,15 @@ try{
      (await import('/src/ui/pages/forge.js')).render();
    });
    await page.locator('.hammer-stage-hit').waitFor({timeout:45000});
+   // The DOM can enter S4 before its async GLB finishes loading. The former
+   // zero-hit image accidentally photographed S3's rock, not the virgin blade.
+   await page.waitForFunction(async()=>{
+     const st=(await import('/src/render/index.js')).getStage();
+     const G=(await import('/src/app/game.js')).default;
+     return G.run?.phase==='hammer' && /^knife_/.test(st.modelId||'') &&
+       st.viewer?.root && !st.isCompiling && !st._visualFlushQueued;
+   },null,{timeout:45000});
+   await page.waitForTimeout(150);
    const shapeSnapshots = [];
    // Inspect true GLB geometry (not only DOM hit flashes) at 0 / 10 / 20 hits.
    async function snapshotShape(hits) {
@@ -101,6 +110,20 @@ try{
    assert.ok(shape.vertices>0&&shape.changed&&shape.cloned&&shape.restored,
      'Real blade deformation must be copy-on-write, visible and reversible: '+JSON.stringify(shape));
    await snapshotShape(10);
+   if(width===390){
+     // An earned workshop bonus and the press specialist must be reflected in
+     // the exact player-facing next-hit chance, not just the hidden RNG roll.
+     const actual=await page.evaluate(async()=>{
+       const G=(await import('/src/app/game.js')).default;
+       G.run.workshop={...(G.run.workshop||{}),riskReduction:.10};
+       G.run.specialist={id:'press',boost:.12};
+       (await import('/src/ui/pages/forge.js')).render();
+       return (await import('/src/core/hammer.js')).previewNextBreakChance(G.run);
+     });
+     const label=await page.locator('.hammer-next').innerText();
+     assert.ok(label.includes('断裂 '+(100*actual).toFixed(1)+'%'),
+       'the displayed chance must include real workshop and press mitigation: '+label);
+   }
    // High-roll deterministic QA keeps the same real hammer/risk code path alive
    // to compare the 20th deformation. No player stat or risk tuning is involved.
    for(let i=0;i<10;i++)await page.locator('.hammer-stage-hit').click({position:{x:170,y:235},force:true});
