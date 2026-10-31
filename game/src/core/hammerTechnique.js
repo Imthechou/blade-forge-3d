@@ -56,7 +56,10 @@ export const LANDING_ZONES = Object.freeze({
 });
 
 /** 落点分区边界（归一化 y）。导出以保持 UI 提示与判定同源。 */
-export const LANDING_BANDS = Object.freeze({ tipMax: .33, bellyMax: .67 });
+/** 落点分区边界（归一化 y）。导出以保持 UI 提示与判定同源。
+ *  实测画布内刀身约占 0.02–0.59（护手上沿），因此三个分区都落在刀身范围内：
+ *  刀尖 .00–.20、刀腹 .20–.40、刀根 .40–.60（刀根即靠近护手的刀身部位）。 */
+export const LANDING_BANDS = Object.freeze({ tipMax: .20, bellyMax: .40 });
 
 const clamp01 = (v) => Math.min(1, Math.max(0, Number(v)));
 
@@ -110,11 +113,14 @@ export function sweetSpotOf(seed, strikeIndex) {
   const u = (hx & 0xffff) / 0xffff;
   const v = (hy & 0xffff) / 0xffff;
   return {
+    /* ★ 甜点带必须落在**刀身本体**上。
+       实测（390×844）画布内：刀尖约 0.02、护手上沿约 0.59、刀柄底约 0.83。
+       原来 .28–.72 会让靶心落到护手甚至刀柄上，看起来像在砸刀柄；
+       .14–.50 仍偏靠护手，最终收窄到 .13–.44（刀身腹部）。 */
     x: Math.round((.30 + u * .40) * 1000) / 1000,
-    y: Math.round((.28 + v * .44) * 1000) / 1000,
+    y: Math.round((.13 + v * .31) * 1000) / 1000,
   };
 }
-
 /**
  * 瞄准精度评分：1 = 完全命中甜点，0 = 完全偏离。
  * @param {{x:number,y:number}} landing 归一化落点
