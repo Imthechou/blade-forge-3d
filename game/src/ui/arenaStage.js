@@ -1083,8 +1083,8 @@ function drawBursts(ctx,bursts,now,w,h,reduced){
     const x=b.x*w,y=b.y*h,weight=clamp(Number(b.weight)||.3,0,1);
     const ink=(SPECIMEN[b.type]||SPECIMEN.metal).ink;
     const blocked=b.event==='blocked'||b.event==='deflect'||b.event==='avoid-hit';
-    const cutFade=clamp(1-age/(blocked?100:complete?175:145),0,1);
     const complete=!!b.complete;
+    const cutFade=clamp(1-age/(blocked?100:complete?175:145),0,1);
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
     if(!reduced && burstIndex>=bursts.length-6 && !blocked && age<220){
       // A single contact accent follows the actual cut axis, not a screen flash.
