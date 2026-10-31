@@ -4,9 +4,11 @@
  * Canvas is transient and never written to the save or thumbnail caches.
  */
 const PALETTE = Object.freeze({
-  common: ['#8d97a9','#d5dce6'], uncommon: ['#299b83','#a1e0d0'],
+  common: ['#8d97a9','#d5dce6'], fine: ['#299b83','#a1e0d0'],
   rare: ['#5778c8','#b9c9fa'], epic: ['#8861bb','#d5b8f1'],
-  legendary: ['#be8a42','#ffe1a0'], mythic: ['#aa526f','#ffd1dc'],
+  legend: ['#be8a42','#ffe1a0'], mythic: ['#aa526f','#ffd1dc'],
+  // Older records can carry English tier names; keep their poster identity.
+  uncommon: ['#299b83','#a1e0d0'], legendary: ['#be8a42','#ffe1a0'],
 });
 const W=1080,H=1520;
 export function collectibleFilename(model) {
