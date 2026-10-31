@@ -94,3 +94,7 @@
 - 前版本每锤都 dispose 旧 geometry + 克隆新 BufferGeometry + 计算法线，存在 GPU buffer 重分配问题。本次在当前 viewer + root 上复用同一克隆，从原始 GLB 坐标重置顶点、再应用最新形变；切换刀型/清除才销毁；PBR/着色器保持不变。
 - 局部刀缘修形从单 mark `0.17%` 刀宽增到 `0.42%`，总上限从 `2.9%` 到 `7%`，首尾仍衰减、仅刀刃作用。需验 0/10/20 锤对照，防止不自然缺口。
 - Node 验收覆盖 24 锤仅单克隆、源缓存不变、换侧重现、退场只销毁一次；Playwright 验收检查 Geometry UUID 稳定及逐锤效果提升。未经真实截图审查不标为手感完成。
+
+## 2026-10-31 P1 快赛移动靶触屏验收
+- 赛事 45 秒全流程原先只对开场固定靶执行鼠标划切，其余时间纯等待：无法验证提速段移动靶是否真正可切。本轮新增在真实 23–30 秒阶段寻找新投放的移动靶，录屏截图并用 CDP `Input.dispatchTouchEvent` 16 段真实触屏轨迹切割，校验该目标 cuts 增加。
+- 快赛阶段时钟不修改、仍走现有 PointerEvent→Challenge.swipe；其余正式赛事无改动。新增产物 `04-quick-real-moving-target.png` 和 run report；最新 SHA 的 Actions 需要复核。

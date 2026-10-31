@@ -114,6 +114,24 @@ async function swipe(page, selector, ax, ay, bx, by) {
   await page.mouse.move(x2, y2, { steps: 20 });
   await page.mouse.up();
 }
+// CDP touch goes through the actual PointerEvent/canvas route, not a synthetic
+// invocation of Challenge.swipe or a desktop mouse-only substitute.
+async function touchSwipe(page,selector,x1,y1,x2,y2){
+  const box=await page.locator(selector).boundingBox();
+  assert.ok(box&&box.width>100&&box.height>100,'touch canvas unavailable');
+  const pt=(x,y)=>({x:box.x+box.width*Math.max(.01,Math.min(.99,x)),
+    y:box.y+box.height*Math.max(.01,Math.min(.99,y))});
+  const cdp=await page.context().newCDPSession(page);
+  try{
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[pt(x1,y1)]});
+    for(let i=1;i<=16;i++){
+      const t=i/16;
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',
+        touchPoints:[pt(x1+(x2-x1)*t,y1+(y2-y1)*t)]});
+    }
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  }finally{await cdp.detach();}
+}
 await scenario('quick-free-45s-real-pointer', async page => {
   const body = page.locator('.page[data-page="arena"].is-active');
   await snap(page, '01-quick-setup-entry');
@@ -162,7 +180,33 @@ await scenario('quick-free-45s-real-pointer', async page => {
     const state = await page.evaluate(() => window.__FORGE_ARENA?.run?.phase);
     if (state !== phase) throw Error('未进入 ' + phase + '，实际为 ' + state);
     await body.locator('.quick-choice-overlay .quick-choice-card').first().click({ timeout: 8000 });
-
+    if(phase==='route-choice'){
+      // During real wall-clock 23–30 s the quick game must offer controllable
+      // moving targets and accept a genuine touchscreen swipe across one.
+      await page.waitForFunction(()=>{
+        const r=window.__FORGE_ARENA?.run;
+        return r?.phase==='speed'&&r.targets.some(t=>t.alive&&t.moving&&!t.avoid&&
+          r.elapsed-(t.createdAt||0)<.7);
+      },null,{timeout:28000,polling:120});
+      const moving=await page.evaluate(()=>{
+        const r=window.__FORGE_ARENA.run;
+        const t=r.targets.find(t=>t.alive&&t.moving&&!t.avoid&&r.elapsed-(t.createdAt||0)<.7);
+        return {id:t.id,x:t.x,y:t.y,at:r.elapsed,age:r.elapsed-t.createdAt,
+          cuts:t.cuts.length};
+      });
+      await snap(page,'04-quick-real-moving-target');
+      await touchSwipe(page,'.page.is-active .quick-canvas',
+        moving.x-.17,moving.y,moving.x+.17,moving.y);
+      const contact=await page.evaluate(id=>{
+        const r=window.__FORGE_ARENA.run,t=r.targets.find(t=>t.id===id);
+        return {target:id,cuts:t?.cuts?.length||0,alive:t?.alive,
+          contacts:r.primaryContacts||0,score:r.score,elapsed:r.elapsed};
+      },moving.id);
+      assert.ok(contact.cuts>moving.cuts,
+        'a real mobile touch must physically hit the moving target: '+JSON.stringify({moving,contact}));
+      report.cases.push({name:'quick-moving-touch-at-23s',status:'PASS',detail:{moving,contact}});
+      console.log('QUICK_MOVING_TOUCH',JSON.stringify({moving,contact}));
+    }
   }
   await page.waitForFunction(() => document.querySelector('.page.is-active .arena-view-quick-report'),
     null, { timeout: 30000 });
