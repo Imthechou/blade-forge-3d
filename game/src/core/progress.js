@@ -85,6 +85,7 @@ export function spendForgeMaterial(cardId){
 
 export function resetAll() {
   const next = makeSave();
+  next.saveRevision = load().saveRevision;
   if (!Storage.save(next)) return false;
   cache = next;
   quickSettlementReceipts = new WeakMap();

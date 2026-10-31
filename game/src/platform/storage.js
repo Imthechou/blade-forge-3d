@@ -34,6 +34,49 @@ const localDriver = {
 
 export const driver = env.hasLocalStorage ? localDriver : memoryDriver;
 
+// Browser-wide writer ownership plus a revision check for stale tabs.
+const WRITER_LOCK = 'bladeforge.save.writer.v1';
+let writerState = 'uninitialized', writerStart = null, releaseWriter = null;
+let observedRevision = 0;
+const revisionOf = value => Number.isSafeInteger(value?.saveRevision) && value.saveRevision >= 0 ? value.saveRevision : 0;
+
+export function startWriterSession() {
+  if (writerStart) return writerStart;
+  if (driver !== localDriver || typeof globalThis.navigator?.locks?.request !== 'function') {
+    writerState = 'revision-only';
+    return Promise.resolve({ ok: true, mode: 'revision-only' });
+  }
+  writerStart = new Promise(resolve => {
+    let settled = false;
+    const done = value => { if (!settled) { settled = true; resolve(value); } };
+    try {
+      Promise.resolve(globalThis.navigator.locks.request(WRITER_LOCK, { mode: 'exclusive', ifAvailable: true }, async lock => {
+        if (!lock) { writerState = 'blocked'; done({ ok: false, code: 'SAVE_IN_USE' }); return; }
+        writerState = 'owner';
+        done({ ok: true, mode: 'exclusive' });
+        await new Promise(end => { releaseWriter = end; });
+      })).catch(() => { writerState = 'blocked'; done({ ok: false, code: 'LOCK_UNAVAILABLE' }); });
+    } catch (_) { writerState = 'blocked'; done({ ok: false, code: 'LOCK_UNAVAILABLE' }); }
+  });
+  return writerStart;
+}
+
+if (typeof globalThis.addEventListener === 'function') {
+  globalThis.addEventListener('pagehide', () => {
+    if (releaseWriter) { writerState = 'blocked'; releaseWriter(); releaseWriter = null; }
+  });
+  globalThis.addEventListener('pageshow', event => {
+    if (event.persisted && writerState === 'blocked') globalThis.location?.reload?.();
+  });
+  globalThis.addEventListener('storage', event => {
+    if (event.key !== STORAGE_KEY && event.key !== null) return;
+    let actual = null;
+    try { actual = event.newValue ? revisionOf(JSON.parse(event.newValue)) : 0; } catch (_) {}
+    if (actual !== observedRevision) emit(EVENTS.SAVE_CONFLICT, { code: 'EXTERNAL_SAVE', actual, expected: observedRevision });
+  });
+}
+
+
 /**
  * 注册迁移器。key = 从该版本升级到下一版本。
  * @type {Map<number, (data:object)=>object>}
@@ -63,7 +106,9 @@ export function load() {
   let data;
   try { data = JSON.parse(raw); } catch (_) { backupCurrent(); return defaults(); }
   if (!data || typeof data !== 'object' || Array.isArray(data)) { backupCurrent(); return defaults(); }
-  return migrate(data);
+  const migrated = migrate(data);
+  observedRevision = revisionOf(migrated);
+  return migrated;
 }
 
 export function migrate(data) {
@@ -82,13 +127,34 @@ export function migrate(data) {
 }
 
 export function save(data) {
-  let ok = false;
+  let ok = false, code = 'PERSIST_FAILED', expected = null, actual = null;
   try {
-    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('invalid save');
-    data.version = SAVE_VERSION;
-    ok = driver.write(JSON.stringify(data));
-  } catch (_) { /* 序列化与配额异常使用同一失败边界。 */ }
-  emit(ok ? EVENTS.SAVED : EVENTS.SAVE_FAILED, { driver: driver.name });
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw Error('invalid save');
+    if (writerState === 'blocked') code = 'SAVE_IN_USE';
+    else {
+      // Strict read: unreadable/corrupted data may never be treated as empty.
+      const raw = driver === localDriver ? globalThis.localStorage.getItem(STORAGE_KEY) : driver.read();
+      let current = null;
+      if (raw != null) {
+        try { current = JSON.parse(raw); } catch (_) { code = 'SAVE_CORRUPT'; }
+        if (!current || typeof current !== 'object' || Array.isArray(current)) code = 'SAVE_CORRUPT';
+      }
+      expected = revisionOf(data);
+      actual = revisionOf(current);
+      if (code !== 'SAVE_CORRUPT') {
+        if (expected !== actual || observedRevision !== actual) code = 'SAVE_CONFLICT';
+        else if (actual === Number.MAX_SAFE_INTEGER) code = 'SAVE_REVISION_EXHAUSTED';
+        else {
+          const next = { ...data, version: SAVE_VERSION, saveRevision: actual + 1 };
+          ok = driver.write(JSON.stringify(next)) === true;
+          if (ok) { data.version = SAVE_VERSION; data.saveRevision = next.saveRevision; observedRevision = next.saveRevision; }
+        }
+      }
+    }
+  } catch (_) { code = 'PERSIST_FAILED'; }
+  if (!ok && ['SAVE_IN_USE','SAVE_CORRUPT','SAVE_CONFLICT','SAVE_REVISION_EXHAUSTED'].includes(code))
+    emit(EVENTS.SAVE_CONFLICT, { code, expected, actual });
+  emit(ok ? EVENTS.SAVED : EVENTS.SAVE_FAILED, { driver: driver.name, code: ok ? null : code });
   return ok;
 }
 
@@ -104,8 +170,9 @@ export function backupCurrent() {
 }
 
 export function reset() {
-  driver.remove();
-  return defaults();
+  const next = defaults();
+  next.saveRevision = observedRevision;
+  return save(next) ? next : null;
 }
 
 export function exportJson() {
@@ -121,6 +188,8 @@ export function setImportBoundary(fn) {
 export function importJson(text) {
   const parsed = JSON.parse(text);
   const data = importBoundary(migrate(parsed));
+  // Imported revision belongs to the export, not the current active save.
+  data.saveRevision = observedRevision;
   backupCurrent();
   if (!save(data)) throw new Error('保存失败，导入未生效，请重试');
   return data;
@@ -181,5 +250,5 @@ export function clearNationalCheckpoint({ runId, matchId, bladeId, epoch, throug
   catch (_) { return { ok: false, code: 'CHECKPOINT_CLEAR_FAILED' }; }
 }
 
-export default { load, save, reset, migrate, defaults, registerMigration, setDefaultsFactory, setImportBoundary, exportJson, importJson, driver, SAVE_VERSION,
+export default { load, save, reset, migrate, defaults, registerMigration, setDefaultsFactory, setImportBoundary, exportJson, importJson, driver, SAVE_VERSION, startWriterSession,
   readNationalCheckpoint, writeNationalCheckpoint, clearNationalCheckpoint };

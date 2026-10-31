@@ -55,6 +55,7 @@ export function normalizeSettings(raw) {
 export function makeSave() {
   return {
     version: SAVE_VERSION,
+    saveRevision: 0, // cross-tab revision; not gameplay progression
     cr: CR_START,
     createdAt: Date.now(),
 
@@ -136,6 +137,7 @@ export function normalizeSave(raw) {
   const defaults = makeSave();
   const src = map(raw);
   const out = { ...defaults, ...src };
+  out.saveRevision = Number.isSafeInteger(src.saveRevision) && src.saveRevision >= 0 ? src.saveRevision : 0;
   out.cr = count(src.cr, defaults.cr);
   out.workshopV41 = normalizeWorkshopV41(src.workshopV41);
   out.materialsV1 = normalizeMaterialsV1(src.materialsV1);
