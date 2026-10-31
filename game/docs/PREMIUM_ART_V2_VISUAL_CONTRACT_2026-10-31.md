@@ -30,14 +30,14 @@
 
 ## 4. 第三方工具与资产授权台账
 
-本次**未下载、未复制任何外部纹理、代码、模型或音频**；因此无新增第三方文件／包体积。候选资源须精确到所选资产再审核许可证；不按网站整体声明代替单资产授权。
+**最新实装（2026-10-31）**：已从 Kenney Impact Sounds 真实 CC0 素材中选用五段 Ogg（总计约 38KB）并存入本仓库。授权和每个原文件 SHA 对照见 `game/assets/audio/kenney/LICENSE.md`。源音只在切断时短促参与、旧合成声负责首层与不支持 OGG/网络的回退。Wood/Ice/Metal/Foam/Plastic 直接使用真实音频，绳束因 Punch 类型不合适而继续合成。其余七项第三方工具或纹理尚未入库，不得写成已集成。
 
 | 候选 | 当前决策 | 已知许可/待查 |
 | --- | --- | --- |
 | ambientCG / Poly Haven | 仅候选，未下载 | 网站通常以 CC0 为主；具体所选素材页须重核 |
 | psrdnoise / MeshLine | 不接入，原 shader/刀路已有更轻的方案 | 源仓库 MIT；接入需保留版权 |
 | PixelFX / three.quarks | 暂不接入游戏 | 仅可做离线形态参考；逐项核具体资源授权及依赖兼容 |
-| Kenney / Impact Sounds | 暂无新音频 | 试听、文件级许可、响度与包体积审查后再纳入 |
+| Kenney / Impact Sounds | **已引入 5 段真实 CC0 Ogg**，轻量混音与原声音回退；主观实体手机试听待做 | [音频来源/授权/哈希](../../assets/audio/kenney/LICENSE.md) |
 | postprocessing | 暂不接入 | 当前浅背景与物理金属可能被辉光泛白，需 A/B 后决定 |
 
 ## 5. 强制检查及限制
@@ -46,3 +46,10 @@
 - 执行 `cd game && npm run verify`（Node + 静态）；更改模块导出还应运行 `npm run ai:index`。
 - 检查六材料、45秒真实手势、移动靶与切断、S4/S7、320/375px、收藏卡三刀型，浏览器截图和录像应写入对应 Workflow Artifact。
 - 报告 JS/HTTP/GLSL 错误、帧时间、Canvas 数、缓存/资源增长、画质和减少动效回退；当前无实体 Android/iOS 验证能力，GPU温升、真实音频/振动不得标通过。
+
+## 6. 真实音画融合交付第一批 · 2026-10-31
+
+- **来源选择**：Kenney 是唯一实际下载并进仓的第三方资源。真实声音保留可辨识的录音瞬态，但长度仅 180ms、混音低于原合成上限；不改变现有用户音量设置。
+- **视觉原创**：参考高质量 2D 特效「受力→材质变形→局部余迹」的节奏，但全部六种材质的接触形状为原创 Canvas2D 矢量绘制，`arenaMaterialShear.js` 独立于核心碰撞/计分，非 PixelFX 源代码或位图复制，<=175ms 并支持 reduced-motion。
+- **兼容**：仍只打包已有 Three.js r169，不引入 MeshLine、Quarks、postprocessing JS 依赖。原先 Poly Haven / ambientCG PBR 贴图与实物模型只是筛选候选，因可能破坏现有刀皮／涂鸦风格，未直接接入游戏。
+- **验收**：GitHub Actions WebGL/Chromium 三刀型、赛事、六靶和同 SHA A/B；新增真正 Chromium `decodeAudioData` 对五个本地 OGG 的验证。截图可证明视觉变化；自动解码不能替代真机试听和真实 FPS。

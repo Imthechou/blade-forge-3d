@@ -14,6 +14,20 @@ try{
   await context.addInitScript(()=>localStorage.setItem('bladeforge.save',JSON.stringify({version:1,settings:{tutorialSeen:true,sound:false,motion:'full'}})));
   page=await context.newPage();page.on('pageerror',e=>report.errors.push(String(e)));page.on('console',m=>{if(m.type()==='error')report.errors.push(m.text())});page.on('response',r=>{if(r.status()>=400)report.http.push(r.url())});
   await page.goto(url);await page.waitForFunction(()=>window.__FORGE_PREP?.ready&&!document.querySelector('#boot'),null,{timeout:120000});
+  if(label==='after'){
+   // Real Chromium decoder and local HTTP asset checks (not fake WebAudio).
+   // No sound is played, and the user's original muted QA setting is restored.
+   const recorded=await page.evaluate(async()=>{
+     const a=await import('/src/platform/audio.js');
+     a.setEnabled(true);
+     try{const ok=await a.preloadCutSamples();return {ok,...a.cutSampleStatus()};}
+     finally{a.setEnabled(false);}
+   });
+   assert.equal(recorded.files,5,'exactly five licensed source audio files');
+   assert.equal(recorded.loaded.length,5,
+     'Chrome must decode all five real Ogg transients; codec fallback is for unsupported clients');
+   report.cases.push({label:'Kenney-CC0-local-WebAudio-decode',...recorded});
+  }
   for(const [id,material,finish] of [['tangdao','M02','F01'],['karambit','M06','F04'],['balisong','M14','F02']]){
    await page.evaluate(async({id,material,finish})=>{
     const G=(await import('/src/app/game.js')).default;

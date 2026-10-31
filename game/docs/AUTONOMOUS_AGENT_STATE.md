@@ -221,3 +221,11 @@
 - 撤销仅本轮新增的 v2 programFamilies PBR bevel/faceSatin 试验代码，恢复此前有过完整 CI 的稳定 shader；不保留徒增片元计算的假优化。新的证据截屏与 A/B 仍保存在 Actions Artifact。
 - 保留在 Arena UI 的 **真实接触点投影、移动靶 ID 视觉受力、木/冰/金属 140ms 短受力线**，并保留生产画面三阶段 A/B 验收与输入计时不变性测试。
 - 下一轮真正刀具质感需要先对 `aBladeEdge` / `vS3PlanarFace` 的实际模型覆盖区域做可视诊断（真实法线/金属度/粗糙度可视化）并建立同一刀型同 seed 无FX镜头；通过肉眼图示才调 PBR。不合并main、不正式发布。
+
+## 2026-10-31 Kenney 真实短音 + 六材质破坏轮廓 · 首批融合记录
+
+- 上一 `3de2161` 的 10/10 工作流已成功。首批 SHA `12c7698` 添加五段真实 Kenney CC0 OGG（约 38 KB；原作者/许可/原文件SHA 见 `assets/audio/kenney/LICENSE.md`）和六材质独立 Canvas2D 手绘受力剪影；只影响音画，不改玩法/存档/45秒规则。
+- AudioContext 首次用户手势后一组缓存下载／解码，仅击断时叠加 ≤180ms 录音；其余命中和 Safari/Ogg 不兼容时继续原先 WebAudio 合成，不做跨域热链、不触发加载阻塞。
+- 当前另加真实 Chrome 本地 OGG 解码验收，**新增提交的各工作流需按新 SHA 重新核查**；不把下载成功或 Node 检查当作真机音效好听。
+- 外部资源八项中当前真正入库的是 Kenney；其余均未安装。PixelFX 是时序参考并已原创转译成六材质图形。没有复制 PixelFX 代码、也没将 ambientCG／Poly Haven 的照片直接贴满刀面。
+- 继续 PR #32 Draft；不合并 main、不发布正式站。后续仍需手工美术审视、真机音量试听、S1-S9 原生金属材质专项。
