@@ -1,14 +1,27 @@
 /**
- * 核心玩法层 · S4 自由锻打小游戏（V2.1 §10）
+ * 核心玩法层 · S4 自由锻打小游戏（V2.1 §10 + rework T04）
  *
- * 规则落地（逐条对应 §10.1–§10.4）：
- *   · 中央锻打区域任意位置点击都算一锤；点击位置与速度**不影响收益**（§10.1）；
- *   · 每次锤击推进强化成果并增加 Risk，Risk 增量随累计锤数递增（§10.3）；
- *   · Risk 增加后**立即**执行断裂判定（§10.2 第 3 条）；
- *   · 存活后自动更新锤数/进度/Risk/下一锤提示，不弹逐锤确认（§10.2 第 4 条）；
- *   · 随时可以"结束锻打"，按钮不属于锻打区域（§10.2 第 5 条）；
- *   · 不设锤击次数上限，Risk 到 100 仍可继续（§10.2 第 6 条）；
- *   · 一锤未打就结束时，仍需在离开 S4 时检查一次（§9.2）—— 由 forge.js 调度。
+ * 规则落地：
+ *   · 中央锻打区域任意位置点击都算一锤；
+ *   · 每次锤击推进强化成果并增加 Risk，Risk 增量随累计锤数递增；
+ *   · Risk 增加后**立即**执行断裂判定；
+ *   · 存活后自动更新锤数/进度/Risk/下一锤提示，不弹逐锤确认；
+ *   · 随时可以"结束锻打"，按钮不属于锻打区域；
+ *   · 不设锤击次数上限，Risk 到 100 仍可继续；
+ *   · 一锤未打就结束时，仍需在离开 S4 时检查一次 —— 由 forge.js 调度。
+ *
+ * ★ 本轮（技能化）新增：落点与瞄准真正影响结果
+ *   原 §10.1 规定「点击位置与速度不影响收益」，玩家只是在点计数器。
+ *   现在：
+ *   · **落点分区**决定这一锤把成果分配到哪个六维（刀尖→锋利、刀腹→
+ *     强度/工艺、刀根→韧性），并写入 shapeProfile 驱动真实刀缘形变；
+ *   · **瞄准精度**：每锤有一个由 seed+锤序确定的「甜点」，命中最多 +12%
+ *     成果；UI 画出甜点，玩家可以练、可以复现。这是真正可练的技巧。
+ *   · **风险增量完全不变**：S4 断裂率必须由 previewNextBreakChance()
+ *     在出手前准确预告，因此风险绝不参与技巧修正 —— 见 hammerTechnique.js。
+ *   单锤基础成果与基础风险仍由 balance.js 唯一决定，本层只做有界修正。
+ *   未传 contact 的旧调用方（模拟器、旧测试、每日模式兜底）走 neutral 路径，
+ *   数值与改造前逐字一致。
  *
  * 纯逻辑：不碰 DOM，不碰渲染。
  */
@@ -21,6 +34,7 @@ import * as Risk from './risk.js';
 import { effectiveRiskScale } from './arenaV41Growth.js';
 import { noteSafeRisk } from './arenaV41Specialties.js';
 import * as Tags from './tags.js';
+import { hammerTechnique, distributeGain } from './hammerTechnique.js';
 
 export function makeState() {
   return {
@@ -45,11 +59,13 @@ export function makeState() {
  *
  * @returns {{delta:object, total:number, vector:object}}
  */
-export function statGainOf(gain, directionTagId) {
-  const vector = { strength: 1 }; // S4 minigame specializes in Strength.
+export function statGainOf(gain, directionTagId, weight = null) {
+  const vector = hammerDirectionVector(directionTagId);
   const total = Math.max(0, Number(gain) || 0) * HAMMER_GAIN_SCALE;
-  const delta = { strength: Math.round(total * 100) / 100 };
-  return { delta, total: Math.round(total * 100) / 100, vector };
+  /* 有落点/方向权重时按权重拆分；无权重（旧调用方）退回单属性路径，
+     数值与改造前逐字一致。 */
+  const out = distributeGain(total, weight, 'strength', vector);
+  return { delta: out.delta, total: out.total, vector };
 }
 
 /** 第 n 锤（1-based）的成果：前期明确、后期递减（V2.1 §10.4） */
@@ -76,20 +92,36 @@ export function previewNextBreakChance(run) {
  * 锤一击。
  * @param {object} run RunState
  * @param {() => number} rng
+ * @param {{contact?:{x:number,y:number}|null, intervalMs?:number|null}} [technique]
+ *   contact 为锻打区域归一化落点；intervalMs 为距上一锤的毫秒数。
+ *   两者缺失（模拟器、每日兜底、旧测试）→ neutral 路径，数值与改造前一致。
  * @returns {{ok:boolean, fractured?:boolean, strike?:object}}
  */
-export function strike(run, rng) {
+export function strike(run, rng, technique = null) {
   if (run.hammer.ended) return { ok: false, reason: '已结束锻打' };
 
   const index = run.hammer.count + 1;
-  const delta = hammerRiskDelta(index);
-  const gain = progressOf(index);
+  const baseDelta = hammerRiskDelta(index);
+  const baseGain = progressOf(index);
 
   /* 方向在第一次锤击时锁定（S4 前的标签账本不再变化） */
   if (!run.hammer.direction) {
     const dom = Tags.dominantBaseTag(run.ledger);
     run.hammer.direction = dom.mixed ? 'mixed' : dom.tagId;
   }
+
+  /* ★ 技巧层：落点决定成果去向，瞄准甜点的精度在 +12% 内提升成果。
+     风险增量完全不参与技巧修正 —— S4 的断裂概率必须在玩家出手**之前**
+     就能被 previewNextBreakChance() 准确预告，任何让风险依赖落点的规则
+     都会造成「预览一套、判定另一套」。 */
+  const tech = hammerTechnique({
+    directionVector: hammerDirectionVector(run.hammer.direction),
+    contact: technique?.contact || null,
+    seed: run.seed,
+    strikeIndex: index,
+  });
+  const gain = Math.round(baseGain * tech.gainScale * 100) / 100;
+  const delta = baseDelta;
 
   Risk.apply(run.risk, delta);
   run.peakRisk = run.risk.peak;
@@ -98,7 +130,7 @@ export function strike(run, rng) {
 
   /* ★ rework T04.2：逐锤成果即时写进六维 —— 中间锤也有有效收益。
      这是一份**永久六维**，与档位评分倍率分工，不重复计算。 */
-  const statGain = statGainOf(gain, run.hammer.direction);
+  const statGain = statGainOf(gain, run.hammer.direction, tech.weight);
   if (Object.keys(statGain.delta).length) Attr.apply(run.stats, statGain.delta);
   run.hammer.statGained = Math.round((run.hammer.statGained + statGain.total) * 100) / 100;
 
@@ -132,7 +164,15 @@ export function strike(run, rng) {
       statGain: statGain.total,
       statGained: run.hammer.statGained,
       direction: run.hammer.direction,
-      /** 下一锤的风险提示（V2.1 §10.2 第 4 条） */
+      /** ★ 本轮：本锤的技巧判定（落点分区 + 瞄准精度 + 甜点），UI 用它做真实反馈 */
+      technique: {
+        active: tech.active,
+        zoneName: tech.zoneName,
+        landing: tech.landing,
+        spot: tech.spot,
+        aim: tech.aim,
+        gainScale: tech.gainScale,
+      },
       nextRiskDelta: nextRiskDelta(run.hammer.count),
       nextBreakChance: previewNextBreakChance(run),
       /** 下一档距离与收手保留内容（rework T04.4：不泄露隐藏精确六维） */

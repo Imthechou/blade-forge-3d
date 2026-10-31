@@ -185,7 +185,9 @@ export function confirmCard(run, card) {
 
 export function hammerStrike(run, contact = null) {
   if (run.phase !== PHASE.HAMMER) return { ok: false, reason: '当前不在锻打阶段' };
-  const res = Hammer.strike(run, run.rng);
+  /* ★ 落点是真实技巧输入：传给 Hammer.strike 决定成果去向与瞄准加成，
+     并在成功后写入 shapeProfile 驱动刀缘形变。 */
+  const res = Hammer.strike(run, run.rng, { contact });
   if (!res.ok) return res;
   run.peakRisk = run.risk.peak;
   // Successful S4 impacts can subtly reshape the real blade edge; risk/stats stay in Hammer.strike.

@@ -184,6 +184,22 @@
 @keyframes forgeChips{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}
   15%{opacity:.8}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}}
 .hammer-stage-hit .forge-hammer-float{color:#9d612c;font-size:20px;font-weight:760;filter:drop-shadow(0 1px 2px #fff)}
+/* ★ 甜点靶心：与核心判定同源的瞄准点（见 core/hammerTechnique.sweetSpotOf）。
+   浅色玻璃基调下用低饱和金铜色，避免变成廉价霓虹。 */
+.hammer-sweet-spot{position:absolute;left:var(--sweet-x,50%);top:var(--sweet-y,50%);
+  width:54px;height:54px;transform:translate(-50%,-50%);pointer-events:none;
+  display:grid;place-items:center;opacity:.85;transition:left .12s ease-out,top .12s ease-out}
+.hammer-sweet-ring{position:absolute;inset:0;border-radius:50%;
+  border:1.5px solid rgba(196,145,64,.55);
+  box-shadow:0 0 0 5px rgba(255,240,214,.30),inset 0 0 10px rgba(214,164,80,.28);
+  animation:sweetPulse 2.1s ease-in-out infinite}
+.hammer-sweet-core{width:9px;height:9px;border-radius:50%;
+  background:radial-gradient(circle,#e8b45a,#b8813a 70%,rgba(184,129,58,0) 100%);
+  box-shadow:0 0 8px rgba(232,180,90,.65)}
+@keyframes sweetPulse{0%,100%{transform:scale(1);opacity:.72}50%{transform:scale(1.08);opacity:1}}
+.hammer-stage-hit.is-striking .hammer-sweet-spot{opacity:1}
+@media(prefers-reduced-motion:reduce){.hammer-sweet-ring{animation:none}}
+@media(max-height:660px){.hammer-sweet-spot{width:44px;height:44px}}
 .page[data-page="forge"] .stage.forge-hit-stop > canvas:not(.edge-stage-canvas){
  transform:translateY(1px);filter:contrast(1.025);transition:transform .08s ease-out,filter .08s}
 .edge-simple-hud b{font-variant-numeric:tabular-nums}

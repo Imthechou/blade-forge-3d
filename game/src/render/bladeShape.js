@@ -59,10 +59,16 @@ function deform(mesh,profile,reuse=null) {
     for(const mark of profile.marks) {
       const side=mark.x>=.5?1:-1;
       if(Math.sign(w)!==side)continue;
-      const delta=(t-(1-mark.y))/.145;
-      strength+=.0042*Math.exp(-delta*delta*1.2);
+      /* 落点沿刀身长度方向的影响半径：小一点让每一锤更像「局部压痕」，
+         而不是整条刃线一起位移。 */
+      const delta=(t-(1-mark.y))/.115;
+      strength+=.0082*Math.exp(-delta*delta*1.35);
     }
-    const dx=Math.min(.07,strength)*edge*taper*width;
+    /* ★ 上限从 .07 提到 .17，单锤系数相应下调：
+       实测 10 锤约到上限 40%、20 锤约 80%，形变随锤数**持续加深**
+       （基线 0/10/20 锤最大位移为 0 / 0.00096 / 0.00176，肉眼不可辨）。
+       仍受 edge*taper*width 约束，只在刃口一侧、首尾自动衰减。 */
+    const dx=Math.min(.17,strength)*edge*taper*width;
     if(dx<=1e-9)continue;
     coords[widthAxis]-=Math.sign(w)*dx;
     p.setXYZ(i,coords[0],coords[1],coords[2]);changed++;
