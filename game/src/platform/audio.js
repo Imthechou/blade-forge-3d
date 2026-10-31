@@ -1,8 +1,8 @@
 /**
  * 平台服务层 · 音频
  *
- * 全部音效由 WebAudio 实时合成 —— 不依赖任何音频资源文件，
- * 省掉 小游戏/App 的包体与加载问题，迁移时替换为宿主 API 即可。
+ * 轻量混合：WebAudio 合成是全面回退；首次手势后预载小体积 Kenney
+ * CC0 真实击断瞬态。解码和下载均不阻塞触控、赛事时钟与原有声音。
  *
  * 设计约束（设定文档 §29）：只有开关与音量，不做复杂音频系统。
  */
@@ -14,6 +14,57 @@ let master = null;
 let sharedNoise = null;
 let sharedNoiseContext = null;
 const state = { enabled: true, volume: 0.6 };
+
+/* Five verified Kenney Impact Sounds CC0 OGG recordings. Rope retains its
+ * original dry synthesized fiber to avoid a mismatched heavy punch sample.
+ * Provenance and exact SHA-1s: assets/audio/kenney/LICENSE.md. */
+export const CUT_SAMPLE_ASSETS=Object.freeze({
+  soft:'impactSoft_heavy_000.ogg',
+  wood:'impactWood_heavy_000.ogg',
+  plastic:'impactPlate_medium_000.ogg',
+  ice:'impactGlass_heavy_000.ogg',
+  metal:'impactMetal_medium_000.ogg',
+});
+const cutSamples=new Map();
+let cutSamplesContext=null,cutSamplesPromise=null;
+export const cutSampleStatus=()=>({loaded:[...cutSamples.keys()],files:Object.keys(CUT_SAMPLE_ASSETS).length});
+export function preloadCutSamples(){
+  const c=state.enabled?ensure():null;
+  if(!c||typeof globalThis.fetch!=='function'||typeof c.decodeAudioData!=='function')return Promise.resolve(false);
+  if(c!==cutSamplesContext){cutSamplesContext=c;cutSamples.clear();cutSamplesPromise=null;}
+  if(cutSamplesPromise)return cutSamplesPromise;
+  cutSamplesPromise=Promise.all(Object.entries(CUT_SAMPLE_ASSETS).map(async([kind,file])=>{
+    try{
+      const url=new URL('../../assets/audio/kenney/'+file,import.meta.url);
+      const response=await globalThis.fetch(url.href,{cache:'force-cache'});
+      if(!response.ok)return false;
+      const bytes=await response.arrayBuffer();
+      if(bytes.byteLength<1000||bytes.byteLength>32000)return false;
+      const decoded=await c.decodeAudioData(bytes);
+      if(decoded?.duration>0&&decoded.duration<4)cutSamples.set(kind,decoded);
+      return cutSamples.has(kind);
+    }catch{return false;} // offline, suspended audio, or Ogg-unsupported Safari
+  })).then(results=>results.some(Boolean));
+  return cutSamplesPromise;
+}
+function playRecordedSever(profile){
+  if(!profile.completed||!state.enabled)return false;
+  const buffer=cutSamples.get(profile.kind),c=ctx;
+  if(!buffer||!c||c.state!=='running')return false;
+  try{
+    const t=c.currentTime,src=c.createBufferSource(),g=c.createGain();
+    src.buffer=buffer;
+    const length=Math.min(.18,Math.max(.08,buffer.duration));
+    const gain=profile.kind==='metal'?.17:profile.kind==='ice'?.13:.115;
+    g.gain.setValueAtTime(.0001,t);
+    g.gain.linearRampToValueAtTime(gain,t+.004);
+    g.gain.exponentialRampToValueAtTime(.0001,t+length);
+    src.connect(g);g.connect(master);
+    src.onended=()=>{src.disconnect();g.disconnect();};
+    src.start(t);src.stop(t+length+.008);
+    return true;
+  }catch{return false;}
+}
 
 function ensure() {
   if (ctx) return ctx;
@@ -31,6 +82,7 @@ function ensure() {
 export function unlock() {
   const c = ensure();
   if (c && c.state === 'suspended') c.resume().catch(() => {});
+  if(state.enabled)void preloadCutSamples();
 }
 
 export function setEnabled(v) {
@@ -168,16 +220,17 @@ export function cutSoundProfile(impact){
 export function playCutImpact(impact) {
   if(!impact||!state.enabled)return;
   const p=cutSoundProfile(impact);
+  if(!cutSamplesPromise&&state.enabled)void preloadCutSamples();
   try {
-    tone({freq:p.low,dur:p.duration,type:'triangle',gain:p.lowGain,
+    const recorded=playRecordedSever(p);
+    tone({freq:p.low,dur:p.duration,type:'triangle',gain:p.lowGain*(recorded?.50:1),
       sweepTo:p.low*.66});
-    tone({freq:p.mid,dur:p.duration*.55,type:p.osc,gain:p.midGain,
+    if(!recorded)tone({freq:p.mid,dur:p.duration*.55,type:p.osc,gain:p.midGain,
       sweepTo:p.mid*(p.kind==='ice'?.93:.72),delay:.007});
-    noise({dur:p.noise,gain:p.noiseGain,lowpass:p.lowpass,
+    noise({dur:p.noise,gain:p.noiseGain*(recorded?.42:1),lowpass:p.lowpass,
       delay:p.kind==='metal'?.011:.003});
-    // A broken rigid specimen has one short post-break resonance; no
-    // ascending victory chords and no bright chime on every soft-material hit.
-    if(p.completed&&p.weight>.53){
+    // Real sampled impact has its own decay; never layer a redundant ring.
+    if(!recorded&&p.completed&&p.weight>.53){
       const ring=p.kind==='metal'?.09:p.kind==='ice'?.07:.034;
       tone({freq:p.mid*(p.kind==='metal'?1.36:1.12),
         dur:ring,type:'sine',gain:p.kind==='metal'?.018:.022,delay:.023});
@@ -193,4 +246,4 @@ export function play(name) {
 
 export const list = () => Object.keys(SFX);
 
-export default { play, playCutImpact, list, setEnabled, setVolume, settings, unlock };
+export default { play, playCutImpact, preloadCutSamples, cutSampleStatus, list, setEnabled, setVolume, settings, unlock };

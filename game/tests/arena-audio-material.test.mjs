@@ -26,3 +26,20 @@ test('deflection is quieter and shorter than a clean break; impact data never ch
  assert.equal(b.completed,true);
  assert.equal(cutSoundProfile({sound:'unknown'}).kind,'unknown');
 });
+
+
+test('five authentic CC0 Ogg cuts are locally vendored with stable semantics',async()=>{
+ const {CUT_SAMPLE_ASSETS,cutSampleStatus}=await import('../src/platform/audio.js');
+ const {readFileSync}=await import('node:fs');
+ const {fileURLToPath}=await import('node:url');
+ assert.equal(Object.keys(CUT_SAMPLE_ASSETS).length,5);
+ assert.equal(CUT_SAMPLE_ASSETS.ice,'impactGlass_heavy_000.ogg');
+ assert.equal(CUT_SAMPLE_ASSETS.metal,'impactMetal_medium_000.ogg');
+ assert.ok(!('fiber' in CUT_SAMPLE_ASSETS),'rope should not sound like a punch');
+ for(const file of Object.values(CUT_SAMPLE_ASSETS)){
+   const bytes=readFileSync(fileURLToPath(new URL('../assets/audio/kenney/'+file,import.meta.url)));
+   assert.equal(bytes.subarray(0,4).toString('ascii'),'OggS',file+' must be real Ogg Vorbis');
+   assert.ok(bytes.length>1000&&bytes.length<32000,file);
+ }
+ assert.equal(cutSampleStatus().files,5);
+});

@@ -1,5 +1,6 @@
 import { MATERIALS } from '../core/arenaChallenge.js';
 import { impactMotion, targetPose, impactForTarget, contactFilingsCount } from './arenaImpact.js';
+import { drawMaterialShear } from './arenaMaterialShear.js';
 import { drawWholeSprite, drawSplitSprite, spriteReady } from './arenaSprites.js';
 import { drawTargetHandmark } from './arenaDoodle.js';
 import { linkStyle, breakPosition, createBreakTracker, joinedKey } from './arenaStructureVisual.js';
@@ -1159,6 +1160,7 @@ function drawBursts(ctx,bursts,now,w,h,reduced){
         ctx.lineTo(x+nx*(cold?12:9)+tx*5,y+ny*(cold?12:9)+ty*5);ctx.stroke();
       }
     }
+    if(burstIndex>=bursts.length-6)drawMaterialShear(ctx,b,age,x,y,angle,reduced);
     // Two hand-drawn cut-edge ticks: visible only on completed separation.
     if(complete&&age<210){
       const f=1-age/210;
