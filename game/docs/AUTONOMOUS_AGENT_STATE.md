@@ -128,3 +128,7 @@
 ## 2026-10-31 P6 隐藏页 Canvas backing store 释放
 - `arena.leave()` 旧逻辑仅取消 RAF/解除监听/暂停 run，隐藏的 `.arena-body` 仍挂着 Canvas DOM 和相应像素 backing store。现在完成清理后调用 `clear(body)` 卸载画布 DOM，减少切换首页/工坊时后台持有的显存；Challenge run/存档仍由数据层保留，返回即重建舞台并需要手动继续。
 - 十轮导航 QA 加严：离开赛事页面必须 `arenaCanvases===0`，返回仍只有 1 幅 Canvas、原挑战 ID、暂停态与 CR 不变。需按最新 HEAD Actions 验收，实际 GPU 内存须真机验证。
+
+## 2026-10-31 P6 十轮压力测试误报修复
+- 旧的 Arena 10 轮 QA 产物 `13033653621` 显示 `lifecycle-ten-navigation-cycles` 在恢复按钮等待 30s 超时；对应失败截图证明可访问暂停弹窗正常，按钮文案为「继续挑战 / 回到当前进度」。故 `getByRole(...,name:'继续挑战',exact:true)` 不匹配完整 accessible name，属于脚本误报。
+- 改为以 `/^继续挑战/` 匹配，**不跳过点击、不绕过实际界面**。之后仍校验每轮暂停恢复成功、同一 run、单 Canvas、首页 0 Canvas、ResizeObserver/事件监听无累积、CR 不变。需以最新 SHA CI 为准。

@@ -289,7 +289,9 @@ try {
       assert.ok(resumed.live>0,'arena must have an active canvas observer');
       const resumedId=await page.evaluate(()=>window.__FORGE_ARENA?.run?.id);
       assert.equal(resumedId,currentRun,'paused round should survive page re-entry #'+i);
-      await page.getByRole('button',{name:'继续挑战',exact:true}).click({force:true});
+      // This accessible name also contains the subtitle '回到当前进度'.
+      // Exact matching the heading alone was a false failure on a valid modal.
+      await page.getByRole('button',{name:/^继续挑战/}).click({force:true});
       const active=await metrics();
       assert.equal(active.paused,false,'manual resume failed at cycle #'+i);
       assert.equal(active.live,resumed.live,'resume created an extra observer at #'+i);
