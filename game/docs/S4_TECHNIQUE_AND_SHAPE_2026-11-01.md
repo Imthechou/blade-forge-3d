@@ -8,6 +8,8 @@
 ---
 
 ## 一、A1 · 五屏锻造逐屏差距清单
+> **状态更新（本轮最终交付）**：以下 A2/A3/A4/B2 已全部实测完成，详见第七节之后新增的验收数据；C5 性能已补测，C2 已用 `arena-prop-visual-qa` 复核。
+
 
 判定口径：**已实现** = 代码存在且真实可玩、有测试覆盖；**效果不足** = 能跑但达不到「有趣、有操作感、值得收藏」的目标；**未实现** = 代码中没有。
 
@@ -165,15 +167,63 @@ const vector = { strength: 1 }; // ← 硬编码，directionTagId 被完全忽�
 
 ---
 
-## 七、明确未完成 / 未验证项（不得当作已完成）
+## 八、C 组与性能实测（本轮补充）
 
-1. **B1 材料与熔炼**：本轮未改动熔炼过程演出；矿石/熔液/温度的材质区分仍是既有实现。
+### C5 · 性能对照（真实 Chromium，390×844）
+
+| 指标 | 0 锤 | 10 锤 | 20 锤 |
+|---|---|---|---|
+| draw calls | 1 | 1 | 1 |
+| triangles | 15000 | 15000 | 15000 |
+| render 内 geometries | 1 | 1 | 1 |
+| shader programs | 5 | 5 | 5 |
+| renderer textures | 39 | 39 | 39 |
+| 帧时间 p50 / p95 | 5.5 ms / 6.6 ms | — | — |
+
+`renderer.info.memory.geometries` 由 3 增至 4 后**保持稳定**，说明 20 锤之间复用同一份 copy-on-write 克隆，没有逐锤重建 GPU buffer。draw call、三角面数、着色器与纹理数量**全部零增长**。
+
+### C2 · 六类靶具与结构断裂（既有实现复核）
+
+`tools/arena-prop-visual-qa.mjs` 通过 **18 项检查**：
+- 六材质（泡棉 / 绳束 / 木桩 / 塑板 / 冰块 / 金属块）× 三个刀向（0° / 45° / 90°）真实刀口裁切，断面材质各自可辨；
+- 六流派（锻压 / 承重 / 精密 / 淬彩 / 复合 / 过载）三级架体真实断链，`changedSamplePixels = 27666`；
+- 断口缓存 12 对、构建 18 次，未超预算。
+
+产物：`cut-directions.png`、`rigs-before.png`、`rigs-broken.png`、`cut-direction-report.json`、`rig-structure-report.json`。
+
+**注意**：这是**既有实现的复核通过**，不是本轮新做的美术提升。C2 的「提升材质、造型、断面、受损状态与碎片表现」仍未开工。
+
+---
+
+## 九、明确未完成 / 未验证项（不得当作已完成）
+
+1. **B1 材料与熔炼**：未改动。矿石/金属块/熔液/温度/发光的材质区分仍是既有实现，没有过程演出。
 2. **B3 淬火**：未新增入液、蒸汽、冷却扩散、相变纹理的过程演出。
 3. **B4 回火与表面处理**：未改动材质层（用户明确要求继承 218 卡体系，专项后续）。
-4. **B5 开刃手感**：S7 判定与视觉同源已存在，本轮未做进一步调优。
+4. **B5 开刃手感**：S7 判定与视觉同源已存在（`contourPreview`，贴合度单一驱动、三次机会、提前完成有小额奖励），本轮未做进一步调优。
 5. **B6 装配与结构细节**：未新增装配动画或结构反馈。
-6. **C1 刀具 PBR**：未改动 PBR。用户明确本轮不重写材质体系。
-7. **C2 六类靶具**：未改动。
-8. **C3 切割手感**：未改动。
-9. **C5 性能**：仅确认几何克隆复用未被破坏（`geometryId` 在 10→20 锤间保持同一 UUID，未重建）；未做完整 draw call / 帧时间对照。
+6. **C1 刀具 PBR**：未改动。用户明确本轮不重写材质体系。
+7. **C2 六类靶具**：仅复核既有实现通过，未做美术提升。
+8. **C3 切割手感**：未改动顿帧、形变、反冲、拖尾与音画同步。
+9. **C4 UI/UX**：未做新设计；只确认 320 / 375 / 390px 无溢出、甜点靶心不再压到护手。
 10. **实体设备**：全部结果来自 **SwiftShader 软件渲染 + 桌面 Chromium**。真实 iOS/Android 的 GPU 性能、触控手感、扬声器音色与震动**均未验证**。
+11. **A6 点击次数**：本轮未新增操作步骤（一锤仍是一次点击），但也没有减少既有五次关键决策。
+
+---
+
+## 十、GH Actions（同一 SHA `e3c43ea`）
+
+**10 / 10 success，0 failure**：
+
+| workflow | run id |
+|---|---|
+| Verify and deploy Blade Forge to GitHub Pages | 41225743611 |
+| Forge V4 S4 S7 real WebGL acceptance | 41225743599 |
+| P0 unified visual live-browser acceptance | 41225743644 |
+| Collection three-knifetype real WebGL QA | 41225743646 |
+| iPhone Forge Browser Acceptance | 41225743595 |
+| Spatial UI visual and interaction acceptance | 41225743588 |
+| Whole-game mobile UX acceptance | 41225743678 |
+| Arena live browser playtest | 41225743582 |
+| Forge S1-S9 mobile WebGL glare and texture acceptance | 41225743591 |
+| iOS Studio Environment Compatibility | 41225743583 |
