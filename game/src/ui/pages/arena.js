@@ -845,7 +845,6 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     const activated = forgeRibbon.querySelector('.quick-forge-activated');
     const label = forgeSkills.find(t => t.id === id)?.name || '工艺特性';
     activated.textContent = label + ' 生效';
-    forgeRibbon.classList.remove('is-activated'); void forgeRibbon.offsetWidth;
     forgeRibbon.classList.add('is-activated');
   };
   const ctx = canvas.getContext('2d');
@@ -954,6 +953,14 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
   let lastHudPaused = null, lastHudRisk = '';
   const drawScene = (now) => {
     if (challengeCanvas !== canvas || !canvas.isConnected) return;
+    // Proc feedback is transient, including with reduced motion. Expire on the
+    // existing frame loop so leaving the arena cannot retain another timer.
+    // 800ms is shorter than the 950ms proc cooldown: the next pulse starts with
+    // a clean class without a synchronous layout read on the cutting path.
+    if (forgeRibbon?.classList.contains('is-activated') && now - lastForgeBurst >= 800) {
+      forgeRibbon.classList.remove('is-activated');
+      forgeRibbon.querySelector('.quick-forge-activated').textContent = '';
+    }
     const width=bounds.width,height=bounds.height;
     ctx.clearRect(0,0,width,height);
     effects.now=now;effects.pointer=challengePointer;effects.reducedMotion=motion.reduced();
