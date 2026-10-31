@@ -29,7 +29,7 @@ try{
       history:[],traits:[],combos:[],tags:{},arenaHistory:[],
       pendingSkin:{materialId:mat,textureId:tex,finishId:finish,wear:0.015,variants:{},
         handle:{metalId:'polymer'}}});
-    localStorage.setItem('bladeforge.save',JSON.stringify({version:1,cr:600,collection:specs.map(make),
+    localStorage.setItem('bladeforge.save',JSON.stringify({version:1,cr:600,collection:specs.map(([id,name,mat,tex,finish,rarity],index)=>make(id,name,mat,tex,finish,rarity,index)),
       settings:{tutorialSeen:true,sound:false,motion:'reduced'}}));
   });
   page=await context.newPage();
