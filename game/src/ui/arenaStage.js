@@ -1133,6 +1133,32 @@ function drawBursts(ctx,bursts,now,w,h,reduced){
         ctx.beginPath();ctx.moveTo(x-nx*4,y-ny*4);ctx.lineTo(x+nx*4,y+ny*4);ctx.stroke();
       }
     }
+    // Short, authored material-pressure marks. Unlike the long knife trail
+    // they stay within ~15 pixels of the true contact and decay in 140ms.
+    // Wood releases split fibres, ice sharp cold facets, steel a hot scoring
+    // burr. No radial rings, screen bloom or extra emitted sprite systems.
+    if(!reduced&&!blocked&&age<140&&(b.type==='wood'||b.type==='ice'||b.type==='metal')){
+      const f=Math.pow(1-age/140,.75),hard=b.type==='metal';
+      const cold=b.type==='ice',span=hard?11:cold?14:12;
+      const materialTint=hard?'#CF823F':cold?'#59BEDA':'#AA7143';
+      ctx.globalAlpha=f*.86;ctx.lineWidth=hard?1.65:1.5;ctx.strokeStyle=materialTint;
+      ctx.beginPath();
+      for(const side of [-1,1]){
+        const ax=x+tx*side*5+nx*3,ay=y+ty*side*5+ny*3;
+        const bx=x+tx*side*span+nx*(cold?9:hard?6:8)*side;
+        const by=y+ty*side*span+ny*(cold?9:hard?6:8)*side;
+        ctx.moveTo(ax,ay);ctx.lineTo(bx,by);
+      }
+      ctx.stroke();
+      // One tiny counter-reflection separates the real steel/ice edge from
+      // the background without saturating the already bright broken face.
+      if(hard||cold){
+        ctx.strokeStyle=hard?'#FFE2AA':'#E2FBFF';ctx.globalAlpha=f*.95;
+        ctx.lineWidth=hard?1.4:1.2;
+        ctx.beginPath();ctx.moveTo(x+nx*2,y+ny*2);
+        ctx.lineTo(x+nx*(cold?12:9)+tx*5,y+ny*(cold?12:9)+ty*5);ctx.stroke();
+      }
+    }
     // Two hand-drawn cut-edge ticks: visible only on completed separation.
     if(complete&&age<210){
       const f=1-age/210;

@@ -174,3 +174,14 @@ test('S3 is carved into baked billet albedo with bounded one-sided contrast and 
         if(sig>=0)assert.equal(result,substrate);
       }
 });
+
+
+test('S7 polished apex and satin shoulder have separate roughness zones without emissive paint',()=>{
+  const shader=readFileSync(new URL('../src/render/v2/programFamilies.js',import.meta.url),'utf8');
+  assert.ok(shader.includes('float shoulder = smoothstep( 0.07, 0.28, edgePosition )'));
+  assert.ok(shader.includes('shoulder * edgeOwnership * 0.54'));
+  assert.ok(shader.includes('float bevel = smoothstep( 0.16, 0.70, edgePosition )'));
+  const rough=shader.split('const ROUGHNESS_FRAGMENT =')[1].split('const METALNESS_FRAGMENT =')[0];
+  assert.ok(!rough.includes('totalEmissiveRadiance'));
+  assert.ok(rough.includes('wB'), 'grip/guard cannot inherit the blade edge bevel');
+});

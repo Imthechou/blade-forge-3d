@@ -109,6 +109,29 @@ try{
     path.join(out,`${label}-material-contact-${String(frame.age).padStart(3,'0')}ms.png`),
     Buffer.from(frame.image.split(',')[1],'base64'));
   if(label==='after'){
+   // Pixel-local proof: same artwork fixture / clock / camera from the known
+   // previous SHA. Report how much changes specifically near each contact.
+   const beforePng=fs.readFileSync(path.join(out,'before-material-contact-065ms.png')).toString('base64');
+   const afterPng=fs.readFileSync(path.join(out,'after-material-contact-065ms.png')).toString('base64');
+   const diff=await page.evaluate(async({a,b})=>{
+     const decode=async raw=>{const im=new Image();im.src='data:image/png;base64,'+raw;await im.decode();
+       const cv=document.createElement('canvas');cv.width=im.width;cv.height=im.height;
+       const c=cv.getContext('2d',{willReadFrequently:true});c.drawImage(im,0,0);return c.getImageData(0,0,cv.width,cv.height).data;};
+     const aa=await decode(a),bb=await decode(b),results=[];
+     for(let row=0;row<3;row++)for(let col=0;col<3;col++){
+       let changed=0,total=0,energy=0;
+       for(let y=row*500+172;y<row*500+288;y++)for(let x=col*375+128;x<col*375+255;x++){
+         const k=(y*1125+x)*4;
+         const delta=Math.max(Math.abs(aa[k]-bb[k]),Math.abs(aa[k+1]-bb[k+1]),Math.abs(aa[k+2]-bb[k+2]));
+         changed+=Number(delta>12);energy+=delta;total++;
+       }
+       results.push({material:['wood','ice','metal'][col],event:['blocked','cut','kill'][row],
+         changedPct:+(100*changed/total).toFixed(3),meanMaxChannelDelta:+(energy/total).toFixed(3)});
+     }
+     return results;
+   },{a:beforePng,b:afterPng});
+   report.cases.push({label:'real-65ms-visual-ab',source:'same SHA 5c10e58 fixture and software renderer vs current HEAD',
+     regions:diff});
    await page.evaluate(async()=>{(await import('/src/render/index.js')).getStage().viewer.setReduceMotion(false);});
    await page.getByRole('button',{name:'检视刀具光影',exact:true}).click();
    await page.getByRole('button',{name:'赛事',exact:true}).click();await page.waitForTimeout(350);

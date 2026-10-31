@@ -992,8 +992,17 @@ const ROUGHNESS_FRAGMENT = `
       bladeRough = mix(bladeRough,
         clamp(uBladeRoughness+k3dFinishRoughDelta+pat.y*0.085,0.075,0.88),0.65);
     }
-    /* 刃口抛光（S7 的真实 bevel） */
-    float bevel = smoothstep( 0.16, 0.70, clamp( vBladeEdge, 0.0, 1.0 ) ) * uEdgeGlow.w * wB;
+    /* S7 bevel has two physical steel reflections, not an emissive rim:
+       a satin transition (blade face to bevel) plus a polished cutting apex.
+       Work only in roughness; preserve S1/S3 material color and skin identity. */
+    float edgePosition = clamp( vBladeEdge, 0.0, 1.0 );
+    float shoulder = smoothstep( 0.07, 0.28, edgePosition )
+                   * ( 1.0 - smoothstep( 0.43, 0.74, edgePosition ) );
+    float edgeOwnership = clamp( uEdgeGlow.w * wB, 0.0, 1.0 );
+    bladeRough = mix( bladeRough,
+      clamp( bladeRough * 0.62 + 0.030, 0.055, 0.52 ), shoulder * edgeOwnership * 0.54 );
+    /* Existing fine cutting apex remains distinct from the satin shoulder. */
+    float bevel = smoothstep( 0.16, 0.70, edgePosition ) * edgeOwnership;
     bladeRough = mix( bladeRough, mix( 0.18, 0.045, clamp( uEdgeGlow.x, 0.0, 1.0 ) ), bevel * 0.70 );
     roughnessFactor = mix( roughnessFactor, bladeRough, wS );
   }
