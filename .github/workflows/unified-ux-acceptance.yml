@@ -42,6 +42,10 @@ jobs:
       - name: Narrow-phone interactions and all workshop dialogs
         working-directory: game
         run: node tools/unified-ux-acceptance.mjs
+      - name: Cross-tab save ownership and stale-write browser acceptance
+        if: always()
+        working-directory: game
+        run: node tools/save-multitab-browser.mjs
       - name: Full 45 seconds with real pointer input and real wall clock
         if: always()
         working-directory: game
