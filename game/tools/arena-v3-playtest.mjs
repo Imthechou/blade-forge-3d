@@ -115,7 +115,8 @@ async function touchMovingTarget(page){
   const target=await page.evaluate(()=>{
     const r=globalThis.__FORGE_ARENA?.run;
     const t=r?.targets?.find(t=>t.alive&&t.moving&&!t.avoid);
-    return t?{id:t.id,x:t.x,y:t.y,age:r.elapsed-t.createdAt,cuts:t.cuts.length}:null;
+    return t?{id:t.id,x:t.x,y:t.y,age:r.elapsed-t.createdAt,cuts:t.cuts.length,
+      previousContactAt:r.contacts?.[t.id]?.at??null}:null;
   });
   if(!target)return null;
   const box=await page.locator('.quick-canvas').boundingBox();
@@ -134,12 +135,18 @@ async function touchMovingTarget(page){
   const result=await page.evaluate(id=>{
     const r=globalThis.__FORGE_ARENA.run;
     const t=r.targets.find(t=>t.id===id);
-    return {cuts:t?.cuts.length??0,alive:t?.alive,contacts:r.primaryContacts||0};
+    return {cuts:t?.cuts.length??0,alive:t?.alive,stillTracked:!!t,
+      contactAt:r.contacts?.[id]?.at??null,contacts:r.primaryContacts||0};
   },target.id);
-  // On a true 45-second wall clock the target keeps drifting while Chrome
-  // delivers each touch segment. One missed swipe is a valid player outcome;
-  // gather a bounded sample instead of conflating it with a broken input path.
-  return {target,...result,hit:result.cuts>target.cuts};
+  // A freshly cut target can be culled from run.targets before Playwright's
+  // post-gesture read. The core's contact ledger outlives that active array,
+  // and is only written by a genuine swipe collision (not natural expiration).
+  // Compare timestamps to reject a stale contact from an earlier gesture.
+  const geometryHit=result.cuts>target.cuts;
+  const ledgerHit=result.contactAt!=null &&
+    result.contactAt!==target.previousContactAt;
+  return {target,...result,hit:geometryHit||ledgerHit,
+    hitSource:geometryHit?'target-cuts':ledgerHit?'core-contact-ledger':'none'};
 }
 async function playRound(page,virtual,{capture=false,evidenceName='v41-round'}={}) {
   await page.locator('.quick-canvas').waitFor();

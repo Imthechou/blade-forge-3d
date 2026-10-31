@@ -132,3 +132,8 @@
 ## 2026-10-31 P6 十轮压力测试误报修复
 - 旧的 Arena 10 轮 QA 产物 `13033653621` 显示 `lifecycle-ten-navigation-cycles` 在恢复按钮等待 30s 超时；对应失败截图证明可访问暂停弹窗正常，按钮文案为「继续挑战 / 回到当前进度」。故 `getByRole(...,name:'继续挑战',exact:true)` 不匹配完整 accessible name，属于脚本误报。
 - 改为以 `/^继续挑战/` 匹配，**不跳过点击、不绕过实际界面**。之后仍校验每轮暂停恢复成功、同一 run、单 Canvas、首页 0 Canvas、ResizeObserver/事件监听无累积、CR 不变。需以最新 SHA CI 为准。
+
+## 2026-10-31 P6 实时触屏结果追踪：目标回收与接触账本
+- 全局 UX #41178035036 的 45 秒真实时钟用例仍报错。目标 `target-39`、`target-51` 触屏后从 `run.targets` 回收，导致测试中的 `t?.cuts.length??0` 将「目标已脱离活动数组」误判为「0 命中」；第三个目标 `target-72` 仍存活时也确实 0 cuts。现修正断言：
+- 触屏前记录 `run.contacts[target.id]?.at`；触屏后同时检测 `t.cuts` 增加或 core 接触账本该目标 `contact.at` 发生变化。只有 core 的 `Challenge.swipe` 在真正几何碰撞后才写这个账本，目标自然超时/清理不会写；因此不会把未击中、仅仅消失的靶判为成功。
+- 报告增加 `stillTracked`、`contactAt`、`hitSource`，继续保持真实 CDP 手势、最多六次追切与硬性至少一中。需以新 SHA 的实时 45 秒 CI 为最终依据。
