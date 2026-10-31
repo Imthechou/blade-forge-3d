@@ -999,6 +999,15 @@ const ROUGHNESS_FRAGMENT = `
     float shoulder = smoothstep( 0.07, 0.28, edgePosition )
                    * ( 1.0 - smoothstep( 0.43, 0.74, edgePosition ) );
     float edgeOwnership = clamp( uEdgeGlow.w * wB, 0.0, 1.0 );
+    /* The real blade edge occupies very few vertices. A visible polished
+       steel surface also needs its broad *face* to catch a softer reflection.
+       The existing planar-face mask is generated from the true GLB, so this
+       cannot coat the handle or replace the forged S3 identity. This is
+       roughness-only and active after S7, including with emissive FX off. */
+    float faceSatin = smoothstep( 0.08, 0.45, clamp( vS3PlanarFace, 0.0, 1.0 ) )
+                    * edgeOwnership;
+    bladeRough = mix( bladeRough, clamp( bladeRough * 0.90 + 0.13, 0.10, 0.72 ),
+                      faceSatin * 0.55 );
     bladeRough = mix( bladeRough,
       clamp( bladeRough * 0.62 + 0.030, 0.055, 0.52 ), shoulder * edgeOwnership * 0.54 );
     /* Existing fine cutting apex remains distinct from the satin shoulder. */
