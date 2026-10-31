@@ -98,3 +98,8 @@
 ## 2026-10-31 P1 快赛移动靶触屏验收
 - 赛事 45 秒全流程原先只对开场固定靶执行鼠标划切，其余时间纯等待：无法验证提速段移动靶是否真正可切。本轮新增在真实 23–30 秒阶段寻找新投放的移动靶，录屏截图并用 CDP `Input.dispatchTouchEvent` 16 段真实触屏轨迹切割，校验该目标 cuts 增加。
 - 快赛阶段时钟不修改、仍走现有 PointerEvent→Challenge.swipe；其余正式赛事无改动。新增产物 `04-quick-real-moving-target.png` 和 run report；最新 SHA 的 Actions 需要复核。
+
+## 2026-10-31 P1 移动靶真实 Actions 入口纠正
+- 审查发现 `.github/workflows/arena-live-playtest.yml` 实际调用 `tools/arena-v3-playtest.mjs`，**不是** 同名 `arena-live-playtest.mjs`。此前仅加在后者的触屏测试并未被 CI 执行；已从未运行的脚本撤回该改动。
+- 本次直接在 CI 正在调用的 `arena-v3-playtest.mjs` 中插入 quick 第 23–30 秒移动靶的 CDP 真触屏滑动，必须命中移动靶本体 `cuts`，录像、截图 `v41-quick-moving-touch.png`、报告 `movingTouch` 同步保存。不可再声称 45 秒脚本拥有真人/真机证据：此脚本使用 Playwright 虚拟时钟加速，但触屏事件通过真实 Chromium 输入通道。
+- 只有新 HEAD 的 Arena live browser workflow 通过，才将移动靶 QA 标记为已执行。

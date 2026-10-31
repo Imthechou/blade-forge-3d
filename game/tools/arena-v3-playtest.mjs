@@ -81,6 +81,38 @@ async function pointerCut(page) {
   await page.mouse.move(...end,{steps:5});await page.mouse.up();
   return {id:t.id,type:t.type,structure:state.structure};
 }
+/** Test genuine mobile touch against a moving late-game target.
+ * The arena uses the normal PointerEvent handlers and the actual moving
+ * (x,y) computed by tick(); no direct Challenge.swipe / synthetic damage. */
+async function touchMovingTarget(page){
+  const target=await page.evaluate(()=>{
+    const r=globalThis.__FORGE_ARENA?.run;
+    const t=r?.targets?.find(t=>t.alive&&t.moving&&!t.avoid);
+    return t?{id:t.id,x:t.x,y:t.y,age:r.elapsed-t.createdAt,cuts:t.cuts.length}:null;
+  });
+  if(!target)return null;
+  const box=await page.locator('.quick-canvas').boundingBox();
+  assert.ok(box?.width>100&&box?.height>100,'moving target touch canvas missing');
+  const point=(fraction)=>({
+    x:box.x+box.width*Math.min(.99,Math.max(.01,target.x+fraction)),
+    y:box.y+box.height*target.y,
+  });
+  const cdp=await page.context().newCDPSession(page);
+  try{
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point(-.16)]});
+    for(let i=1;i<=16;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',
+      touchPoints:[point(-.16+.32*i/16)]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  }finally{await cdp.detach();}
+  const result=await page.evaluate(id=>{
+    const r=globalThis.__FORGE_ARENA.run;
+    const t=r.targets.find(t=>t.id===id);
+    return {cuts:t?.cuts.length??0,alive:t?.alive,contacts:r.primaryContacts||0};
+  },target.id);
+  assert.ok(result.cuts>target.cuts,
+    'real touch did not register on moving target '+JSON.stringify({target,result}));
+  return {target,...result};
+}
 async function playRound(page,virtual,{capture=false,evidenceName='v41-round'}={}) {
   await page.locator('.quick-canvas').waitFor();
   const initial=await page.evaluate(()=>{
@@ -92,6 +124,7 @@ async function playRound(page,virtual,{capture=false,evidenceName='v41-round'}={
     'V4.1 must never interrupt to sell an augment');
   let loops=0;
   const contact=[];
+  let movingTouch=null;
   if(capture)await screenshot(page,evidenceName+'-before');
   while(loops++<650) {
     if(virtual)await page.clock.fastForward(38);
@@ -106,6 +139,13 @@ async function playRound(page,virtual,{capture=false,evidenceName='v41-round'}={
     });
     if(!state)throw Error('Missing arena run');
     if(state.id!==initial.id||state.done)break;
+    if(initial.mode==='quick' && !movingTouch && state.phase==='speed'){
+      movingTouch=await touchMovingTarget(page);
+      if(movingTouch&&capture){
+        if(virtual)await page.clock.fastForward(38);
+        await screenshot(page,evidenceName+'-moving-touch');
+      }
+    }
     const cut=await pointerCut(page);
     if(cut){contact.push({at:state.elapsed,...cut,score:state.score});if(contact.length>200)contact.shift();}
     if(capture && loops===1)await screenshot(page,evidenceName+'-first-contact');
@@ -118,11 +158,14 @@ async function playRound(page,virtual,{capture=false,evidenceName='v41-round'}={
   assert.equal(r.total,initial.total);
   assert.equal(r.choicesMade,0);
   assert.equal(await page.locator('[data-augment-id]').count(),0);
-  if(initial.mode==='quick')assert.equal(r.reason,'time');
+  if(initial.mode==='quick'){
+    assert.equal(r.reason,'time');
+    assert.ok(movingTouch,'no real touchscreen contact against a late moving target');
+  }
   if(capture)await screenshot(page,evidenceName+'-settlement');
   return {score:r.score,kills:r.kills,choices:r.choicesMade,
     elapsed:r.total,mode:r.mode,reason:r.reason,structure:r.structure,
-    contacts:contact,performance:r.metrics};
+    contacts:contact,performance:r.metrics,movingTouch};
 }
 
 async function scenario(name,fn,options) {
@@ -150,7 +193,8 @@ try {
     await screenshot(page,'v41-quick-report');
     const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('bladeforge.save')));
     assert.ok(stored.quickChallengeRecords.byChallenge['quick:v41:free']);
-    return {score:r.score,kills:r.kills,choices:r.choices,contacts:r.contacts.length};
+    return {score:r.score,kills:r.kills,choices:r.choices,contacts:r.contacts.length,
+      movingTouch:r.movingTouch};
   },{virtual:process.env.ARENA_REALTIME==='1'?false:true});
   await scenario('six-material-2_5d-render-contact-gallery',async({page})=>{
     // This gallery is a deterministic renderer-state fixture. It is not
