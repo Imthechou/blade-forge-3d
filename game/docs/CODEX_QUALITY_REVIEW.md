@@ -4,7 +4,7 @@
 
 - PR #32，分支 `feat/blade-collection-growth-v34-20261030`，接管 SHA `2a9047b29d359bc2416911a5d8fea0b6cd024abc`。该 SHA 的 workflow runs 与 combined status 接口均返回空；未继承文档中 fb89ddb 的 9/9 结论。
 - Windows、Node 24.22.1、本机 Chrome + Playwright、ANGLE SwiftShader；320/375/360/390px 模拟手机。**没有实体 Android/iOS 测试**。
-- 本轮完成局部反馈与收藏导出两项修复，不改引擎、PBR、资源、存档、六维、风险或结算。保持 Draft，不合并、不发布。
+- 本轮完成刀技反馈、收藏导出与断刀底栏三项局部修复，不改引擎、PBR、资源、存档、六维、风险或结算。保持 Draft，不合并、不发布。
 
 ## 问题、复现与修改
 
@@ -12,6 +12,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | P2 | 带 precision 特性的刀进入自由快赛，真实鼠标轨迹切过靶具中心，停止操作 1.6 秒 | `arena-skill-before/320-idle.png`、`report.json`：visibleAfter1600ms=true，断言真实失败 | 动画结束没有移除 is-activated；减少动效时也永久显示“生效”；后续触发还同步读取 offsetWidth | 现有 RAF 中 800ms 清除瞬时标签及 live region；永久刀技保留；950ms 触发间隔不变，去掉强制布局读取；无新计时器 | `arena-skill-final/{320,375}-{hit,idle}.png`、report.json：两种宽度 visible=false、JS 错误0；专用脚本纳入 Arena Actions artifact | 实体触屏、音效、温升仍未测；没有声称本修复提高 FPS |
 | P2 | 藏刀阁导出爪子刀PNG，观察展框顶部 | `collection-before/karambit-collectible-poster.png`：尖端碰到197px裁剪边；新增实际drawImage变换边界断言在旧版唐刀即失败(top196.34) | 缩放只约束旋转前宽高，27°旋转后的宽/高可能超出画框 | 缩放同时受旋转外接框和32px内边距约束；不改原始图片、PBR或旧不透明图回退 | 三把真实GLB重导出通过；所有旋转框top229/bottom959，在画框197–1008内，保留刀尖；0 JS/HTTP错误 | 按透明裁切矩形保守适配，宽刀占比会适度减小；实体机色彩仍未验 |
+| P2 | seed12真实高风险选卡与挥锤，第17锤断刀，观察底栏 | `断刀底栏修复前.png`：再锻一把在48px列中裁字 | 通用鉴定页CSS误将所有双按钮状态第二列都设为图标列；断刀页第二项实际是文字按钮 | 显式ap-actions--more只用于真正有作品操作图标的状态；文字双按钮等宽；单按钮占满；重渲染清除状态 | 320px两按钮各140×48px，375px各167.5×48px，scrollWidth=clientWidth、均不越界；真实点击再锻后S1卡可见、stageIndex0；JS0。纳入Whole-game UX工作流 | 实体触控未测；保留原断刀归档/奖励与重锻流程 |
 
 ## 本地验收
 

@@ -67,7 +67,7 @@ export function render() {
   const stageEl=root.querySelector('.ap-stage');
   if(stageEl){stageEl.style.visibility='';stageEl.style.minHeight='';}
   root.dataset.revealComplete='0';
-  actions.classList.remove('ap-actions--try');
+  actions.classList.remove('ap-actions--try','ap-actions--more');
   scoreEl = null;
 
   const rec = Game.record || (Game.run ? Game.appraise() : null);
@@ -262,6 +262,7 @@ function renderReveal(rec) {
   bindTabs(body);
   bindStatDetails(body);
   actions.classList.toggle('ap-actions--try', !!rec.canEnterArena);
+  actions.classList.add('ap-actions--more');
   /* ★ T13.3：跳过按钮独立占一行，不挤占底部 4 个主操作的位置。
      跳过与完整播放的结果**完全相同**（只是不播动画）。 */
   mount(actions, [

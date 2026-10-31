@@ -196,7 +196,9 @@
 .ap-panel { height:auto; min-height:100px; overflow:visible; }
 
 .ap-actions--try { grid-template-columns:minmax(0,1fr) 94px 48px; }
-.ap-actions:not(.ap-actions--try) { grid-template-columns:minmax(0,1fr) 48px; }
+.ap-actions:not(.ap-actions--try) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.ap-actions--more:not(.ap-actions--try) { grid-template-columns:minmax(0,1fr) 48px; }
+.ap-actions>.btn:only-child { grid-column:1/-1; }
 .ap-actions .ap-more { padding:8px; border-radius:var(--r-pill); }
 .ap-detail-content.card,.ap-details { background:var(--surface-glass); border-color:var(--glass-border); border-radius:var(--r-md); }
 .ap-archive-receipt { border:1px solid var(--glass-border); background:var(--surface-glass); color:var(--risk-safe); }

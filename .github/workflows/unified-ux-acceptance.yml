@@ -42,6 +42,9 @@ jobs:
       - name: Narrow-phone interactions and all workshop dialogs
         working-directory: game
         run: node tools/unified-ux-acceptance.mjs
+      - name: Real fracture, narrow action buttons and reforge
+        working-directory: game
+        run: node tools/appraisal-fracture-qa.mjs
       - name: Cross-tab save ownership and stale-write browser acceptance
         if: always()
         working-directory: game

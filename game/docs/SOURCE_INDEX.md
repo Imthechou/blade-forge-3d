@@ -162,7 +162,7 @@
 | [src/ui/formalTestStage.js](../src/ui/formalTestStage.js) | 571 | 24166 | disposeFormalTestStage, renderFormalTest |
 | [src/ui/icons.js](../src/ui/icons.js) | 25 | 1257 | icon |
 | [src/ui/minigameV4.js](../src/ui/minigameV4.js) | 302 | 14705 | renderHammerV4, renderEdgeV4 |
-| [src/ui/pages/appraise.js](../src/ui/pages/appraise.js) | 730 | 34606 | create, render, enter, leave |
+| [src/ui/pages/appraise.js](../src/ui/pages/appraise.js) | 731 | 34670 | create, render, enter, leave |
 | [src/ui/pages/arena.js](../src/ui/pages/arena.js) | 2793 | 184288 | create, leave, openDailyChallenge, openQuickChallenge, openCollectionSample, openTournament, render |
 | [src/ui/pages/daily.js](../src/ui/pages/daily.js) | 34 | 1200 | create, render |
 | [src/ui/pages/forge.js](../src/ui/pages/forge.js) | 578 | 29226 | create, render, syncInspect, leave |
