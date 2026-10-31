@@ -145,3 +145,8 @@
 
 ## 2026-10-31 P5 六流派实际 2D 舞台断架目视验收
 - 更新 `tools/arena-prop-visual-qa.mjs`：直接调用正式的 `drawArenaStage`（不是另绘 mock），基于 `createStructure` 构造六流派 3 级架体，渲染 `rigs-before.png` 和通过 `updateStructure` 切断连接后的 `rigs-broken.png`，记录明显变化像素、六路真实断链数量。检测绘制不修改结构来源模型。该图库存入 Arena Actions artifact，应逐张目视验收。
+
+## 2026-10-31 P5 六材质打击声与热路径 GC 优化
+- `audio.js` 增加软泡棉/纤维绳/木/工程塑料/冰/金属六类短促真实材料声纹参数；阻滞与切断采用不同的包络、低中频及噪声，避免每次物体命中都像同一种三角波提示音。仍遵守已有音量/静音、60ms 节流，无额外声音素材。
+- 原版每次 `noise()` 都创建一段随机 PCM `AudioBuffer`，新增单次缓存约 0.5 秒 PCM，后续只是创建短寿命 Source/Filter/Gain 并由 onended 解除连接。减少 45 秒连续切割时频繁的浮点数组分配和随机填充，不能把这一软件代码优化冒充手机 FPS 实测。
+- 新增六材质声纹、阻滞响度与时长、数据不可变 Node 测试。真实手机音量、扬声器音色、触觉震动仍必须设备回归。
