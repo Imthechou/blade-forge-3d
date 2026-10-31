@@ -151,7 +151,7 @@
 | [src/ui/arenaStage.js](../src/ui/arenaStage.js) | 1309 | 65569 | drawArenaStage |
 | [src/ui/arenaStructureVisual.js](../src/ui/arenaStructureVisual.js) | 47 | 2290 | LINK_STYLES, linkStyle, joinedKey, breakPosition, createBreakTracker |
 | [src/ui/bladeCard.js](../src/ui/bladeCard.js) | 383 | 16975 | bladeCardModel, bladeCard, bladeCardDetail, compareModels |
-| [src/ui/bladeCardExport.js](../src/ui/bladeCardExport.js) | 188 | 9960 | collectibleFilename, posterInfo, renderCollectiblePoster, downloadCollectiblePoster |
+| [src/ui/bladeCardExport.js](../src/ui/bladeCardExport.js) | 196 | 10467 | collectibleFilename, posterInfo, renderCollectiblePoster, downloadCollectiblePoster |
 | [src/ui/bladeEdgeProjection.js](../src/ui/bladeEdgeProjection.js) | 79 | 3844 | bladeEdgeProjection, bladeContourProjection |
 | [src/ui/cardDoodles.js](../src/ui/cardDoodles.js) | 353 | 19290 | doodleSpec, cardDoodle |
 | [src/ui/components.js](../src/ui/components.js) | 524 | 26300 | ICONS, riskBar, riskChip, statRail, statGrid, rarityBadge, qualitySeal, decisionCard, traitItem |

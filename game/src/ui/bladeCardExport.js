@@ -119,8 +119,16 @@ function paintKnifeGallery(ctx,pic,tone) {
     // Sword tip: upper right. Hilt: lower left. Content-fit is based on the
     // *visible* knife pixels, not the large transparent WebGL camera viewport.
     const targetLength=770;
-    const scale=Math.min(targetLength/silhouette.h,670/silhouette.w);
-    ctx.translate(540,594);ctx.rotate(27*Math.PI/180);
+    const angle=27*Math.PI/180,cos=Math.cos(angle),sin=Math.sin(angle);
+    // Fit the rotated crop, including its transparent safety border. Broad
+    // hooked blades otherwise lose their tips at the gallery's clip edge.
+    const rotatedWidth=silhouette.w*cos+silhouette.h*sin;
+    const rotatedHeight=silhouette.w*sin+silhouette.h*cos;
+    const availableWidth=field.w-64;
+    const availableHeight=2*Math.min(594-field.y,field.y+field.h-594)-64;
+    const scale=Math.min(targetLength/silhouette.h,670/silhouette.w,
+      availableWidth/rotatedWidth,availableHeight/rotatedHeight);
+    ctx.translate(540,594);ctx.rotate(angle);
     const w=silhouette.w*scale,h=silhouette.h*scale;
     ctx.shadowColor='rgba(3,10,24,.34)';
     ctx.shadowBlur=20;ctx.shadowOffsetX=10;ctx.shadowOffsetY=12;

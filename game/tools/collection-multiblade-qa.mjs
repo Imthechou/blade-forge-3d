@@ -62,6 +62,20 @@ try{
     const dialog=page.locator('.blade-detail-sheet');
     await dialog.screenshot({path:path.join(out,id+'-detail.png')});
     const pending=page.waitForEvent('download',{timeout:60000});
+    await page.evaluate(()=>{
+      window.__POSTER_KNIFE_BOUNDS=[];
+      if(window.__POSTER_DRAW_TRACKED)return;
+      window.__POSTER_DRAW_TRACKED=true;
+      const draw=CanvasRenderingContext2D.prototype.drawImage;
+      CanvasRenderingContext2D.prototype.drawImage=function(...args){
+        if(this.canvas.width===1080&&this.canvas.height===1520&&args.length===9){
+          const [,sx,sy,sw,sh,x,y,w,h]=args,m=this.getTransform();
+          const pts=[[x,y],[x+w,y],[x,y+h],[x+w,y+h]].map(([x,y])=>({x:m.a*x+m.c*y+m.e,y:m.b*x+m.d*y+m.f}));
+          window.__POSTER_KNIFE_BOUNDS.push({left:Math.min(...pts.map(p=>p.x)),right:Math.max(...pts.map(p=>p.x)),top:Math.min(...pts.map(p=>p.y)),bottom:Math.max(...pts.map(p=>p.y))});
+        }
+        return draw.apply(this,args);
+      };
+    });
     await page.getByRole('button',{name:'下载本刀真实3D外观收藏卡'}).click();
     const download=await pending, bytes=fs.readFileSync(await download.path());
     assert.ok(bytes.length>50000,name+' export is not a placeholder image');
@@ -69,8 +83,12 @@ try{
     assert.equal(bytes.readUInt32BE(16),1080);
     assert.equal(bytes.readUInt32BE(20),1520);
     fs.writeFileSync(path.join(out,id+'-collectible-poster.png'),bytes);
+    const bounds=await page.evaluate(()=>window.__POSTER_KNIFE_BOUNDS);
+    assert.equal(bounds.length,1,'Actual transparent knife draw must be tracked');
+    assert.ok(bounds.every(b=>b.left>=112&&b.right<=968&&b.top>=217&&b.bottom<=988),
+      name+' rotated knife must fit inside the gallery with breathing room: '+JSON.stringify(bounds));
     results.models.push({id,name,posterBytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),
-      thumbBytes:thumb.length,mainStageModel:actual});
+      thumbBytes:thumb.length,mainStageModel:actual,bounds});
     await page.locator('.sheet-mask').last().getByRole('button',{name:'关闭',exact:true}).click();
     await page.locator('.sheet-mask').waitFor({state:'detached',timeout:15000});
   }
