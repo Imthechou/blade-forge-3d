@@ -14,6 +14,7 @@
  */
 
 import { STAGES, stageAt } from '../data/stages.js';
+import { FORGE_FLOW_VERSION, chapterState, isFiveScreen } from './forgeChapters.js';
 import { CR_START } from '../data/balance.js';
 import * as RNG from '../platform/rng.js';
 import * as Attr from './attributes.js';
@@ -25,7 +26,10 @@ import * as Cards from './cards.js';
 import * as Traits from './traits.js';
 import * as Combos from './combos.js';
 import * as Hammer from './hammer.js';
+import { noteHammerShape } from './forgeShape.js';
 import * as Edge from './edge.js';
+import { guaranteedRecipes } from './forgeRecipeAccess.js';
+import { assistedCard,isAssistedStage,ASSISTED_STAGES } from './forgeAssist.js';
 
 export const PHASE = Object.freeze({
   SELECT: 'select',      // 选卡
@@ -42,14 +46,17 @@ export function createRun({
   mode = 'normal',
   cr = CR_START,
   unlockedCardIds = null,
+  materialInventory = null,
   workshopSnapshot = null,
   specialistSnapshot = null,
+  flowVersion = null,
   daily = null,
 } = {}) {
   const s = (seed != null ? (Number(seed) >>> 0) : ((Date.now() % 100000000) >>> 0));
   const run = {
     seed: s,
     mode,
+    flowVersion: flowVersion===FORGE_FLOW_VERSION ? FORGE_FLOW_VERSION : null,
     rng: RNG.stream(s, 'run'),
     stageIndex: 0,
     stageId: 'S1',
@@ -91,6 +98,7 @@ export function createRun({
     visualRecipe: [],
 
     hammer: Hammer.makeState(),
+    shapeProfile: null,  // serialized, bounded S4 blade-silhouette corrections
     edge: null,
 
     daily: daily ? { ...daily } : null,
@@ -99,6 +107,10 @@ export function createRun({
        如果只在 createRun 时传一次，重铸后解锁权重就静默消失。
        只存 id 数组，不存 UI 状态，不写回存档。 */
     unlockedCardIds: Array.isArray(unlockedCardIds) ? unlockedCardIds.slice() : [],
+    recipeChoiceIds: flowVersion===FORGE_FLOW_VERSION ? guaranteedRecipes(workshopSnapshot,unlockedCardIds) : [],
+    materialInventory: materialInventory && typeof materialInventory==='object'?{...materialInventory}:{},
+    materialReservation:null,
+    assistedSteps:[],
     createdAt: Date.now(),
   };
 
@@ -124,6 +136,14 @@ export const stageDef = (run) => stageAt(run.stageIndex);
  */
 export function confirmCard(run, card) {
   if (run.phase !== PHASE.SELECT) return { ok: false, reason: '当前不在选卡阶段' };
+  // 强制物料必须先核实此卡确为本轮真实候选，避免错误阶段/伪造卡造成
+  // 钱包已扣料而锻造失败、或未通过选卡直接写属性/视觉状态。
+  if (isFiveScreen(run)) {
+    const candidate=run.candidates?.find(c=>c.id===card?.id);
+    if (!candidate || candidate.stage !== run.stageId || card?.stage !== run.stageId)
+      return { ok:false, reason:'不是当前工序的有效候选卡' };
+    card=candidate; // 只按原始卡池对象结算，防止同 ID 替换数值或视觉参数。
+  }
 
   const r = Cards.commit(run, card);
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -147,25 +167,29 @@ export function confirmCard(run, card) {
     return { ok: true, phase: run.phase };
   }
 
-  // S1 不检查（§9.2）
-  if (!def.riskCheck) {
-    advance(run);
-    return { ok: true, phase: run.phase };
+  // 五屏模式：开炉配方完全安全。S2 的风险仍进入 run.risk，
+  // 第2屏 S3 按累计风险首次检查，避免在准备阶段突然断刀。
+  // 旧存档、每日模式保持原来的逐阶段检查口径。
+  if ((isFiveScreen(run) && def.id==='S2') || !def.riskCheck) {
+    const next=advance(run);
+    return next ? { ...next, phase:run.phase, fractured:!!run.fractured } : { ok: true, phase: run.phase };
   }
 
   const check = checkRisk(run, def.id);
   if (check.fractured) return { ok: true, phase: run.phase, riskCheck: check, fractured: true };
-  advance(run);
-  return { ok: true, phase: run.phase, riskCheck: check };
+  const next=advance(run);
+  return { ok: true, phase:run.phase, riskCheck: next?.riskCheck || check, fractured:!!run.fractured };
 }
 
 /* ── S4 自由锻打 ───────────────────────────────────────── */
 
-export function hammerStrike(run) {
+export function hammerStrike(run, contact = null) {
   if (run.phase !== PHASE.HAMMER) return { ok: false, reason: '当前不在锻打阶段' };
   const res = Hammer.strike(run, run.rng);
   if (!res.ok) return res;
   run.peakRisk = run.risk.peak;
+  // Successful S4 impacts can subtly reshape the real blade edge; risk/stats stay in Hammer.strike.
+  if (!res.fractured) noteHammerShape(run, contact);
   if (res.fractured) {
     /* ★ 断刀记录必须记「这一锤实际用掉的概率」。
        每锤的判定发生在 Hammer.strike 内部（唯一判定入口），以前没有回写
@@ -252,6 +276,20 @@ function advance(run) {
   run.stageId = STAGES[run.stageIndex].id;
   run.phase = PHASE.SELECT;
   Cards.rollCandidates(run);
+  if(isFiveScreen(run)&&isAssistedStage(run.stageId)) {
+    const card=assistedCard(run);
+    if(!card)return;
+    const receipt={stageId:run.stageId,name:ASSISTED_STAGES[run.stageId],cardId:card.id,cardName:card.name,
+      riskBefore:run.risk.current,riskAfter:null,fractured:false};
+    run.assistedSteps ||= [];
+    run.assistedSteps.push(receipt);
+    // The same normal commit resolves attrs, risk, hidden combos, PBR and the
+    // S7 contour phase. The helper never forges results or bypasses checks.
+    const result=confirmCard(run,card);
+    receipt.riskAfter=run.risk.current;
+    receipt.fractured=!!run.fractured;
+    return result;
+  }
 }
 
 /* ── 只读快照（给 UI / 渲染用，不含可变引用） ────────────── */
@@ -264,6 +302,8 @@ export function snapshot(run) {
     stageId: run.stageId,
     stageName: stageDef(run).name,
     stageQuestion: stageDef(run).question,
+    chapter: chapterState(run),
+    assistedSteps:(run.assistedSteps||[]).map(x=>({...x})),
     phase: run.phase,
     finished: run.finished,
     fractured: run.fractured,

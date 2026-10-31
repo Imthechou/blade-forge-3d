@@ -10,6 +10,7 @@
 
 import { env, audio, bus, EVENTS } from '../platform/index.js';
 import * as Progress from '../core/progress.js';
+import * as Storage from '../platform/storage.js';
 import Game from './game.js';
 import * as Settings from './settings.js';
 import { getStage, ensureS3TextureData } from '../render/index.js';
@@ -80,6 +81,38 @@ async function K3DTextureReady(stage) {
     : { total: 0, uploaded: 0 };
 }
 
+function showSaveConflict() {
+  if (document.getElementById('saveConflictOverlay')) return;
+  boot.root?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'saveConflictOverlay';
+  overlay.setAttribute('role', 'alertdialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', '存档保护');
+  Object.assign(overlay.style, { position: 'fixed', inset: '0', zIndex: '999999',
+    display: 'grid', placeItems: 'center', padding: '24px',
+    background: 'rgba(14,23,34,.72)', backdropFilter: 'blur(12px)' });
+  const panel = document.createElement('div');
+  Object.assign(panel.style, { width: 'min(100%, 360px)', borderRadius: '20px',
+    padding: '24px', background: '#f7f9fc', color: '#263545',
+    boxShadow: '0 24px 65px rgba(0,0,0,.25)', textAlign: 'center' });
+  const heading = document.createElement('h2');
+  heading.textContent = '存档保护已启用';
+  heading.style.margin = '0 0 12px';
+  const note = document.createElement('p');
+  note.textContent = '另一个标签页正在使用或已更新此存档。为避免覆盖刀具、材料和赛事奖励，本页已停止保存。请关闭其他标签页后重新载入。';
+  note.style.lineHeight = '1.6';
+  const button = document.createElement('button');
+  button.type = 'button'; button.textContent = '重新载入存档';
+  Object.assign(button.style, { minHeight: '48px', width: '100%', borderRadius: '12px',
+    border: '0', color: 'white', background: '#2876b9', fontWeight: '600', cursor: 'pointer' });
+  button.addEventListener('click', () => globalThis.location.reload());
+  panel.append(heading, note, button); overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+  document.getElementById('app')?.setAttribute('inert', '');
+  button.focus();
+}
+
 async function main() {
   // Developer-visible quality override for controlled visual A/B comparisons.
   // The automatic policy remains the default when the query is absent.
@@ -91,6 +124,9 @@ async function main() {
   // ① 平台
   setNote('正在准备存档…');
   Progress.load();
+  const writer = await Storage.startWriterSession();
+  if (!writer.ok) { showSaveConflict(); return; }
+  bus.on(EVENTS.SAVE_CONFLICT, showSaveConflict);
   Progress.rolloverDaily();
   // 存档设置统一经 app/settings 施加到音频/震动/动效（V2.1 §29）
   Settings.applyAll();

@@ -1,8 +1,8 @@
 /**
  * 平台服务层 · 音频
  *
- * 全部音效由 WebAudio 实时合成 —— 不依赖任何音频资源文件，
- * 省掉 小游戏/App 的包体与加载问题，迁移时替换为宿主 API 即可。
+ * 轻量混合：WebAudio 合成是全面回退；首次手势后预载小体积 Kenney
+ * CC0 真实击断瞬态。解码和下载均不阻塞触控、赛事时钟与原有声音。
  *
  * 设计约束（设定文档 §29）：只有开关与音量，不做复杂音频系统。
  */
@@ -11,7 +11,60 @@ import { env } from './env.js';
 
 let ctx = null;
 let master = null;
+let sharedNoise = null;
+let sharedNoiseContext = null;
 const state = { enabled: true, volume: 0.6 };
+
+/* Five verified Kenney Impact Sounds CC0 OGG recordings. Rope retains its
+ * original dry synthesized fiber to avoid a mismatched heavy punch sample.
+ * Provenance and exact SHA-1s: assets/audio/kenney/LICENSE.md. */
+export const CUT_SAMPLE_ASSETS=Object.freeze({
+  soft:'impactSoft_heavy_000.ogg',
+  wood:'impactWood_heavy_000.ogg',
+  plastic:'impactPlate_medium_000.ogg',
+  ice:'impactGlass_heavy_000.ogg',
+  metal:'impactMetal_medium_000.ogg',
+});
+const cutSamples=new Map();
+let cutSamplesContext=null,cutSamplesPromise=null;
+export const cutSampleStatus=()=>({loaded:[...cutSamples.keys()],files:Object.keys(CUT_SAMPLE_ASSETS).length});
+export function preloadCutSamples(){
+  const c=state.enabled?ensure():null;
+  if(!c||typeof globalThis.fetch!=='function'||typeof c.decodeAudioData!=='function')return Promise.resolve(false);
+  if(c!==cutSamplesContext){cutSamplesContext=c;cutSamples.clear();cutSamplesPromise=null;}
+  if(cutSamplesPromise)return cutSamplesPromise;
+  cutSamplesPromise=Promise.all(Object.entries(CUT_SAMPLE_ASSETS).map(async([kind,file])=>{
+    try{
+      const url=new URL('../../assets/audio/kenney/'+file,import.meta.url);
+      const response=await globalThis.fetch(url.href,{cache:'force-cache'});
+      if(!response.ok)return false;
+      const bytes=await response.arrayBuffer();
+      if(bytes.byteLength<1000||bytes.byteLength>32000)return false;
+      const decoded=await c.decodeAudioData(bytes);
+      if(decoded?.duration>0&&decoded.duration<4)cutSamples.set(kind,decoded);
+      return cutSamples.has(kind);
+    }catch{return false;} // offline, suspended audio, or Ogg-unsupported Safari
+  })).then(results=>results.some(Boolean));
+  return cutSamplesPromise;
+}
+function playRecordedSever(profile){
+  if(!profile.completed||!state.enabled)return false;
+  const buffer=cutSamples.get(profile.kind),c=ctx;
+  if(!buffer||!c||c.state!=='running')return false;
+  try{
+    const t=c.currentTime,src=c.createBufferSource(),g=c.createGain();
+    src.buffer=buffer;
+    const length=Math.min(.18,Math.max(.08,buffer.duration));
+    const gain=profile.kind==='metal'?.17:profile.kind==='ice'?.13:.115;
+    g.gain.setValueAtTime(.0001,t);
+    g.gain.linearRampToValueAtTime(gain,t+.004);
+    g.gain.exponentialRampToValueAtTime(.0001,t+length);
+    src.connect(g);g.connect(master);
+    src.onended=()=>{src.disconnect();g.disconnect();};
+    src.start(t);src.stop(t+length+.008);
+    return true;
+  }catch{return false;}
+}
 
 function ensure() {
   if (ctx) return ctx;
@@ -29,6 +82,7 @@ function ensure() {
 export function unlock() {
   const c = ensure();
   if (c && c.state === 'suspended') c.resume().catch(() => {});
+  if(state.enabled)void preloadCutSamples();
 }
 
 export function setEnabled(v) {
@@ -60,24 +114,32 @@ function tone({ freq = 440, dur = 0.12, type = 'sine', gain = 0.3, sweepTo = nul
   osc.start(t0); osc.stop(t0 + dur + 0.02);
 }
 
-/** 噪声脉冲：锤击、火花、断裂的"撞击"成分 */
+/** A single 0.5-second noise texture is shared across impacts; the envelope
+ * gives each impact its shape. Previously every hit allocated a new float
+ * AudioBuffer and filled it with Math.random() on the input hot path. */
 function noise({ dur = 0.18, gain = 0.35, lowpass = 1800, delay = 0 }) {
   const c = ensure();
   if (!c || !state.enabled) return;
   const t0 = c.currentTime + delay;
-  const len = Math.max(1, Math.floor(c.sampleRate * dur));
-  const buf = c.createBuffer(1, len, c.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const length = Math.max(.008,Math.min(.49,Number(dur)||.18));
+  if (sharedNoiseContext !== c || !sharedNoise) {
+    const size = Math.ceil(c.sampleRate * .50);
+    sharedNoise=c.createBuffer(1,size,c.sampleRate);
+    const values=sharedNoise.getChannelData(0);
+    for(let i=0;i<values.length;i++) values[i]=Math.random()*2-1;
+    sharedNoiseContext=c;
+  }
   const src = c.createBufferSource();
-  src.buffer = buf;
+  src.buffer = sharedNoise;
   const lp = c.createBiquadFilter();
   lp.type = 'lowpass';
   lp.frequency.value = lowpass;
   const g = c.createGain();
-  g.gain.value = gain;
+  g.gain.setValueAtTime(Math.max(.0001,gain),t0);
+  g.gain.exponentialRampToValueAtTime(.0001,t0+length);
   src.connect(lp); lp.connect(g); g.connect(master);
-  src.start(t0);
+  src.onended=()=>{src.disconnect();lp.disconnect();g.disconnect();};
+  src.start(t0);src.stop(t0+length);
 }
 
 /** 音效表：语义化命名，业务层只调 play('hammer') */
@@ -126,28 +188,54 @@ const SFX = {
   lose: () => { [440, 392, 330].forEach((f, i) => tone({ freq: f, dur: 0.2, type: 'triangle', gain: 0.14, delay: i * 0.11 })); },
 };
 
+/** Distinct physical-material sound signatures, not a musical pitch ladder.
+ * Pure data and bounded envelopes are testable even without WebAudio. */
+export const CUT_SOUND_MATERIALS=Object.freeze({
+  soft:   Object.freeze({low:315,mid:820,lowpass:1450,noise:.023,tail:.038,texture:.035,osc:'triangle'}),
+  fiber:  Object.freeze({low:245,mid:685,lowpass:2900,noise:.042,tail:.058,texture:.052,osc:'triangle'}),
+  wood:   Object.freeze({low:145,mid:375,lowpass:2350,noise:.068,tail:.094,texture:.085,osc:'triangle'}),
+  plastic:Object.freeze({low:179,mid:555,lowpass:3750,noise:.046,tail:.078,texture:.060,osc:'triangle'}),
+  ice:    Object.freeze({low:215,mid:1125,lowpass:5900,noise:.065,tail:.083,texture:.052,osc:'sine'}),
+  metal:  Object.freeze({low:112,mid:515,lowpass:6900,noise:.088,tail:.120,texture:.070,osc:'sawtooth'}),
+});
+export function cutSoundProfile(impact){
+  const kind=impact?.sound||'fiber';
+  const preset=CUT_SOUND_MATERIALS[kind]||CUT_SOUND_MATERIALS.fiber;
+  const weight=Math.max(0,Math.min(1,Number(impact?.weight)||.3));
+  const blocked=['blocked','deflect','avoid-hit'].includes(impact?.event||impact?.contactEvent);
+  return {
+    ...preset,kind,weight,
+    lowGain:(blocked?.035:.045)+weight*.075,
+    midGain:(blocked?.023:.037)+weight*.046,
+    noiseGain:blocked?.021:preset.texture*(.70+weight*.38),
+    duration:blocked?preset.tail*.62:preset.tail,
+    completed:!!impact?.completed&&!blocked,blocked,
+  };
+}
 /**
- * 三层打击音：低频重量 + 中频材质 + 高频切裂。
- * 切割中只播放很短的合成包络，沿用已有音量/静音开关；无外部音效文件。
- * 由画布层节流，浏览器不支持 WebAudio 时静默降级。
+ * Six tailored, non-musical attacks: softened foam, raspy rope, dry wood,
+ * laminated polymer, brittle ice and cold-cut steel. No file requests and
+ * no additional concurrency beyond the existing 60ms sound throttle.
  */
 export function playCutImpact(impact) {
   if(!impact||!state.enabled)return;
-  const kind=impact.sound||'fiber', weight=Math.max(0,Math.min(1,Number(impact.weight)||.3));
-  const complete=!!impact.completed;
-  const low=kind==='metal'?112:kind==='wood'?142:kind==='plastic'?174:kind==='ice'?209:kind==='fiber'?242:296;
-  const mid=kind==='metal'?470:kind==='ice'?850:kind==='plastic'?540:kind==='wood'?365:kind==='fiber'?625:760;
+  const p=cutSoundProfile(impact);
+  if(!cutSamplesPromise&&state.enabled)void preloadCutSamples();
   try {
-    // 软材紧而轻；硬材低频先到，裂响略滞后，视觉定格期仍然可以继续输入。
-    tone({freq:low,dur:.055+weight*.058,type:'triangle',gain:.045+weight*.09,sweepTo:low*.65});
-    tone({freq:mid,dur:.027+weight*.035,type:kind==='metal'?'sawtooth':'triangle',
-      gain:.04+weight*.05,sweepTo:mid*.67,delay:.007});
-    if(kind==='metal'||kind==='ice')noise({dur:.04+weight*.05,gain:.065+weight*.06,
-      lowpass:kind==='metal'?6800:5200,delay:.012});
-    else if(kind==='wood'||kind==='plastic')noise({dur:.045,gain:.05+weight*.06,lowpass:2000+weight*2000,delay:.009});
-    else noise({dur:.025,gain:.04,lowpass:3000,delay:.004});
-    if(complete&&weight>.4)tone({freq:mid*1.6,dur:.038,type:'sine',gain:.035,delay:.024});
-  } catch(_) { /* 音频永不阻塞输入 */ }
+    const recorded=playRecordedSever(p);
+    tone({freq:p.low,dur:p.duration,type:'triangle',gain:p.lowGain*(recorded?.50:1),
+      sweepTo:p.low*.66});
+    if(!recorded)tone({freq:p.mid,dur:p.duration*.55,type:p.osc,gain:p.midGain,
+      sweepTo:p.mid*(p.kind==='ice'?.93:.72),delay:.007});
+    noise({dur:p.noise,gain:p.noiseGain*(recorded?.42:1),lowpass:p.lowpass,
+      delay:p.kind==='metal'?.011:.003});
+    // Real sampled impact has its own decay; never layer a redundant ring.
+    if(!recorded&&p.completed&&p.weight>.53){
+      const ring=p.kind==='metal'?.09:p.kind==='ice'?.07:.034;
+      tone({freq:p.mid*(p.kind==='metal'?1.36:1.12),
+        dur:ring,type:'sine',gain:p.kind==='metal'?.018:.022,delay:.023});
+    }
+  } catch(_) { /* failed audio never blocks pointer input */ }
 }
 
 export function play(name) {
@@ -158,4 +246,4 @@ export function play(name) {
 
 export const list = () => Object.keys(SFX);
 
-export default { play, playCutImpact, list, setEnabled, setVolume, settings, unlock };
+export default { play, playCutImpact, preloadCutSamples, cutSampleStatus, list, setEnabled, setVolume, settings, unlock };

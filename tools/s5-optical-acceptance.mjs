@@ -64,7 +64,12 @@ try {
   await dismiss();
   await page.evaluate(async()=>{
     const g=(await import('/src/app/game.js')).default;
+    // The shader-gallery fixture must traverse all S1–S9 stages by hand.
+    // Keep mode='normal' for an identical main-vs-PR renderer comparison;
+    // disable only the five-screen presentation helper in this test run.
+    // The real five-screen flow is covered by independent WebGL/UX suites.
     g.startForge({mode:'normal',seed:20261024});
+    g.run.flowVersion=null;
     (await import('/src/ui/router.js')).default.go('forge');
   });
   await page.locator('.page.is-active .dcard').first().waitFor();

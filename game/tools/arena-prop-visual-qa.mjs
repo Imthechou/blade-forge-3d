@@ -47,6 +47,68 @@ try{
    return {proof,status:S.spriteStatus(),motion:{first:a,second:b,reduced:frozen}};
  });
  await page.locator('#cut-qa').screenshot({path:path.join(out,'cut-directions.png')});
+ // Real Canvas renderer with six actual rig graphs. The sheet is for the
+ // reviewer to see intact, fresh fracture and settling, not a mock illustration.
+ const rigs=await page.evaluate(async()=>{
+   const {createStructure,updateStructure}=await import('/src/core/arenaStructures.js');
+   const {drawArenaStage}=await import('/src/ui/arenaStage.js');
+   const styles=['edge','press','precise','quench','composite','overload'];
+   const c=document.createElement('canvas');c.width=1170;c.height=1140;c.id='structure-review';
+   c.style='position:fixed;inset:0;z-index:999999;background:#f4f7f9';
+   document.body.replaceChildren(c);
+   const ctx=c.getContext('2d');
+   const states=styles.map((id,i)=>{
+     const structure=createStructure(43210+i,id,3);
+     const run={version:'arena-v4.1',mode:'formal',phase:'active',elapsed:9,
+       remaining:36,total:45,health:100,maxHealth:100,score:0,combo:0,kills:0,
+       structure,targets:structure.parts,guide:null};
+     return {id,run};
+   });
+   const snapshot=()=>JSON.stringify(states.map(s=>s.run.structure));
+   const labels=['锻压','承重','精密','淬彩','复合','过载'];
+   const paint=(time)=>{
+     ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#F4F7F9';ctx.fillRect(0,0,1170,1140);
+     for(let i=0;i<states.length;i++){
+       const col=i%3,row=Math.floor(i/3),x=col*390,y=row*570;
+       ctx.save();ctx.translate(x,y);ctx.beginPath();ctx.rect(0,0,390,570);ctx.clip();
+       drawArenaStage(ctx,states[i].run,390,510,{now:time,reducedMotion:false});
+       ctx.textAlign='center';ctx.font='600 16px system-ui';
+       ctx.fillStyle='#243A4A';ctx.fillText(labels[i]+' / '+states[i].id,195,543);
+       ctx.restore();
+     }
+   };
+   paint(1000);
+   const original=snapshot();
+   const sourceImage=ctx.getImageData(0,0,1170,1140).data.slice();
+   window.__rigReviewAdvance=()=>{
+     for(const state of states){
+       const target=state.run.structure.parts.find(t=>t.key==='a');
+       target.alive=false;
+       updateStructure(state.run.structure,state.run.targets);
+     }
+     const beforePaint=snapshot();
+     paint(1001);paint(1201);
+     if(snapshot()!==beforePaint)throw Error('visual painter mutated actual structure');
+     const diff=ctx.getImageData(0,0,1170,1140).data;
+     let changed=0;for(let i=0;i<diff.length;i+=16){
+       if(Math.abs(diff[i]-sourceImage[i])+Math.abs(diff[i+1]-sourceImage[i+1])+
+         Math.abs(diff[i+2]-sourceImage[i+2])>55)changed++;
+     }
+     if(changed<500)throw Error('broken supports not visibly different '+changed);
+     return {changedSamplePixels:changed,styles:states.map(s=>({
+       id:s.id,brokenJoins:s.run.structure.failedJoins.length,
+       targetPosition:[s.run.structure.parts[1].x,s.run.structure.parts[1].y],
+     }))};
+   };
+   if(snapshot()!==original)throw Error('intact renderer mutated structure');
+   return {styles,mode:'actual drawArenaStage Canvas',modelMutations:0};
+ });
+ await page.locator('#structure-review').screenshot({path:path.join(out,'rigs-before.png')});
+ const breakResult=await page.evaluate(()=>window.__rigReviewAdvance());
+ await page.locator('#structure-review').screenshot({path:path.join(out,'rigs-broken.png')});
+ if(breakResult.styles.some(s=>s.brokenJoins<1))throw Error('Missing actual failed joins');
+ await fs.writeFile(path.join(out,'rig-structure-report.json'),JSON.stringify({rigs,...breakResult},null,2));
+ console.log('STRUCTURE_BREAK_VISUAL_QA',JSON.stringify(breakResult));
  await fs.writeFile(path.join(out,'cut-direction-report.json'),JSON.stringify({pass:!errors.length,errors,...result},null,2));
  console.log(JSON.stringify({pass:!errors.length,checks:result.proof.length,cache:result.status}));
  if(errors.length)throw Error('Browser errors: '+errors.join('\n'));

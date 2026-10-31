@@ -73,6 +73,12 @@ jobs:
         env:
           FORGE_URL: http://127.0.0.1:8123/
         run: node tools/arena-v3-playtest.mjs
+      - name: Transient forge skill feedback on narrow phones
+        working-directory: game
+        env:
+          FORGE_URL: http://127.0.0.1:8123/
+          ARENA_QA_OUT: arena-playtest/skill-feedback
+        run: node tools/arena-skill-feedback-qa.mjs
       - name: Baseline main versus branch, 390 x 844 Chromium screenshots
         if: always()
         working-directory: game

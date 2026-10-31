@@ -10,6 +10,10 @@ import { riskBar, statGrid, decisionCard, traitItem, rarityBadge } from '../comp
 import { icon } from '../icons.js';
 import { cardDoodle, doodleSpec } from '../cardDoodles.js';
 import { STAGES } from '../../data/stages.js';
+import { chapterState, isFiveScreen, FORGE_CHAPTERS, forgeStageStatDelta } from '../../core/forgeChapters.js';
+import { directionOf } from '../../data/cards.js';
+import { selectableRecipes } from '../../core/forgeRecipeAccess.js';
+import { specialtyFlowCue } from '../../core/arenaV41Specialties.js';
 import { HAMMER_TIERS } from '../../data/balance.js';
 import { tagName, BASE_TAGS, SPECIAL_TAGS } from '../../data/tags.js';
 import { CUT_TRAIT_STYLES } from '../../core/forgeTraitCuts.js';
@@ -123,8 +127,10 @@ function padFor(body) {
 function renderStageHead(run) {
   const stage = $('#forgeStage', root);
   if (!run || !stage) return;
-  const total = STAGES.length;          // 10 段（S1..S10）
+  const five=isFiveScreen(run);
+  const total=five?FORGE_CHAPTERS.length:STAGES.length;
   const idx = run.stageIndex;
+  const chapter=five?chapterState(run):null;
   const def = STAGES[idx] || {};
 
   /* ★ 阶段切换反馈：只有**阶段号真的变了**才播一次过渡。
@@ -150,8 +156,34 @@ function renderStageHead(run) {
     bar.appendChild(badge);
   }
   badge.innerHTML = '';
-  badge.appendChild(el('b', { text: String(idx + 1).padStart(2, '0') }));
-  badge.appendChild(el('span', { text: def.name || '' }));
+  badge.appendChild(el('b', { text: String(five?chapter.number:idx + 1).padStart(2, '0') }));
+  badge.appendChild(el('span', { text: five?chapter.name:(def.name || '') }));
+  if(five)badge.appendChild(el('i',{class:'forge-flow-substep',text:`${chapter.step}/${chapter.steps}`}));
+  const spec=five?specialtyFlowCue(run):null;
+  const lastAssist=five?run.assistedSteps?.at(-1):null;
+  badge.title=[five?`${chapter.step}/${chapter.steps} · ${def.name} · ${chapter.subtitle}`:null,
+    spec?`工坊专精：${spec.name} Lv.${spec.level} · ${spec.effect}`:null,
+    lastAssist?`${lastAssist.name}：${lastAssist.cardName} · 风险 ${lastAssist.riskBefore} → ${lastAssist.riskAfter}`:null]
+    .filter(Boolean).join('\n');
+  let specialistNode=$('.forge-specialty-cue',bar);
+  if(spec){
+    if(!specialistNode){specialistNode=el('div',{class:'chip forge-specialty-cue'});bar.appendChild(specialistNode);}
+    specialistNode.textContent=`${spec.name} Lv.${spec.level}${spec.active?' · 本步有效':''}`;
+    specialistNode.title=spec.effect;
+    specialistNode.classList.toggle('is-active',spec.active);
+  }else specialistNode?.remove();
+  // 已掌握的配方可直选，但随机卡池、风险与其他锻造步骤不删改。
+  bar.querySelector('.forge-recipe-direct')?.remove();
+  const learned=five&&run.phase==='select'?selectableRecipes(run):[];
+  if(learned.length){
+    const label=run.stageId==='S1'?'选材料':run.stageId==='S2'?'选主工艺':'选刀型';
+    bar.appendChild(el('button',{class:'chip forge-recipe-direct',type:'button',
+      'aria-label':label+'（工坊已掌握）',
+      text:label,
+      onclick:()=>openKnownRecipeSheet(run,learned),
+    }));
+  }
+
   // 左上角仅留阶段序号与名称；底部图形进度条承担进度说明。
   $('.stage-question', bar)?.remove();
 
@@ -164,15 +196,16 @@ function renderStageHead(run) {
   }
   prog.innerHTML = '';
   for (let i = 0; i < total; i++) {
-    const isDone = !!run.finished || i < idx;
+    const displayStage=five?FORGE_CHAPTERS[i]:STAGES[i];
+    const progressIndex=five?chapter.number-1:idx;
+    const isDone = !!run.finished || i < progressIndex;
     prog.appendChild(el('div', {
-      // ★ 类名表达式写在 class: 里（不先存局部变量）——
-      //   让 tools/audit-classes.mjs 能抽到 sp-dot / done / active 三个类名。
-      class: 'sp-dot' + (isDone ? ' done' : (i === idx ? ' active' : '')),
-      title: STAGES[i].name,
+      // 类名保持原样以复用 WebGL 舞台的原进度条布局。
+      class: 'sp-dot' + (isDone ? ' done' : (i === progressIndex ? ' active' : '')),
+      title: displayStage.name,
     }, [
       el('span', { class: 'sp-num', text: String(i + 1) }),
-      el('span', { class: 'sp-title', text: STAGES[i].name }),
+      el('span', { class: 'sp-title', text: displayStage.name }),
     ]));
     if (i < total - 1) prog.appendChild(el('div', { class: 'sp-line' }));
   }
@@ -199,12 +232,34 @@ function renderStageHead(run) {
     /* 中央浮层：给“我确实进入了下一阶段”一个可读回执 */
     stage.querySelector('.stage-advance-toast')?.remove();
     const flash = el('div', { class: 'stage-advance-toast', role: 'status', 'aria-live': 'polite' }, [
-      el('b', { text: `第 ${idx + 1} 阶段` }),
-      el('span', { text: def.name || '' }),
+      el('b', { text: five?`${chapter.number}/5`:`第 ${idx + 1} 阶段` }),
+      el('span', { text: five?`${chapter.name} · ${def.name}`:(def.name || '') }),
     ]);
     stage.appendChild(flash);
     window.setTimeout(() => flash.remove(), 1400);
   }
+}
+
+/** 永久掌握或真实库存的配方直选：只有材料库存直选才会在确认时消耗1份。 */
+function openKnownRecipeSheet(run,cards){
+  if(run!==Game.run||run.phase!=='select')return;
+  let dialog;
+  const copy=run.stageId==='S1'?'材料':run.stageId==='S2'?'主工艺':'刀型';
+  const nodes=cards.map(card=>el('button',{class:'btn forge-recipe-option',type:'button',
+    text:`${card.name} · ${card.rarityCn}${run.stageId==='S1'&&(!run.recipeChoiceIds||!run.recipeChoiceIds.includes(card.id))?(run.naturalCandidateIds?.includes(card.id)?' · 本轮随机免费':' · 库存 '+(run.materialInventory?.[card.id]||0)+'份 / 确认消耗1份'):''}`, 
+    onclick:()=>{
+      if(Game.run!==run){dialog.close();return;}
+      const result=Game.chooseRecipeCard(card.id);
+      if(!result.ok){toast(result.reason||'此配方暂不可指定','warn');return;}
+      dialog.close();
+      render();
+      toast('已指定'+copy+'：'+card.name,'good');
+    },
+  }));
+  dialog=sheet({title:'工坊已掌握的'+copy,body:el('div',{class:'stack forge-recipe-sheet'},[
+    el('p',{class:'muted tiny',text:run.stageId==='S1'?'基础材料及已掌握材料无限可用；库存稀有锻材仅在确认选择时消耗1份，随机抽取不扣库存。':'已掌握工艺可永久直选，所有原卡仍有概率随机出现。'}),
+    ...nodes,
+  ])});
 }
 
 /**
@@ -321,12 +376,16 @@ function renderSelect(body, run) {
       current: riskNow,
       priorCurrent: projected ? Game.run.risk.current : null,
       peak: Math.max(Game.run.risk.peak, riskNow),
-      chance: projected ? projected.breakChanceAfter : breakChance(riskNow, Game.run.daily?.breakScale || 1),
+      // 第1屏配方 S1/S2 只积累风险；断刀掷骰从第2屏 S3 开始。
+      chance: isFiveScreen(Game.run) && ['S1','S2','S4'].includes(Game.run.stageId) ? 0 : (projected ? projected.breakChanceAfter : breakChance(riskNow, (Game.run.daily?.breakScale || 1) * (1-(Game.run.workshop?.riskReduction || 0)))),
       band,
     }));
     // 选中后即时显示准确的六维增量/目标值，非选中保持紧凑趋势。
-    mount(statsNode, statGrid(projected?.stats || Game.run.stats, pickedCard?.directions || null,
-      !!projected, projected ? { before: Game.run.stats, delta: pickedCard.statDelta } : null));
+    const actualDirections=projected&&isFiveScreen(Game.run)
+      ? Object.fromEntries(Object.entries(projected.statDelta||{}).map(([key,value])=>[key,directionOf(value)]))
+      : pickedCard?.directions || null;
+    mount(statsNode, statGrid(projected?.stats || Game.run.stats, actualDirections,
+      !!projected, projected ? { before: Game.run.stats, delta: projected.statDelta } : null));
     // 卡（选中时另两张降权，把注意力收到选中那张）
     cardsRow.classList.toggle('is-picking', !!pickedCard);
     const previewStage = $('#forgeStage', root);
@@ -364,9 +423,14 @@ function renderSelect(body, run) {
     confirmButton.textContent = pickedCard ? '确认工艺 →' : '选择工艺卡';
     confirmButton.disabled = !pickedCard;
     selectionStatus.classList.toggle('has-selection', !!pickedCard);
+    const assistedNext=isFiveScreen(Game.run)?({S2:'随后系统预锻将首次判险',S5:'随后系统回火会再判一次风险',S8:'随后系统调校会再判一次风险'})[Game.run.stageId]:null;
     selectionStatus.textContent = pickedCard
-      ? `预览：${pickedCard.name} · 尚未生效，确认后写入`
-      : '';
+      ? `预览：${pickedCard.name} · ${Game.run.materialReservation===pickedCard.id?'确认消耗库存锻材1份':(assistedNext||'尚未生效，确认后写入')}`
+      : (isFiveScreen(Game.run) && ['S1','S2'].includes(Game.run.stageId)
+        ? (assistedNext||'开炉配方不判裂，风险会带入锻打')
+        : isFiveScreen(Game.run) && Game.run.stageId==='S4'
+          ? `系统已预锻：${Game.run.assistedSteps?.at(-1)?.cardName||'完成'} · 前10锤安全，之后每锤增加风险`
+          : (assistedNext||''));
     // 从首张卡开始常驻可见；选卡时构筑进度与六维一起预览。
     renderStageTraits(Game.run, pickedCard);
 
@@ -436,8 +500,9 @@ function previewChance() {
 function showDetail(card) {
   const art = doodleSpec(card);
   const stats = ['strength', 'toughness', 'sharpness', 'craft', 'design', 'spirit'];
+  const applied=forgeStageStatDelta(Game.run,card);
   const statNodes = stats.map(key => {
-    const direction = card.directions?.[key];
+    const direction = isFiveScreen(Game.run) ? directionOf(applied[key]) : card.directions?.[key];
     const dirKey = direction?.key || 'flat';
     const type = dirKey.startsWith('up') ? 'is-positive' : dirKey.startsWith('down') ? 'is-negative' : 'is-neutral';
     const symbol = type === 'is-positive' ? '↗' : type === 'is-negative' ? '↘' : '—';

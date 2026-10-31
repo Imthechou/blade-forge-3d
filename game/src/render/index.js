@@ -58,6 +58,7 @@ import '../data/legacy/finishOverrides.js';
 
 import { K3D_REGISTRY } from './legacy/_registry.js';
 import { captureToDataURL } from './captureRunner.js';
+import { applyBladeShape, clearBladeShape } from './bladeShape.js';
 import { env } from '../platform/env.js';
 import motion from '../platform/motion.js';
 import { TextureUploadTracker, awaitIfCurrent, collectPreparationTargets,
@@ -278,6 +279,7 @@ export class BladeStage {
     this.viewer = null;
     this.modelId = null;
     this._requestedModelId = null;
+    this._shapeProfile = null;
     this.ready = false;
     /** 幽灵态（无代表作时的展台默认刀）：只影响 canvas 的 CSS 透明度 */
     this._ghost = false;
@@ -465,9 +467,12 @@ export class BladeStage {
         if (seq === this._seq) this._requestedModelId = null;
         return { ok: false, reason: info ? 'stale' : 'load-failed' };
       }
+      // Cached GLBs are shared: restore this viewer's shape clones first.
+      clearBladeShape(this.viewer);
       guard(() => this.viewer.setModel(info.root, modelId));
       this._glowRoot = null; this._glowSignature = null;
       this.modelId = modelId;
+      this.applyShape(this._shapeProfile);
       // 先给新模型一帧 GLB 自带材质，再异步套锻造材质。着色器编译期间渲染会
       // 暂停；保留这一帧能让玩家始终看到当前阶段的模型轮廓，不会舞台空白。
       if (!this.deferSkin && (this._skinState || this._handle)) {
@@ -1468,6 +1473,7 @@ export class BladeStage {
       this.container = container;
       const pageKey = container.closest?.('.page')?.dataset.page || null;
       const pageChanged = this._pageKey !== pageKey;
+      if (pageChanged) this.viewer._stopCamTween?.();
       this._pageKey = pageKey;
       /* 换页就想不起来上一页的开关：回到该页自己的默认值。
          否则会出现相反的错误 —— 首页开了拖动、进锻造页后按钮显示关，
@@ -1580,6 +1586,10 @@ export class BladeStage {
     return guard(() => this.viewer && this.viewer.setAutoRotate && this.viewer.setAutoRotate(!!on), null);
   }
 
+  inspectKnife() {
+    return guard(() => this.viewer?.inspectShowcase?.(), false);
+  }
+
   /**
    * 开启/关闭「自由鉴赏」交互（拖动旋转 + 双指缩放）。
    *
@@ -1673,8 +1683,15 @@ export class BladeStage {
     return guard(() => (this.viewer && this.viewer.snapshot ? this.viewer.snapshot(w, h) : null), null);
   }
 
+  /** Geometry is copy-on-write and owned by the current viewer, not GLB cache. */
+  applyShape(profile) {
+    this._shapeProfile = profile || null;
+    return guard(() => applyBladeShape(this.viewer, this._shapeProfile), { ok:false, vertices:0 });
+  }
+
   clear() {
     return guard(() => {
+      clearBladeShape(this.viewer);
       if (this.viewer && this.viewer.clearBladeEffect) this.viewer.clearBladeEffect();
       if (this.viewer && this.viewer._clearModel) this.viewer._clearModel();
       this.modelId = null;
@@ -1684,6 +1701,7 @@ export class BladeStage {
   }
 
   dispose() {
+    clearBladeShape(this.viewer);
     this._disposeWarmPool();     // 预热材质挂在 scene 上，必须随舞台一起撤
     this._disposeTransmissionWarm();
     this._composeCache.clear();

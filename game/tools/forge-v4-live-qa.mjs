@@ -42,13 +42,126 @@ try{
      (await import('/src/ui/pages/forge.js')).render();
    });
    await page.locator('.hammer-stage-hit').waitFor({timeout:45000});
-   await shot(width+'-hammer-start');
-   for(let i=0;i<10;i++)await page.locator('.hammer-stage-hit').click({position:{x:170,y:235},force:true});
+   // The DOM can enter S4 before its async GLB finishes loading. The former
+   // zero-hit image accidentally photographed S3's rock, not the virgin blade.
+   await page.waitForFunction(async()=>{
+     const st=(await import('/src/render/index.js')).getStage();
+     const G=(await import('/src/app/game.js')).default;
+     return G.run?.phase==='hammer' && /^knife_/.test(st.modelId||'') &&
+       st.viewer?.root && !st.isCompiling && !st._visualFlushQueued;
+   },null,{timeout:45000});
+   // A logical GLB switch is insufficient: async compile may retain the ore
+   // in the onscreen framebuffer. Wait for the actual tall knife silhouette.
+   await page.waitForFunction(async()=>{
+     const st=(await import('/src/render/index.js')).getStage();
+     const viewer=st.viewer,canvas=viewer?.renderer?.domElement;
+     if(!canvas || !viewer._lastSubmittedFrame)return false;
+     const probe=document.createElement('canvas');
+     probe.width=128;probe.height=160;
+     const ctx=probe.getContext('2d',{willReadFrequently:true});
+     if(!ctx)return false;
+     ctx.drawImage(canvas,0,0,128,160);
+     const pixels=ctx.getImageData(0,0,128,160).data;
+     let left=128,right=-1,top=160,bottom=-1,count=0;
+     for(let y=0;y<160;y+=2)for(let x=0;x<128;x+=2){
+       if(pixels[(y*128+x)*4+3]<48)continue;
+       left=Math.min(left,x);right=Math.max(right,x);
+       top=Math.min(top,y);bottom=Math.max(bottom,y);count++;
+     }
+     return count>24 && right>left && (bottom-top)/(right-left)>1.8;
+   },null,{timeout:45000});
+   await page.waitForTimeout(100);
+   const shapeSnapshots = [];
+   // Inspect true GLB geometry (not only DOM hit flashes) at 0 / 10 / 20 hits.
+   async function snapshotShape(hits) {
+     await page.waitForTimeout(125);
+     const metrics=await page.evaluate(async()=>{
+       const G=(await import('/src/app/game.js')).default;
+       const stage=(await import('/src/render/index.js')).getStage();
+       const source=stage.engine?.loaded?.get(stage.modelId)?.meshData?.positions;
+       let mesh=null;stage.viewer?.root?.traverse(o=>{if(!mesh&&o.isMesh&&o.geometry?.getAttribute('aRegion'))mesh=o;});
+       const current=mesh?.geometry?.getAttribute('position')?.array;
+       let changed=0,maxDelta=0,meanDelta=0;
+       if(source&&current&&source.length===current.length){
+         for(let i=0;i<current.length;i++){
+           const d=Math.abs(current[i]-source[i]);
+           if(d>1e-8)changed++;
+           maxDelta=Math.max(maxDelta,d);meanDelta+=d;
+         }
+         meanDelta/=current.length;
+       }
+       const r=stage.viewer?.renderer;
+       return {count:G.run.hammer.count,marks:G.run.shapeProfile?.marks?.length||0,
+         model:stage.modelId,changed,maxDelta,meanDelta,
+         geometryId:mesh?.geometry?.uuid||null,
+         resources:r?{geometries:r.info.memory.geometries,textures:r.info.memory.textures}:null};
+     });
+     assert.equal(metrics.count,hits,'The requested number of hammer hits must be real');
+     shapeSnapshots.push(metrics);
+     await shot(width+'-hammer-'+hits);
+     const source=await page.evaluate(async()=> (await import('/src/render/index.js')).getStage().snapshot(720,960));
+     assert.ok(source?.startsWith('data:image/'));
+     fs.writeFileSync(path.join(out,width+'-hammer-'+hits+'-glb.'+(source.startsWith('data:image/webp')?'webp':'png')),
+       Buffer.from(source.split(',')[1],'base64'));
+     return metrics;
+   }
+   await snapshotShape(0);
+    for(let i=0;i<10;i++)await page.locator('.hammer-stage-hit').click({position:{x:170,y:235},force:true});
    const hammer=await page.evaluate(async()=>{const r=(await import('/src/app/game.js')).default.run;
       return {phase:r.phase,count:r.hammer.count,risk:r.risk.current,gained:r.hammer.statGained};});
    assert.equal(hammer.phase,'hammer');assert.equal(hammer.count,10);
    assert.ok(hammer.gained>=50&&hammer.gained<=80);
-   await shot(width+'-hammer-ten');report.cases.push({width,hammer});
+   const shape=await page.evaluate(async()=>{
+     const G=(await import('/src/app/game.js')).default;
+     const st=(await import('/src/render/index.js')).getStage();
+     const run=G.run,info=st.engine?.loaded?.get(st.modelId);
+     let mesh=null;
+     st.viewer?.root?.traverse(o=>{if(!mesh&&o.isMesh&&o.geometry?.getAttribute('aRegion'))mesh=o;});
+     const current=mesh?.geometry?.getAttribute('position')?.array;
+     const source=info?.meshData?.positions;
+     const changed=current&&source&&current.length===source.length?
+       Array.from(current).some((v,i)=>Math.abs(v-source[i])>1e-8):false;
+     const shaped=st.applyShape(run.shapeProfile),cloned=mesh?.geometry?.getAttribute('position')?.array!==source;
+     st.applyShape(null);
+     const restored=mesh?.geometry?.getAttribute('position')?.array===source;
+     st.applyShape(run.shapeProfile);
+     return {marks:run.shapeProfile?.marks?.length||0,vertices:shaped.vertices||0,changed,cloned,restored};
+   });
+   assert.equal(shape.marks,10,'S4 contact points are saved once per real hammer hit');
+   assert.ok(shape.vertices>0&&shape.changed&&shape.cloned&&shape.restored,
+     'Real blade deformation must be copy-on-write, visible and reversible: '+JSON.stringify(shape));
+   await snapshotShape(10);
+   if(width===390){
+     // An earned workshop bonus and the press specialist must be reflected in
+     // the exact player-facing next-hit chance, not just the hidden RNG roll.
+     const actual=await page.evaluate(async()=>{
+       const G=(await import('/src/app/game.js')).default;
+       window.__S4QA_PREVIOUS={workshop:G.run.workshop,specialist:G.run.specialist};
+       G.run.workshop={...(G.run.workshop||{}),level:G.run.workshop?.level||1,riskReduction:.10};
+       G.run.specialist={id:'press',boost:.12};
+       (await import('/src/ui/pages/forge.js')).render();
+       return (await import('/src/core/hammer.js')).previewNextBreakChance(G.run);
+     });
+     const label=await page.locator('.hammer-next').innerText();
+     assert.ok(label.includes('断裂 '+(100*actual).toFixed(1)+'%'),
+       'the displayed chance must include real workshop and press mitigation: '+label);
+     await page.evaluate(async()=>{
+       const G=(await import('/src/app/game.js')).default;
+       Object.assign(G.run,window.__S4QA_PREVIOUS);
+       delete window.__S4QA_PREVIOUS;
+       (await import('/src/ui/pages/forge.js')).render();
+     });
+   }
+   // High-roll deterministic QA keeps the same real hammer/risk code path alive
+   // to compare the 20th deformation. No player stat or risk tuning is involved.
+   for(let i=0;i<10;i++)await page.locator('.hammer-stage-hit').click({position:{x:170,y:235},force:true});
+   const lastShape=await snapshotShape(20);
+   assert.ok(lastShape.changed>0 && lastShape.maxDelta>shapeSnapshots[1].maxDelta*1.2,
+     '20 strikes should deepen the local silhouette correction');
+   assert.equal(lastShape.geometryId,shapeSnapshots[1].geometryId,
+     'S4 hits 11–20 must reuse the transient geometry rather than recreate it');
+   assert.equal(shapeSnapshots[0].changed,0,'Unworked GLB must match its cached source');
+   report.cases.push({width,hammer,shape,shapeSnapshots});
    await page.evaluate(async()=>{
      const G=(await import('/src/app/game.js')).default;
      const F=await import('/src/core/forge.js');

@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 const root = path.resolve(process.cwd(), 'visual-acceptance');
 await fs.mkdir(root, {recursive:true});
 
-const report={date:new Date().toISOString(),checks:[],consoleErrors:[],failedRequests:[],failures:[],screenshots:[]};
+const report={date:new Date().toISOString(),checks:[],consoleErrors:[],failedRequests:[],baselineErrors:[],baselineFailedRequests:[],failures:[],screenshots:[]};
 const candidate='http://127.0.0.1:8123/';
 const before='https://imthechou.github.io/blade-forge-3d/';
 const sizes=[{width:390,height:844},{width:390,height:740},{width:390,height:680},{width:375,height:667},{width:1280,height:900}];
@@ -17,9 +17,13 @@ async function capture(label,url,viewport,check) {
   const mobile=viewport.width<600;
   const context=await browser.newContext({viewport,deviceScaleFactor:mobile?2:1,isMobile:mobile,hasTouch:mobile,locale:'zh-CN',reducedMotion:'reduce'});
   const page=await context.newPage();
-  page.on('pageerror',err=>report.consoleErrors.push({label,message:String(err)}));
-  page.on('console',msg=>{if(msg.type()==='error') report.consoleErrors.push({label,message:msg.text()});});
-  page.on('response',resp=>{if(resp.status()>=400) report.failedRequests.push({label,status:resp.status(),url:resp.url()});});
+  // External main-branch baseline is a comparison reference, not this PR's executable.
+  // Keep its errors visible in the JSON but never fail the candidate build because baseline is unavailable.
+  const errors=label==='BEFORE'?report.baselineErrors:report.consoleErrors;
+  const requests=label==='BEFORE'?report.baselineFailedRequests:report.failedRequests;
+  page.on('pageerror',err=>errors.push({label,message:String(err)}));
+  page.on('console',msg=>{if(msg.type()==='error')errors.push({label,message:msg.text()});});
+  page.on('response',resp=>{if(resp.status()>=400)requests.push({label,status:resp.status(),url:resp.url()});});
   await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
   await page.waitForFunction(()=>window.__FORGE_PREP?.ready && document.querySelector('#boot.is-gone'),null,{timeout:100000});
   // The guide is scheduled after first paint: wait for that async overlay before clicking.
@@ -97,7 +101,9 @@ async function capture(label,url,viewport,check) {
       const btn=page.getByRole('button',{name:'确认工艺 →',exact:true});
       await btn.click({timeout:16000});
       await page.waitForTimeout(650);
-      progressed=(await page.locator('.page.is-active .stage-badge').innerText()).includes('02');
+      // 新流程第 1 屏包含 S1 原料与 S2 主工艺；确认第一张后为 1 屏第 2 子步骤。
+      const badge=await page.locator('.page.is-active .stage-badge').innerText();
+      progressed=badge.includes('开炉配方')&&badge.includes('2/2');
       await page.screenshot({path:path.join(root,prefix+'-stage2.png'),fullPage:false,animations:'disabled'});
       report.screenshots.push(prefix+'-stage2.png');
     }

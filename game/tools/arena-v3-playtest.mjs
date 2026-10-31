@@ -21,6 +21,33 @@ async function newGame(name,{width=390,height=844,virtual=true}={}) {
   const context=await browser.newContext({viewport:{width,height},isMobile:true,hasTouch:true,deviceScaleFactor:2,recordVideo:{dir:path.join(out,'videos'),size:{width,height}},locale:'zh-CN',reducedMotion:'reduce'});
   const records=[sampleBlade(150),{...sampleBlade(150),id:'blade-b',bladeName:'破甲刀'},{...sampleBlade(150),id:'blade-c',bladeName:'综合刀'}];
   await context.addInitScript(records=>localStorage.setItem('bladeforge.save',JSON.stringify({version:1,cr:2000,collection:records,arena:{school:{edge:{cleared:[0,1,2]},press:{cleared:[0,1,2]},composite:{cleared:[0,1,2]}},history:[{id:'qa-national-crown',tier:'national',result:{champion:true}}]},settings:{tutorialSeen:true,sound:false,motion:'reduced',hintsSeen:{}}})),records);
+  if(name==='lifecycle-ten-navigation-cycles') {
+    await context.addInitScript(()=>{
+      const tracker={liveObservers:0,totalObservers:0,disconnected:0};
+      Object.defineProperty(window,'__ARENA_LIFECYCLE_QA',{value:tracker});
+      const Base=window.ResizeObserver;
+      if(Base)window.ResizeObserver=class extends Base{
+        constructor(callback){super(callback);tracker.totalObservers++;tracker.liveObservers++;this._tracked=true;}
+        disconnect(){if(this._tracked){this._tracked=false;tracker.disconnected++;tracker.liveObservers--;}return super.disconnect();}
+      };
+      // Count actual registered listeners while preserving native behavior.
+      const register=(host,key,types)=>{
+        const listeners=new Map(types.map(type=>[type,new Set()]));
+        const add=host.addEventListener,remove=host.removeEventListener;
+        host.addEventListener=function(type,fn,options){
+          if(listeners.has(type))listeners.get(type).add(fn);
+          return add.call(this,type,fn,options);
+        };
+        host.removeEventListener=function(type,fn,options){
+          if(listeners.has(type))listeners.get(type).delete(fn);
+          return remove.call(this,type,fn,options);
+        };
+        Object.defineProperty(tracker,key,{get:()=>Object.fromEntries([...listeners].map(([k,v])=>[k,v.size]))});
+      };
+      register(window,'windowListeners',['resize']);
+      register(document,'documentListeners',['visibilitychange','keydown']);
+    });
+  }
   const page=await context.newPage();
   page.on('pageerror',e=>report.errors.push({name,error:String(e)}));
   page.on('requestfailed',r=>{if(!r.failure()?.errorText?.includes('ERR_ABORTED'))report.requestFailures.push({name,url:r.url(),error:r.failure()?.errorText});});
@@ -81,6 +108,46 @@ async function pointerCut(page) {
   await page.mouse.move(...end,{steps:5});await page.mouse.up();
   return {id:t.id,type:t.type,structure:state.structure};
 }
+/** Test genuine mobile touch against a moving late-game target.
+ * The arena uses the normal PointerEvent handlers and the actual moving
+ * (x,y) computed by tick(); no direct Challenge.swipe / synthetic damage. */
+async function touchMovingTarget(page){
+  const target=await page.evaluate(()=>{
+    const r=globalThis.__FORGE_ARENA?.run;
+    const t=r?.targets?.find(t=>t.alive&&t.moving&&!t.avoid);
+    return t?{id:t.id,x:t.x,y:t.y,age:r.elapsed-t.createdAt,cuts:t.cuts.length,
+      previousContactAt:r.contacts?.[t.id]?.at??null}:null;
+  });
+  if(!target)return null;
+  const box=await page.locator('.quick-canvas').boundingBox();
+  assert.ok(box?.width>100&&box?.height>100,'moving target touch canvas missing');
+  const point=(fraction)=>({
+    x:box.x+box.width*Math.min(.99,Math.max(.01,target.x+fraction)),
+    y:box.y+box.height*target.y,
+  });
+  const cdp=await page.context().newCDPSession(page);
+  try{
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point(-.16)]});
+    for(let i=1;i<=16;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',
+      touchPoints:[point(-.16+.32*i/16)]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  }finally{await cdp.detach();}
+  const result=await page.evaluate(id=>{
+    const r=globalThis.__FORGE_ARENA.run;
+    const t=r.targets.find(t=>t.id===id);
+    return {cuts:t?.cuts.length??0,alive:t?.alive,stillTracked:!!t,
+      contactAt:r.contacts?.[id]?.at??null,contacts:r.primaryContacts||0};
+  },target.id);
+  // A freshly cut target can be culled from run.targets before Playwright's
+  // post-gesture read. The core's contact ledger outlives that active array,
+  // and is only written by a genuine swipe collision (not natural expiration).
+  // Compare timestamps to reject a stale contact from an earlier gesture.
+  const geometryHit=result.cuts>target.cuts;
+  const ledgerHit=result.contactAt!=null &&
+    result.contactAt!==target.previousContactAt;
+  return {target,...result,hit:geometryHit||ledgerHit,
+    hitSource:geometryHit?'target-cuts':ledgerHit?'core-contact-ledger':'none'};
+}
 async function playRound(page,virtual,{capture=false,evidenceName='v41-round'}={}) {
   await page.locator('.quick-canvas').waitFor();
   const initial=await page.evaluate(()=>{
@@ -92,6 +159,8 @@ async function playRound(page,virtual,{capture=false,evidenceName='v41-round'}={
     'V4.1 must never interrupt to sell an augment');
   let loops=0;
   const contact=[];
+  let movingTouch=null;
+  const movingAttempts=[];
   if(capture)await screenshot(page,evidenceName+'-before');
   while(loops++<650) {
     if(virtual)await page.clock.fastForward(38);
@@ -106,6 +175,20 @@ async function playRound(page,virtual,{capture=false,evidenceName='v41-round'}={
     });
     if(!state)throw Error('Missing arena run');
     if(state.id!==initial.id||state.done)break;
+    if(initial.mode==='quick' && !movingTouch && movingAttempts.length<6 &&
+       (state.phase==='speed'||state.phase==='finale')){
+      const attempt=await touchMovingTarget(page);
+      if(attempt){
+        movingAttempts.push(attempt);
+        if(attempt.hit){
+          movingTouch=attempt;
+          if(capture) {
+            if(virtual)await page.clock.fastForward(38);
+            await screenshot(page,evidenceName+'-moving-touch');
+          }
+        }
+      }
+    }
     const cut=await pointerCut(page);
     if(cut){contact.push({at:state.elapsed,...cut,score:state.score});if(contact.length>200)contact.shift();}
     if(capture && loops===1)await screenshot(page,evidenceName+'-first-contact');
@@ -118,11 +201,15 @@ async function playRound(page,virtual,{capture=false,evidenceName='v41-round'}={
   assert.equal(r.total,initial.total);
   assert.equal(r.choicesMade,0);
   assert.equal(await page.locator('[data-augment-id]').count(),0);
-  if(initial.mode==='quick')assert.equal(r.reason,'time');
+  if(initial.mode==='quick'){
+    assert.equal(r.reason,'time');
+    assert.ok(movingTouch,'none of six genuine mobile swipes hit a moving target: '+
+      JSON.stringify(movingAttempts));
+  }
   if(capture)await screenshot(page,evidenceName+'-settlement');
   return {score:r.score,kills:r.kills,choices:r.choicesMade,
     elapsed:r.total,mode:r.mode,reason:r.reason,structure:r.structure,
-    contacts:contact,performance:r.metrics};
+    contacts:contact,performance:r.metrics,movingTouch,movingAttempts};
 }
 
 async function scenario(name,fn,options) {
@@ -150,14 +237,100 @@ try {
     await screenshot(page,'v41-quick-report');
     const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('bladeforge.save')));
     assert.ok(stored.quickChallengeRecords.byChallenge['quick:v41:free']);
-    return {score:r.score,kills:r.kills,choices:r.choices,contacts:r.contacts.length};
+    return {score:r.score,kills:r.kills,choices:r.choices,contacts:r.contacts.length,
+      movingTouch:r.movingTouch};
   },{virtual:process.env.ARENA_REALTIME==='1'?false:true});
+  await scenario('lifecycle-ten-navigation-cycles',async({page})=>{
+    const measurements=[];
+    // Native ResizeObserver + listeners are tracked by this *isolated context*,
+    // not by the game. No direct stage renderer or gameplay mutations.
+    const metrics=()=>page.evaluate(()=>{
+      const q=window.__ARENA_LIFECYCLE_QA;
+      const bridge=window.__FORGE_ARENA;
+      const arena=document.querySelector('.page[data-page="arena"]');
+      return {
+        live:q.liveObservers,total:q.totalObservers,disconnected:q.disconnected,
+        listeners:{...q.windowListeners,...q.documentListeners},
+        diagnosticCanvas:!!bridge?.canvas,diagnosticEffects:!!bridge?.effects,
+        canvasConnected:bridge?.canvas?.isConnected??false,
+        arenaCanvases:arena?.querySelectorAll('.quick-canvas').length||0,
+        paused:bridge?.run?.paused??null,phase:bridge?.run?.phase||null,
+        cr:JSON.parse(localStorage.getItem('bladeforge.save'))?.cr||0,
+      };
+    });
+    const baseline=await metrics();
+    await page.getByRole('button',{name:'快速挑战',exact:true}).click({force:true});
+    await page.getByRole('button',{name:'开始自由快赛',exact:true}).click({force:true});
+    const first=await metrics();
+    assert.ok(first.diagnosticCanvas&&first.diagnosticEffects,'first arena mount missing live canvas/FX');
+    const activeDelta=first.live-baseline.live;
+    assert.ok(activeDelta>=1,'arena must register a ResizeObserver');
+    let awayReference=null,resumeReference=null;
+    const currentRun=await page.evaluate(()=>window.__FORGE_ARENA?.run?.id);
+    for(let i=0;i<10;i++){
+      await page.evaluate(async()=> (await import('/src/ui/router.js')).go('home'));
+      const away=await metrics();
+      if(!awayReference)awayReference=away;
+      else {
+        assert.equal(away.live,awayReference.live,'observer count accumulates on exit #'+i);
+        assert.deepEqual(away.listeners,awayReference.listeners,
+          'listener count accumulates on exit #'+i);
+      }
+      assert.equal(away.diagnosticCanvas,false,'retained obsolete Canvas on exit #'+i);
+      assert.equal(away.diagnosticEffects,false,'retained visual FX buffers on exit #'+i);
+      assert.equal(away.arenaCanvases,0,'hidden arena keeps a canvas backing store on exit #'+i);
+      assert.equal(away.paused,true,'navigation away must freeze live arena timer');
+      // The home page legitimately owns separate listeners/observers. Never
+      // compare different page types to a supposed global "zero" baseline.
+      await page.evaluate(async()=> (await import('/src/ui/router.js')).go('arena'));
+      const resumed=await metrics();
+      if(!resumeReference)resumeReference=resumed;
+      else {
+        assert.equal(resumed.live,resumeReference.live,'observer count grows on arena re-entry #'+i);
+        assert.deepEqual(resumed.listeners,resumeReference.listeners,
+          'listener count grows on arena re-entry #'+i);
+      }
+      assert.equal(resumed.arenaCanvases,1,'re-enter has duplicate canvases #'+i);
+      assert.ok(resumed.diagnosticCanvas&&resumed.diagnosticEffects,'missing active visual buffers #'+i);
+      assert.equal(resumed.paused,true,'returning from another page must require explicit resume');
+      assert.ok(resumed.live>0,'arena must have an active canvas observer');
+      const resumedId=await page.evaluate(()=>window.__FORGE_ARENA?.run?.id);
+      assert.equal(resumedId,currentRun,'paused round should survive page re-entry #'+i);
+      // This accessible name also contains the subtitle '回到当前进度'.
+      // Exact matching the heading alone was a false failure on a valid modal.
+      await page.getByRole('button',{name:/^继续挑战/}).click({force:true});
+      const active=await metrics();
+      assert.equal(active.paused,false,'manual resume failed at cycle #'+i);
+      assert.equal(active.live,resumed.live,'resume created an extra observer at #'+i);
+      measurements.push({cycle:i+1,away,resumed,active});
+    }
+    await page.evaluate(async()=> (await import('/src/ui/router.js')).go('home'));
+    const end=await metrics();
+    assert.equal(end.live,awayReference.live,'final home stage must return to its own stable baseline');
+    assert.deepEqual(end.listeners,awayReference.listeners);
+    assert.equal(end.diagnosticCanvas,false);
+    assert.equal(end.diagnosticEffects,false);
+    assert.equal(end.arenaCanvases,0);
+    assert.equal(end.cr,baseline.cr,'exiting must not award unearned CR');
+    await screenshot(page,'v41-arena-lifecycle-home-10');
+    return {cycles:10,initial:baseline,active:first,final:end,
+      maxObservers:Math.max(...measurements.flatMap(x=>[x.away.live,x.resumed.live,x.active.live])),
+      noCumulativeGrowth:true,earnedCR:0};
+  },{virtual:false});
   await scenario('six-material-2_5d-render-contact-gallery',async({page})=>{
     // This gallery is a deterministic renderer-state fixture. It is not
     // presented as human input or a real structural victory recording.
     await page.getByRole('button',{name:'快速挑战',exact:true}).click({force:true});
     await page.getByRole('button',{name:'开始自由快赛',exact:true}).click({force:true});
     await page.locator('.quick-canvas').waitFor();
+    // A renderer-state fixture may take far longer than 45 real seconds on software WebGL.
+    // Extend this isolated QA run only; player quick matches stay at their 45s rule.
+    await page.evaluate(()=>{
+      const run=globalThis.__FORGE_ARENA?.run;
+      if(!run||run.done)throw Error('Material gallery requires an active canvas');
+      run.total=Math.max(run.total,600);
+      run.remaining=Math.max(0,run.total-run.elapsed);
+    });
     const images=[];
     for(const type of ['foam','rope','wood','plastic','ice','metal']) {
       for(const state of ['intact','damage','severed']){
@@ -180,7 +353,9 @@ try {
         // Allow the existing animation scheduler to draw this precise state.
         await page.waitForTimeout(35);
         const file='materials-'+type+'-'+state+'.png';
-        await page.locator('.quick-canvas').screenshot({path:path.join(out,file)});
+        const box=await page.locator('.quick-canvas').boundingBox();
+        assert.ok(box?.width>100&&box?.height>100,`Canvas missing in ${type}/${state} fixture`);
+        await page.screenshot({path:path.join(out,file),clip:box,timeout:20000});
         images.push(file);
       }
     }

@@ -6,7 +6,6 @@ import { renderHoningArtwork } from './edgeHoningArtwork.js';
 import * as Audio from '../platform/audio.js';
 import { HAMMER_TIERS } from '../data/balance.js';
 import * as Hammer from '../core/hammer.js';
-import { breakChance } from '../core/risk.js';
 import * as Edge from '../core/edge.js';
 function put(parent,items){mount(parent,items);}
 export function renderHammerV4({body,run,stage,Game,getStage,router,render}) {
@@ -31,9 +30,7 @@ export function renderHammerV4({body,run,stage,Game,getStage,router,render}) {
       onclick:()=>{if(Game.run!==run||run.phase!=='hammer')return;Game.endHammer();render();}})
   ]));
   function refresh(strike=null){
-    const h=run.hammer,scale=run.daily?.breakScale||1;
-    const futureRisk=Math.min(100,run.risk.current+Hammer.nextRiskDelta(h.count));
-    const chance=h.count<10?0:breakChance(futureRisk,scale);
+    const h=run.hammer, chance=Hammer.previewNextBreakChance(run);
     const nextGain=Hammer.progressOf(h.count+1);
     put(hud,[
       el('div',{class:'hammer-hud-value'},[el('small',{text:'本轮强度'}),el('b',{text:'+'+(h.statGained||0).toFixed(1)})]),
@@ -52,13 +49,24 @@ export function renderHammerV4({body,run,stage,Game,getStage,router,render}) {
       el('span',{text:'下一锤 +'+nextGain.toFixed(1)+' 强度'}),
       el('span',{class:chance>=.15?'hammer-risk-hot':'',text:'断裂 '+(chance*100).toFixed(1)+'%'})
     ]);
-    caption.textContent=strike?.tierUp?'强化升级 · '+Hammer.tierName(strike.tierUp):
+    const feedback=strike?.tierUp?'强化升级 · '+Hammer.tierName(strike.tierUp):
       h.count<10?'前十锤安全 · 自由挥锤':'越锤越强，也越危险';
+    const shapeCount=run.shapeProfile?.marks?.length||0;
+    caption.textContent=run.flowVersion==='five-screen-v1'
+      ? feedback+` · 刀缘微调 ${Math.min(24,shapeCount)}/24`
+      : feedback;
     stage.classList.toggle('hammer-is-risky',run.risk.current>=60);
   }
   hit.addEventListener('click',e=>{
     if(router.currentKey()!=='forge'||Game.run!==run||run.phase!=='hammer')return;
-    const result=Game.hammerStrike();
+    const rect=hit.getBoundingClientRect();
+    const impact={
+      x:rect.width>0?(e.clientX-rect.left)/rect.width:.5,
+      y:rect.height>0?(e.clientY-rect.top)/rect.height:.5,
+    };
+    // Keyboard-triggered clicks have no pointer coordinates; use the central anvil.
+    if(!e.detail || !Number.isFinite(impact.x)||!Number.isFinite(impact.y)){impact.x=.5;impact.y=.5;}
+    const result=Game.hammerStrike(impact);
     if(!result?.ok)return;
     const box=hit.getBoundingClientRect();
     hit.style.setProperty('--hit-x',(e.detail>0?e.clientX-box.x:box.width*.5)+'px');

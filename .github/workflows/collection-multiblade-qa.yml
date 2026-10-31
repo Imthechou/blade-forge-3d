@@ -1,0 +1,63 @@
+name: Collection three-knifetype real WebGL QA
+on:
+  pull_request:
+    branches: [main]
+    paths: ['game/**', '.github/workflows/collection-multiblade-qa.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: collection-multiblade-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  collection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      # Preserve the precise pre-change SHA for an A/B with identical fixture,
+      # seed, mobile viewport and software GL renderer. This is not main.
+      - uses: actions/checkout@v4
+        with:
+          ref: 5c10e58fe50fc83942fbac3ba423b3b421c0d5ee
+          path: premium-art-before
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Prepare Chromium and fonts
+        working-directory: game
+        run: |
+          npm install --no-save --package-lock=false playwright
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-wqy-microhei
+          echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - name: Static and Node regression
+        working-directory: game
+        run: npm run verify
+      - name: Local web server
+        run: |
+          nohup node game/serve.cjs 8123 127.0.0.1 > collection-server.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:8123/ > /dev/null
+      - name: Three distinct GLBs and collectible PNG exports
+        working-directory: game
+        run: node tools/collection-multiblade-qa.mjs
+      - name: Premium blade inspection, actual shaders and material contact gallery
+        working-directory: game
+        env:
+          ART_BASELINE_URL: http://127.0.0.1:8124/
+        run: |
+          nohup node ../premium-art-before/game/serve.cjs 8124 127.0.0.1 > ../premium-before-server.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:8124/ > /dev/null
+          node tools/premium-art-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: collection-multiblade-evidence
+          path: |
+            game/collection-multiblade-evidence/
+            game/premium-art-evidence/
+            collection-server.log
+            premium-before-server.log
+          retention-days: 14

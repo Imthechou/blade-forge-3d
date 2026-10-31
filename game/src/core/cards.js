@@ -14,6 +14,7 @@ import { CARDS, BY_STAGE, RARITY_WEIGHT, STAGE_ORDER } from '../data/cards.js';
 import { rerollCost } from '../data/balance.js';
 import * as RNG from '../platform/rng.js';
 import * as Attr from './attributes.js';
+import { forgeStageStatDelta } from './forgeChapters.js';
 import * as Risk from './risk.js';
 import { rarityMultiplier, discountedRerollCost } from './arenaV41Growth.js';
 import { activeRollSpecialty, matchSpecialtyCard } from './arenaV41Specialties.js';
@@ -73,6 +74,8 @@ export function rollCandidates(run, { unlockedIds = null } = {}) {
     if(run.specialist.id==='overload'){run.specialist.consumed=true;run.specialist.ready=false;}
   }
   run.candidates = picked;
+  // 保留本轮天然抽到的 3 张身份；强制指定不能伪装为随机免费卡。
+  run.naturalCandidateIds = picked.map(c=>c.id);
   /* 供 UI/诊断：本阶段池内实际享受加成解锁的卡数（不参与判定） */
   run.candidatePool = { size: base.length, unlockedInPool: unlockedCount };
   return picked;
@@ -118,11 +121,12 @@ export const nextRerollCost = (run) => discountedRerollCost(rerollCost(run.rerol
 export function previewPick(run, card) {
   if (!card) return null;
   const stats = Attr.clone(run.stats);
-  Attr.apply(stats, card.statDelta);
+  const applied=forgeStageStatDelta(run,card);
+  Attr.apply(stats, applied);
   return {
     card,
     stats,
-    statDelta: card.statDelta,
+    statDelta: applied,
     riskAfter: Risk.after(run.risk, card.riskDeltaPoints),
     riskDelta: card.riskDeltaPoints,
     breakChanceAfter: Risk.breakChance(Risk.after(run.risk, card.riskDeltaPoints), (run.daily?.breakScale || 1) * (1 - (run.workshop?.riskReduction || 0))),
@@ -138,7 +142,7 @@ export function commit(run, card) {
   if (run.finished) return { ok: false, reason: '本局已结束' };
 
   run.history.push(card.id);
-  Attr.apply(run.stats, card.statDelta);
+  Attr.apply(run.stats, forgeStageStatDelta(run,card));
   Risk.apply(run.risk, card.riskDeltaPoints);
   run.peakRisk = run.risk.peak;
 
