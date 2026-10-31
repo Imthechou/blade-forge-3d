@@ -4,7 +4,6 @@
 
 /* 最后一行保留现有独立固定操作栏；舞台与正文平分剩余可视高度。 */
 .ap-stage { position: relative; min-height: 0; background: var(--showcase-base); }
-.ap-stage {--showcase-base:var(--exhibit-base);--showcase-surface:var(--exhibit-surface);}
 .ap-stage::before { content: ''; position: absolute; inset: 0; background: var(--showcase-surface); pointer-events: none; }
 .ap-host { position: absolute; inset: 0; }
 .ap-host canvas { width: 100%; height: 100%; display: block; }

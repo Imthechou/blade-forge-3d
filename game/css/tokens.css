@@ -48,8 +48,6 @@
   --base-3: #DDE1F2;
   /* 浅色摄影棚只改变CSS背景，不改变金属HDR与曝光。 */
   --showcase-base: #EDF0FF;
-  --exhibit-base:#172234;
-  --exhibit-surface:radial-gradient(ellipse at 72% 18%,#54718C77,transparent 56%),radial-gradient(ellipse at 18% 78%,#286E7966,transparent 59%),linear-gradient(150deg,#26394E,#111B2B 70%);
   --showcase-ink: #292B4B;
   --showcase-muted: #69718F;
   --showcase-surface: radial-gradient(ellipse 60% 13% at 50% 82%, #727EC323, transparent 90%), radial-gradient(ellipse at 90% 14%, #FAD7EB66, transparent 56%), radial-gradient(ellipse at 10% 68%, #BEEEF977, transparent 60%), linear-gradient(145deg, #EEEBFB, #F8FAFF 48%, #E4EDF9);

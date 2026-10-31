@@ -70,7 +70,6 @@
 .page[data-page="home"] { overflow: hidden; padding: 12px 0 calc(8px + var(--safe-b)); }
 .page[data-page="home"] .home-showcase { flex: 1 1 auto; min-height: 170px; height: auto; margin: 0 12px 8px; border-radius: 30px; border: 1px solid var(--glass-border); box-shadow: var(--shadow-2), inset 0 1px #fff; overflow: hidden; }
 .home-showcase { background: var(--showcase-base); }
-.home-showcase {--showcase-base:var(--exhibit-base);--showcase-surface:var(--exhibit-surface);}
 .home-showcase .showcase-label {
   left: 16px; top: 14px; gap: 7px; padding: 5px 9px;
   border: 0; border-radius: var(--r-pill); background: rgba(255,255,255,.82);
