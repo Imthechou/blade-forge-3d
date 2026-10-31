@@ -11,7 +11,18 @@ const report={cases:[],errors:[],requests:[],performance:[]};let page;
 const shot=async name=>page.screenshot({path:path.join(out,name+'.png')});
 async function test(name,fn){await fn();report.cases.push(name);console.log('PASS',name);}
 async function fit(selector){const n=page.locator(selector);const b=await n.boundingBox(),v=page.viewportSize();assert.ok(b&&b.width>0&&b.height>0&&b.x>=-1&&b.y>=-1&&b.x+b.width<=v.width+1&&b.y+b.height<=v.height+1,JSON.stringify({selector,b,v}));}
-async function dialog(){await page.locator('.sheet-mask.is-in').last().waitFor();await fit('.sheet-mask:last-child .sheet');}
+async function dialog(){
+ await page.locator('.sheet-mask.is-in').last().waitFor();
+ // Measure final touch targets, not the .97-scale entrance frame. Keep the
+ // existing >=44px assertion unchanged for every dialog, not only Settings.
+ await page.waitForFunction(()=>{
+  const sheet=document.querySelector('.sheet-mask:last-child .sheet');
+  if(!sheet)return false;
+  const transform=getComputedStyle(sheet).transform;
+  return transform==='none'||transform==='matrix(1, 0, 0, 1, 0, 0)';
+ },null,{timeout:5000});
+ await fit('.sheet-mask:last-child .sheet');
+}
 async function close(){await page.locator('.sheet-mask').last().getByRole('button',{name:'关闭',exact:true}).click();await page.locator('.sheet-mask').waitFor({state:'detached'});}
 async function cabinet(tab){await page.evaluate(async tab=>(await import('/src/ui/pages/workshop.js')).openTab(tab),tab);}
 async function readyThumbs(selector){await page.waitForFunction(selector=>{const ns=[...document.querySelectorAll(selector)].slice(0,2);return ns.length&&ns.every(n=>n.dataset.state==='ready'&&n.querySelector('img')?.complete&&n.querySelector('img')?.naturalWidth>0);},selector,{timeout:90000});}
