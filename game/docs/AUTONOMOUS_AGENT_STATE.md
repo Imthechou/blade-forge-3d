@@ -103,3 +103,8 @@
 - 审查发现 `.github/workflows/arena-live-playtest.yml` 实际调用 `tools/arena-v3-playtest.mjs`，**不是** 同名 `arena-live-playtest.mjs`。此前仅加在后者的触屏测试并未被 CI 执行；已从未运行的脚本撤回该改动。
 - 本次直接在 CI 正在调用的 `arena-v3-playtest.mjs` 中插入 quick 第 23–30 秒移动靶的 CDP 真触屏滑动，必须命中移动靶本体 `cuts`，录像、截图 `v41-quick-moving-touch.png`、报告 `movingTouch` 同步保存。不可再声称 45 秒脚本拥有真人/真机证据：此脚本使用 Playwright 虚拟时钟加速，但触屏事件通过真实 Chromium 输入通道。
 - 只有新 HEAD 的 Arena live browser workflow 通过，才将移动靶 QA 标记为已执行。
+
+## 2026-10-31 P1 锻造长期平衡警戒线
+- 在 V4.1 25,000 次 deterministic bot forge 模拟上增加宽松警戒区间，保留输出 JSON 再告警/阻断 CI，防止重构时无意反转高风险/高回报。未修改任何卡牌概率或锻造数值。
+- 2026-10-31 成功基准（5000 seeds × 5 策略）：保守成刀率 100%、六维中位 87.99；平衡 98.86% / 93.33；稀有优先 40.98% / 121.60；标签优先 91.78% / 95.50；19 锤极限 0.08% / 134.42。极限策略完成样本仅 4 把，不据此拟合真人概率或直接调平衡。
+- 新 report.guardrails 仅当每策略 N≥3000 才启用；检查成刀率宽范围、成功成刀六维均值、策略生存单调性及稀有优先收益溢价；人类操作时间/触屏/不同操作策略未被模拟。Actions #Arena 执行后必须检查输出与 screenshots。
