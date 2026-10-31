@@ -17,7 +17,10 @@ try{
   for(const [id,material,finish] of [['tangdao','M02','F01'],['karambit','M06','F04'],['balisong','M14','F02']]){
    await page.evaluate(async({id,material,finish})=>{
     const G=(await import('/src/app/game.js')).default;
-    G.showRecord({id:'art-'+id,knifeTypeId:id,knifeType:'knife_'+id,seed:4100,score:320,stats:{strength:100,toughness:100,sharpness:100,craft:100,design:100,spirit:100},history:[],pendingSkin:{materialId:material,textureId:'T02',finishId:finish,wear:.015,variants:{},handle:{metalId:'polymer'}}});
+    G.showRecord({id:'art-'+id,knifeTypeId:id,knifeType:'knife_'+id,seed:4100,score:320,stats:{strength:100,toughness:100,sharpness:100,craft:100,design:100,spirit:100},history:[],pendingSkin:{materialId:material,textureId:'T02',finishId:finish,wear:.015,
+      // Legitimate completed S7 steel shoulder, but no added glow: validate
+      // that physical bevel roughness alone improves ordinary knives.
+      variants:{edge:{on:true,amount:0,fresnelPower:2.6,flowSpeed:.35}},handle:{metalId:'polymer'}}});
     const s=(await import('/src/render/index.js')).getStage();await s.settle();await s.viewer.precompile();s.resize();
    },{id,material,finish});
    await page.waitForTimeout(500);await page.screenshot({path:path.join(out,`${label}-${id}-rest.png`)});
