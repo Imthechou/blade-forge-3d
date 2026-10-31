@@ -37,7 +37,7 @@
 | ambientCG / Poly Haven | 仅候选，未下载 | 网站通常以 CC0 为主；具体所选素材页须重核 |
 | psrdnoise / MeshLine | 不接入，原 shader/刀路已有更轻的方案 | 源仓库 MIT；接入需保留版权 |
 | PixelFX / three.quarks | 暂不接入游戏 | 仅可做离线形态参考；逐项核具体资源授权及依赖兼容 |
-| Kenney / Impact Sounds | **已引入 5 段真实 CC0 Ogg**，轻量混音与原声音回退；主观实体手机试听待做 | [音频来源/授权/哈希](../../assets/audio/kenney/LICENSE.md) |
+| Kenney / Impact Sounds | **已引入 5 段真实 CC0 Ogg**，轻量混音与原声音回退；主观实体手机试听待做 | [音频来源/授权/哈希](../assets/audio/kenney/LICENSE.md) |
 | postprocessing | 暂不接入 | 当前浅背景与物理金属可能被辉光泛白，需 A/B 后决定 |
 
 ## 5. 强制检查及限制
