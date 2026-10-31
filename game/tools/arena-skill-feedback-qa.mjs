@@ -7,12 +7,12 @@ import {sampleBlade} from './arena-v3-simulate.mjs';
 const out=path.resolve(process.env.ARENA_QA_OUT||'arena-skill-evidence');fs.mkdirSync(out,{recursive:true});
 const {chromium}=await loadPlaywright();
 const browser=await chromium.launch({headless:true,executablePath:browserExecutable(),args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
-const report={engine:'Chromium software WebGL, simulated mobile; no physical device',cases:[],errors:[]};
+const report={engine:'Chromium software WebGL, simulated mobile; no physical device',cases:[],errors:[]};let page;
 try {
  for(const width of [320,375]) {
   const context=await browser.newContext({viewport:{width,height:667},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
   await context.addInitScript(blade=>localStorage.setItem('bladeforge.save',JSON.stringify({version:1,collection:[blade],settings:{tutorialSeen:true,sound:false,motion:'reduced'}})),{...sampleBlade(150),tags:{precision:4},knifeType:'knife_tangdao',knifeTypeId:'tangdao',seed:123});
-  const page=await context.newPage();page.on('pageerror',e=>report.errors.push(String(e)));
+  page=await context.newPage();page.on('pageerror',e=>report.errors.push(String(e)));
   await page.goto(baseUrl);await page.waitForFunction(()=>window.__FORGE_PREP?.ready&&!document.querySelector('#boot'),null,{timeout:120000});
   await page.evaluate(async()=>(await import('/src/ui/pages/arena.js')).openTournament());
   await page.getByRole('button',{name:'快速挑战',exact:true}).click();
@@ -21,10 +21,29 @@ try {
   await page.waitForFunction(()=>__FORGE_ARENA.run.targets.some(t=>t.alive));
   const box=await canvas.boundingBox();
   const target=await page.evaluate(()=>{const t=__FORGE_ARENA.run.targets.find(t=>t.alive);return {x:t.x,y:t.y};});
+  // Observe the real DOM while input is in flight. On a loaded software runner
+  // the 800ms proc can end before all sixteen mouse.move segments complete.
+  await page.evaluate(()=>{
+    const ribbon=document.querySelector('.quick-forge-skills');
+    window.__SKILL_PROC_EVENTS=[];
+    const observer=new MutationObserver(()=>{
+      const label=ribbon.querySelector('.quick-forge-activated').textContent;
+      if(ribbon.classList.contains('is-activated')&&label)
+        window.__SKILL_PROC_EVENTS.push({at:performance.now(),label});
+    });
+    observer.observe(ribbon,{attributes:true,subtree:true,childList:true,characterData:true});
+    window.__SKILL_PROC_OBSERVER=observer;
+  });
   await page.mouse.move(box.x+(target.x-.15)*box.width,box.y+target.y*box.height);await page.mouse.down();
-  await page.mouse.move(box.x+(target.x+.15)*box.width,box.y+target.y*box.height,{steps:16});await page.mouse.up();
-  const proc=page.locator('.quick-forge-activated');await proc.waitFor({state:'visible',timeout:5000});
-  const label=await proc.innerText();await page.screenshot({path:path.join(out,`${width}-hit.png`)});
+  for(let segment=1;segment<=16;segment++){
+    await page.mouse.move(box.x+(target.x-.15+.30*segment/16)*box.width,box.y+target.y*box.height);
+    await page.waitForTimeout(100); // Explicitly exercise a gesture longer than the proc lifetime.
+  }
+  await page.mouse.up();
+  await page.waitForFunction(()=>window.__SKILL_PROC_EVENTS.length>0,null,{timeout:5000});
+  const events=await page.evaluate(()=>window.__SKILL_PROC_EVENTS);
+  const proc=page.locator('.quick-forge-activated'),label=events.at(-1).label;
+  await page.screenshot({path:path.join(out,`${width}-hit.png`)});
   await page.waitForTimeout(1600);await page.screenshot({path:path.join(out,`${width}-idle.png`)});
   const visible=await proc.isVisible();
   const frameTimes=await page.evaluate(()=>new Promise(resolve=>{
@@ -34,11 +53,11 @@ try {
       else {const sorted=[...samples].sort((a,b)=>a-b);resolve({samples:120,p50:sorted[60],p95:sorted[114],max:sorted.at(-1),fps:1000/(samples.reduce((a,b)=>a+b,0)/samples.length),heapBytes:performance.memory?.usedJSHeapSize??null});}};
     requestAnimationFrame(frame);
   }));
-  report.cases.push({width,label,visibleAfter1600ms:visible,frameTimes});
+  report.cases.push({width,label,activationEvents:events,visibleAfter1600ms:visible,frameTimes});
   assert.equal(visible,false,'Transient skill proc must expire while permanent skill chips remain');
   assert.ok(await page.locator('.quick-forge-skill').count());
   await context.close();
  }
  assert.deepEqual(report.errors,[]);
-} catch(e){report.failure=String(e.stack);process.exitCode=1;}
+} catch(e){report.failure=String(e.stack);console.error(report.failure);process.exitCode=1;await page?.screenshot({path:path.join(out,'failure.png')}).catch(()=>{});}
 finally{fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));await browser.close();}
