@@ -142,3 +142,6 @@
 - 六流派的支架连接从一律灰线改为按 `structure.kind` 选择绳束/木质结构/精密塑板/冰晶/合金不同的低饱和实体色、切口暗面、材料高光与横截面。用于承重连线，不改变靶具表层的 WebP PBR 风格，也不用额外贴图。
 - 新增 `arenaStructureVisual.js`：断链从真实 `structure.failedJoins` 驱动，时间 560ms 内两截连接在原轴周围小幅分离、轻微坠落并趋于静止；WeakMap 存储仅本场视觉 break 时间，旧断链重入立即呈休止状态、不复活，无粒子堆积；`reducedMotion` 立即静止。
 - 绘制层只更换结构夹具的背景线段，**不移动任何碰撞靶具，接口、刀损、评分、局存档完全不变**。新增 Node 视觉纯函数测试（5 种结构材质/6 流派、断裂时间、减少动效、序列化源不变）。须在本 SHA WebGL/浏览器 Actions 最终验收并查看正式赛结构截图后标记完成。
+
+## 2026-10-31 P5 六流派实际 2D 舞台断架目视验收
+- 更新 `tools/arena-prop-visual-qa.mjs`：直接调用正式的 `drawArenaStage`（不是另绘 mock），基于 `createStructure` 构造六流派 3 级架体，渲染 `rigs-before.png` 和通过 `updateStructure` 切断连接后的 `rigs-broken.png`，记录明显变化像素、六路真实断链数量。检测绘制不修改结构来源模型。该图库存入 Arena Actions artifact，应逐张目视验收。
