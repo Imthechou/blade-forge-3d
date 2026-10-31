@@ -1373,6 +1373,10 @@ class Session {
       stage.setGhost(false);
       if (stage.viewer && stage.viewer.viewPreset !== viewPreset) stage.view(viewPreset, { duration: 420 });
       if (preview && this.run?.stageIndex <= 1) stage.viewer?.inspectTurn?.();
+      // A single dirty frame after final visible recipe assignment avoids
+      // keeping the previous stage's framebuffer across async model updates.
+      // The renderer's existing compile gate still protects the GPU.
+      if (stage.viewer) stage.viewer.needsRender = true;
     };
     // A different preview may still be loading while the desired original model
     // is mounted. Ask show() to invalidate that request even on cancellation.

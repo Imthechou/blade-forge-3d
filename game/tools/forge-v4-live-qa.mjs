@@ -50,7 +50,27 @@ try{
      return G.run?.phase==='hammer' && /^knife_/.test(st.modelId||'') &&
        st.viewer?.root && !st.isCompiling && !st._visualFlushQueued;
    },null,{timeout:45000});
-   await page.waitForTimeout(150);
+   // A logical GLB switch is insufficient: async compile may retain the ore
+   // in the onscreen framebuffer. Wait for the actual tall knife silhouette.
+   await page.waitForFunction(async()=>{
+     const st=(await import('/src/render/index.js')).getStage();
+     const viewer=st.viewer,canvas=viewer?.renderer?.domElement;
+     if(!canvas || !viewer._lastSubmittedFrame)return false;
+     const probe=document.createElement('canvas');
+     probe.width=128;probe.height=160;
+     const ctx=probe.getContext('2d',{willReadFrequently:true});
+     if(!ctx)return false;
+     ctx.drawImage(canvas,0,0,128,160);
+     const pixels=ctx.getImageData(0,0,128,160).data;
+     let left=128,right=-1,top=160,bottom=-1,count=0;
+     for(let y=0;y<160;y+=2)for(let x=0;x<128;x+=2){
+       if(pixels[(y*128+x)*4+3]<48)continue;
+       left=Math.min(left,x);right=Math.max(right,x);
+       top=Math.min(top,y);bottom=Math.max(bottom,y);count++;
+     }
+     return count>24 && right>left && (bottom-top)/(right-left)>1.8;
+   },null,{timeout:45000});
+   await page.waitForTimeout(100);
    const shapeSnapshots = [];
    // Inspect true GLB geometry (not only DOM hit flashes) at 0 / 10 / 20 hits.
    async function snapshotShape(hits) {
@@ -115,7 +135,8 @@ try{
      // the exact player-facing next-hit chance, not just the hidden RNG roll.
      const actual=await page.evaluate(async()=>{
        const G=(await import('/src/app/game.js')).default;
-       G.run.workshop={...(G.run.workshop||{}),riskReduction:.10};
+       window.__S4QA_PREVIOUS={workshop:G.run.workshop,specialist:G.run.specialist};
+       G.run.workshop={...(G.run.workshop||{}),level:G.run.workshop?.level||1,riskReduction:.10};
        G.run.specialist={id:'press',boost:.12};
        (await import('/src/ui/pages/forge.js')).render();
        return (await import('/src/core/hammer.js')).previewNextBreakChance(G.run);
@@ -123,6 +144,12 @@ try{
      const label=await page.locator('.hammer-next').innerText();
      assert.ok(label.includes('断裂 '+(100*actual).toFixed(1)+'%'),
        'the displayed chance must include real workshop and press mitigation: '+label);
+     await page.evaluate(async()=>{
+       const G=(await import('/src/app/game.js')).default;
+       Object.assign(G.run,window.__S4QA_PREVIOUS);
+       delete window.__S4QA_PREVIOUS;
+       (await import('/src/ui/pages/forge.js')).render();
+     });
    }
    // High-roll deterministic QA keeps the same real hammer/risk code path alive
    // to compare the 20th deformation. No player stat or risk tuning is involved.
