@@ -47,6 +47,9 @@ const global = globalThis;
     'attribute vec3 aRegion;',
     'uniform float uGuardW;',
     'uniform float uHandleW;',
+    'uniform vec3 uAxis;',
+    'uniform vec2 uAxisRange;',
+    'varying float vAxial;',
     'varying float vRegionW;',
     'varying vec3 vN;',
     'varying vec3 vView;',
@@ -56,6 +59,7 @@ const global = globalThis;
     '     所以按区域压低它们的强度，避免「刀柄一圈特别重」。 */',
     '  vRegionW = aRegion.x + aRegion.y * uGuardW + aRegion.z * uHandleW;',
     '  vN = normalize(normalMatrix * normal);',
+    '  vAxial = (dot(position, uAxis) - uAxisRange.x) / max(0.0001, uAxisRange.y);',
     '  vec3 p = position + normalize(normal) * uShell;',
     '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
     '  vView = normalize(-mv.xyz);',
@@ -75,14 +79,17 @@ const global = globalThis;
     'varying float vRegionW;',
     'varying vec3 vN;',
     'varying vec3 vView;',
+    'varying float vAxial;',
     'void main() {',
     '  /* 全刀统一：不按区域遮罩，整把刀都罩同一套光晕 */',
     '  float rim = pow(1.0 - abs(dot(normalize(vN), normalize(vView))), uRim);',
-    '  float pulse = 0.92 + 0.08 * sin(uTime * uSpeed * 1.3);',
+    '  float phase = fract(vAxial - uTime * uSpeed * 0.18);',
+    '  float filament = exp(-pow((phase - 0.5) * 15.0, 2.0));',
+    '  float pulse = 0.58 + 0.12 * sin(uTime * uSpeed * 1.3) + 0.30 * filament;',
     '  float a = uAmount * rim * pulse * clamp(vRegionW, 0.0, 1.0);',
     '  if (a < 0.003) discard;',
     '  /* 由深到浅：内层饱和本色 → 外层偏亮色 */',
-    '  vec3 col = mix(uColor, uColor2, clamp(uLight, 0.0, 1.0) * 0.65);',
+    '  vec3 col = mix(uColor, uColor2, clamp(uLight * 0.55 + filament * 0.35, 0.0, 1.0));',
     '  gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));',
     '}',
   ].join('\n');
@@ -106,7 +113,10 @@ const global = globalThis;
     if (!geo.boundingBox) geo.computeBoundingBox();
     const bb = geo.boundingBox;
     const size = [bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z];
-    return { len: Math.max(Math.max(size[0], size[1], size[2]), 1e-3) };
+    const index = size.indexOf(Math.max(...size));
+    const axis = [0,0,0];axis[index]=1;
+    return { len: Math.max(...size,1e-3), axis,
+      min:[bb.min.x,bb.min.y,bb.min.z][index] };
   }
 
   /** 读刀身材质颜色（材质自身颜色 → 注入 hook 的基色）。 */
@@ -181,6 +191,8 @@ const global = globalThis;
         const mat = new THREE.ShaderMaterial({
           uniforms: {
             uTime: uniforms.uTime,
+            uAxis: { value: new THREE.Vector3(...frame.axis) },
+            uAxisRange: { value: new THREE.Vector2(frame.min,frame.len) },
             uAmount: { value: glow * sh.amount },
             uSpeed: { value: num(o.speed, 1) },
             uRim: { value: sh.rim },

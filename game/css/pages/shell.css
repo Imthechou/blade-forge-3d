@@ -70,6 +70,7 @@
 .page[data-page="home"] { overflow: hidden; padding: 12px 0 calc(8px + var(--safe-b)); }
 .page[data-page="home"] .home-showcase { flex: 1 1 auto; min-height: 170px; height: auto; margin: 0 12px 8px; border-radius: 30px; border: 1px solid var(--glass-border); box-shadow: var(--shadow-2), inset 0 1px #fff; overflow: hidden; }
 .home-showcase { background: var(--showcase-base); }
+.home-showcase {--showcase-base:var(--exhibit-base);--showcase-surface:var(--exhibit-surface);}
 .home-showcase .showcase-label {
   left: 16px; top: 14px; gap: 7px; padding: 5px 9px;
   border: 0; border-radius: var(--r-pill); background: rgba(255,255,255,.82);
@@ -115,6 +116,8 @@
 .stage-inspect .stage-icon::after { content:''; position:absolute; inset:-6px; }
 .stage-inspect .stage-icon:active { transform: scale(.94); }
 .stage-inspect .stage-icon:focus-visible { outline: 2px solid var(--accent-cool); outline-offset: 2px; }
+.stage-inspect .stage-inspect-showcase {font-size:25px;color:var(--accent);width:44px;height:44px;background:var(--surface-glass);}
+.stage-inspect-showcase:disabled {display:none;}
 
 /* S4 / S7 游戏手势独占舞台时暂不开放镜头复位。 */
 .page[data-page="forge"].is-no-drag .stage-inspect-reset {

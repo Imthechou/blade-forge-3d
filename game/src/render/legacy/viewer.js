@@ -278,7 +278,7 @@ class Viewer {
     const markInput = () => { this._lastInputAt = performance.now(); this.needsRender = true; };
     const el = this.renderer.domElement;
     const inputHandlers = {
-      pointerdown: () => { pressed = true; markInput(); },
+      pointerdown: () => { this._stopCamTween(); pressed = true; markInput(); },
       pointerup: () => { pressed = false; markInput(); },
       pointercancel: () => { pressed = false; markInput(); },
       pointermove: () => { if (pressed) markInput(); },
@@ -1144,6 +1144,27 @@ class Viewer {
     if (!P) return;
     this.setViewPreset({ ...P, name, azim: P.azim - 0.22 }, { duration: 0 });
     this.setViewPreset(name, { duration: 380 });
+  }
+
+  /** A bounded, player-triggered product inspection; never rotates cached geometry. */
+  inspectShowcase() {
+    if (!this.root || !this.camera || !this.controls) return false;
+    this._stopCamTween();
+    if (this._reduceMotion) { this.needsRender = true; return true; }
+    const target=this.controls.target.clone(),start=this.camera.position.clone();
+    const offset=start.clone().sub(target),axis=new THREE.Vector3(0,1,0);
+    const moving=offset.clone(),t0=performance.now(),duration=1450;
+    this._camTween=setInterval(()=>{
+      if(this.disposed || this._reduceMotion || !this._renderVisible()){this.camera.position.copy(start);this.controls.target.copy(target);this._stopCamTween();this.needsRender=true;return;}
+      const p=Math.min(1,(performance.now()-t0)/duration),sweep=Math.sin(Math.PI*p);
+      moving.copy(offset).applyAxisAngle(axis,sweep*.48);
+      moving.y+=offset.length()*.025*Math.sin(2*Math.PI*p);
+      this.camera.position.copy(target).add(moving);this.controls.target.copy(target);
+      this.controls.update();this.needsRender=true;
+      if(p>=1){this.camera.position.copy(start);this._stopCamTween();}
+    },16);
+    this.needsRender=true;
+    return true;
   }
   _startCamTween(fromPos, toPos, fromTgt, toTgt, dur) {
     this._stopCamTween();

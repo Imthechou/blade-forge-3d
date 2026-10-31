@@ -1473,6 +1473,7 @@ export class BladeStage {
       this.container = container;
       const pageKey = container.closest?.('.page')?.dataset.page || null;
       const pageChanged = this._pageKey !== pageKey;
+      if (pageChanged) this.viewer._stopCamTween?.();
       this._pageKey = pageKey;
       /* 换页就想不起来上一页的开关：回到该页自己的默认值。
          否则会出现相反的错误 —— 首页开了拖动、进锻造页后按钮显示关，
@@ -1583,6 +1584,10 @@ export class BladeStage {
 
   autoRotate(on) {
     return guard(() => this.viewer && this.viewer.setAutoRotate && this.viewer.setAutoRotate(!!on), null);
+  }
+
+  inspectKnife() {
+    return guard(() => this.viewer?.inspectShowcase?.(), false);
   }
 
   /**

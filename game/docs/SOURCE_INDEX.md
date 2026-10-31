@@ -106,9 +106,9 @@
 | [src/render/collectionPreview.js](../src/render/collectionPreview.js) | 255 | 10174 | COLLECTION_EXPOSURE, applyCollectionPose, applyCollectionLighting, collectionStageStats, mountCollectionPreview, disconnectCollectionPreview, disconnectCollectionPreviews, releaseCollectionPreviewStage |
 | [src/render/composeCache.js](../src/render/composeCache.js) | 78 | 3399 | composeInputKey, hashText, ComposePackCache |
 | [src/render/gpuPreparation.js](../src/render/gpuPreparation.js) | 283 | 13298 | candidateWarmNeedsVisualRestore, materialCompileFingerprint, compileTransmissionPreparation, compileTransmissionVariants, preloadModels, preloadModelsInBackground, awaitIfCurrent, collectPreparationTargets, TextureUploadTracker, chooseModelPreload, chooseStartupPreload |
-| [src/render/index.js](../src/render/index.js) | 1815 | 96337 | ensureS3TextureData, BladeStage, getStage, setRenderBackend, getRenderBackend, recipeNeedsMaterialTime, listModels |
+| [src/render/index.js](../src/render/index.js) | 1820 | 96485 | ensureS3TextureData, BladeStage, getStage, setRenderBackend, getRenderBackend, recipeNeedsMaterialTime, listModels |
 | [src/render/legacy/_registry.js](../src/render/legacy/_registry.js) | 38 | 1456 | K3D_REGISTRY |
-| [src/render/legacy/bladeEffects.js](../src/render/legacy/bladeEffects.js) | 269 | 10904 | bladeEffects |
+| [src/render/legacy/bladeEffects.js](../src/render/legacy/bladeEffects.js) | 281 | 11522 | bladeEffects |
 | [src/render/legacy/bladeViewer.js](../src/render/legacy/bladeViewer.js) | 1582 | 89410 | bladeViewer |
 | [src/render/legacy/cardEffects.js](../src/render/legacy/cardEffects.js) | 84 | 3384 | cardEffects |
 | [src/render/legacy/material.js](../src/render/legacy/material.js) | 776 | 43844 | material |
@@ -132,7 +132,7 @@
 | [src/render/legacy/skin/textures.js](../src/render/legacy/skin/textures.js) | 269 | 16035 | textures12 |
 | [src/render/legacy/three.addons.js](../src/render/legacy/three.addons.js) | 7990 | 186268 | — |
 | [src/render/legacy/three.bundle.js](../src/render/legacy/three.bundle.js) | 12 | 686413 | — |
-| [src/render/legacy/viewer.js](../src/render/legacy/viewer.js) | 1457 | 80679 | — |
+| [src/render/legacy/viewer.js](../src/render/legacy/viewer.js) | 1478 | 81921 | — |
 | [src/render/renderVisibility.js](../src/render/renderVisibility.js) | 17 | 850 | renderLoopAllowed, renderSurfaceVisible |
 | [src/render/resourceLedger.js](../src/render/resourceLedger.js) | 255 | 9794 | GPU_BUDGET_MIB, estimateTextureMiB, estimateGeometryMiB, gpuLedger |
 | [src/render/v2/finishRecipe.js](../src/render/v2/finishRecipe.js) | 774 | 44987 | CASE_HARDENED_PALETTE, TEMPER_PALETTE, FADE_PALETTE, DOPPLER_PALETTE, finishOperators, finishOperatorTable, S5_EFFECTS, S5_CARD_FAMILY, S5_CARD_ART, s5CardArt, S5_VISUAL_FAMILY, resolveS5Effect, refineS5BaseFinish, applyS5Effect, adaptS5PaletteToSubstrate, baseGradientPalette |
@@ -148,7 +148,7 @@
 | [src/ui/arenaImpact.js](../src/ui/arenaImpact.js) | 67 | 3431 | IMPACT_PRESETS, cutImpact, impactMotion, targetPose |
 | [src/ui/arenaReportParts.js](../src/ui/arenaReportParts.js) | 117 | 4353 | momentumChip, momentumLadder, momentumHint, momentumTrail, FACE_CN, STAT_CN, FACE_STATS, faceOfStat, faceCompareRow |
 | [src/ui/arenaSprites.js](../src/ui/arenaSprites.js) | 197 | 9004 | TYPES, STATES, CELL, spriteStatus, prepareArenaSprites, spriteReady, drawWholeSprite, drawSplitSprite, drawShardSprite, drawFlashSprite |
-| [src/ui/arenaStage.js](../src/ui/arenaStage.js) | 1309 | 65569 | drawArenaStage |
+| [src/ui/arenaStage.js](../src/ui/arenaStage.js) | 1331 | 67295 | drawArenaStage |
 | [src/ui/arenaStructureVisual.js](../src/ui/arenaStructureVisual.js) | 47 | 2290 | LINK_STYLES, linkStyle, joinedKey, breakPosition, createBreakTracker |
 | [src/ui/bladeCard.js](../src/ui/bladeCard.js) | 383 | 16975 | bladeCardModel, bladeCard, bladeCardDetail, compareModels |
 | [src/ui/bladeCardExport.js](../src/ui/bladeCardExport.js) | 196 | 10467 | collectibleFilename, posterInfo, renderCollectiblePoster, downloadCollectiblePoster |
@@ -171,5 +171,5 @@
 | [src/ui/router.js](../src/ui/router.js) | 81 | 2846 | PAGES, register, onNavigate, go, currentKey, start |
 | [src/ui/settingsSheet.js](../src/ui/settingsSheet.js) | 137 | 5684 | open |
 | [src/ui/shell.js](../src/ui/shell.js) | 72 | 2244 | create, sync |
-| [src/ui/stageControls.js](../src/ui/stageControls.js) | 53 | 1952 | createStageInspect |
+| [src/ui/stageControls.js](../src/ui/stageControls.js) | 58 | 2261 | createStageInspect |
 | [src/ui/tutorial.js](../src/ui/tutorial.js) | 91 | 3742 | GUIDE, guideSheet, helpSheet, maybeShowFirstRun, hint, hasSeenHint |

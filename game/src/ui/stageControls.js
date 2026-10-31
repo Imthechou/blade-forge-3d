@@ -29,10 +29,15 @@ export function createStageInspect({ canDrag = () => true } = {}) {
   }, [resetIcon()]);
   const bar = el('div', {
     class: 'stage-inspect', role: 'group', 'aria-label': '3D视角控制',
-  }, [button]);
+  }, [el('button', {
+    class:'stage-icon stage-inspect-showcase',type:'button',
+    'aria-label':'检视刀具光影',title:'检视刀具光影',text:'✧',
+    onclick:()=>{if(!blocked&&canDrag())getStage()?.inspectKnife?.();},
+  }),button]);
 
   function apply() {
     button.disabled = blocked;
+    bar.querySelector('.stage-inspect-showcase').disabled=blocked||!canDrag();
     button.setAttribute('aria-disabled', String(blocked));
     // 挂载切页、render、换阶段后都强制和当前页面手势规则保持一致。
     getStage()?.setInteractive?.(!blocked && canDrag());

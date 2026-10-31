@@ -36,11 +36,15 @@ jobs:
       - name: Three distinct GLBs and collectible PNG exports
         working-directory: game
         run: node tools/collection-multiblade-qa.mjs
+      - name: Premium blade inspection, actual shaders and material contact gallery
+        working-directory: game
+        run: node tools/premium-art-qa.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: collection-multiblade-evidence
           path: |
             game/collection-multiblade-evidence/
+            game/premium-art-evidence/
             collection-server.log
           retention-days: 14

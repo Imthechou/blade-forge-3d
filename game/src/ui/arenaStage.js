@@ -102,7 +102,7 @@ export function drawArenaStage(ctx, run, w, h, effects = {}) {
   }
 
   drawDebris(ctx, debris, now, w, h);
-  drawTrail(ctx, trail, now, w, h, reduced);
+  drawTrail(ctx, trail, now, w, h, reduced, run);
   drawBursts(ctx, bursts, now, w, h, reduced);
   drawComboBanner(ctx, run, w, h, reduced);
   drawLabels(ctx, labels, now, w, h, reduced);
@@ -1054,27 +1054,30 @@ function drawDebrisBody(ctx, type, width, height, unit) {
 
 /* ══ 刀光 / 火花 / 文字 ═════════════════════════════════ */
 
-function drawTrail(ctx, trail, now, w, h, reduced) {
+function drawTrail(ctx, trail, now, w, h, reduced, run) {
   if(!trail.length)return;
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
-  // Ink-brush slash: two flat strokes, no white-hot core, glow or bloom.
-  for(let pass=0;pass<2;pass++)for(let i=0;i<trail.length;i++){
+  // A readable energy ribbon: translucent sheath, colored edge, fine light core.
+  // No blur filter or extra offscreen canvas on this high-frequency path.
+  const traits=run?.params?.forgeTraits||EMPTY;
+  const tint=traits.some(t=>t.id==='heat')?'240,168,81':traits.some(t=>t.id==='cold')?'90,207,239':traits.some(t=>t.id==='oxide')?'179,141,235':'87,194,209';
+  for(let pass=0;pass<(reduced?2:3);pass++)for(let i=0;i<trail.length;i++){
     const seg=trail[i];if(!seg.a||!seg.b)continue;
     const fade=clamp(1-(now-seg.at)/TRAIL_LIFE,0,1);if(fade<=0)continue;
     const taper=.35+.65*i/Math.max(1,trail.length-1);
-    ctx.strokeStyle=pass===0?`rgba(39,66,81,${(.21*fade*taper).toFixed(3)})`
-      :`rgba(106,89,167,${(.75*fade*taper).toFixed(3)})`;
-    ctx.lineWidth=(pass===0?(reduced?3.1:6.2):(reduced?1.3:2.5))*taper;
+    ctx.strokeStyle=pass===0?`rgba(26,58,82,${(.40*fade*taper).toFixed(3)})`
+      :pass===1?`rgba(${tint},${(.83*fade*taper).toFixed(3)})`:`rgba(244,253,255,${(.94*fade*taper).toFixed(3)})`;
+    ctx.lineWidth=(pass===0?(reduced?3.1:6.8):pass===1?(reduced?1.3:3.8):1.25)*taper;
     ctx.beginPath();ctx.moveTo(seg.a.x*w,seg.a.y*h);ctx.lineTo(seg.b.x*w,seg.b.y*h);ctx.stroke();
   }
   ctx.restore();
 }
 
-/** 2D hand-ink contact feedback. Materials separate by chips and cut resistance,
- * never by generated sparkle, bloom, starbursts or radial particle rings.
+/** Material fragments plus a brief directional contact flare.
  * Purely visual: physics, input and all collision coordinates are untouched. */
 function drawBursts(ctx,bursts,now,w,h,reduced){
-  for(const b of bursts){
+  for(let burstIndex=0;burstIndex<bursts.length;burstIndex++){
+    const b=bursts[burstIndex];
     const age=now-b.at;if(age<0||age>BURST_LIFE)continue;
     const angle=Number.isFinite(b.angle)?b.angle:0;
     const tx=Math.cos(angle),ty=Math.sin(angle),nx=-ty,ny=tx;
@@ -1084,6 +1087,25 @@ function drawBursts(ctx,bursts,now,w,h,reduced){
     const cutFade=clamp(1-age/145,0,1);
     const complete=!!b.complete;
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+    if(!reduced && burstIndex>=bursts.length-6 && !blocked && age<220){
+      // A single contact accent follows the actual cut axis, not a screen flash.
+      const f=Math.pow(1-age/220,2),extent=(complete?25:14)*(1+weight*.35);
+      const tint=b.type==='ice'?'#91E8FF':b.type==='metal'?'#FFD591':b.type==='wood'||b.type==='rope'?'#EAC58C':'#9BE2D1';
+      ctx.globalAlpha=f*.7;ctx.strokeStyle=tint;ctx.lineWidth=5*f+.5;
+      ctx.beginPath();ctx.moveTo(x-tx*extent,y-ty*extent);ctx.lineTo(x+tx*extent,y+ty*extent);ctx.stroke();
+      ctx.strokeStyle='#F5FCFF';ctx.globalAlpha=f*.95;ctx.lineWidth=1.25;
+      ctx.beginPath();ctx.moveTo(x-tx*extent*.7,y-ty*extent*.7);ctx.lineTo(x+tx*extent*.7,y+ty*extent*.7);ctx.stroke();
+      // Hard materials release short, gravity-bound hot filings/crystal glints.
+      const count=b.type==='metal'?6:b.type==='ice'?4:complete?2:0;
+      for(let i=0;i<count;i++){
+        const direction=angle+(i%2?1:-1)*(.55+i*.29);
+        const speed=100+i*28,travel=age*.001*speed;
+        const px=x+Math.cos(direction)*travel,py=y+Math.sin(direction)*travel+age*age*.00016;
+        ctx.strokeStyle=i%2?tint:'#FFF4D9';ctx.globalAlpha=f*.85;ctx.lineWidth=i%2?1:1.6;
+        ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px-Math.cos(direction)*(3+i*.65),py-Math.sin(direction)*(3+i*.65));ctx.stroke();
+      }
+      ctx.globalAlpha=1;
+    }
     // Contact pressure: a short dry knife-edge imprint, not an expanding circle.
     if(cutFade>0){
       const extent=8+weight*10;
