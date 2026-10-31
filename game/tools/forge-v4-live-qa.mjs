@@ -93,6 +93,7 @@ try{
        const r=stage.viewer?.renderer;
        return {count:G.run.hammer.count,marks:G.run.shapeProfile?.marks?.length||0,
          model:stage.modelId,changed,maxDelta,meanDelta,
+         geometryId:mesh?.geometry?.uuid||null,
          resources:r?{geometries:r.info.memory.geometries,textures:r.info.memory.textures}:null};
      });
      assert.equal(metrics.count,hits,'The requested number of hammer hits must be real');
@@ -155,8 +156,10 @@ try{
    // to compare the 20th deformation. No player stat or risk tuning is involved.
    for(let i=0;i<10;i++)await page.locator('.hammer-stage-hit').click({position:{x:170,y:235},force:true});
    const lastShape=await snapshotShape(20);
-   assert.ok(lastShape.changed>0 && lastShape.maxDelta>=shapeSnapshots[1].maxDelta-1e-8,
-     '20 strikes must not undo the perceptible contour adjustment');
+   assert.ok(lastShape.changed>0 && lastShape.maxDelta>shapeSnapshots[1].maxDelta*1.2,
+     '20 strikes should deepen the local silhouette correction');
+   assert.equal(lastShape.geometryId,shapeSnapshots[1].geometryId,
+     'S4 hits 11–20 must reuse the transient geometry rather than recreate it');
    assert.equal(shapeSnapshots[0].changed,0,'Unworked GLB must match its cached source');
    report.cases.push({width,hammer,shape,shapeSnapshots});
    await page.evaluate(async()=>{

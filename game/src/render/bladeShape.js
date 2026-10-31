@@ -17,12 +17,13 @@ function restore(viewer) {
   if(!viewer.disposed)viewer.needsRender=true;
 }
 export function clearBladeShape(viewer){if(viewer)restore(viewer);}
-function candidate(mesh){
-  const geometry=mesh.geometry,pos=geometry?.getAttribute?.('position'),region=geometry?.getAttribute?.('aRegion');
+function candidate(mesh, original=null){
+  const geometry=original||mesh.geometry,pos=geometry?.getAttribute?.('position'),region=geometry?.getAttribute?.('aRegion');
   return mesh.isMesh&&pos&&region&&pos.itemSize===3&&region.count>=pos.count?{geometry,pos,region}:null;
 }
-function deform(mesh,profile) {
-  const source=candidate(mesh);if(!source)return null;
+function deform(mesh,profile,reuse=null) {
+  // Deform from immutable cached GLB coordinates, never the preceding blow.
+  const source=candidate(mesh,reuse?.original);if(!source)return null;
   const {geometry,pos,region}=source;
   const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
   let n=0;
@@ -38,7 +39,13 @@ function deform(mesh,profile) {
   const length=max[lengthAxis]-min[lengthAxis],width=max[widthAxis]-min[widthAxis];
   if(!Number.isFinite(length)||!Number.isFinite(width)||length<=0||width<=0||length<width*1.1)return null;
   const mid=(max[widthAxis]+min[widthAxis])*.5;
-  const copy=geometry.clone(),p=copy.getAttribute('position');
+  const copy=reuse?.copy||geometry.clone(),p=copy.getAttribute('position');
+  // Keep one viewer-owned GPU buffer across blows; reset unaffected vertices too.
+  if(reuse){
+    if(pos.array&&p.array&&pos.array.length===p.array.length&&!pos.isInterleavedBufferAttribute)
+      p.array.set(pos.array);
+    else for(let i=0;i<pos.count;i++)p.setXYZ(i,pos.getX(i),pos.getY(i),pos.getZ(i));
+  }
   let changed=0;
   for(let i=0;i<p.count;i++) {
     if(region.getX(i)<=.55)continue;
@@ -53,14 +60,14 @@ function deform(mesh,profile) {
       const side=mark.x>=.5?1:-1;
       if(Math.sign(w)!==side)continue;
       const delta=(t-(1-mark.y))/.145;
-      strength+=.0017*Math.exp(-delta*delta*1.2);
+      strength+=.0042*Math.exp(-delta*delta*1.2);
     }
-    const dx=Math.min(.029,strength)*edge*taper*width;
+    const dx=Math.min(.07,strength)*edge*taper*width;
     if(dx<=1e-9)continue;
     coords[widthAxis]-=Math.sign(w)*dx;
     p.setXYZ(i,coords[0],coords[1],coords[2]);changed++;
   }
-  if(!changed){copy.dispose();return null;}
+  if(!changed){if(!reuse)copy.dispose();return null;}
   p.needsUpdate=true;
   copy.computeVertexNormals();
   copy.computeBoundingBox();
@@ -74,6 +81,25 @@ export function applyBladeShape(viewer,input) {
   if(!profile){restore(viewer);return {ok:true,vertices:0};}
   const key=JSON.stringify(profile),old=owned.get(viewer);
   if(old?.root===viewer.root&&old.key===key)return {ok:true,vertices:old.vertices};
+  // A strike only changes the contents of the existing transient geometry.
+  // Re-cloning/re-uploading the whole mesh on every tap caused GPU churn.
+  if(old?.root===viewer.root&&old.items.every(x=>x.mesh.geometry===x.copy)){
+    const items=[];
+    for(const item of old.items){
+      const updated=deform(item.mesh,profile,item);
+      if(updated)items.push(updated);
+      else {item.mesh.geometry=item.original;item.copy.dispose();}
+    }
+    if(items.length){
+      const vertices=items.reduce((n,x)=>n+x.vertices,0);
+      owned.set(viewer,{root:viewer.root,key,vertices,items});
+      viewer.needsRender=true;
+      return {ok:true,vertices};
+    }
+    owned.delete(viewer);
+    viewer.needsRender=true;
+    return {ok:false,vertices:0,reason:'unsupported-geometry'};
+  }
   restore(viewer);
   if(!viewer.root)return {ok:false,vertices:0};
   const items=[];
