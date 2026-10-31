@@ -2,6 +2,7 @@ import { MATERIALS } from '../core/arenaChallenge.js';
 import { impactMotion, targetPose } from './arenaImpact.js';
 import { drawWholeSprite, drawSplitSprite, spriteReady } from './arenaSprites.js';
 import { drawTargetHandmark } from './arenaDoodle.js';
+import { linkStyle, breakPosition, createBreakTracker, joinedKey } from './arenaStructureVisual.js';
 
 const TAU = Math.PI * 2;
 const TRAIL_LIFE = 195;
@@ -14,6 +15,9 @@ const MATERIAL_NAMES = {
 };
 const QUALITY_NAMES = { PERFECT: '完美', CLEAN: '利落', ANGLE: '弹刃', MISS: '未命中', CHAIN:'连锁' };
 const backdropCaches = new WeakMap();
+// Break history is visual-only and WeakMap keyed by active structure. It cannot
+// become part of saved match data or affect physics/score.
+const structureBreaks = createBreakTracker();
 const COLORS = {
   rope: ['#d8ad64', '#83bdc0', '#c68a91', '#81a98f', '#a894bd'],
   foam: ['#7bc4a9', '#d49a86', '#82b5d0', '#d4c175', '#aa99c7'],
@@ -52,7 +56,7 @@ export function drawArenaStage(ctx, run, w, h, effects = {}) {
   pruneInPlace(debris, now, DEBRIS_LIFE, MAX_COUNTS.debris);
 
   drawBackdrop(ctx, w, h, (run.targets || []).some((t) => t && t.layout === 'stream'));
-  if (run.structure) drawStructureAssembly(ctx, run.structure, run.targets, w, h);
+  if (run.structure) drawStructureAssembly(ctx, run.structure, run.targets, w, h, now, reduced);
   drawGuideHeader(ctx, run.guide, w, h);
 
   const targets = run.targets || EMPTY;
@@ -128,9 +132,11 @@ function pruneInPlace(list, now, life, limit) {
  * Fractured links stay broken on subsequent frames; the visual effect queue can
  * expire without restoring the original structure.
  */
-function drawStructureAssembly(ctx, structure, targets, w, h) {
+function drawStructureAssembly(ctx, structure, targets, w, h, now=0, reduced=false) {
   const byId=new Map((targets||[]).map(t=>[t.id,t]));
-  const severed=new Set((structure.failedJoins||[]).map(([a,b])=>[a,b].sort().join(':')));
+  const severed=new Set((structure.failedJoins||[]).map(([a,b])=>joinedKey(a,b)));
+  const brokenAt=structureBreaks(structure,severed,now);
+  const material=linkStyle(structure.kind);
   const size=Math.min(w,h);
   ctx.save();
   // A grounded specimen fixture with quiet depth rather than sci-fi ornaments.
@@ -144,35 +150,52 @@ function drawStructureAssembly(ctx, structure, targets, w, h) {
   ctx.lineWidth=1;
   roundedRect(ctx,w*.12,railTop,w*.76,railBottom-railTop,size*.06);
   ctx.fill();ctx.stroke();
-  // The two routes are embodied as a physical assembly, not a UI list of HP.
-  for(const [left,right] of structure.joins) {
+  // Authored fixture links now express their material. Only the underlay
+  // moves after support failure; actual target positions / hitboxes stay fixed.
+  for(const [left,right] of structure.joins||[]) {
     const a=byId.get(left),b=byId.get(right);
     if(!a||!b)continue;
     const ax=a.x*w,ay=a.y*h,bx=b.x*w,by=b.y*h;
-    const broken=severed.has([left,right].sort().join(':'));
+    const key=joinedKey(left,right),broken=severed.has(key);
     const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
     const nx=-dy/len,ny=dx/len;
+    const parts=broken?[[.10,.39,-1],[.61,.90,1]]:[[0,1,0]];
+    const responseAge=brokenAt.get(key);
     ctx.lineCap='round';
-    ctx.beginPath();
-    if (broken) {
-      // Two exposed stubs and a permanent daylight gap at the failed joint.
-      for(const [u,v] of [[.12,.40],[.60,.88]]) {
-        ctx.moveTo(ax+dx*u,ay+dy*u);ctx.lineTo(ax+dx*v,ay+dy*v);
+    const width=Math.max(5.5,size*(material.width||.019));
+    for(const [u,v,side] of parts) {
+      const offset=side===0?{normal:0,drop:0,tilt:0}:
+        breakPosition(responseAge,side,reduced);
+      const normal=(offset.normal*size*.012);
+      const drop=offset.drop*size*.012;
+      // The freshly severed end turns slightly under gravity, rather than
+      // lifting the entire game object away from its true collision center.
+      const coord=(t,detail=0)=>{
+        const tilt=(t-(u+v)*.5)*offset.tilt*size*.01;
+        return [ax+dx*t+nx*(normal+detail)+nx*tilt,
+          ay+dy*t+ny*(normal+detail)+drop+ny*tilt];
+      };
+      ctx.beginPath();
+      let [x,y]=coord(u);ctx.moveTo(x,y);[x,y]=coord(v);ctx.lineTo(x,y);
+      ctx.strokeStyle=broken?material.broken:material.body;
+      ctx.lineWidth=width;ctx.stroke();
+      ctx.beginPath();
+      [x,y]=coord(u,Math.max(1.6,width*.17));ctx.moveTo(x,y);
+      [x,y]=coord(v,Math.max(1.6,width*.17));ctx.lineTo(x,y);
+      ctx.strokeStyle=material.highlight;ctx.lineWidth=Math.max(1.2,width*.17);ctx.stroke();
+      if(broken) {
+        // Dark exposed cut cap + pale machined edge, positioned at the actual
+        // end of the suspended piece, without particle rings / white flashes.
+        const tip=side<0?v:u;[x,y]=coord(tip);
+        ctx.beginPath();ctx.moveTo(x-nx*width*.44,y-ny*width*.44);
+        ctx.lineTo(x+nx*width*.44,y+ny*width*.44);
+        ctx.strokeStyle=material.face;ctx.lineWidth=Math.max(1.8,width*.28);ctx.stroke();
+      } else if(structure.kind==='tension') {
+        // A second fine fiber makes the tension rig read as a rope under load.
+        ctx.beginPath();[x,y]=coord(u,-width*.21);ctx.moveTo(x,y);
+        [x,y]=coord(v,-width*.21);ctx.lineTo(x,y);
+        ctx.strokeStyle='rgba(255,232,178,.48)';ctx.lineWidth=1;ctx.stroke();
       }
-    } else {ctx.moveTo(ax,ay);ctx.lineTo(bx,by);}
-    ctx.strokeStyle=broken?'rgba(135,147,158,.45)':'rgba(85,101,115,.36)';
-    ctx.lineWidth=Math.max(7,size*.021);
-    ctx.stroke();
-    ctx.beginPath();
-    if (broken) {for(const [u,v] of [[.12,.40],[.60,.88]]) {
-      ctx.moveTo(ax+dx*u+nx*2,ay+dy*u+ny*2);ctx.lineTo(ax+dx*v+nx*2,ay+dy*v+ny*2);
-    }} else {ctx.moveTo(ax+nx*2,ay+ny*2);ctx.lineTo(bx+nx*2,by+ny*2);}
-    ctx.lineWidth=Math.max(1.2,size*.004);
-    ctx.strokeStyle='rgba(251,254,255,.59)';ctx.stroke();
-    if(broken) {
-      const cx=(ax+bx)*.5,cy=(ay+by)*.5;
-      ctx.strokeStyle='rgba(75,90,106,.38)';ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(cx-5*nx-3,cy-5*ny);ctx.lineTo(cx+5*nx+3,cy+5*ny);ctx.stroke();
     }
   }
   // A disconnected support shifts to its physical resting coordinate; the
