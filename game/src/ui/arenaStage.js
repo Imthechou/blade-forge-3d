@@ -1,5 +1,5 @@
 import { MATERIALS } from '../core/arenaChallenge.js';
-import { impactMotion, targetPose } from './arenaImpact.js';
+import { impactMotion, targetPose, impactForTarget, contactFilingsCount } from './arenaImpact.js';
 import { drawWholeSprite, drawSplitSprite, spriteReady } from './arenaSprites.js';
 import { drawTargetHandmark } from './arenaDoodle.js';
 import { linkStyle, breakPosition, createBreakTracker, joinedKey } from './arenaStructureVisual.js';
@@ -461,8 +461,7 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
 
   ctx.save();
   // 顿帧只冻结靶具的视觉压缩/回弹，不阻塞 Canvas 输入、RAF 或45秒倒计时。
-  const impact = reduced ? null : bursts.findLast(b => b.type === t.type
-    && Math.abs(b.x-t.x)<.002 && Math.abs(b.y-t.y)<.002 && now-b.at<225);
+  const impact = reduced ? null : impactForTarget(bursts,t,now);
   const motion = impactMotion(impact,now);
   if(motion) {
     const angle=impact.angle||0;
@@ -1096,7 +1095,7 @@ function drawBursts(ctx,bursts,now,w,h,reduced){
       ctx.strokeStyle='#F5FCFF';ctx.globalAlpha=f*.95;ctx.lineWidth=1.25;
       ctx.beginPath();ctx.moveTo(x-tx*extent*.7,y-ty*extent*.7);ctx.lineTo(x+tx*extent*.7,y+ty*extent*.7);ctx.stroke();
       // Hard materials release short, gravity-bound hot filings/crystal glints.
-      const count=b.type==='metal'?6:b.type==='ice'?4:complete?2:0;
+      const count=contactFilingsCount(b.type,complete,b.event);
       for(let i=0;i<count;i++){
         const direction=angle+(i%2?1:-1)*(.55+i*.29);
         const speed=100+i*28,travel=age*.001*speed;

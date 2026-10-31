@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cutImpact,impactMotion,targetPose,IMPACT_PRESETS } from '../src/ui/arenaImpact.js';
+import { cutImpact,impactMotion,targetPose,impactForTarget,contactFilingsCount,IMPACT_PRESETS } from '../src/ui/arenaImpact.js';
 import { MATERIALS } from '../src/core/arenaChallenge.js';
 
 test('6种固定靶具都拥有轻重区分的冲击预设，且不污染材料物理参数',()=>{
@@ -55,4 +55,31 @@ test('未切断、破甲、弹开仍有区别；输入没有行为状态与计�
     assert.ok(effect.shakePx>=0);
     assert.equal(impactMotion({...effect,at:12345},12340),null);
   }
+});
+
+test('命中后靶具继续移动时按稳定ID追踪受力，不能误弹同材质另一靶',()=>{
+  const initial={targetId:'target-42',type:'metal',x:.3,y:.5,at:1000,holdMs:40,recoilPx:4};
+  const latest={...initial,at:1050};
+  const bursts=[initial,latest];
+  const moved={id:'target-42',type:'metal',x:.42,y:.66};
+  const neighbour={id:'target-43',type:'metal',x:.3,y:.5};
+  const before=JSON.stringify({bursts,moved,neighbour});
+  assert.equal(impactForTarget(bursts,moved,1090),latest,'移动靶仍产生同一命中的回弹');
+  assert.equal(impactForTarget(bursts,neighbour,1090),null,'同材质同旧坐标不是同一靶');
+  assert.equal(impactForTarget(bursts,moved,1040),initial,'未来接触不能提前显示');
+  assert.equal(impactForTarget(bursts,moved,1275),null,'短反馈应按时间退场');
+  assert.equal(impactForTarget(bursts,moved,NaN),null);
+  const old={type:'wood',x:.2,y:.4,at:1000};
+  assert.equal(impactForTarget([old],{type:'wood',x:.2,y:.4},1100),old,'兼容旧位置事件');
+  assert.equal(JSON.stringify({bursts,moved,neighbour}),before,'纯视觉关联不能改业务实体');
+});
+
+test('金属/冰晶接触闪屑遵守短暂次级粒子预算，阻挡不伪装成击断',()=>{
+  assert.equal(contactFilingsCount('metal',true,'kill'),4);
+  assert.equal(contactFilingsCount('metal',false,'cut'),1);
+  assert.equal(contactFilingsCount('ice',true,'kill'),3);
+  assert.equal(contactFilingsCount('ice',false,'armor'),1);
+  assert.equal(contactFilingsCount('wood',false,'cut'),0);
+  for(const type of Object.keys(IMPACT_PRESETS))for(const event of ['blocked','deflect','avoid-hit','avoid-ignored'])
+    assert.equal(contactFilingsCount(type,false,event),0);
 });

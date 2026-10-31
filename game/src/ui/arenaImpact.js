@@ -32,6 +32,37 @@ export function cutImpact(hit,{reducedMotion=false}={}) {
     hapticMs:clamp(Math.round((completed?9:4)+(preset.weight*(completed?19:9))),4,28),
   };
 }
+/** Match a visual contact to its persistent target ID. A moving specimen may
+ * travel far from the collision point in 225ms; the old coordinate comparison
+ * discarded its compression/recoil and could pick a different specimen.
+ * Old ID-less effects retain the coordinate fallback for compatibility.
+ * Does not mutate targets, collision data or the 45-second timer. */
+export function impactForTarget(bursts,target,now) {
+  if(!target||!Array.isArray(bursts)||!Number.isFinite(now))return null;
+  for(let i=bursts.length-1;i>=0;i--){
+    const b=bursts[i];
+    if(!b||b.type!==target.type||!Number.isFinite(b.at))continue;
+    const age=now-b.at;
+    if(age<0||age>=225)continue;
+    if(b.targetId!=null){
+      if(target.id!=null&&String(b.targetId)===String(target.id))return b;
+      continue;
+    }
+    if(Number.isFinite(b.x)&&Number.isFinite(b.y)
+       &&Math.abs(b.x-target.x)<.002&&Math.abs(b.y-target.y)<.002)return b;
+  }
+  return null;
+}
+
+/** Visible highlights are primary; hot filings and ice glints are secondary.
+ * A stopped/deflected edge should never explode like a full sever. */
+export function contactFilingsCount(type,complete,event) {
+  if(event==='blocked'||event==='deflect'||event==='avoid-hit'||event==='avoid-ignored')return 0;
+  if(type==='metal')return complete?4:1;
+  if(type==='ice')return complete?3:1;
+  return complete?2:0;
+}
+
 export function impactMotion(event,now) {
   if(!event || !Number.isFinite(now)||!Number.isFinite(event.at))return null;
   const age=now-event.at;

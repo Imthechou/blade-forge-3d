@@ -907,7 +907,7 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
       /* ★ rework T07：把 core 算出的**接触结果类型**带给舞台，
          让「弹刀 / 打不动 / 破甲 / 击破」在命中位置有不同表现，
          而不是全部变成同一句“切入 xx%”。 */
-      const marker={x:hit.target.x,y:hit.target.y,points:hit.points,at:next.time,complete:hit.complete,quality:hit.quality,type:hit.target.type,progress:hit.target.progress,angle:hit.target.lastAngle,combo:hit.combo,objective:hit.objective,slot:hit.target.slot,followup:hit.target.cuts.length>1,contactEvent:hit.contactEvent||null,armorLeft:hit.armorLeft??null};
+      const marker={targetId:hit.target.id,x:hit.target.x,y:hit.target.y,points:hit.points,at:next.time,complete:hit.complete,quality:hit.quality,type:hit.target.type,progress:hit.target.progress,angle:hit.target.lastAngle,combo:hit.combo,objective:hit.objective,slot:hit.target.slot,followup:hit.target.cuts.length>1,contactEvent:hit.contactEvent||null,armorLeft:hit.armorLeft??null};
       // 六层参数在一个地方绑定，不更改玩法刀损、强度或原生计分。
       Object.assign(marker,cutImpact({...marker,target:hit.target},{reducedMotion:motion.reduced()}));
       hitLabels.push(marker);bursts.push({...marker});
