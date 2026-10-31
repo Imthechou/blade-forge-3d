@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cutImpact,impactMotion,targetPose,impactForTarget,contactFilingsCount,IMPACT_PRESETS } from '../src/ui/arenaImpact.js';
+import { cutImpact,impactMotion,targetPose,impactForTarget,contactPointOnSwipe,contactFilingsCount,IMPACT_PRESETS } from '../src/ui/arenaImpact.js';
 import { MATERIALS } from '../src/core/arenaChallenge.js';
 
 test('6种固定靶具都拥有轻重区分的冲击预设，且不污染材料物理参数',()=>{
@@ -82,4 +82,18 @@ test('金属/冰晶接触闪屑遵守短暂次级粒子预算，阻挡不伪装�
   assert.equal(contactFilingsCount('wood',false,'cut'),0);
   for(const type of Object.keys(IMPACT_PRESETS))for(const event of ['blocked','deflect','avoid-hit','avoid-ignored'])
     assert.equal(contactFilingsCount(type,false,event),0);
+});
+
+
+test('局部接触亮点跟随真实刀路而不是强制回靶中心，且不改碰撞输入',()=>{
+  const from={x:.13,y:.43},to={x:.85,y:.43},target={x:.50,y:.48,id:'wood-2'};
+  const before=JSON.stringify({from,to,target});
+  const p=contactPointOnSwipe(from,to,target);
+  assert.ok(Math.abs(p.x-.50)<1e-10);
+  assert.ok(Math.abs(p.y-.43)<1e-10,'glint must sit on the real cut, 5% above center');
+  const angled=contactPointOnSwipe({x:0,y:0},{x:1,y:1},{x:.3,y:.5});
+  assert.ok(Math.abs(angled.x-.4)<1e-10&&Math.abs(angled.y-.4)<1e-10);
+  assert.deepEqual(contactPointOnSwipe({x:.2,y:.1},{x:.4,y:.1},{x:.9,y:.5}),{x:.4,y:.1},'clamp to actual segment');
+  assert.deepEqual(contactPointOnSwipe(null,to,target),{x:.5,y:.48});
+  assert.equal(JSON.stringify({from,to,target}),before);
 });

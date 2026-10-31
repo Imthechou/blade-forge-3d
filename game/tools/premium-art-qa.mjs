@@ -71,6 +71,43 @@ try{
   });
   fs.writeFileSync(path.join(out,`${label}-six-material-contact.png`),Buffer.from(data.image.split(',')[1],'base64'));
   report.cases.push({label,cpuSubmission:data.cpuSubmission});
+  // Three material identities × blocked / partial cut / full separation.
+  // Three fixed times expose the contact accent lifetime, not a fake single
+  // "pretty" frame. Use the *production* Canvas2D renderer in both SHAs.
+  const contactFrames=await page.evaluate(async()=>{
+    const {drawArenaStage}=await import('/src/ui/arenaStage.js');
+    const {prepareArenaSprites}=await import('/src/ui/arenaSprites.js');
+    await prepareArenaSprites();
+    const types=['wood','ice','metal'],events=['blocked','cut','kill'];
+    const frames=[];
+    for(const age of [15,65,125]){
+      const cv=document.createElement('canvas');cv.width=1125;cv.height=1500;
+      const ctx=cv.getContext('2d');
+      for(let j=0;j<events.length;j++)for(let i=0;i<types.length;i++){
+        const type=types[i],event=events[j],complete=event==='kill';
+        ctx.save();ctx.translate(i*375,j*500);
+        const target={id:'art-'+type,type,x:.5,y:.49,alive:!complete,
+          progress:complete?1:event==='blocked'?.04:.55,armorLeft:event==='blocked'?.84:0,
+          cuts:[{angle:-.35,y:-.03,progress:.55}],lastAngle:-.35,
+          layout:'structure',createdAt:0};
+        const run={targets:[target],elapsed:2,mode:'quick',params:{forgeTraits:[]}};
+        const b={targetId:target.id,x:.54,y:.46,type,at:1000,angle:-.35,
+          event,complete,weight:type==='metal'?1:type==='ice'?.77:.59,
+          holdMs:type==='metal'?46:32,recoilPx:4,shakePx:0,particleCount:complete?2:1};
+        drawArenaStage(ctx,run,375,500,{now:1000+age,bursts:[b],
+          trail:[{a:{x:.27,y:.62},b:{x:.73,y:.32},at:1000}],
+          debris:complete?[{x:.5,y:.49,type,layout:'structure',angle:-.35,at:1000}]:[],
+          hitLabels:[],reducedMotion:false});
+        ctx.save();ctx.fillStyle='#2E405A';ctx.font='bold 13px sans-serif';
+        ctx.fillText(type+' / '+event+' / '+age+'ms',14,485);ctx.restore();ctx.restore();
+      }
+      frames.push({age,image:cv.toDataURL('image/png')});
+    }
+    return frames;
+  });
+  for(const frame of contactFrames)fs.writeFileSync(
+    path.join(out,`${label}-material-contact-${String(frame.age).padStart(3,'0')}ms.png`),
+    Buffer.from(frame.image.split(',')[1],'base64'));
   if(label==='after'){
    await page.evaluate(async()=>{(await import('/src/render/index.js')).getStage().viewer.setReduceMotion(false);});
    await page.getByRole('button',{name:'检视刀具光影',exact:true}).click();

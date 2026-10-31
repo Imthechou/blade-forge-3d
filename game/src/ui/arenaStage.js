@@ -1083,7 +1083,7 @@ function drawBursts(ctx,bursts,now,w,h,reduced){
     const x=b.x*w,y=b.y*h,weight=clamp(Number(b.weight)||.3,0,1);
     const ink=(SPECIMEN[b.type]||SPECIMEN.metal).ink;
     const blocked=b.event==='blocked'||b.event==='deflect'||b.event==='avoid-hit';
-    const cutFade=clamp(1-age/145,0,1);
+    const cutFade=clamp(1-age/(blocked?100:complete?175:145),0,1);
     const complete=!!b.complete;
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
     if(!reduced && burstIndex>=bursts.length-6 && !blocked && age<220){
@@ -1105,18 +1105,32 @@ function drawBursts(ctx,bursts,now,w,h,reduced){
       }
       ctx.globalAlpha=1;
     }
-    // Contact pressure: a short dry knife-edge imprint, not an expanding circle.
+    // Contact is a local, short-lived *material* event, not a full-screen bloom.
+    // Contrast comes from a narrow dark contact groove with a staggered bright
+    // reflected lip. This reads on pale glass even between 50-120ms, while
+    // leaving weak points, the long knife trail and the specimen recognizable.
     if(cutFade>0){
-      const extent=8+weight*10;
-      ctx.globalAlpha=cutFade*(blocked?.63:.76);
-      ctx.strokeStyle=blocked?'#687D8D':ink;
-      ctx.lineWidth=blocked?2.9:2.0+weight*.65;
+      const extent=(blocked?7:complete?13:10)+weight*(blocked?7:complete?12:8);
+      const hot=b.type==='metal'?'#F6C773':b.type==='ice'?'#B9F1FF'
+        :b.type==='wood'||b.type==='rope'?'#E7B879':'#9AD8CD';
+      ctx.strokeStyle=blocked?'#52697C':ink;
+      ctx.globalAlpha=cutFade*(blocked?.72:.90);
+      ctx.lineWidth=blocked?2.4:2.2+weight*.85;
       ctx.beginPath();ctx.moveTo(x-tx*extent,y-ty*extent);
       ctx.lineTo(x+tx*extent,y+ty*extent);ctx.stroke();
-      if(blocked){
-        ctx.globalAlpha=cutFade*.32;
-        ctx.beginPath();ctx.moveTo(x-tx*extent+nx*4,y-ty*extent+ny*4);
-        ctx.lineTo(x+tx*extent+nx*4,y+ty*extent+ny*4);ctx.stroke();
+      if(!blocked){
+        // A hairline exposed lip offset towards the knife normal: no rectangle
+        // nor radial burst; the core only lives where the real stroke touched.
+        ctx.globalAlpha=cutFade*(complete?.94:.68);
+        ctx.strokeStyle=hot;ctx.lineWidth=complete?1.65:1.25;
+        const lip=complete?1.8:1.2;
+        ctx.beginPath();
+        ctx.moveTo(x-tx*extent*.79+nx*lip,y-ty*extent*.79+ny*lip);
+        ctx.lineTo(x+tx*extent*.79+nx*lip,y+ty*extent*.79+ny*lip);ctx.stroke();
+      }else{
+        // Dry lateral deflection: short cross notch rather than a sever glow.
+        ctx.strokeStyle='#9AABBA';ctx.globalAlpha=cutFade*.58;ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(x-nx*4,y-ny*4);ctx.lineTo(x+nx*4,y+ny*4);ctx.stroke();
       }
     }
     // Two hand-drawn cut-edge ticks: visible only on completed separation.

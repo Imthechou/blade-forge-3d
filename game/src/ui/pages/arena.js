@@ -15,7 +15,7 @@ import * as Challenge from '../../core/arenaChallenge.js';
 import { advanceArenaClock, formalCutPayload } from '../../core/arenaCutBridge.js';
 import { bus, EVENTS, audio, haptics, motion, env } from '../../platform/index.js';
 import { drawArenaStage } from '../arenaStage.js';
-import { cutImpact } from '../arenaImpact.js';
+import { cutImpact, contactPointOnSwipe } from '../arenaImpact.js';
 import * as Formal from '../formalPerformance.js';
 import * as FormalTest from '../formalTestStage.js';
 import * as FormalDef from '../../data/arena/formalTests.js';
@@ -910,7 +910,10 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
       const marker={targetId:hit.target.id,x:hit.target.x,y:hit.target.y,points:hit.points,at:next.time,complete:hit.complete,quality:hit.quality,type:hit.target.type,progress:hit.target.progress,angle:hit.target.lastAngle,combo:hit.combo,objective:hit.objective,slot:hit.target.slot,followup:hit.target.cuts.length>1,contactEvent:hit.contactEvent||null,armorLeft:hit.armorLeft??null};
       // 六层参数在一个地方绑定，不更改玩法刀损、强度或原生计分。
       Object.assign(marker,cutImpact({...marker,target:hit.target},{reducedMotion:motion.reduced()}));
-      hitLabels.push(marker);bursts.push({...marker});
+      // The score label remains anchored to the specimen, while the spark is
+      // anchored to the closest actual point on the finger's swipe segment.
+      const contact=contactPointOnSwipe(from,next,hit.target);
+      hitLabels.push(marker);bursts.push({...marker,x:contact.x,y:contact.y});
       pulseForgeSkill(hit, next.time);
       /* 斩断的一瞬间留一份"碎块"记录：arenaStage 据此把靶具画成两半飞开。
          只加视觉事件，不改 run —— 判定与计分仍全部由 core 完成。 */
