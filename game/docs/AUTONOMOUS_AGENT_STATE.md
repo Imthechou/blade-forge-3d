@@ -108,3 +108,9 @@
 - 在 V4.1 25,000 次 deterministic bot forge 模拟上增加宽松警戒区间，保留输出 JSON 再告警/阻断 CI，防止重构时无意反转高风险/高回报。未修改任何卡牌概率或锻造数值。
 - 2026-10-31 成功基准（5000 seeds × 5 策略）：保守成刀率 100%、六维中位 87.99；平衡 98.86% / 93.33；稀有优先 40.98% / 121.60；标签优先 91.78% / 95.50；19 锤极限 0.08% / 134.42。极限策略完成样本仅 4 把，不据此拟合真人概率或直接调平衡。
 - 新 report.guardrails 仅当每策略 N≥3000 才启用；检查成刀率宽范围、成功成刀六维均值、策略生存单调性及稀有优先收益溢价；人类操作时间/触屏/不同操作策略未被模拟。Actions #Arena 执行后必须检查输出与 screenshots。
+
+## 2026-10-31 P6 赛场 10 轮生命周期内存验收
+- 离开或重新渲染挑战时，`stopChallengeFrame()` 原已取消 RAF、断开 ResizeObserver、移除全局 resize / keydown / visibilitychange 监听；但 `globalThis.__FORGE_ARENA` 诊断桥接仍保留旧 Canvas 和 effects（命中碎块、轨迹等）强引用。
+- 本轮仅在 stop 时将 bridge.canvas/effects 置空，保留 run 供原有完成战报读值；正常重入会重绑新 Canvas，**不修改得分、进度、刀损**。
+- 真 Chromium `arena-v3-playtest.mjs` 新增十次 `home↔arena` 导航、明确点击「继续挑战」、观察活跃 ResizeObserver/事件监听数回到基线、诊断对象不残留旧画布/特效、旧挑战仍存在并暂停、单活跃 canvas、没有未挣得的 CR。隔离上下文中包装原生观察器与监听 API 计数，不对正式玩家插入检测代码。
+- Playwright 模拟触控和短时切页不能证明真机 10 分钟 GPU 内存或温升稳定，仍留实机长时间验收。

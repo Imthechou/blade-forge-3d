@@ -21,6 +21,33 @@ async function newGame(name,{width=390,height=844,virtual=true}={}) {
   const context=await browser.newContext({viewport:{width,height},isMobile:true,hasTouch:true,deviceScaleFactor:2,recordVideo:{dir:path.join(out,'videos'),size:{width,height}},locale:'zh-CN',reducedMotion:'reduce'});
   const records=[sampleBlade(150),{...sampleBlade(150),id:'blade-b',bladeName:'破甲刀'},{...sampleBlade(150),id:'blade-c',bladeName:'综合刀'}];
   await context.addInitScript(records=>localStorage.setItem('bladeforge.save',JSON.stringify({version:1,cr:2000,collection:records,arena:{school:{edge:{cleared:[0,1,2]},press:{cleared:[0,1,2]},composite:{cleared:[0,1,2]}},history:[{id:'qa-national-crown',tier:'national',result:{champion:true}}]},settings:{tutorialSeen:true,sound:false,motion:'reduced',hintsSeen:{}}})),records);
+  if(name==='lifecycle-ten-navigation-cycles') {
+    await context.addInitScript(()=>{
+      const tracker={liveObservers:0,totalObservers:0,disconnected:0};
+      Object.defineProperty(window,'__ARENA_LIFECYCLE_QA',{value:tracker});
+      const Base=window.ResizeObserver;
+      if(Base)window.ResizeObserver=class extends Base{
+        constructor(callback){super(callback);tracker.totalObservers++;tracker.liveObservers++;this._tracked=true;}
+        disconnect(){if(this._tracked){this._tracked=false;tracker.disconnected++;tracker.liveObservers--;}return super.disconnect();}
+      };
+      // Count actual registered listeners while preserving native behavior.
+      const register=(host,key,types)=>{
+        const listeners=new Map(types.map(type=>[type,new Set()]));
+        const add=host.addEventListener,remove=host.removeEventListener;
+        host.addEventListener=function(type,fn,options){
+          if(listeners.has(type))listeners.get(type).add(fn);
+          return add.call(this,type,fn,options);
+        };
+        host.removeEventListener=function(type,fn,options){
+          if(listeners.has(type))listeners.get(type).delete(fn);
+          return remove.call(this,type,fn,options);
+        };
+        Object.defineProperty(tracker,key,{get:()=>Object.fromEntries([...listeners].map(([k,v])=>[k,v.size]))});
+      };
+      register(window,'windowListeners',['resize']);
+      register(document,'documentListeners',['visibilitychange','keydown']);
+    });
+  }
   const page=await context.newPage();
   page.on('pageerror',e=>report.errors.push({name,error:String(e)}));
   page.on('requestfailed',r=>{if(!r.failure()?.errorText?.includes('ERR_ABORTED'))report.requestFailures.push({name,url:r.url(),error:r.failure()?.errorText});});
@@ -196,6 +223,73 @@ try {
     return {score:r.score,kills:r.kills,choices:r.choices,contacts:r.contacts.length,
       movingTouch:r.movingTouch};
   },{virtual:process.env.ARENA_REALTIME==='1'?false:true});
+  await scenario('lifecycle-ten-navigation-cycles',async({page})=>{
+    const measurements=[];
+    // Native ResizeObserver + listeners are tracked by this *isolated context*,
+    // not by the game. No direct stage renderer or gameplay mutations.
+    const metrics=()=>page.evaluate(()=>{
+      const q=window.__ARENA_LIFECYCLE_QA;
+      const bridge=window.__FORGE_ARENA;
+      const arena=document.querySelector('.page[data-page="arena"]');
+      return {
+        live:q.liveObservers,total:q.totalObservers,disconnected:q.disconnected,
+        listeners:{...q.windowListeners,...q.documentListeners},
+        diagnosticCanvas:!!bridge?.canvas,diagnosticEffects:!!bridge?.effects,
+        canvasConnected:bridge?.canvas?.isConnected??false,
+        arenaCanvases:arena?.querySelectorAll('.quick-canvas').length||0,
+        paused:bridge?.run?.paused??null,phase:bridge?.run?.phase||null,
+        cr:JSON.parse(localStorage.getItem('bladeforge.save'))?.cr||0,
+      };
+    });
+    const baseline=await metrics();
+    await page.getByRole('button',{name:'快速挑战',exact:true}).click({force:true});
+    await page.getByRole('button',{name:'开始自由快赛',exact:true}).click({force:true});
+    const first=await metrics();
+    assert.ok(first.diagnosticCanvas&&first.diagnosticEffects,'first arena mount missing live canvas/FX');
+    const activeDelta=first.live-baseline.live;
+    assert.ok(activeDelta>=1,'arena must register a ResizeObserver');
+    const parentListeners={resize:first.listeners.resize,key:first.listeners.keydown,
+      visibilitychange:first.listeners.visibilitychange};
+    const currentRun=await page.evaluate(()=>window.__FORGE_ARENA?.run?.id);
+    for(let i=0;i<10;i++){
+      await page.evaluate(async()=> (await import('/src/ui/router.js')).go('home'));
+      const away=await metrics();
+      assert.equal(away.live,baseline.live,'leaked ResizeObserver on exit #'+i);
+      assert.equal(away.diagnosticCanvas,false,'retained obsolete Canvas on exit #'+i);
+      assert.equal(away.diagnosticEffects,false,'retained visual FX buffers on exit #'+i);
+      assert.equal(away.paused,true,'navigation away must freeze live arena timer');
+      assert.ok(away.listeners.resize<=baseline.listeners.resize,
+        'resize listeners accumulate after exit #'+i);
+      assert.ok(away.listeners.keydown<=baseline.listeners.keydown,
+        'keydown listeners accumulate after exit #'+i);
+      assert.ok(away.listeners.visibilitychange<=baseline.listeners.visibilitychange,
+        'visibilitychange listeners accumulate after exit #'+i);
+      await page.evaluate(async()=> (await import('/src/ui/router.js')).go('arena'));
+      const resumed=await metrics();
+      assert.equal(resumed.live,first.live,'re-enter must own exactly one arena observer #'+i);
+      assert.equal(resumed.arenaCanvases,1,'re-enter has duplicate canvases #'+i);
+      assert.ok(resumed.diagnosticCanvas&&resumed.diagnosticEffects,'missing active visual buffers #'+i);
+      assert.equal(resumed.paused,true,'returning from another page must require explicit resume');
+      assert.deepEqual(resumed.listeners,parentListeners,'event listener count drifts on return #'+i);
+      const resumedId=await page.evaluate(()=>window.__FORGE_ARENA?.run?.id);
+      assert.equal(resumedId,currentRun,'paused round should survive page re-entry #'+i);
+      await page.getByRole('button',{name:'继续挑战',exact:true}).click({force:true});
+      const active=await metrics();
+      assert.equal(active.paused,false,'manual resume failed at cycle #'+i);
+      assert.equal(active.live,first.live,'resume created an extra observer at #'+i);
+      measurements.push({cycle:i+1,away,resumed,active});
+    }
+    await page.evaluate(async()=> (await import('/src/ui/router.js')).go('home'));
+    const end=await metrics();
+    assert.equal(end.live,baseline.live);
+    assert.equal(end.diagnosticCanvas,false);
+    assert.equal(end.diagnosticEffects,false);
+    assert.equal(end.cr,baseline.cr,'exiting must not award unearned CR');
+    await screenshot(page,'v41-arena-lifecycle-home-10');
+    return {cycles:10,initial:baseline,active:first,final:end,
+      maxObservers:Math.max(...measurements.flatMap(x=>[x.away.live,x.resumed.live,x.active.live])),
+      noCumulativeGrowth:true,earnedCR:0};
+  },{virtual:false});
   await scenario('six-material-2_5d-render-contact-gallery',async({page})=>{
     // This gallery is a deterministic renderer-state fixture. It is not
     // presented as human input or a real structural victory recording.

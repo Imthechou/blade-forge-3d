@@ -543,6 +543,14 @@ function stopChallengeFrame() {
   if (challengeFrame) cancelAnimationFrame(challengeFrame);
   if (formalCutStroke) Formal.noteCutStroke(Game.match, formalCutStroke, true);
   formalCutStroke = null;
+  // Diagnostics may keep the last *run* for the finished-round report, but
+  // must not retain the detached canvas and its potentially large visual queues.
+  // Every renderChallengeCanvas() installs fresh pointers before resuming.
+  const bridge = globalThis.__FORGE_ARENA;
+  if (bridge?.canvas === challengeCanvas) {
+    bridge.canvas = null;
+    bridge.effects = null;
+  }
   challengeFrame = 0; challengeCanvas = null; challengePointer = null;
   challengeResizeObserver?.disconnect(); challengeResizeObserver = null;
   if (challengeResizeHandler) window.removeEventListener('resize', challengeResizeHandler);
