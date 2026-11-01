@@ -4,13 +4,20 @@ import {
   HEAT_COLORS, STAGE_HEAT, canCarryHeat, heatForStage, heatStateFor,
 } from '../src/render/stageHeat.js';
 
-test('B1: only furnace models can carry heat, blades never glow',()=>{
+test('B1: furnace models carry heat; blades only glow while quenching',()=>{
   for(const m of ['ore_small','molten_sphere_small','blank_ingot_small']){
     assert.equal(canCarryHeat(m),true,m+' should be heatable');
+    assert.equal(canCarryHeat(m,'S7'),true,m+' st+ays heatable by model');
   }
-  for(const m of ['knife_straight','knife_tangdao','knife_karambit','','Unknown']){
-    assert.equal(canCarryHeat(m),false,JSON.stringify(m)+' must never glow');
+  /* ★ 淬火是把通红刀身插入冷却液：S5 的刀身必须可以炽热。 */
+  assert.equal(canCarryHeat('knife_straight','S5'),true,'a blade must glow while quenching');
+  /* 其余阶段的刀身一律冷钢，绝不变成发光棒。 */
+  for(const stage of ['S1','S2','S3','S4','S6','S7','S8','S9','S10']){
+    assert.equal(canCarryHeat('knife_straight',stage),false,stage+' blade must stay cold');
   }
+  assert.equal(canCarryHeat('knife_straight'),false,'blades are cold without a stage context');
+  assert.equal(canCarryHeat(''),false);
+  assert.equal(canCarryHeat('Unknown'),false);
 });
 
 test('B1: every stage has an explicit recipe; unknown stages fall back to cold',()=>{
@@ -24,16 +31,17 @@ test('B1: every stage has an explicit recipe; unknown stages fall back to cold',
   assert.equal(unknown.heat,'cold');
 });
 
-test('B1: melting is the hottest stage and later stages cool down',()=>{
+test('B1: melting is hottest, quenching keeps a red-hot blade, then everything cools',()=>{
   assert.ok(STAGE_HEAT.S2.intensity>0.4,'molten must be clearly visible');
   assert.ok(STAGE_HEAT.S2.intensity>STAGE_HEAT.S3.intensity,'S2 hotter than S3');
   assert.ok(STAGE_HEAT.S3.intensity>STAGE_HEAT.S4.intensity,'S3 hotter than S4');
-  assert.ok(STAGE_HEAT.S4.intensity>STAGE_HEAT.S5.intensity,'S4 hotter than S5');
+  /* ★ 淬火时刀身入液仍然通红：强度必须明显，否则淬火毫无表现。 */
+  assert.ok(STAGE_HEAT.S5.intensity>=0.35,'quenching must show a red-hot blade');
+  assert.equal(STAGE_HEAT.S5.color,'red','quenching is red heat, not warm grey');
   /* 回火之后是常温：表面氧化色不是自发光。 */
   for(const id of ['S6','S7','S8','S9','S10']){
     assert.equal(STAGE_HEAT[id].intensity,0,id+' must not self-illuminate');
   }
-  /* 熔炼的温度语义必须写对，避免把 S2 当淬火。 */
   assert.equal(STAGE_HEAT.S2.heat,'molten');
   assert.equal(STAGE_HEAT.S5.heat,'quenching');
   assert.equal(STAGE_HEAT.S6.heat,'tempering');
@@ -45,12 +53,17 @@ test('B1: heat is only applied to a heatable model on a hot stage',()=>{
   assert.equal(molten.colorHex,HEAT_COLORS.orange);
   assert.ok(molten.intensity>0.4&&molten.intensity<=1);
 
+  const quench=heatStateFor({stageId:'S5',modelId:'knife_straight'});
+  assert.equal(quench.apply,true,'the blade must glow while quenching');
+  assert.equal(quench.colorHex,HEAT_COLORS.red);
+  assert.ok(quench.intensity>=0.35);
+
   const coldStage=heatStateFor({stageId:'S7',modelId:'molten_sphere_small'});
   assert.equal(coldStage.apply,false,'S7 must not glow even on a heatable model');
   assert.equal(coldStage.intensity,0);
 
-  const bladeOnHotStage=heatStateFor({stageId:'S2',modelId:'knife_straight'});
-  assert.equal(bladeOnHotStage.apply,false,'a blade model must never self-illuminate');
+  const bladeAfterQuench=heatStateFor({stageId:'S6',modelId:'knife_straight'});
+  assert.equal(bladeAfterQuench.apply,false,'a blade must be cold steel after quenching');
 });
 
 test('B1: intensity stays bounded and pulse is deterministic per time',()=>{
@@ -59,11 +72,9 @@ test('B1: intensity stays bounded and pulse is deterministic per time',()=>{
     assert.ok(s.intensity>0,'pulse must never go dark');
     assert.ok(s.intensity<=1,'pulse must never exceed 1');
   }
-  /* 同一时刻必须给出同一结果（可复现）。 */
   const a=heatStateFor({stageId:'S2',modelId:'molten_sphere_small',timeMs:1234});
   const b=heatStateFor({stageId:'S2',modelId:'molten_sphere_small',timeMs:1234});
-  assert.deepEqual(a,b);
-  /* 不同时刻应产生脉动差异（熔液对流），但不剧烈。 */
+  assert.deepEqual(a,b,'same time must give the same result');
   const samples=new Set();
   for(let t=0;t<2400;t+=200){
     samples.add(heatStateFor({stageId:'S2',modelId:'molten_sphere_small',timeMs:t}).intensity);

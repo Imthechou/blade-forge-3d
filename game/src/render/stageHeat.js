@@ -52,10 +52,13 @@ export const STAGE_HEAT = Object.freeze({
   S2: Object.freeze({ color: 'orange', intensity: 0.62, pulse: true, heat: 'molten' }),
   /* S3 预锻：钢锭从炉里取出，仍然橙红，但已开始降温 */
   S3: Object.freeze({ color: 'red', intensity: 0.34, pulse: false, heat: 'hot' }),
-  /* S4 锻打：反复锤击会短暂升温，但整体进入可锻温度 */
+  /* S4 锻打：钢坯处于可锻温度，暗红余温（不抢主视觉） */
   S4: Object.freeze({ color: 'warm', intensity: 0.16, pulse: false, heat: 'warm' }),
-  /* S5 淬火：入液瞬间温度骤降 —— 用低温色 + 低强度表示「正在冷却」 */
-  S5: Object.freeze({ color: 'warm', intensity: 0.10, pulse: false, heat: 'quenching' }),
+  /* ★ S5 淬火：真实淬火是把**通红**的刀身插入冷却液 ——
+     入液那一刻刀身仍然炽热（橙红），随后骤降。这是淬火最重要的视觉，
+     之前给 0.10 的「warm」等于什么都没表现。
+     现在给 0.42 的 red：玩家一眼能看出「这是刚出炉的高温刀身」。 */
+  S5: Object.freeze({ color: 'red', intensity: 0.42, pulse: false, heat: 'quenching' }),
   /* S6 回火：低温回火，几乎不发光（回火色是表面氧化色，不是自发光） */
   S6: Object.freeze({ color: 'ambient', intensity: 0, pulse: false, heat: 'tempering' }),
   /* S7 开刃及之后：常温 */
@@ -63,22 +66,44 @@ export const STAGE_HEAT = Object.freeze({
   S8: Object.freeze({ color: 'ambient', intensity: 0, pulse: false, heat: 'cold' }),
   S9: Object.freeze({ color: 'ambient', intensity: 0, pulse: false, heat: 'cold' }),
   S10: Object.freeze({ color: 'ambient', intensity: 0, pulse: false, heat: 'cold' }),
+  S7: Object.freeze({ color: 'ambient', intensity: 0, pulse: false, heat: 'cold' }),
 });
 
-/** 哪些模型属于「炉内 / 高温」阶段，可以承载热辐射。 */
+/**
+ * 哪些模型属于「炉内 / 高温」模型，可以承载热辐射。
+ * ore / molten / ingot 是原料与钢坯。
+ */
 const HEATABLE_MODELS = Object.freeze(new Set([
   'ore_small', 'molten_sphere_small', 'blank_ingot_small',
 ]));
 
 /**
- * 判断某个模型是否允许热辐射。
- * 刀具模型（knife_*）在 S4 之后是「可锻但不再自发光」的阶段，
- * 因此默认不参与 —— 避免把整把刀变成发光棒。
+ * 哪些阶段允许**刀具模型**自身炽热。
+ *
+ * 这必须谨慎：真实的淬火是把通红刀身插入冷却液，入液那一刻刀身确实
+ * 在发光 —— 这是淬火最重要的视觉。但锻打之后（S6 起）刀身必须回到冷钢，
+ * 否则整把刀会变成发光棒，收藏页也会失真。
+ *
+ * 因此只有 S5 这一个阶段放开刀具模型的自发光。
+ */
+const BLADE_HEAT_STAGES = Object.freeze(new Set(['S5']));
+
+/** 刀具模型 id 判断（knife_straight / knife_tangdao / …）。 */
+const isBladeModel = (modelId) => /^knife_/.test(String(modelId || ''));
+
+/**
+ * 判断某个模型在某个阶段是否允许热辐射。
+ *
  * @param {string} modelId
+ * @param {string} [stageId] 省略时按「非刀具模型」的旧口径判断
  * @returns {boolean}
  */
-export function canCarryHeat(modelId) {
-  return HEATABLE_MODELS.has(String(modelId || ''));
+export function canCarryHeat(modelId, stageId = null) {
+  const id = String(modelId || '');
+  if (HEATABLE_MODELS.has(id)) return true;
+  /* 刀具模型只在淬火阶段可以炽热；其它阶段一律冷钢。 */
+  if (isBladeModel(id)) return stageId != null && BLADE_HEAT_STAGES.has(String(stageId));
+  return false;
 }
 
 /**
@@ -103,7 +128,7 @@ export function heatForStage(stageId) {
  */
 export function heatStateFor({ stageId, modelId, reducedMotion = false, timeMs = 0 } = {}) {
   const recipe = heatForStage(stageId);
-  if (!recipe.intensity || !canCarryHeat(modelId)) {
+  if (!recipe.intensity || !canCarryHeat(modelId, stageId)) {
     return { apply: false, colorHex: HEAT_COLORS.ambient, intensity: 0, heat: recipe.heat };
   }
   let intensity = recipe.intensity;
