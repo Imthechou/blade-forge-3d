@@ -29,6 +29,7 @@ import { TAG_TIERS } from '../data/balance.js';
 import { getTrait } from '../data/traits.js';
 import { isBaseTag, tagName } from '../data/tags.js';
 import { KNIFE_BY_ID } from '../data/knifeTypes.js';
+import { masteryView } from './bladeMastery.js';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const round3 = (v) => Math.round(v * 1000) / 1000;
@@ -176,6 +177,7 @@ export function adaptBlade(blade) {
 
   const profile = knifeProfile(source.knifeTypeId || source.knifeType || null);
   const effects = resolveTraitEffects(source);
+  const mastery = masteryView(source);
 
   /** ③ 局内 modifiers：刀型画像 × 特性赛场效果 */
   const modifiers = {};
@@ -183,10 +185,13 @@ export function adaptBlade(blade) {
   for (const id of Object.keys(TEST_PROJECTS)) {
     const knifeMod = num(profile.mods[id]) || 1;
     const traitMod = 1 + effects.mods[id];
-    const raw = knifeMod * traitMod;
+    // 磨合只影响锁定项目，且仍受原有赛事 modifier 上限约束。
+    const masteryMod = id===mastery.specialtyProject ? 1+mastery.bonus : 1;
+    const raw = knifeMod * traitMod * masteryMod;
     projectFactor[id] = {
       knife: round3(knifeMod),
       trait: round3(traitMod),
+      mastery: round3(masteryMod),
       raw: round3(raw),
       value: round3(Math.max(TEST_MOD_CLAMP.min, Math.min(TEST_MOD_CLAMP.max, raw))),
     };
@@ -210,6 +215,7 @@ export function adaptBlade(blade) {
     canEnterArena: source.canEnterArena !== false && source.fractured !== true,
     /* ── 三层拆分（禁止 UI 自己再算一遍） ── */
     permanentStats: { ...rawStats },
+    mastery,
     capabilities: capability,
     projectFactor,
     /** 给旧引擎（cutParams/arenaChallenge）用的扁平参数输入 */

@@ -106,7 +106,45 @@ for(const strategy of strategies){
  };
  console.log(strategy+' '+stats.complete+'/'+N+' completed; p50 score-proxy '+quantile(stats.successMeans,.5));
 }
+// Broad guardrails, not a forced equilibrium. Derived from a 25,000-run
+// baseline (2026-10-31) and deliberately wider than its 95% sampling error.
+// They catch accidental reward/risk inversion while leaving room for tuning.
+const GUARDRAILS=Object.freeze({
+  conservative:{completion:[.95,1],median:[75,110]},
+  balanced:{completion:[.90,1],median:[82,115]},
+  rarity:{completion:[.25,.70],median:[105,145]},
+  'tag-focus':{completion:[.75,1],median:[85,120]},
+  extreme:{completion:[0,.06],median:[120,150]},
+});
+const warnings=[];
+if(N>=3000) {
+  for(const [strategy,limits] of Object.entries(GUARDRAILS)){
+    const actual=result.strategies[strategy];
+    const inRange=(value,[lo,hi])=>value!=null&&value>=lo&&value<=hi;
+    if(!inRange(actual.rate,limits.completion))
+      warnings.push(strategy+': completion '+actual.rate+' outside '+limits.completion.join('–'));
+    if(actual.finishedMean.median!=null&&!inRange(actual.finishedMean.median,limits.median))
+      warnings.push(strategy+': median six-attribute mean '+actual.finishedMean.median+
+        ' outside '+limits.median.join('–'));
+  }
+  const s=result.strategies;
+  if(!(s.conservative.rate>=s.balanced.rate &&
+       s.balanced.rate>=s['tag-focus'].rate &&
+       s['tag-focus'].rate>=s.rarity.rate &&
+       s.rarity.rate>=s.extreme.rate))
+    warnings.push('risk strategy survival ordering inverted');
+  if(!(s.rarity.finishedMean.median>s.balanced.finishedMean.median+8))
+    warnings.push('rarity strategy loses its meaningful reward premium');
+}
+result.guardrails={
+  evaluated:N>=3000,perStrategy:N,baseline:'2026-10-31, 5000 seeds x 5 policies',
+  profiles:GUARDRAILS,warnings,
+  caveat:'deterministic bot policy, not player success probability or mobile FPS'
+};
+console.log('BALANCE_GUARDRAILS',JSON.stringify(result.guardrails));
 const dest=path.resolve(process.env.FORGE_SIM_OUTPUT||'arena-playtest/arena-v41-forge-simulation.json');
 fs.mkdirSync(path.dirname(dest),{recursive:true});
 fs.writeFileSync(dest,JSON.stringify(result,null,2));
 console.log('Wrote '+dest);
+
+if(warnings.length){console.error('FAIL: forge balance guardrails',warnings);process.exitCode=1;}

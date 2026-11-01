@@ -65,6 +65,75 @@ export function drawSplitSprite(ctx,type,side,bodyW,bodyH,angle=0) {
 const CUT_FACE={foam:['#a9d5c4','#4b827e'],rope:['#e5c78c','#96713e'],
   wood:['#e9be81','#aa7541'],plastic:['#def0ed','#7eabb7'],
   ice:['#efffff','#80cfe0'],metal:['#eef5f5','#879fae']};
+/**
+ * Authored cut-face signatures rather than the same evenly striped white band
+ * on every material. The marks are clipped to the exposed lip and calculated
+ * only on a cache miss; per-frame Canvas draw cost stays unchanged.
+ */
+function drawMaterialCutFace(c,type,side,depth) {
+  c.save();
+  const top=side<0?-depth:0;
+  c.beginPath();c.rect(-CELL,top,CELL*2,depth);c.clip();
+  const y=u=>side*depth*u;
+  c.lineCap='round';c.lineJoin='round';
+  if(type==='foam') {
+    // Fine open-cell pores: matte, offset rather than the metal's straight hatch.
+    c.fillStyle='rgba(39,106,97,.37)';
+    for(let row=0;row<2;row++)for(let x=-118;x<120;x+=13) {
+      const jitter=((x*7+row*19)%9)/9;
+      c.beginPath();c.ellipse(x+(row?6:0),y(.23+row*.48),1.4+jitter*1.2,1.1+jitter*.8,.2,0,Math.PI*2);c.fill();
+    }
+    c.strokeStyle='rgba(245,255,244,.55)';c.lineWidth=1.8;
+    c.beginPath();c.moveTo(-CELL,y(.1));c.lineTo(CELL,y(.1));c.stroke();
+  } else if(type==='rope') {
+    // Loosened bundled fibres, with several dark axial twists.
+    for(let x=-122;x<124;x+=8){
+      c.strokeStyle=x%3===0?'rgba(111,75,38,.6)':'rgba(255,241,194,.75)';
+      c.lineWidth=x%3===0?1.8:1.1;
+      c.beginPath();c.moveTo(x,y(.06));c.lineTo(x+3.8,y(.9));c.stroke();
+    }
+    c.strokeStyle='rgba(105,73,39,.5)';c.lineWidth=1.7;
+    for(const h of [.29,.74]){c.beginPath();c.moveTo(-CELL,y(h));c.lineTo(CELL,y(h+.05));c.stroke();}
+  } else if(type==='wood') {
+    // Growth rings are wavy long fibres, not straight evenly-spaced ribs.
+    for(let row=0;row<4;row++){
+      c.strokeStyle=row%2?'rgba(125,73,39,.55)':'rgba(255,225,168,.64)';
+      c.lineWidth=row%2?1.35:1.8;c.beginPath();
+      for(let x=-CELL;x<=CELL;x+=7){
+        const yy=y(.16+row*.20+.055*Math.sin(x*.058+row*1.45));
+        if(x===-CELL)c.moveTo(x,yy);else c.lineTo(x,yy);
+      }c.stroke();
+    }
+    c.strokeStyle='rgba(90,53,32,.38)';c.lineWidth=1;
+    for(let x=-115;x<=110;x+=28){c.beginPath();c.moveTo(x,y(.08));c.lineTo(x+5,y(.92));c.stroke();}
+  } else if(type==='plastic') {
+    // Semi-translucent laminated polymer layers with molded cross ribs.
+    for(let row=0;row<3;row++){
+      c.strokeStyle=row===1?'rgba(60,115,135,.55)':'rgba(255,255,255,.8)';
+      c.lineWidth=row===1?2.3:1.5;c.beginPath();
+      c.moveTo(-CELL,y(.18+row*.30));c.lineTo(CELL,y(.18+row*.30));c.stroke();
+    }
+    c.strokeStyle='rgba(86,147,157,.42)';c.lineWidth=1.5;
+    for(let x=-116;x<120;x+=18){c.beginPath();c.moveTo(x,y(.18));c.lineTo(x+4,y(.83));c.stroke();}
+  } else if(type==='ice') {
+    // A fractured crystalline face: irregular planar facets, not sparkle.
+    for(let x=-122,i=0;x<123;x+=23,i++){
+      c.fillStyle=i%2?'rgba(218,253,255,.62)':'rgba(83,168,199,.23)';
+      c.beginPath();c.moveTo(x,y(.08));c.lineTo(x+23,y(i%2?.18:.5));
+      c.lineTo(x+8,y(.94));c.closePath();c.fill();
+      c.strokeStyle='rgba(246,255,255,.66)';c.lineWidth=1.2;
+      c.beginPath();c.moveTo(x+23,y(i%2?.18:.5));c.lineTo(x+8,y(.94));c.stroke();
+    }
+  } else if(type==='metal') {
+    // Thin machined bevel plus directional brushing; no fantasy sparks.
+    c.fillStyle='rgba(56,81,100,.23)';c.fillRect(-CELL,y(.53),CELL*2,depth*.32);
+    c.strokeStyle='rgba(255,255,255,.92)';c.lineWidth=2.2;
+    c.beginPath();c.moveTo(-CELL,y(.1));c.lineTo(CELL,y(.1));c.stroke();
+    c.strokeStyle='rgba(55,85,103,.52)';c.lineWidth=.8;
+    for(let x=-118;x<120;x+=8){c.beginPath();c.moveTo(x,y(.43));c.lineTo(x+6,y(.93));c.stroke();}
+  }
+  c.restore();
+}
 function fracturePair(type,angle) {
   const index=TYPES.indexOf(type);if(index<0)return null;
   const turn=Math.PI/90;
@@ -91,15 +160,7 @@ function fracturePair(type,angle) {
     const g=c.createLinearGradient(0,0,0,depth*side);
     g.addColorStop(0,colors[0]);g.addColorStop(.30,colors[0]);g.addColorStop(1,colors[1]);
     c.fillStyle=g;c.fillRect(-CELL,side<0?-depth:0,CELL*2,depth);
-    c.lineWidth=.8;c.strokeStyle=type==='metal'?'rgba(255,255,255,.48)':'rgba(76,51,27,.24)';
-    if(type==='wood'){
-      for(let r=15;r<115;r+=15){c.beginPath();c.ellipse(-13,side*5,r,3.2,0,0,Math.PI*2);c.stroke();}
-    }else{
-      for(let x=-114;x<115;x+=type==='rope'?5:9){
-        c.beginPath();c.moveTo(x,side*1.5);c.lineTo(x+(type==='metal'?5:2),side*(depth-1));c.stroke();
-        if(type==='foam'){c.fillStyle='rgba(26,79,77,.25)';c.beginPath();c.arc(x,side*5,1.1,0,Math.PI*2);c.fill();}
-      }
-    }
+    drawMaterialCutFace(c,type,side,depth);
     pair.push(canvas);
   }
   fractureBuilds++;fractures.set(key,pair);

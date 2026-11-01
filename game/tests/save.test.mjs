@@ -15,7 +15,15 @@ const { createRun } = await import('../src/core/forge.js');
 const { appraise } = await import('../src/core/appraise.js');
 const key = 'bladeforge.save';
 
-function fresh() { failWrites = false; entries.clear(); P.resetAll(); }
+function fresh() {
+  failWrites = false;
+  // Tests previously erased localStorage behind Progress's live cache, which
+  // now (correctly) looks like a conflicting external write. Rebase the test
+  // fixture explicitly, then use the production versioned reset path.
+  Object.assign(P.get(), Storage.load());
+  assert.ok(P.resetAll());
+  entries.delete(key + '.recovery');
+}
 
 test('保存失败不发布奖励；恢复后重试只加一次', () => {
   fresh();

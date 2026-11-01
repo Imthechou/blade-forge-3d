@@ -6,16 +6,24 @@ import { renderHoningArtwork } from './edgeHoningArtwork.js';
 import * as Audio from '../platform/audio.js';
 import { HAMMER_TIERS } from '../data/balance.js';
 import * as Hammer from '../core/hammer.js';
-import { breakChance } from '../core/risk.js';
+import * as SweetSpot from '../core/hammerTechnique.js';
 import * as Edge from '../core/edge.js';
 function put(parent,items){mount(parent,items);}
 export function renderHammerV4({body,run,stage,Game,getStage,router,render}) {
   body.classList.add('hammer-panel');
   const question=stage.querySelector('.stage-question');
   if(question)question.textContent='自由锻打 · 越锤越强';
+  /* ★ 甜点标记：每锤有一个由 seed+锤序确定的瞄准点，命中最多 +12% 成果。
+     它是真实判定所用的同一函数产物（hammerTechnique.sweetSpotOf），
+     所以玩家看到的靶心就是系统实际结算的位置。 */
+  const spot=el('span',{class:'hammer-sweet-spot','aria-hidden':'true'},[
+    el('i',{class:'hammer-sweet-ring'}),
+    el('i',{class:'hammer-sweet-core'}),
+  ]);
   const hit=el('button',{class:'hammer-stage-hit',type:'button',
-    'aria-label':'自由挥锤，前十锤不会断裂'},[
+    'aria-label':'自由挥锤，前十锤不会断裂；命中金色甜点可获得额外强度'},[
       el('span',{class:'hammer-stage-cue',text:'点击挥锤'}),
+      spot,
       el('span',{class:'forge-impact-dent','aria-hidden':'true'}),
       el('span',{class:'forge-impact-chips','aria-hidden':'true'},[el('i'),el('i'),el('i')]),
       el('span',{class:'forge-hammer-float','aria-hidden':'true'}),
@@ -30,11 +38,18 @@ export function renderHammerV4({body,run,stage,Game,getStage,router,render}) {
     el('button',{class:'btn btn--primary btn--block',type:'button',text:'收手 · 保留强度',
       onclick:()=>{if(Game.run!==run||run.phase!=='hammer')return;Game.endHammer();render();}})
   ]));
+  function placeSweetSpot(){
+    /* 甜点位置与核心判定同源：hammerTechnique.sweetSpotOf(seed, 下一锤序号)。
+       放在 CSS 变量上，由样式渲染成金色靶心。 */
+    const s=SweetSpot.sweetSpotOf(run.seed,run.hammer.count+1);
+    hit.style.setProperty('--sweet-x',(s.x*100).toFixed(2)+'%');
+    hit.style.setProperty('--sweet-y',(s.y*100).toFixed(2)+'%');
+    hit.dataset.sweetZone=SweetSpot.normalizeLanding(s).zone;
+  }
   function refresh(strike=null){
-    const h=run.hammer,scale=run.daily?.breakScale||1;
-    const futureRisk=Math.min(100,run.risk.current+Hammer.nextRiskDelta(h.count));
-    const chance=h.count<10?0:breakChance(futureRisk,scale);
+    const h=run.hammer, chance=Hammer.previewNextBreakChance(run);
     const nextGain=Hammer.progressOf(h.count+1);
+    const maxBonus=Math.round(SweetSpot.SWEET_SPOT_MAX_BONUS*100);
     put(hud,[
       el('div',{class:'hammer-hud-value'},[el('small',{text:'本轮强度'}),el('b',{text:'+'+(h.statGained||0).toFixed(1)})]),
       el('div',{class:'hammer-hud-value'},[el('small',{text:'锤数'}),el('b',{text:String(h.count)})]),
@@ -49,16 +64,40 @@ export function renderHammerV4({body,run,stage,Game,getStage,router,render}) {
       el('div',{class:'hammer-meter-rail'},[el('i',{style:{width:Math.min(100,h.progress/tier*100)+'%'}})]),
     ]);
     put(next,[
-      el('span',{text:'下一锤 +'+nextGain.toFixed(1)+' 强度'}),
+      el('span',{text:'下一锤 +'+nextGain.toFixed(1)+' 强度'+(maxBonus?' · 甜点 +'+maxBonus+'%':'')}),
       el('span',{class:chance>=.15?'hammer-risk-hot':'',text:'断裂 '+(chance*100).toFixed(1)+'%'})
     ]);
-    caption.textContent=strike?.tierUp?'强化升级 · '+Hammer.tierName(strike.tierUp):
-      h.count<10?'前十锤安全 · 自由挥锤':'越锤越强，也越危险';
+    /* ★ 命中反馈：告诉玩家这一锤打到了哪里、瞄准得如何。
+       数值直接来自核心返回的 technique，不是 UI 自己算的另一套。 */
+    let feedback;
+    if(strike?.tierUp){
+      feedback='强化升级 · '+Hammer.tierName(strike.tierUp);
+    }else if(strike?.technique?.active){
+      const zone=strike.technique.zoneName||'刀身';
+      const aim=Math.round((strike.technique.aim||0)*100);
+      feedback=aim>=75?`甜点命中 ${aim}% · ${zone}受锻`
+        :aim>=35?`接近甜点 ${aim}% · ${zone}受锻`
+        :`偏离甜点 · ${zone}受锻`;
+    }else{
+      feedback=h.count<10?'前十锤安全 · 自由挥锤':'越锤越强，也越危险';
+    }
+    const shapeCount=run.shapeProfile?.marks?.length||0;
+    caption.textContent=run.flowVersion==='five-screen-v1'
+      ? feedback+` · 刀缘微调 ${Math.min(24,shapeCount)}/24`
+      : feedback;
     stage.classList.toggle('hammer-is-risky',run.risk.current>=60);
+    placeSweetSpot();
   }
   hit.addEventListener('click',e=>{
     if(router.currentKey()!=='forge'||Game.run!==run||run.phase!=='hammer')return;
-    const result=Game.hammerStrike();
+    const rect=hit.getBoundingClientRect();
+    const impact={
+      x:rect.width>0?(e.clientX-rect.left)/rect.width:.5,
+      y:rect.height>0?(e.clientY-rect.top)/rect.height:.5,
+    };
+    // Keyboard-triggered clicks have no pointer coordinates; use the central anvil.
+    if(!e.detail || !Number.isFinite(impact.x)||!Number.isFinite(impact.y)){impact.x=.5;impact.y=.5;}
+    const result=Game.hammerStrike(impact);
     if(!result?.ok)return;
     const box=hit.getBoundingClientRect();
     hit.style.setProperty('--hit-x',(e.detail>0?e.clientX-box.x:box.width*.5)+'px');

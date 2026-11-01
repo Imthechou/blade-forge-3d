@@ -17,6 +17,19 @@ let generation = 0;
 // The collection has its own camera/scale, so apply a small extra exposure trim
 // without altering shaders, materials, studio PMREM or game-stage lighting.
 export const COLLECTION_EXPOSURE = 0.84;
+/** A restrained collector-view pose (about 13 degrees).
+ * Applies to *viewers only*, never to shared GLBs or the actual forged mesh.
+ * Always starts from the viewer's canonical base rotation so repeat visits
+ * don't accumulate angle errors. Forge / arena camera paths are untouched. */
+export function applyCollectionPose(stage) {
+  const viewer=stage?.viewer,pivot=viewer?.pivot,base=viewer?.baseRotation;
+  if(!viewer?.root||!pivot||!base)return false;
+  pivot.rotation.copy(base);
+  pivot.rotation.z+=0.23;
+  pivot.updateMatrixWorld(true);
+  viewer.needsRender=true;
+  return true;
+}
 export function applyCollectionLighting(stage) {
   const viewer = stage?.viewer;
   if (!viewer?.renderer) return false;
@@ -28,7 +41,7 @@ export function applyCollectionLighting(stage) {
 function fingerprint(record) {
   return JSON.stringify(['archive-image-v4',
     record.id, record.knifeTypeId, record.knifeType, record.seed,
-    record.visualRecipe, record.history, record.pendingSkin,
+    record.visualRecipe, record.history, record.pendingSkin, record.shapeProfile,
   ]);
 }
 
@@ -83,6 +96,8 @@ async function draw(record, visual, isCurrent = () => true) {
   try { shown = await stage.show(modelId, { viewPreset: visual.viewPreset || 'forge' }); }
   finally { stage.deferSkin = false; }
   if (!shown?.ok || !isCurrent()) return null;
+  stage.applyShape(record.shapeProfile || null);
+  applyCollectionPose(stage);
   stage.applySkin(visual.skin, { coverAll: !visual.handle?.explicit });
   stage.applyHandle(visual.handle?.explicit ? visual.handle : null, visual.skin);
   stage.applyGlow(visual.glowCardId || null);

@@ -62,3 +62,28 @@ test('letting an avoid opportunity expire is not treated as missed regular targe
  assert.equal(run.misses,misses);
  assert.equal(run.score,score);
 });
+
+test('quick challenge adds readable moving targets only during fast segment; dodge markers stay still',()=>{
+ const {run}=createChallenge(sampleBlade(100),{mode:'quick',seed:913,augments:false});
+ assert.equal(run.targets.every(t=>!t.moving),true,'warmup is static to teach single-finger cutting');
+ run.elapsed=23.1;run.phase='speed';run.targets=[];run.refillAt=null;
+ run.targetSerial=5;run.nextSpawnAt=run.elapsed;
+ tick(run,.1);
+ const moving=run.targets.find(t=>t.id==='target-6');
+ assert.ok(moving?.moving,'every third fast-segment target moves, even outside ranked formal matches');
+ const first={x:moving.x,y:moving.y};
+ tick(run,.2);
+ assert.notDeepEqual({x:moving.x,y:moving.y},first,'motion must advance with the simulation clock');
+ assert.ok(moving.x>.08&&moving.x<.92&&moving.y>.18&&moving.y<.82,'motion stays on playable stage');
+ run.paused=true;const stopped={x:moving.x,y:moving.y};
+ tick(run,.2);assert.deepEqual({x:moving.x,y:moving.y},stopped,'pause freezes motion');
+ run.paused=false;run.elapsed=30.1;run.phase='finale';run.targets=[];
+ run.targetSerial=19;run.nextSpawnAt=run.elapsed;run.refillAt=null;
+ tick(run,.1);
+ const avoid=run.targets.find(t=>t.id==='target-20');
+ assert.equal(avoid?.avoid,true);assert.equal(avoid?.moving,false,'avoid seals must never be moving');
+ const formal=createChallenge(sampleBlade(100),{mode:'formal',seed:913,augments:false}).run;
+ formal.elapsed=23.1;formal.phase='speed';formal.targets=[];formal.nextSpawnAt=formal.elapsed;
+ formal.targetSerial=5;tick(formal,.1);
+ assert.equal(formal.targets[0]?.moving,false,'formal low-rank calibration is untouched');
+});

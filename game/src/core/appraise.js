@@ -46,6 +46,7 @@ export function appraise(run) {
     riskCurrent: run.risk.current,
     riskPeak: run.risk.peak,
     hammerCount: run.hammer.count,
+    shapeProfile: run.shapeProfile ? JSON.parse(JSON.stringify(run.shapeProfile)) : null,
     hammerProgress: run.hammer.progress,
     hammerTier: run.hammer.tier,
     edge: run.edge ? { ...run.edge } : null,

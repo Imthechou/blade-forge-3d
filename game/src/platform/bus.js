@@ -57,6 +57,7 @@ export const EVENTS = Object.freeze({
   CODEX_FOUND: 'progress:codex-found',
   SAVED: 'save:persisted',
   SAVE_FAILED: 'save:failed',
+  SAVE_CONFLICT: 'save:conflict',
 });
 
 export default { on, off, emit, clear, EVENTS };

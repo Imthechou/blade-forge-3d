@@ -7,11 +7,12 @@ import * as Core from '../../core/index.js';
 import { ACHIEVEMENTS, ACHIEVEMENT_GROUPS } from '../../data/achievements.js';
 import { COMBOS } from '../../data/combos.js';
 import { KNIFE_TYPES, resolveModelId } from '../../data/knifeTypes.js';
+import { CARD_BY_ID } from '../../data/cards.js';
 import { tagName } from '../../data/tags.js';
 import { getTrait } from '../../data/traits.js';
 import { Game } from '../../app/game.js';
 import { BladeStage } from '../../render/index.js';
-import { mountCollectionPreview, disconnectCollectionPreviews, releaseCollectionPreviewStage, applyCollectionLighting } from '../../render/collectionPreview.js';
+import { mountCollectionPreview, disconnectCollectionPreviews, releaseCollectionPreviewStage, applyCollectionLighting, applyCollectionPose } from '../../render/collectionPreview.js';
 import * as CodexCatalog from '../../data/codexCatalog.js';
 import router from '../router.js';
 
@@ -34,10 +35,13 @@ const SORTS = [
   { id: 'score', name: '评分' },
   { id: 'recent', name: '最新' },
   { id: 'arena', name: '赛事经历' },
+  { id: 'mastery', name: '磨合' },
   { id: 'name', name: '名称' },
 ];
 const FILTERS = [
   { id: 'all', name: '全部' },
+  { id: 'favorite', name: '珍藏' },
+  { id: 'mastery', name: '名刃' },
   { id: 'arena', name: '有赛事经历' },
   { id: 'trait', name: '有高阶特性' },
 ];
@@ -107,6 +111,15 @@ export function openTab(id) {
 function renderCollection() {
   const list = Core.progress.collection();
   const fractures = Core.progress.fracturedList();
+  const workshopGrowth=Core.arenaV41Growth.workshopSnapshot(Core.progress.get());
+  const namedBlades=list.filter(b=>(b.mastery?.qualifiedMatches||0)>=5).length;
+  body.appendChild(el('div',{class:'ws-archive-growth'},[
+    el('div',{class:'ws-archive-growth-copy'},[
+      el('b',{text:`工坊 Lv.${workshopGrowth.level} · ${workshopGrowth.nextXp===null?'满级':`${workshopGrowth.xp}/${workshopGrowth.nextXp} XP`}`}),
+      el('span',{text:`名刃 ${namedBlades} 把 · 珍藏 ${list.filter(b=>b.favorite===true).length} 把`}),
+    ]),
+    el('button',{class:'chip',type:'button',text:'工坊成长',onclick:()=>{tab='bonuses';root.scrollTop=0;render();}}),
+  ]));
   body.appendChild(el('div',{class:'ws-collection-head'},[
     el('span',{class:'muted tiny',text:`成刀 ${list.length} 把`}),
     el('button',{
@@ -150,7 +163,9 @@ function renderCollection() {
 
   /* 筛选 → 排序（只影响展示顺序，不改存档） */
   let shown = list.slice();
-  if (collectionFilter === 'arena') shown = shown.filter((b) => (b.arenaHistory || []).length > 0);
+  if (collectionFilter === 'favorite') shown = shown.filter(b => b.favorite === true);
+  else if (collectionFilter === 'mastery') shown = shown.filter(b => (b.mastery?.qualifiedMatches || 0) >= 5);
+  else if (collectionFilter === 'arena') shown = shown.filter((b) => (b.arenaHistory || []).length > 0);
   else if (collectionFilter === 'trait') {
     shown = shown.filter((b) => (b.tagTiers || []).some((t) => (t.effectiveLayers ?? t.layers ?? 0) >= 6)
       || (b.traits || []).some((id) => getTrait(id)?.kind === 'SPECIAL_TAG'));
@@ -159,6 +174,7 @@ function renderCollection() {
     if (collectionSort === 'recent') return (b.createdAt || 0) - (a.createdAt || 0);
     if (collectionSort === 'name') return String(a.bladeName || a.id).localeCompare(String(b.bladeName || b.id), 'zh');
     if (collectionSort === 'arena') return (b.arenaHistory || []).length - (a.arenaHistory || []).length;
+    if (collectionSort === 'mastery') return (b.mastery?.qualifiedMatches || 0) - (a.mastery?.qualifiedMatches || 0);
     return (b.score || 0) - (a.score || 0);
   });
 
@@ -335,12 +351,37 @@ function inspect(blade) {
     /* 卡背：六维、特性（标注赛场职责）、连携、赛事经历、工艺与档案 */
     bladeCardDetail(model),
     el('div', { class: 'blade-detail-actions' }, [
+      el('button',{class:'btn',text:'保存收藏卡 PNG','aria-label':'下载本刀真实3D外观收藏卡',onclick:async(event)=>{
+        const button=event.currentTarget;
+        if(button.disabled)return;
+        if(!detailStage?.ready||detailStage.modelId!==modelId){toast('刀具预览正在加载，请稍后再保存','warn');return;}
+        button.disabled=true;button.textContent='生成收藏卡…';
+        try {
+          await detailStage.viewer?._compilePromise;
+          if(detailSequence!==sequence||!detailStage?.viewer?.root)throw new Error('刀具预览已关闭');
+          const shot=detailStage.snapshot(720,960);
+          const {downloadCollectiblePoster}=await import('../bladeCardExport.js');
+          const current=Core.progress.bladeById(blade.id)||blade;
+          await downloadCollectiblePoster(bladeCardModel(current),shot);
+          toast('收藏卡已生成，可保存图片','good');
+        }catch(err){toast(err?.message||'收藏卡生成失败，请重试','warn');}
+        finally{if(button.isConnected){button.disabled=false;button.textContent='保存收藏卡 PNG';}}
+      }}),
       el('button',{class:'btn btn--primary',text:'12秒短试刀',onclick:async()=>{
         const Arena=await import('./arena.js');
         const result=Arena.openCollectionSample(blade.id);
         if(!result?.ok){toast(result?.reason||'当前无法试刀','warn');return;}
         detailSheet.close();
       }}),
+      el('button', {
+        class: 'btn', text: blade.favorite ? '★ 取消珍藏' : '☆ 加入珍藏',
+        onclick: () => {
+          const result=Core.progress.toggleFavorite(blade.id);
+          if (!result.ok) { toast('收藏标记保存失败，请重试','warn'); return; }
+          toast(result.favorite ? '已加入珍藏' : '已取消珍藏','good');
+          detailSheet.close();render();
+        },
+      }),
       el('button', {
         class: 'btn', text: '设为代表作',
         onclick: () => { if (Core.progress.setShowcase(blade.id)) toast('已设为代表作', 'good'); },
@@ -409,6 +450,8 @@ function inspect(blade) {
       if (detailStage === stage) detailStage = null;
       return;
     }
+    stage.applyShape(blade.shapeProfile || null);
+    applyCollectionPose(stage);
     stage.applySkin(visual.skin, { coverAll: !visual.handle?.explicit });
     stage.applyHandle(visual.handle?.explicit ? visual.handle : null, visual.skin);
     stage.applyGlow(visual.glowCardId || null);
@@ -461,13 +504,40 @@ function renderBonuses() {
   const state = Core.progress.get();
   const view = Core.progress.forgeBonusView();
   const growth = Core.arenaV41Growth.workshopSnapshot(state);
+  const nextTier=Core.arenaV41Growth.WORKSHOP_TIERS[growth.level]||null;
+  const floor=Core.arenaV41Growth.XP_THRESHOLDS[growth.level-1]??0;
+  const xpPercent=growth.nextXp===null?100:Math.min(100,Math.max(0,(growth.xp-floor)/(growth.nextXp-floor)*100));
+  const nextBenefits=[];
+  if(nextTier){
+    if(nextTier.riskReduction>growth.riskReduction)nextBenefits.push(`断裂相对减免提高至 ${Math.round(nextTier.riskReduction*100)}%`);
+    if(nextTier.discount>growth.discount)nextBenefits.push(`刷新费用优惠提高至 ${Math.round(nextTier.discount*100)}%`);
+    if(nextTier.rarity!==growth.rarity)nextBenefits.push('更容易遇见高稀有度工艺');
+  }
   body.appendChild(el('section',{class:'card stack', 'aria-label':'工坊等级'},[
     el('div',{class:'row row--between'},[
       el('b',{text:'工坊 · Lv.'+growth.level}),
       el('span',{class:'chip',text:growth.nextXp===null?'已满级':growth.xp+' / '+growth.nextXp+' XP'}),
     ]),
+    el('div',{class:'ws-workshop-progress',role:'progressbar','aria-label':'工坊升级进度','aria-valuemin':0,'aria-valuemax':100,'aria-valuenow':Math.round(xpPercent)},[
+      el('i',{style:{width:`${xpPercent}%`}}),
+    ]),
+    el('div',{class:'muted tiny',text:growth.nextXp===null?'工坊等级已满':`距离 Lv.${growth.level+1} 还需 ${growth.nextXp-growth.xp} XP`}),
+    nextBenefits.length?el('div',{class:'report-line',text:`下一级：${nextBenefits.join(' · ')}`}):null,
     el('div',{class:'report-line',text:'本次锻造：付费刷新优惠 '+Math.round(growth.discount*100)+'% · 断裂相对减免 '+Math.round(growth.riskReduction*100)+'%'}),
     el('div',{class:'muted tiny',text:'稀有度加权 '+(growth.rarity==='none'?'未开放':growth.rarity+'档')+' · 仅影响新开锻造；原有成刀属性不变'}),
+  ]));
+  const storedMaterials=Object.entries(state.materialsV1?.counts||{})
+    .map(([id,n])=>({card:CARD_BY_ID[id],count:Number(n)||0}))
+    .filter(x=>x.card?.stage==='S1'&&x.count>0)
+    .sort((a,b)=>b.count-a.count);
+  body.appendChild(el('section',{class:'card stack','aria-label':'锻材库存'},[
+    el('div',{class:'row row--between'},[
+      el('b',{text:'锻材库存'}),
+      el('span',{class:'chip',text:storedMaterials.reduce((a,x)=>a+x.count,0)+' 份'}),
+    ]),
+    el('div',{class:'muted tiny',text:'普通材料无限可用。完成有效赛事可获得稀有锻材；库存只用于指定选择，随机选材免费。'}),
+    ...(storedMaterials.length?storedMaterials.slice(0,12).map(x=>el('div',{class:'report-line',text:x.card.name+' · '+x.card.rarityCn+' ×'+x.count})):
+      [el('div',{class:'report-line',text:'暂未获得稀有锻材 · 参加赛事后可收集'})]),
   ]));
   body.appendChild(el('header',{class:'ws-heading'},[
     el('span',{class:'ws-eyebrow',text:'开锻准备'}),

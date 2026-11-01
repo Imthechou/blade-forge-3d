@@ -1,7 +1,9 @@
 import { MATERIALS } from '../core/arenaChallenge.js';
-import { impactMotion, targetPose } from './arenaImpact.js';
+import { impactMotion, targetPose, impactForTarget, contactFilingsCount } from './arenaImpact.js';
+import { drawMaterialShear } from './arenaMaterialShear.js';
 import { drawWholeSprite, drawSplitSprite, spriteReady } from './arenaSprites.js';
 import { drawTargetHandmark } from './arenaDoodle.js';
+import { linkStyle, breakPosition, createBreakTracker, joinedKey } from './arenaStructureVisual.js';
 
 const TAU = Math.PI * 2;
 const TRAIL_LIFE = 195;
@@ -14,6 +16,9 @@ const MATERIAL_NAMES = {
 };
 const QUALITY_NAMES = { PERFECT: '完美', CLEAN: '利落', ANGLE: '弹刃', MISS: '未命中', CHAIN:'连锁' };
 const backdropCaches = new WeakMap();
+// Break history is visual-only and WeakMap keyed by active structure. It cannot
+// become part of saved match data or affect physics/score.
+const structureBreaks = createBreakTracker();
 const COLORS = {
   rope: ['#d8ad64', '#83bdc0', '#c68a91', '#81a98f', '#a894bd'],
   foam: ['#7bc4a9', '#d49a86', '#82b5d0', '#d4c175', '#aa99c7'],
@@ -52,7 +57,7 @@ export function drawArenaStage(ctx, run, w, h, effects = {}) {
   pruneInPlace(debris, now, DEBRIS_LIFE, MAX_COUNTS.debris);
 
   drawBackdrop(ctx, w, h, (run.targets || []).some((t) => t && t.layout === 'stream'));
-  if (run.structure) drawStructureAssembly(ctx, run.structure, run.targets, w, h);
+  if (run.structure) drawStructureAssembly(ctx, run.structure, run.targets, w, h, now, reduced);
   drawGuideHeader(ctx, run.guide, w, h);
 
   const targets = run.targets || EMPTY;
@@ -98,7 +103,7 @@ export function drawArenaStage(ctx, run, w, h, effects = {}) {
   }
 
   drawDebris(ctx, debris, now, w, h);
-  drawTrail(ctx, trail, now, w, h, reduced);
+  drawTrail(ctx, trail, now, w, h, reduced, run);
   drawBursts(ctx, bursts, now, w, h, reduced);
   drawComboBanner(ctx, run, w, h, reduced);
   drawLabels(ctx, labels, now, w, h, reduced);
@@ -128,9 +133,11 @@ function pruneInPlace(list, now, life, limit) {
  * Fractured links stay broken on subsequent frames; the visual effect queue can
  * expire without restoring the original structure.
  */
-function drawStructureAssembly(ctx, structure, targets, w, h) {
+function drawStructureAssembly(ctx, structure, targets, w, h, now=0, reduced=false) {
   const byId=new Map((targets||[]).map(t=>[t.id,t]));
-  const severed=new Set((structure.failedJoins||[]).map(([a,b])=>[a,b].sort().join(':')));
+  const severed=new Set((structure.failedJoins||[]).map(([a,b])=>joinedKey(a,b)));
+  const brokenAt=structureBreaks(structure,severed,now);
+  const material=linkStyle(structure.kind);
   const size=Math.min(w,h);
   ctx.save();
   // A grounded specimen fixture with quiet depth rather than sci-fi ornaments.
@@ -144,35 +151,52 @@ function drawStructureAssembly(ctx, structure, targets, w, h) {
   ctx.lineWidth=1;
   roundedRect(ctx,w*.12,railTop,w*.76,railBottom-railTop,size*.06);
   ctx.fill();ctx.stroke();
-  // The two routes are embodied as a physical assembly, not a UI list of HP.
-  for(const [left,right] of structure.joins) {
+  // Authored fixture links now express their material. Only the underlay
+  // moves after support failure; actual target positions / hitboxes stay fixed.
+  for(const [left,right] of structure.joins||[]) {
     const a=byId.get(left),b=byId.get(right);
     if(!a||!b)continue;
     const ax=a.x*w,ay=a.y*h,bx=b.x*w,by=b.y*h;
-    const broken=severed.has([left,right].sort().join(':'));
+    const key=joinedKey(left,right),broken=severed.has(key);
     const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
     const nx=-dy/len,ny=dx/len;
+    const parts=broken?[[.10,.39,-1],[.61,.90,1]]:[[0,1,0]];
+    const responseAge=brokenAt.get(key);
     ctx.lineCap='round';
-    ctx.beginPath();
-    if (broken) {
-      // Two exposed stubs and a permanent daylight gap at the failed joint.
-      for(const [u,v] of [[.12,.40],[.60,.88]]) {
-        ctx.moveTo(ax+dx*u,ay+dy*u);ctx.lineTo(ax+dx*v,ay+dy*v);
+    const width=Math.max(5.5,size*(material.width||.019));
+    for(const [u,v,side] of parts) {
+      const offset=side===0?{normal:0,drop:0,tilt:0}:
+        breakPosition(responseAge,side,reduced);
+      const normal=(offset.normal*size*.012);
+      const drop=offset.drop*size*.012;
+      // The freshly severed end turns slightly under gravity, rather than
+      // lifting the entire game object away from its true collision center.
+      const coord=(t,detail=0)=>{
+        const tilt=(t-(u+v)*.5)*offset.tilt*size*.01;
+        return [ax+dx*t+nx*(normal+detail)+nx*tilt,
+          ay+dy*t+ny*(normal+detail)+drop+ny*tilt];
+      };
+      ctx.beginPath();
+      let [x,y]=coord(u);ctx.moveTo(x,y);[x,y]=coord(v);ctx.lineTo(x,y);
+      ctx.strokeStyle=broken?material.broken:material.body;
+      ctx.lineWidth=width;ctx.stroke();
+      ctx.beginPath();
+      [x,y]=coord(u,Math.max(1.6,width*.17));ctx.moveTo(x,y);
+      [x,y]=coord(v,Math.max(1.6,width*.17));ctx.lineTo(x,y);
+      ctx.strokeStyle=material.highlight;ctx.lineWidth=Math.max(1.2,width*.17);ctx.stroke();
+      if(broken) {
+        // Dark exposed cut cap + pale machined edge, positioned at the actual
+        // end of the suspended piece, without particle rings / white flashes.
+        const tip=side<0?v:u;[x,y]=coord(tip);
+        ctx.beginPath();ctx.moveTo(x-nx*width*.44,y-ny*width*.44);
+        ctx.lineTo(x+nx*width*.44,y+ny*width*.44);
+        ctx.strokeStyle=material.face;ctx.lineWidth=Math.max(1.8,width*.28);ctx.stroke();
+      } else if(structure.kind==='tension') {
+        // A second fine fiber makes the tension rig read as a rope under load.
+        ctx.beginPath();[x,y]=coord(u,-width*.21);ctx.moveTo(x,y);
+        [x,y]=coord(v,-width*.21);ctx.lineTo(x,y);
+        ctx.strokeStyle='rgba(255,232,178,.48)';ctx.lineWidth=1;ctx.stroke();
       }
-    } else {ctx.moveTo(ax,ay);ctx.lineTo(bx,by);}
-    ctx.strokeStyle=broken?'rgba(135,147,158,.45)':'rgba(85,101,115,.36)';
-    ctx.lineWidth=Math.max(7,size*.021);
-    ctx.stroke();
-    ctx.beginPath();
-    if (broken) {for(const [u,v] of [[.12,.40],[.60,.88]]) {
-      ctx.moveTo(ax+dx*u+nx*2,ay+dy*u+ny*2);ctx.lineTo(ax+dx*v+nx*2,ay+dy*v+ny*2);
-    }} else {ctx.moveTo(ax+nx*2,ay+ny*2);ctx.lineTo(bx+nx*2,by+ny*2);}
-    ctx.lineWidth=Math.max(1.2,size*.004);
-    ctx.strokeStyle='rgba(251,254,255,.59)';ctx.stroke();
-    if(broken) {
-      const cx=(ax+bx)*.5,cy=(ay+by)*.5;
-      ctx.strokeStyle='rgba(75,90,106,.38)';ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(cx-5*nx-3,cy-5*ny);ctx.lineTo(cx+5*nx+3,cy+5*ny);ctx.stroke();
     }
   }
   // A disconnected support shifts to its physical resting coordinate; the
@@ -438,8 +462,7 @@ function drawTarget(ctx, t, data, index, x, y, w, h, guided, now, bursts = EMPTY
 
   ctx.save();
   // 顿帧只冻结靶具的视觉压缩/回弹，不阻塞 Canvas 输入、RAF 或45秒倒计时。
-  const impact = reduced ? null : bursts.findLast(b => b.type === t.type
-    && Math.abs(b.x-t.x)<.002 && Math.abs(b.y-t.y)<.002 && now-b.at<225);
+  const impact = reduced ? null : impactForTarget(bursts,t,now);
   const motion = impactMotion(impact,now);
   if(motion) {
     const angle=impact.angle||0;
@@ -1031,50 +1054,113 @@ function drawDebrisBody(ctx, type, width, height, unit) {
 
 /* ══ 刀光 / 火花 / 文字 ═════════════════════════════════ */
 
-function drawTrail(ctx, trail, now, w, h, reduced) {
+function drawTrail(ctx, trail, now, w, h, reduced, run) {
   if(!trail.length)return;
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
-  // Ink-brush slash: two flat strokes, no white-hot core, glow or bloom.
-  for(let pass=0;pass<2;pass++)for(let i=0;i<trail.length;i++){
+  // A readable energy ribbon: translucent sheath, colored edge, fine light core.
+  // No blur filter or extra offscreen canvas on this high-frequency path.
+  const traits=run?.params?.forgeTraits||EMPTY;
+  const tint=traits.some(t=>t.id==='heat')?'240,168,81':traits.some(t=>t.id==='cold')?'90,207,239':traits.some(t=>t.id==='oxide')?'179,141,235':'87,194,209';
+  for(let pass=0;pass<(reduced?2:3);pass++)for(let i=0;i<trail.length;i++){
     const seg=trail[i];if(!seg.a||!seg.b)continue;
     const fade=clamp(1-(now-seg.at)/TRAIL_LIFE,0,1);if(fade<=0)continue;
     const taper=.35+.65*i/Math.max(1,trail.length-1);
-    ctx.strokeStyle=pass===0?`rgba(39,66,81,${(.21*fade*taper).toFixed(3)})`
-      :`rgba(106,89,167,${(.75*fade*taper).toFixed(3)})`;
-    ctx.lineWidth=(pass===0?(reduced?3.1:6.2):(reduced?1.3:2.5))*taper;
+    ctx.strokeStyle=pass===0?`rgba(26,58,82,${(.40*fade*taper).toFixed(3)})`
+      :pass===1?`rgba(${tint},${(.83*fade*taper).toFixed(3)})`:`rgba(244,253,255,${(.94*fade*taper).toFixed(3)})`;
+    ctx.lineWidth=(pass===0?(reduced?3.1:6.8):pass===1?(reduced?1.3:3.8):1.25)*taper;
     ctx.beginPath();ctx.moveTo(seg.a.x*w,seg.a.y*h);ctx.lineTo(seg.b.x*w,seg.b.y*h);ctx.stroke();
   }
   ctx.restore();
 }
 
-/** 2D hand-ink contact feedback. Materials separate by chips and cut resistance,
- * never by generated sparkle, bloom, starbursts or radial particle rings.
+/** Material fragments plus a brief directional contact flare.
  * Purely visual: physics, input and all collision coordinates are untouched. */
 function drawBursts(ctx,bursts,now,w,h,reduced){
-  for(const b of bursts){
+  for(let burstIndex=0;burstIndex<bursts.length;burstIndex++){
+    const b=bursts[burstIndex];
     const age=now-b.at;if(age<0||age>BURST_LIFE)continue;
     const angle=Number.isFinite(b.angle)?b.angle:0;
     const tx=Math.cos(angle),ty=Math.sin(angle),nx=-ty,ny=tx;
     const x=b.x*w,y=b.y*h,weight=clamp(Number(b.weight)||.3,0,1);
     const ink=(SPECIMEN[b.type]||SPECIMEN.metal).ink;
     const blocked=b.event==='blocked'||b.event==='deflect'||b.event==='avoid-hit';
-    const cutFade=clamp(1-age/145,0,1);
     const complete=!!b.complete;
+    const cutFade=clamp(1-age/(blocked?100:complete?175:145),0,1);
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
-    // Contact pressure: a short dry knife-edge imprint, not an expanding circle.
+    if(!reduced && burstIndex>=bursts.length-6 && !blocked && age<220){
+      // A single contact accent follows the actual cut axis, not a screen flash.
+      const f=Math.pow(1-age/220,2),extent=(complete?25:14)*(1+weight*.35);
+      const tint=b.type==='ice'?'#91E8FF':b.type==='metal'?'#FFD591':b.type==='wood'||b.type==='rope'?'#EAC58C':'#9BE2D1';
+      ctx.globalAlpha=f*.7;ctx.strokeStyle=tint;ctx.lineWidth=5*f+.5;
+      ctx.beginPath();ctx.moveTo(x-tx*extent,y-ty*extent);ctx.lineTo(x+tx*extent,y+ty*extent);ctx.stroke();
+      ctx.strokeStyle='#F5FCFF';ctx.globalAlpha=f*.95;ctx.lineWidth=1.25;
+      ctx.beginPath();ctx.moveTo(x-tx*extent*.7,y-ty*extent*.7);ctx.lineTo(x+tx*extent*.7,y+ty*extent*.7);ctx.stroke();
+      // Hard materials release short, gravity-bound hot filings/crystal glints.
+      const count=contactFilingsCount(b.type,complete,b.event);
+      for(let i=0;i<count;i++){
+        const direction=angle+(i%2?1:-1)*(.55+i*.29);
+        const speed=100+i*28,travel=age*.001*speed;
+        const px=x+Math.cos(direction)*travel,py=y+Math.sin(direction)*travel+age*age*.00016;
+        ctx.strokeStyle=i%2?tint:'#FFF4D9';ctx.globalAlpha=f*.85;ctx.lineWidth=i%2?1:1.6;
+        ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px-Math.cos(direction)*(3+i*.65),py-Math.sin(direction)*(3+i*.65));ctx.stroke();
+      }
+      ctx.globalAlpha=1;
+    }
+    // Contact is a local, short-lived *material* event, not a full-screen bloom.
+    // Contrast comes from a narrow dark contact groove with a staggered bright
+    // reflected lip. This reads on pale glass even between 50-120ms, while
+    // leaving weak points, the long knife trail and the specimen recognizable.
     if(cutFade>0){
-      const extent=8+weight*10;
-      ctx.globalAlpha=cutFade*(blocked?.63:.76);
-      ctx.strokeStyle=blocked?'#687D8D':ink;
-      ctx.lineWidth=blocked?2.9:2.0+weight*.65;
+      const extent=(blocked?7:complete?13:10)+weight*(blocked?7:complete?12:8);
+      const hot=b.type==='metal'?'#F6C773':b.type==='ice'?'#B9F1FF'
+        :b.type==='wood'||b.type==='rope'?'#E7B879':'#9AD8CD';
+      ctx.strokeStyle=blocked?'#52697C':ink;
+      ctx.globalAlpha=cutFade*(blocked?.72:.90);
+      ctx.lineWidth=blocked?2.4:2.2+weight*.85;
       ctx.beginPath();ctx.moveTo(x-tx*extent,y-ty*extent);
       ctx.lineTo(x+tx*extent,y+ty*extent);ctx.stroke();
-      if(blocked){
-        ctx.globalAlpha=cutFade*.32;
-        ctx.beginPath();ctx.moveTo(x-tx*extent+nx*4,y-ty*extent+ny*4);
-        ctx.lineTo(x+tx*extent+nx*4,y+ty*extent+ny*4);ctx.stroke();
+      if(!blocked){
+        // A hairline exposed lip offset towards the knife normal: no rectangle
+        // nor radial burst; the core only lives where the real stroke touched.
+        ctx.globalAlpha=cutFade*(complete?.94:.68);
+        ctx.strokeStyle=hot;ctx.lineWidth=complete?1.65:1.25;
+        const lip=complete?1.8:1.2;
+        ctx.beginPath();
+        ctx.moveTo(x-tx*extent*.79+nx*lip,y-ty*extent*.79+ny*lip);
+        ctx.lineTo(x+tx*extent*.79+nx*lip,y+ty*extent*.79+ny*lip);ctx.stroke();
+      }else{
+        // Dry lateral deflection: short cross notch rather than a sever glow.
+        ctx.strokeStyle='#9AABBA';ctx.globalAlpha=cutFade*.58;ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(x-nx*4,y-ny*4);ctx.lineTo(x+nx*4,y+ny*4);ctx.stroke();
       }
     }
+    // Short, authored material-pressure marks. Unlike the long knife trail
+    // they stay within ~15 pixels of the true contact and decay in 140ms.
+    // Wood releases split fibres, ice sharp cold facets, steel a hot scoring
+    // burr. No radial rings, screen bloom or extra emitted sprite systems.
+    if(!reduced&&!blocked&&age<140&&(b.type==='wood'||b.type==='ice'||b.type==='metal')){
+      const f=Math.pow(1-age/140,.75),hard=b.type==='metal';
+      const cold=b.type==='ice',span=hard?11:cold?14:12;
+      const materialTint=hard?'#CF823F':cold?'#59BEDA':'#AA7143';
+      ctx.globalAlpha=f*.86;ctx.lineWidth=hard?1.65:1.5;ctx.strokeStyle=materialTint;
+      ctx.beginPath();
+      for(const side of [-1,1]){
+        const ax=x+tx*side*5+nx*3,ay=y+ty*side*5+ny*3;
+        const bx=x+tx*side*span+nx*(cold?9:hard?6:8)*side;
+        const by=y+ty*side*span+ny*(cold?9:hard?6:8)*side;
+        ctx.moveTo(ax,ay);ctx.lineTo(bx,by);
+      }
+      ctx.stroke();
+      // One tiny counter-reflection separates the real steel/ice edge from
+      // the background without saturating the already bright broken face.
+      if(hard||cold){
+        ctx.strokeStyle=hard?'#FFE2AA':'#E2FBFF';ctx.globalAlpha=f*.95;
+        ctx.lineWidth=hard?1.4:1.2;
+        ctx.beginPath();ctx.moveTo(x+nx*2,y+ny*2);
+        ctx.lineTo(x+nx*(cold?12:9)+tx*5,y+ny*(cold?12:9)+ty*5);ctx.stroke();
+      }
+    }
+    if(burstIndex>=bursts.length-6)drawMaterialShear(ctx,b,age,x,y,angle,reduced);
     // Two hand-drawn cut-edge ticks: visible only on completed separation.
     if(complete&&age<210){
       const f=1-age/210;

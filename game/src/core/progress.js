@@ -29,6 +29,8 @@ import * as V41Growth from './arenaV41Growth.js';
 import * as V41Specialties from './arenaV41Specialties.js';
 import * as CareerV41 from './arenaCareerV41.js';
 import { careerRewardPlan, isV41Match } from './arenaV41Rewards.js';
+import { normalizeBladeMastery, creditBladeMastery, qualifyingFormalMatch, verifiedApexBladeRounds } from './bladeMastery.js';
+import * as Materials from './forgeMaterials.js';
 import * as CodexCatalog from '../data/codexCatalog.js';
 import { COUNTED_CATEGORIES } from '../data/codexCatalog.js';
 import { commitSave } from './saveTransaction.js';
@@ -76,8 +78,14 @@ export function spendForgeReroll(cost) {
   return { ok: true, cr: original.cr };
 }
 
+/** 原子扣除库存直选材料。随机出现与历史永久掌握的材料不调用此接口。 */
+export function spendForgeMaterial(cardId){
+  return commitSave(load(),save=>Materials.spendMaterialInDraft(save,cardId));
+}
+
 export function resetAll() {
   const next = makeSave();
+  next.saveRevision = load().saveRevision;
   if (!Storage.save(next)) return false;
   cache = next;
   quickSettlementReceipts = new WeakMap();
@@ -136,6 +144,10 @@ export function settleQuickChallenge(run) {
       record: previous ? quickCopy(previous) : null, reason,
     });
   if (receipt) return duplicate('CURRENT_PAGE_COMMITTED', true, receipt.reward);
+  // 历史纪录只保存 last：后续快赛覆盖 last 后，旧局仍可能被重新提交。
+  // 用稳定 runId 持久收据覆盖此边界，CR、工坊 XP、名刀磨合必须同时幂等。
+  const priorReceipt = original.eventLedger?.['quick:settled:'+run.id];
+  if (priorReceipt) return duplicate('PERSISTED_RUN', true, priorReceipt.reward||0);
   if (previous?.last?.runId === run.id) {
     if (previous.last.score !== run.result.score || previous.last.grade !== run.result.grade) {
       return quickSettlementResult(run, key, { reason: '相同局 ID 的纪录摘要不一致，无法结算' });
@@ -151,6 +163,22 @@ export function settleQuickChallenge(run) {
     const effectiveKills=Math.max(0,Number(run.result.kills)||0);
     if (effectiveKills>0 && run.result.reason==='time')
       V41Growth.awardWorkshopXp(draft,Math.min(10,4+Math.floor((Number(run.result.score)||0)/1200)), 'quick:'+run.id);
+    // 快赛只在真正完整45秒且命中4个目标时有少量材料掉落，结算原子化。
+    const materialDrop = run.rulesVersion==='arena-v4.1' && run.result.reason==='time'&&run.elapsed>=45 && effectiveKills>=4
+      ? Materials.grantMaterial(draft,'material:quick:'+run.id,'quick') : null;
+    // 同一份存档事务结算单刀磨合：只奖励完成完整快赛且实际切中目标的出战刀。
+    // 独立稳定 runId 作为持久收据，防止新快赛覆盖 last 后重放旧局刷磨合。
+    const masteryKey='mastery:quick:'+run.id;
+    const contestantId=run.blade?.id;
+    if(run.mode==='quick' && effectiveKills>0 && run.result.reason==='time'
+      && typeof contestantId==='string' && contestantId && !draft.eventLedger?.[masteryKey]){
+      const blade=draft.collection.find(item=>item.id===contestantId && !item.fractured && item.canEnterArena!==false);
+      if(blade){
+        creditBladeMastery(blade);
+        draft.eventLedger ||= {};
+        draft.eventLedger[masteryKey]={type:'BLADE_MASTERY',at:Date.now(),bladeId:contestantId};
+      }
+    }
     /* ★ rework T10.1：快赛完成事件与 CR 同一次写盘。
        run.id 是稳定身份，同局重试不会二次计任务/成就。
        注意：快赛**永久安全**——事件只记录完成，不改永久属性、不触发断刀。 */
@@ -163,7 +191,10 @@ export function settleQuickChallenge(run) {
       settledReward: credited.delta + taskCr, cr: draft.cr,
       record: quickCopy(draft.quickChallengeRecords.byChallenge[key]), reason: null,
       tasks: evt.tasks || [],
+      materialDrop:materialDrop?.credited?{cardId:materialDrop.cardId,name:materialDrop.name,count:materialDrop.credited}:null,
     });
+    draft.eventLedger ||= {};
+    draft.eventLedger['quick:settled:'+run.id]={type:'QUICK_SETTLED',at:Date.now(),reward:result.reward};
     if (Storage.save(draft) !== true) throw new Error('Quick settlement was not saved');
   } catch (_) {
     return quickSettlementResult(run, key, {
@@ -204,6 +235,8 @@ export function archive(record, { mode = 'normal' } = {}) {
       // 断刀册为永久历史：锻造与正式赛事断刀共存，禁止静默裁剪。
       note('fracture', record.id);
     } else {
+      record.mastery = normalizeBladeMastery(record.mastery,record);
+      record.favorite = record.favorite === true;
       s.collection.unshift(record);
       /* ★ 2026-10-14（用户：首页「有刀的时候展示评分最高的刀」）：
          原来是 `if (!s.showcaseId) s.showcaseId = record.id` —— 把**第一把**刀永久钉成
@@ -287,6 +320,16 @@ export function setShowcase(id) {
     return { ok: true };
   });
   return result.ok;
+}
+
+/** 珍藏标记与首页代表作互不影响。 */
+export function toggleFavorite(id) {
+  return commitSave(load(), s => {
+    const blade=s.collection.find(b=>b.id===id);
+    if(!blade)return {ok:false};
+    blade.favorite=blade.favorite!==true;
+    return {ok:true,favorite:blade.favorite};
+  });
 }
 
 export function renameBlade(id, name) {
@@ -541,6 +584,8 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
     history.push(entry);
     if (blade) {
       (blade.arenaHistory ||= []).push(JSON.parse(JSON.stringify(entry)));
+      // 只认结构目标确实有进展的 V4.1 正式赛；不靠重复战报或单纯分数刷经验。
+      if (v41 && qualifyingFormalMatch(matchRecord,tier)) creditBladeMastery(blade);
       /* ★ rework T12：把分项成绩写进**每把刀的个人纪录**。
 
          要修什么：改造前赛事只知道“整场合成分”，
@@ -570,6 +615,28 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
       }
     }
   }
+  // 巅峰正式三刀赛按锁定阵容和三轮实际结构进度，分别结算每把参赛刀。
+  // 整场 matchId 的幂等守卫已在本函数开头；本段随 CR/掉落在同一事务写盘。
+  const apexCredits = (tier==='apex' && v41 && !bladeId)
+    ? verifiedApexBladeRounds(matchRecord) : [];
+  for(const earned of apexCredits){
+    const participant=s.collection.find(item=>item.id===earned.bladeId
+      && !item.fractured && item.canEnterArena!==false);
+    if(!participant)continue;
+    creditBladeMastery(participant);
+    (participant.arenaHistory ||= []).push(JSON.parse(JSON.stringify({
+      id:matchId+':blade:'+earned.bladeId,matchId,teamId:matchId,
+      tier:'apex',kind:'apex-v4.1-round',round:earned.round,
+      primary:earned.primary,primaryCompleted:earned.primaryCompleted,
+      bladeId:earned.bladeId,recordedAt:Date.now(),
+    })));
+  }
+  // 仅真实 V4.1 正式赛事中有有效结构破坏才掉落锻材；无效/旧版不凭分数兑奖。
+  // 组刀结算只认合法阵容中真实达标的分刀，错误刀位不能领整场锻材。
+  const materialEligible=tier==='apex' && matchRecord?.kind==='apex'
+    ? apexCredits.length>0 : qualifyingFormalMatch(matchRecord,tier);
+  if (v41 && matchId && materialEligible)
+    Materials.grantMaterial(s,'material:formal:'+matchId,tier);
   if (destroyed && blade) {
     // 原档整体转移：外观配方、锻造过程、荣誉和全部赛事履历不裁剪、不重算。
     blade.fractured = true;

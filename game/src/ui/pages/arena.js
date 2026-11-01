@@ -5,6 +5,8 @@ import { icon } from '../icons.js';
 import { el, $, clear, mount, toast, countUp, sheet } from '../dom.js';
 import * as Core from '../../core/index.js';
 import { BRANCHES, GRADIENTS } from '../../data/arena/branches.js';
+import { CARD_BY_ID } from '../../data/cards.js';
+import { verifiedApexBladeRounds } from '../../core/bladeMastery.js';
 import { TIERS, NATIONAL_ROUNDS, THEMES } from '../../data/arena/tournaments.js';
 import { FACES } from '../../data/balance.js';
 import Game from '../../app/game.js';
@@ -13,7 +15,7 @@ import * as Challenge from '../../core/arenaChallenge.js';
 import { advanceArenaClock, formalCutPayload } from '../../core/arenaCutBridge.js';
 import { bus, EVENTS, audio, haptics, motion, env } from '../../platform/index.js';
 import { drawArenaStage } from '../arenaStage.js';
-import { cutImpact } from '../arenaImpact.js';
+import { cutImpact, contactPointOnSwipe } from '../arenaImpact.js';
 import * as Formal from '../formalPerformance.js';
 import * as FormalTest from '../formalTestStage.js';
 import * as FormalDef from '../../data/arena/formalTests.js';
@@ -107,6 +109,10 @@ export function leave() {
   if (run && !run.done) Challenge.setPaused(run, true);
   Formal.pauseFormalStage();
   stopChallengeFrame();
+  // A hidden arena page must not retain an expensive full-resolution
+  // backing store and its pointer listeners. The challenge run itself stays
+  // in memory and is rebuilt into a fresh canvas on re-entry.
+  if (body) clear(body);
 }
 
 /** Legacy Daily navigation now lands on the arena's fixed-seed quick challenge. */
@@ -541,6 +547,14 @@ function stopChallengeFrame() {
   if (challengeFrame) cancelAnimationFrame(challengeFrame);
   if (formalCutStroke) Formal.noteCutStroke(Game.match, formalCutStroke, true);
   formalCutStroke = null;
+  // Diagnostics may keep the last *run* for the finished-round report, but
+  // must not retain the detached canvas and its potentially large visual queues.
+  // Every renderChallengeCanvas() installs fresh pointers before resuming.
+  const bridge = globalThis.__FORGE_ARENA;
+  if (bridge?.canvas === challengeCanvas) {
+    bridge.canvas = null;
+    bridge.effects = null;
+  }
   challengeFrame = 0; challengeCanvas = null; challengePointer = null;
   challengeResizeObserver?.disconnect(); challengeResizeObserver = null;
   if (challengeResizeHandler) window.removeEventListener('resize', challengeResizeHandler);
@@ -831,7 +845,6 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
     const activated = forgeRibbon.querySelector('.quick-forge-activated');
     const label = forgeSkills.find(t => t.id === id)?.name || '工艺特性';
     activated.textContent = label + ' 生效';
-    forgeRibbon.classList.remove('is-activated'); void forgeRibbon.offsetWidth;
     forgeRibbon.classList.add('is-activated');
   };
   const ctx = canvas.getContext('2d');
@@ -894,10 +907,13 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
       /* ★ rework T07：把 core 算出的**接触结果类型**带给舞台，
          让「弹刀 / 打不动 / 破甲 / 击破」在命中位置有不同表现，
          而不是全部变成同一句“切入 xx%”。 */
-      const marker={x:hit.target.x,y:hit.target.y,points:hit.points,at:next.time,complete:hit.complete,quality:hit.quality,type:hit.target.type,progress:hit.target.progress,angle:hit.target.lastAngle,combo:hit.combo,objective:hit.objective,slot:hit.target.slot,followup:hit.target.cuts.length>1,contactEvent:hit.contactEvent||null,armorLeft:hit.armorLeft??null};
+      const marker={targetId:hit.target.id,x:hit.target.x,y:hit.target.y,points:hit.points,at:next.time,complete:hit.complete,quality:hit.quality,type:hit.target.type,progress:hit.target.progress,angle:hit.target.lastAngle,combo:hit.combo,objective:hit.objective,slot:hit.target.slot,followup:hit.target.cuts.length>1,contactEvent:hit.contactEvent||null,armorLeft:hit.armorLeft??null};
       // 六层参数在一个地方绑定，不更改玩法刀损、强度或原生计分。
       Object.assign(marker,cutImpact({...marker,target:hit.target},{reducedMotion:motion.reduced()}));
-      hitLabels.push(marker);bursts.push({...marker});
+      // The score label remains anchored to the specimen, while the spark is
+      // anchored to the closest actual point on the finger's swipe segment.
+      const contact=contactPointOnSwipe(from,next,hit.target);
+      hitLabels.push(marker);bursts.push({...marker,x:contact.x,y:contact.y});
       pulseForgeSkill(hit, next.time);
       /* 斩断的一瞬间留一份"碎块"记录：arenaStage 据此把靶具画成两半飞开。
          只加视觉事件，不改 run —— 判定与计分仍全部由 core 完成。 */
@@ -940,6 +956,14 @@ function renderChallengeCanvas(canvas, run, { hud, mission, footer, updateMissio
   let lastHudPaused = null, lastHudRisk = '';
   const drawScene = (now) => {
     if (challengeCanvas !== canvas || !canvas.isConnected) return;
+    // Proc feedback is transient, including with reduced motion. Expire on the
+    // existing frame loop so leaving the arena cannot retain another timer.
+    // 800ms is shorter than the 950ms proc cooldown: the next pulse starts with
+    // a clean class without a synchronous layout read on the cutting path.
+    if (forgeRibbon?.classList.contains('is-activated') && now - lastForgeBurst >= 800) {
+      forgeRibbon.classList.remove('is-activated');
+      forgeRibbon.querySelector('.quick-forge-activated').textContent = '';
+    }
     const width=bounds.width,height=bounds.height;
     ctx.clearRect(0,0,width,height);
     effects.now=now;effects.pointer=challengePointer;effects.reducedMotion=motion.reduced();
@@ -1188,6 +1212,7 @@ function renderChallengeReport() {
     el('div', { class: 'quick-result-heading' }, [el('div', { class: 'quick-grade', text: r.grade }), el('div', {}, [el('h2', { text: r.reason==='manual' ? '提前收刀 · 本局成绩' : run.daily ? '每日挑战完成' : '切割挑战完成' }), el('p', { text: `${run.blade.name} · ${r.route} → ${r.finale}` })]), el('div', { class: 'quick-total' }, [el('small', { text: '赛事得分' }), el('b', { class: 'mono', text: String(r.score).padStart(4, '0') }), el('span', { text: 'PTS' })])]),
     stats,
     el('div', { class: 'quick-reward' }, [el('span', { text: r.reason==='manual' ? '主动结束 · 无奖励' : settled ? '信用点结算' : '信用点未确认到账' }), el('b', { text: r.reason==='manual' ? '0 CR' : settled ? `+${settlement.settledReward} CR` : `本局奖励 ${r.reward} CR（未确认到账）` })]),
+    settled && settlement.materialDrop ? el('div',{class:'quick-settlement-note',role:'status',text:'获得稀有锻材：'+settlement.materialDrop.name+' ×'+settlement.materialDrop.count+' · 可在工坊指定选材'}) : null,
     el('div', { class: 'quick-settlement-note', role: 'status', text: settlementNote }),
     el('div', { class: 'quick-report-actions' }, [
       retryable ? el('button', { class: 'btn btn--primary', text: '重试结算', onclick: () => {
@@ -1545,6 +1570,8 @@ function renderFormalReport() {
     el('span', { class: 'mono', text: `×${(r.weights?.[p.kind] ?? 0).toFixed(2)}` }),
   ]));
   const saveFail = m.done && !m.settled;
+  const forgeDropId = m.settled ? Core.progress.get().materialsV1?.receipts?.['material:formal:'+m.id] : null;
+  const forgeDropCard = forgeDropId ? CARD_BY_ID[forgeDropId] : null;
   mount(body, [
     el('section', { class: `circuit-verdict ${r.win ? 'is-win' : 'is-lose'}` }, [
       el('div', { class: 'quick-kicker', text: `${d.branchName || '正式赛'} · ${d.gradientName || ''}` }),
@@ -1570,6 +1597,7 @@ function renderFormalReport() {
       ...((r.report?.lines || []).map((line) => el('p', { class: 'arena-note', text: line }))),
       el('p', { class: 'arena-note', text: '刀况耗尽将结束本轮；临时损伤不影响收藏刀具。' }),
     ]),
+    forgeDropCard ? el('p', { class: 'arena-note', text: '赛事收获：锻材 '+forgeDropCard.name+' ×1 · 在工坊可定向选材' }) : null,
     saveFail ? el('p', { class: 'arena-note', text: '本场记录尚未保存。' }) : null,
     /* ★ rework T12：赛后也给出“下一步”。
        任务书要求「首页、**赛后**和图鉴可追踪一个下一步目标」，
@@ -1695,13 +1723,19 @@ function renderApexReport() {
   const r = m?.result;
   if (!r) { mount(body, [el('p', { class: 'arena-note', text: '没有可显示的战报。' })]); return; }
   body.className = 'arena-body arena-view-quick-report';
+  const eligibleApex=new Set(verifiedApexBladeRounds({version:r.version,kind:'apex',roster:m.roster,rounds:r.roundsDetail,result:r}).map(x=>x.bladeId));
   const rows = (r.roundsDetail || []).map((x) => el('div', { class: 'report-line' }, [
     el('span', { text: x.label }),
     el('span', { class: x.win ? 'chip chip--accent' : 'chip', text: x.win === null ? '未进行' : x.win ? '胜' : '负' }),
     el('span', { class: 'mono', text: x.composite === null ? '—' : `${x.composite}` }),
     el('span', { class: 'muted tiny', text: x.bladeId || '未派刀' }),
-  ]));
+    m.settled && x.status==='complete' && x.bladeId
+      ? el('span', { class: 'chip', text: eligibleApex.has(x.bladeId) ? '磨合 +1' : '进度不足' })
+      : null,
+  ].filter(Boolean)));
   const saveFail = m.done && !m.settled;
+  const materialId=m.settled?Core.progress.get().materialsV1?.receipts?.['material:formal:'+m.id]:null;
+  const awardedMaterial=materialId?CARD_BY_ID[materialId]:null;
   mount(body, [
     el('section', { class: `circuit-verdict ${r.win ? 'is-win' : 'is-lose'}` }, [
       el('div', { class: 'quick-kicker', text: 'GLOBAL APEX · 三刀巅峰赛' }),
@@ -1712,6 +1746,7 @@ function renderApexReport() {
       el('div', { class: 'section-title', text: '各轮成绩' }),
       ...rows,
       ...((r.report?.lines || []).map((line) => el('p', { class: 'arena-note', text: line }))),
+      awardedMaterial?el('p',{class:'arena-note',text:'赛事获得锻材：'+awardedMaterial.name+' ×1 · 可在工坊指定选择'}):null,
       el('p', { class: 'arena-note', text: '本场仅消耗局内刀况，不影响永久藏刀；三刀按赛前顺序出战，通关或确认退出后写入荣誉记录。' }),
     ]),
     saveFail ? el('p', { class: 'arena-note', text: '本届成绩尚未领奖；可按固定顺序和种子补考，历史最佳成绩不降低。' }) : null,

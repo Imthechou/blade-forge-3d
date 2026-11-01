@@ -24,6 +24,8 @@ import './legacy/skin/finishes.js';
 import './legacy/skin/handleMaterials.js';
 import './legacy/skin/rarityVisuals.js';
 import './legacy/skin/s3TexMaps.js';
+/* B1/B3 工序热辐射：纯数据 + 纯函数，不进程序缓存键（emissive 是 uniform）。 */
+import { heatStateFor } from './stageHeat.js';
 /* S3 texture data is loaded once by bootstrap before the GPU readiness gate.
  * No speculative idle import: S3 is guaranteed to be decoded/uploaded before
  * users enter forging, or readiness reports a degraded status. */
@@ -58,6 +60,7 @@ import '../data/legacy/finishOverrides.js';
 
 import { K3D_REGISTRY } from './legacy/_registry.js';
 import { captureToDataURL } from './captureRunner.js';
+import { applyBladeShape, clearBladeShape } from './bladeShape.js';
 import { env } from '../platform/env.js';
 import motion from '../platform/motion.js';
 import { TextureUploadTracker, awaitIfCurrent, collectPreparationTargets,
@@ -278,6 +281,7 @@ export class BladeStage {
     this.viewer = null;
     this.modelId = null;
     this._requestedModelId = null;
+    this._shapeProfile = null;
     this.ready = false;
     /** 幽灵态（无代表作时的展台默认刀）：只影响 canvas 的 CSS 透明度 */
     this._ghost = false;
@@ -465,9 +469,12 @@ export class BladeStage {
         if (seq === this._seq) this._requestedModelId = null;
         return { ok: false, reason: info ? 'stale' : 'load-failed' };
       }
+      // Cached GLBs are shared: restore this viewer's shape clones first.
+      clearBladeShape(this.viewer);
       guard(() => this.viewer.setModel(info.root, modelId));
       this._glowRoot = null; this._glowSignature = null;
       this.modelId = modelId;
+      this.applyShape(this._shapeProfile);
       // 先给新模型一帧 GLB 自带材质，再异步套锻造材质。着色器编译期间渲染会
       // 暂停；保留这一帧能让玩家始终看到当前阶段的模型轮廓，不会舞台空白。
       if (!this.deferSkin && (this._skinState || this._handle)) {
@@ -1172,6 +1179,12 @@ export class BladeStage {
     const okk = guard(() => this.engine.applyBladeSkin(this.modelId, pack, { texStrength }), null);
     this._pack = pack;
     this._syncMaterialTime();
+    /* ★ B1/B3（2026-11-01）：热辐射必须在材质写入**之后**施加。
+       实测时序陷阱：applyStageHeat 若早于 applySkin，会被随后的
+       applySkin 覆盖回黑色（emissive 归 0），炉温表现全部丢失。
+       这里放在 applyBladeSkin 之后，保证顺序正确；applyStageHeat
+       自带幂等与清零逻辑，重复调用安全。 */
+    if (this._stageId) { try { this.applyStageHeat(this._stageId); } catch (_) { /* 渲染不阻断玩法 */ } }
     this._invalidate();
     return { ok: !!okk, pack };
   }
@@ -1420,6 +1433,48 @@ export class BladeStage {
     return finish({ ok: !!r });
   }
 
+  /**
+   * B1/B3 · 按工序给炉内模型施加真实热辐射（自发光）。
+   *
+   * 实测背景：S2 熔炼阶段的 `molten_sphere_small` 在真实 Chromium 里是一块
+   * 黑色钝石，既无熔液流动感也无温度提示，炉火环节的情绪完全丢失。
+   *
+   * 黑体辐射是**材质的物理属性**，用 three 的 emissive 通道表达最准确：
+   *   · emissive 是 uniform，不改变 program 缓存键，无重编译风险；
+   *   · 只在 S1–S5 的炉内模型上生效，刀具模型不参与（避免发光棒）；
+   *   · 每次都先清零再按需施加，重复调用幂等；
+   *   · 不改材质表、不改卡牌、不改任何玩法数值。
+   *
+   * @param {string} stageId 当前工序（S1–S10）
+   * @returns {{apply:boolean, intensity:number, heat:string}}
+   */
+  applyStageHeat(stageId) {
+    /* 记住当前工序：视觉重放（编译后 applySkin）会重写材质，
+       重放结束时需要据此重新施加热辐射。 */
+    this._stageId = stageId || null;
+    const reducedMotion = !!(this._reduceMotion ||
+      globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+    const state = heatStateFor({ stageId, modelId: this.modelId, reducedMotion, timeMs: 0 });
+    const viewer = this.viewer;
+    if (!viewer || !viewer.root) return { apply: false, intensity: 0, heat: state.heat };
+    const eachMaterial = (fn) => {
+      viewer.root.traverse((mesh) => {
+        if (!mesh.isMesh) return;
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const m of mats) if (m && m.emissive) fn(m);
+      });
+    };
+    // 始终先清零，防止「热」被带到下一道工序或收藏页。
+    eachMaterial((m) => { m.emissive.setHex(0x000000); m.emissiveIntensity = 0; });
+    if (!state.apply) { viewer.needsRender = true; return { apply: false, intensity: 0, heat: state.heat }; }
+    const THREE = globalThis.THREE;
+    if (!THREE) return { apply: false, intensity: 0, heat: state.heat };
+    const color = new THREE.Color(state.colorHex);
+    eachMaterial((m) => { m.emissive.copy(color); m.emissiveIntensity = state.intensity; });
+    viewer.needsRender = true;
+    return { apply: true, intensity: state.intensity, heat: state.heat };
+  }
+
   /** 编译期间只保留最新配方；当前 compileAsync 结束后再一次性应用，避免连续
    * 触屏操作反复改变材质代数、让低性能设备在过期预览之间追编。 */
   _queueVisualFlush() {
@@ -1431,6 +1486,10 @@ export class BladeStage {
       if (!this.ready || this.deferSkin || this.isCompiling) return;
       if (this._skinState) this.applySkin(this._skinState, { coverAll: this._coverAll !== false });
       if (this._handle) this.applyHandle(this._handle);
+      /* ★ B1/B3（2026-11-01）：applySkin 会重写材质，热辐射必须在每次
+         视觉重放之后重新施加，否则熔融阶段的温度表现会被冲掉。
+         applyStageHeat 自带「先清零再按需施加」，重复调用幂等。 */
+      if (this._stageId) this.applyStageHeat(this._stageId);
     });
   }
 
@@ -1468,6 +1527,7 @@ export class BladeStage {
       this.container = container;
       const pageKey = container.closest?.('.page')?.dataset.page || null;
       const pageChanged = this._pageKey !== pageKey;
+      if (pageChanged) this.viewer._stopCamTween?.();
       this._pageKey = pageKey;
       /* 换页就想不起来上一页的开关：回到该页自己的默认值。
          否则会出现相反的错误 —— 首页开了拖动、进锻造页后按钮显示关，
@@ -1580,6 +1640,10 @@ export class BladeStage {
     return guard(() => this.viewer && this.viewer.setAutoRotate && this.viewer.setAutoRotate(!!on), null);
   }
 
+  inspectKnife() {
+    return guard(() => this.viewer?.inspectShowcase?.(), false);
+  }
+
   /**
    * 开启/关闭「自由鉴赏」交互（拖动旋转 + 双指缩放）。
    *
@@ -1673,8 +1737,15 @@ export class BladeStage {
     return guard(() => (this.viewer && this.viewer.snapshot ? this.viewer.snapshot(w, h) : null), null);
   }
 
+  /** Geometry is copy-on-write and owned by the current viewer, not GLB cache. */
+  applyShape(profile) {
+    this._shapeProfile = profile || null;
+    return guard(() => applyBladeShape(this.viewer, this._shapeProfile), { ok:false, vertices:0 });
+  }
+
   clear() {
     return guard(() => {
+      clearBladeShape(this.viewer);
       if (this.viewer && this.viewer.clearBladeEffect) this.viewer.clearBladeEffect();
       if (this.viewer && this.viewer._clearModel) this.viewer._clearModel();
       this.modelId = null;
@@ -1684,6 +1755,7 @@ export class BladeStage {
   }
 
   dispose() {
+    clearBladeShape(this.viewer);
     this._disposeWarmPool();     // 预热材质挂在 scene 上，必须随舞台一起撤
     this._disposeTransmissionWarm();
     this._composeCache.clear();

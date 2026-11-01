@@ -87,3 +87,25 @@ export function noteSafeRisk(run,finalChance) {
 export const specialtyTierExplanation=(id,level)=> {
   const spec=BY_BONUS[id];return spec&&level>=1?spec.name+' Lv.'+level:'';
 };
+
+/**
+ * 在五屏里公开解释本局装备的专精作用。仅从已锁定的 specialist 快照读取，
+ * 不创造第二份增益、不改变原来加成的触发/扣除与上限。
+ */
+export function specialtyFlowCue(run) {
+  const sp=run?.specialist;
+  if(!sp)return null;
+  const step=run.stageId;
+  const pct=(x)=>Math.round(x*100)+'%';
+  const defs={
+    press:{active:step==='S4',where:'锻打落锤',effect:'第11锤起降低断裂概率（相对 '+pct(sp.boost)+'，与工坊减险合计封顶）'},
+    edge:{active:step==='S7',where:'开刃描线',effect:'第二次开刃奖励倍率 ×'+Number(sp.boost).toFixed(2)},
+    precise:{active:sp.options?.stages?.includes(step),where:'定向工艺',effect:'指定阶段的'+(sp.options?.stat||'工艺')+'候选权重提升'},
+    quench:{active:['S5','S6'].includes(step),where:'淬火与回火',effect:'目标热处理风格候选权重提升'},
+    composite:{active:['S5','S6','S7','S8','S9'].includes(step),where:'组合工艺',effect:'优先出现可接近组合门槛的工艺'},
+    overload:{active:step!=='S1'&&step!=='S10',where:'极限突破',effect:'承受一次真实高风险并安全完成后，下轮稀有工艺机会提高'},
+  };
+  const item=defs[sp.id];if(!item)return null;
+  return {id:sp.id,name:sp.id==='press'?'锻压':sp.id==='edge'?'锋刃':sp.id==='precise'?'精密':sp.id==='quench'?'淬彩':sp.id==='composite'?'复合':'过载',
+    level:sp.level,active:!!item.active,where:item.where,effect:item.effect};
+}

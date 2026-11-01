@@ -9,6 +9,7 @@
 
 import { el, $, clear, mount, countUp, sheet, toast } from '../dom.js';
 import { qualitySeal, statRail, traitItem } from '../components.js';
+import { bladeCardModel, bladeCard, bladeCardDetail } from '../bladeCard.js';
 /* ★ rework T13.1：鉴定页也读**同一份**成刀展示模型与卡片，
    不再自己拼一套（否则同一把刀在鉴定页与藏刀阁长得不一样）。 */
 import { resultView as edgeResultView } from '../../core/edge.js';
@@ -61,7 +62,12 @@ export function render() {
   if (!body) return;
   clear(body);
   clear(actions);
-  actions.classList.remove('ap-actions--try');
+  root.classList.remove('is-archive-revealed','is-archive-3d');
+  root.style.gridTemplateRows='';
+  const stageEl=root.querySelector('.ap-stage');
+  if(stageEl){stageEl.style.visibility='';stageEl.style.minHeight='';}
+  root.dataset.revealComplete='0';
+  actions.classList.remove('ap-actions--try','ap-actions--more');
   scoreEl = null;
 
   const rec = Game.record || (Game.run ? Game.appraise() : null);
@@ -158,6 +164,8 @@ function renderReveal(rec) {
   scoreEl = el('div', { class: 'ap-stat-v is-score', text: '—' });
   const riskBand = Core.risk.band(rec.riskPeak);
   const edgeView = edgeResultView(rec.edge);
+  const archiveArt = el('div',{class:'blade-thumb ap-archive-art','aria-label':'当前作品的真实刀具图像'});
+  const archiveModel=bladeCardModel(rec,{kind:'appraise'});
   mount(body, [
     sec('top', [
       el('div', { class: 'ap-head' }, [
@@ -207,13 +215,54 @@ function renderReveal(rec) {
     /* ★ rework T13.3 最后一步：收藏卡/档案。
        这里直接渲染**共用收藏卡**（卡面：刀具主视觉 + 名称/稀有度/评分 + 核心特性），
        玩家在鉴定页看到的卡，与入藏后在藏刀阁看到的是同一个组件、同一份数据。 */
-    sec('archive', [el('div', { class: 'ap-archive-receipt', text: rec.canEnterArena ? '✓ 已收录藏刀阁' : '✓ 已保存鉴定记录' })]),
+    sec('archive', [
+      el('div',{class:'ap-archive-heading'},[
+        el('span',{text:'专属收藏卡 · 已正式入藏'}),
+        el('button',{class:'ap-archive-export',type:'button','aria-label':'导出当前刀具的收藏卡 PNG',text:'保存卡片',onclick:async()=>{
+          const btn=root.querySelector('.ap-archive-export');
+          if(btn?.disabled)return;
+          if(btn){btn.disabled=true;btn.textContent='生成中…';}
+          try {
+            // The on-card image is intentionally tiny (288×346) for fast UI.
+            // Export must render a fresh high-resolution PBR frame only on demand.
+            const stage=getStage();
+            try { await stage.viewer?._compilePromise; } catch (_) { /* fall back below */ }
+            let imageUrl=stage.snapshot(720,960);
+            if(!imageUrl?.startsWith('data:image/')){
+              const art=root.querySelector('.ap-archive-art .blade-thumb-image');
+              imageUrl=art?.complete&&art.naturalWidth?art.src:null;
+            }
+            const {downloadCollectiblePoster}=await import('../bladeCardExport.js');
+            await downloadCollectiblePoster(bladeCardModel(Core.progress.bladeById(rec.id)||rec),imageUrl);
+            toast('收藏卡已生成，可保存图片','good');
+          }catch(err){toast(err?.message||'真实刀具截图尚未准备好，请重试','warn');}
+          finally{if(btn?.isConnected){btn.disabled=false;btn.textContent='保存卡片';}}
+        }}),
+        el('button',{class:'ap-archive-view3d',type:'button',text:'欣赏 3D 成刀',onclick:()=>{
+          const active=root.classList.toggle('is-archive-3d');
+          // 鉴赏直接恢复原来完整的 3D 布局，避免 0 高度行在某些浏览器中不恢复。
+          root.classList.toggle('is-archive-revealed',!active);
+          // 使用明确的布局尺寸恢复 WebGL：仅切 class 时 Safari/Chromium 的零高 grid 行偶发不恢复。
+          root.style.gridTemplateRows=active?'minmax(160px,1.1fr) minmax(0,1fr) auto':'0 minmax(0,1fr) auto';
+          const stage=root.querySelector('.ap-stage');
+          if(stage){stage.style.visibility=active?'visible':'hidden';stage.style.minHeight=active?'160px':'0';}
+          const button=root.querySelector('.ap-archive-view3d');
+          if(button)button.textContent=active?'返回收藏卡':'欣赏 3D 成刀';
+          if(active){try{getStage().resize();}catch(_){} }
+          body.scrollTop=0;
+        }}),
+      ]),
+      el('div',{class:'ap-archive-card'},[
+        bladeCard(archiveModel,{art:archiveArt,onOpen:()=>sheet({title:rec.bladeName||'名刀档案',body:bladeCardDetail(bladeCardModel(Core.progress.bladeById(rec.id)||rec))})}),
+      ]),
+    ]),
     freshSection(rec),
 
   ]);
   bindTabs(body);
   bindStatDetails(body);
   actions.classList.toggle('ap-actions--try', !!rec.canEnterArena);
+  actions.classList.add('ap-actions--more');
   /* ★ T13.3：跳过按钮独立占一行，不挤占底部 4 个主操作的位置。
      跳过与完整播放的结果**完全相同**（只是不播动画）。 */
   mount(actions, [
@@ -498,6 +547,22 @@ export function enter() {
     if (s.view) s.view('forge', { duration: 0 });
     if (s.autoRotate) s.autoRotate(false);
     if (s.resize) s.resize();
+    // 首帧着色器/纹理可能仍在编译，必须等待；否则截图得到未上材质的刀。
+    try { await s.viewer?._compilePromise; } catch (_) { /* 允许使用已可见的降级材质 */ }
+    if (epoch !== entryEpoch) return;
+    // 复用鉴定页已加载的真实 3D 舞台截图，避免再建一个并行 WebGL 场景。
+    const art=root.querySelector('.ap-archive-art');
+    if (art && typeof s.snapshot==='function' && epoch===entryEpoch) {
+      try {
+        const data=s.snapshot(288,346);
+        if(data && typeof data==='string' && data.startsWith('data:image/')){
+          const pic=el('img',{class:'blade-thumb-image',alt:`${rec.bladeName||'成刀'}的真实档案外观`});
+          pic.src=data;
+          art.replaceChildren(pic);
+        }
+      }catch(err){console.warn('[appraise] 收藏卡截图暂不可用',err);}
+    }
+    if(root.dataset.revealComplete==='1')focusArchiveCard();
   };
   boot();
 
@@ -509,8 +574,24 @@ export function leave() {
   ++entryEpoch;
   for (const t of timers) clearTimeout(t);
   timers = [];
+  root?.classList.remove('is-archive-revealed','is-archive-3d');
+  if(root){root.style.gridTemplateRows='';const stage=root.querySelector('.ap-stage');if(stage){stage.style.visibility='';stage.style.minHeight='';}}
   const s = getStage();
   if (s && s.autoRotate) s.autoRotate(false);
+}
+
+/** 结算因果链播放完毕才聚焦真正的收藏奖励；原始六维仍可向下滚动回看。 */
+function focusArchiveCard(){
+  if(!root||!body||root.classList.contains('is-archive-revealed'))return;
+  const archive=body.querySelector('.ap-sec[data-step="archive"]');
+  if(!archive)return;
+  body.prepend(archive);
+  root.classList.add('is-archive-revealed');
+  root.classList.remove('is-archive-3d');
+  root.style.gridTemplateRows='0 minmax(0,1fr) auto';
+  const stage=root.querySelector('.ap-stage');
+  if(stage){stage.style.visibility='hidden';stage.style.minHeight='0';}
+  body.scrollTop=0;
 }
 
 function play(reduce, rec) {
@@ -545,6 +626,9 @@ function play(reduce, rec) {
 /** After the sequence, the real score becomes the work's permanent summary. */
 function finishReveal() {
   $('.ap-skip', root)?.remove();
+  root.dataset.revealComplete='1';
+  // 只有刀具截图准备好后才切换，避免截图时 WebGL 画布被折叠。
+  if(root.querySelector('.ap-archive-art img'))focusArchiveCard();
   const score = $('.ap-final-score', root);
   const heading = $('.ap-sec[data-step="top"]', root);
   if (score && heading && score.parentElement !== heading) heading.appendChild(score);

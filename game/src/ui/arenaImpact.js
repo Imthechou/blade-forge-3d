@@ -32,6 +32,52 @@ export function cutImpact(hit,{reducedMotion=false}={}) {
     hapticMs:clamp(Math.round((completed?9:4)+(preset.weight*(completed?19:9))),4,28),
   };
 }
+/** Find the real line-to-center contact on a sampled swipe segment.
+ * Geometry and scoring remain untouched: this is solely a position for a
+ * short visual glint. A pointer that passes off-center should not flash
+ * at the target's center; keep the position on the actual finger trajectory.
+ * For tangent contacts, the closest point is still stable and deterministic. */
+export function contactPointOnSwipe(from,to,target) {
+  const finite=p=>p && Number.isFinite(p.x) && Number.isFinite(p.y);
+  if(!finite(target))return {x:0.5,y:0.5};
+  if(!finite(from)||!finite(to))return {x:target.x,y:target.y};
+  const dx=to.x-from.x,dy=to.y-from.y,den=dx*dx+dy*dy;
+  if(den<1e-8)return {x:target.x,y:target.y};
+  const t=clamp(((target.x-from.x)*dx+(target.y-from.y)*dy)/den,0,1);
+  return {x:from.x+dx*t,y:from.y+dy*t};
+}
+
+/** Match a visual contact to its persistent target ID. A moving specimen may
+ * travel far from the collision point in 225ms; the old coordinate comparison
+ * discarded its compression/recoil and could pick a different specimen.
+ * Old ID-less effects retain the coordinate fallback for compatibility.
+ * Does not mutate targets, collision data or the 45-second timer. */
+export function impactForTarget(bursts,target,now) {
+  if(!target||!Array.isArray(bursts)||!Number.isFinite(now))return null;
+  for(let i=bursts.length-1;i>=0;i--){
+    const b=bursts[i];
+    if(!b||b.type!==target.type||!Number.isFinite(b.at))continue;
+    const age=now-b.at;
+    if(age<0||age>=225)continue;
+    if(b.targetId!=null){
+      if(target.id!=null&&String(b.targetId)===String(target.id))return b;
+      continue;
+    }
+    if(Number.isFinite(b.x)&&Number.isFinite(b.y)
+       &&Math.abs(b.x-target.x)<.002&&Math.abs(b.y-target.y)<.002)return b;
+  }
+  return null;
+}
+
+/** Visible highlights are primary; hot filings and ice glints are secondary.
+ * A stopped/deflected edge should never explode like a full sever. */
+export function contactFilingsCount(type,complete,event) {
+  if(event==='blocked'||event==='deflect'||event==='avoid-hit'||event==='avoid-ignored')return 0;
+  if(type==='metal')return complete?4:1;
+  if(type==='ice')return complete?3:1;
+  return complete?2:0;
+}
+
 export function impactMotion(event,now) {
   if(!event || !Number.isFinite(now)||!Number.isFinite(event.at))return null;
   const age=now-event.at;

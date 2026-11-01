@@ -115,6 +115,8 @@
 .stage-inspect .stage-icon::after { content:''; position:absolute; inset:-6px; }
 .stage-inspect .stage-icon:active { transform: scale(.94); }
 .stage-inspect .stage-icon:focus-visible { outline: 2px solid var(--accent-cool); outline-offset: 2px; }
+.stage-inspect .stage-inspect-showcase {font-size:25px;color:var(--accent);width:44px;height:44px;background:var(--surface-glass);}
+.stage-inspect-showcase:disabled {display:none;}
 
 /* S4 / S7 游戏手势独占舞台时暂不开放镜头复位。 */
 .page[data-page="forge"].is-no-drag .stage-inspect-reset {

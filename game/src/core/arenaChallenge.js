@@ -283,7 +283,14 @@ function spawnTarget(run) {
   };
   target.formation=formation;
   target.baseX=target.x;target.baseY=target.y;
-  target.moving=(run.encounter?.rank || 0)>=3 && run.targetSerial%4===0;
+  // Arcade pacing: keep the opening 23 seconds readable, then introduce
+  // occasional moving targets in the speed/finale segment. Real rank >=3
+  // competition retains its existing fourth-target motion rhythm. Dodge seals
+  // never move: players need a fair, predictable avoidance decision.
+  target.moving=!avoid && (
+    ((run.encounter?.rank || 0)>=3 && run.targetSerial%4===0) ||
+    (run.mode==='quick' && (run.phase==='speed' || run.phase==='finale') && serial%3===0)
+  );
   run.targets.push(target);
   if(run.metrics)run.metrics.emptyGap=0;
   if (run.targets.length > 24) run.targets = run.targets.filter((t) => t.alive).slice(-24);
