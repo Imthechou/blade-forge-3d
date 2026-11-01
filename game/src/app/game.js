@@ -1401,7 +1401,16 @@ class Session {
   }
 
   syncStage() {
-    return this.applyResolvedVisual(this.resolveVisual(null, { preview: false }));
+    const applied = this.applyResolvedVisual(this.resolveVisual(null, { preview: false }));
+    /* ★ B1/B3（2026-11-01）：按工序给炉内模型施加真实热辐射。
+       实测 S2 熔融阶段原本是一块黑色钝石，没有任何温度提示。
+       这里在视觉解析之后立刻同步（不改材质表/卡牌/玩法数值），
+       离开高温阶段时由 applyStageHeat 内部清零，不把「热」带到后续工序。 */
+    try {
+      const stageId = this.run?.stageId || null;
+      if (stageId) getStage().applyStageHeat?.(stageId);
+    } catch (_) { /* 渲染失败绝不阻断玩法 */ }
+    return applied;
   }
 
   pushVisual(overrides, { preview = true } = {}) {
