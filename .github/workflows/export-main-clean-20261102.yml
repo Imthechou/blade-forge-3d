@@ -1,0 +1,237 @@
+name: Export conservative clean main ZIP
+on:
+  push:
+    branches:
+      - audit/main-clean-export-20261102
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: c0f64354debed6e7eb7aed6f6877f270ba5174af
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify original main baseline
+        shell: bash
+        run: |
+          mkdir -p delivery
+          set +e
+          (cd game && npm run verify) > delivery/BASELINE_TEST.log 2>&1
+          echo "$?" > delivery/.baseline-exit
+          tail -n 15 delivery/BASELINE_TEST.log
+          exit 0
+      - name: Copy every tracked file, check, classify, exclude confirmed artifacts, correct docs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib, os, re, subprocess, shutil, json
+          from pathlib import Path
+          src=Path.cwd()
+          out=src/'delivery'
+          target=out/'clean-project'
+          T=chr(96)
+          sha=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          assert sha=='c0f64354debed6e7eb7aed6f6877f270ba5174af',sha
+          paths=[Path(os.fsdecode(x)) for x in subprocess.check_output(['git','ls-files','-z']).split(b'\0') if x]
+          forbidden={'.git','node_modules','dist','build','coverage','__pycache__','.cache','.next','.vite','playwright-report','test-results'}
+          ext_bad={'.zip','.tar','.gz','.7z','.log','.pyc'}
+          sensitive={'.env','.env.local','.env.production','.npmrc','.netrc','id_rsa','id_ed25519','credentials.json','secrets.json'}
+          secpat=[rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----',rb'github_pat_[A-Za-z0-9_]{35,}',rb'ghp_[A-Za-z0-9]{30,}',rb'AKIA[0-9A-Z]{16}']
+          docs={'.md','.txt','.json','.js','.mjs','.cjs','.py','.html','.css','.yml','.yaml','.svg'}
+          rows=[]; drops=[]; revisions=[]; pending=[]; code_count=0
+          def h(b): return hashlib.sha256(b).hexdigest()[:12]
+          def role(p):
+              s=p.as_posix()
+              if s.startswith('.github/workflows/'): return 'CI 流程和部署参数'
+              if s.startswith('game/src/render/legacy/') or s.startswith('game/src/data/legacy/'): return '运行中兼容层/PBR，不能按名称删除'
+              if s.startswith('game/src/'): return '运行时 API/引擎模块'
+              if s.startswith('game/tests/'): return '自动回归测试'
+              if s.startswith('game/assets/'): return '运行模型、PBR、贴图、资源清单'
+              if s.startswith('game/css/'): return '活动页面样式'
+              if s.startswith('game/tools/') or s.startswith('tools/'): return '调试/构建/测试工具'
+              if s.startswith('game/docs/validation/'): return '视觉验证历史证据，避免文档断链'
+              if s.startswith('game/docs/'): return '设计/架构/历史决策文档'
+              if s=='scripts/prepare_site.py': return 'main Pages 仍引用的旧 ZIP 回退脚本'
+              if p.suffix=='.md': return '说明文档'
+              return '配置/入口/其他项目文件'
+          for p in paths:
+              raw=src/p
+              if raw.is_symlink():
+                  rows.append((p,'排除','符号链接未确认安全','—'))
+                  drops.append((p,'符号链接安全边界'))
+                  continue
+              b=raw.read_bytes()
+              bad=next((x for x in p.parts if x in forbidden),None)
+              why=''
+              if bad: why='依赖/构建/缓存目录'
+              elif p.suffix.lower() in ext_bad: why='旧发布包或生成缓存/日志'
+              elif p.name in sensitive or p.name.startswith('.env.') or p.suffix.lower() in {'.key','.pem','.p12','.pfx'}: why='可能含敏感凭据的文件'
+              elif p.suffix in docs and len(b)<2000000 and any(re.search(s,b) for s in secpat):
+                  why='检测到可能的密钥模式，需人工确认'
+                  pending.append(p.as_posix()+' 触发凭据审查；未在报告泄漏内容')
+              if why:
+                  rows.append((p,'排除',why,h(b)))
+                  drops.append((p,why))
+                  continue
+              new=b
+              edits=[]
+              if p.as_posix()=='README.md':
+                  new=new.replace('原版发布包备份。编辑 '.encode(),'原版发布包备份。编辑 '.encode()) # no-op; keep audit explicit
+                  old='- '+T+'锻刀大赛_v3.0.zip'+T+'：原版发布包备份。编辑 '+T+'game/'+T+' 后**不需要重新压缩 ZIP**。'
+                  replacement='- 清理包不包含旧版发布 ZIP；当前源码入口为 '+T+'game/'+T+'。'
+                  s=new.decode()
+                  if old in s: s=s.replace(old,replacement);edits.append('更新旧 ZIP 已排除的说明')
+                  old='- '+T+'scripts/prepare_site.py'+T+'：旧 ZIP 解压工具，仅用作备用部署路径。'
+                  if old in s:
+                      s=s.replace(old,'- '+T+'scripts/prepare_site.py'+T+'：main Pages 工作流的历史 ZIP 回退工具；清理包保留脚本但排除旧 ZIP。')
+                      edits.append('注明回退脚本的适用范围')
+                  new=s.encode()
+              elif p.as_posix()=='game/README.md':
+                  s=new.decode()
+                  pairs=[
+                     ('## Windows 双击开玩','## Windows 启动'),
+                     ('本机已安装 Node.js 24。',''),
+                     ('2. 双击上一级目录的 **开始游戏.cmd**（项目唯一的启动入口）。','2. 在本目录运行 **'+T+'npm start'+T+'**（main 未跟踪 开始游戏.cmd）。'),
+                     ('3. 启动器自动打开','3. 启动后浏览器访问'),
+                     ('重复双击会复用本目录已运行的服务。',''),
+                     ('macOS / Linux 可使用 '+T+'npm start'+T+'（本项目没有 .sh 启动脚本，只有一个 Windows 双击入口）。','macOS / Linux 同样可使用 '+T+'npm start'+T+'。')
+                  ]
+                  for a,c in pairs:
+                      if a in s: s=s.replace(a,c);edits.append('修正不存在的 CMD 入口/本机环境描述')
+                  new=s.encode()
+              if p.suffix in docs and len(b)<2000000:
+                  try:
+                      txt=b.decode()
+                      n=len(re.findall(r'(?im)^[ \t]*(?://|/\*|\*|#|<!--)[^\n]*(TODO|FIXME|HACK|deprecated|废弃|待删除)',txt))
+                      if n: pending.append(p.as_posix()+': '+str(n)+' 条可能过期注释或待办，无法无风险自动删除')
+                  except UnicodeDecodeError:
+                      pending.append(p.as_posix()+': 文本扩展名但非 UTF-8，原样保留')
+              to=target/p;to.parent.mkdir(parents=True,exist_ok=True);to.write_bytes(new)
+              if new!=b:
+                  if p.as_posix().startswith(('game/src/','game/css/','game/assets/','game/tests/')):
+                      raise RuntimeError('Unexpected functional edit: '+str(p))
+                  revisions.append((p,'；'.join(sorted(set(edits)))))
+                  rows.append((p,'文档更正',role(p),h(b)))
+              else: rows.append((p,'原样保留',role(p),h(b)))
+              if p.as_posix().startswith(('game/src/','game/css/','game/assets/','game/tests/')):
+                  code_count+=1
+                  assert to.read_bytes()==b
+          assert (target/'game/index.html').exists()
+          chk=['# CHECKLIST.md — main 逐文件检查清单','',
+              '- 固定来源：'+T+sha+T+'（只读 checkout）。',
+              '- Git 跟踪文件：'+str(len(paths))+'；保留：'+str(len(paths)-len(drops))+'；排除：'+str(len(drops))+'；更正文档：'+str(len(revisions))+'。',
+              '- '+str(code_count)+' 个源码/样式/资源/测试文件与 main 逐字节相同。',
+              '- 覆盖方法：逐文件存在性、内容哈希、类型/依赖定位、敏感模式扫描、疑似旧注释扫描；静态扫描不等于逐函数人工语义审查。',
+              '- 保留所有未证明废弃的运行时模块、兼容层、关键 API、配置、注释。','',
+              '## 每个 Git 文件的处理依据','','| 文件 | 决策 | 原因/角色 | 原 SHA256(12) |','| --- | --- | --- | --- |']
+          chk.extend('| '+T+str(p)+T+' | '+act+' | '+reason.replace('|','/')+' | '+d+' |' for p,act,reason,d in rows)
+          chk+=['','## 待确认项','',
+              '- legacy/ 和 three.bundle.js 的真实依赖仍需完整调用图及 WebGL 对比确认；不能凭名称删除。',
+              '- docs/STATUS.md 等早期交接存在日期性陈述，未冒险覆盖为最新结论。',
+              '- game/docs/validation/ 历史图片保留，以免破坏文档证据/相对链接。',
+              '- scripts/prepare_site.py 仍是 main Pages 的遗留回退分支；清理包没有旧版 ZIP，正常 game/ 入口不受影响。',
+              '- main 没有跟踪 开始游戏.cmd；本次已纠正两处启动说明，其他旧文档口径待统一。']
+          chk+=['- '+x.replace('|','/') for x in pending[:120]]
+          if len(pending)>120: chk.append('- 另有 '+str(len(pending)-120)+' 项注释/候选标记未展开')
+          change=['# CHANGELOG_CLEANUP.md — 清理操作日志','',
+              '来源 main '+T+sha+T+'，全部变更仅在隔离的 ZIP 导出副本；未修改 main。',
+              '','## 文档更正']
+          change.extend('- '+T+str(p)+T+'：'+x for p,x in revisions)
+          change+=['','## 确认排除的废弃归档/构建文件']
+          change.extend('- '+T+str(p)+T+'：'+x for p,x in drops)
+          change+=['','## 不删除的原因','',
+              '- 除已确认重复的旧发布 ZIP/生成产物外，没有经依赖与行为测试证明无用的可执行代码；不编造删除成果。',
+              '- 源码、WebGL/PBR 兼容层、接口、复杂逻辑、核心注释、配置均保持原字节。',
+              '- 需要更进一步的死代码分析和多浏览器回归时，优先在独立 PR 审核。','',
+              '## 验证记录','',
+              '- 详细当前运行结果见 TEST_REPORT.md。该工程为原生 ESM 静态站，不存在 npm build 命令。','']
+          for name,lines in [('CHECKLIST.md',chk),('CHANGELOG_CLEANUP.md',change)]:
+              content='\n'.join(lines)+'\n'
+              (out/name).write_text(content)
+              (target/name).write_text(content)
+          (out/'manifest.json').write_text(json.dumps({'sha':sha,'tracked':len(paths),'retained':len(paths)-len(drops),'excluded':len(drops),'runtime_identical':code_count,'pending_markers':len(pending)},ensure_ascii=False,indent=2))
+          print(json.dumps({'tracked':len(paths),'included':len(paths)-len(drops),'excluded':[str(x[0]) for x in drops],'docs_edits':[str(x[0]) for x in revisions],'runtime_identical':code_count,'pending':len(pending)},ensure_ascii=False))
+          PY
+      - name: Verify packaged version and smoke-test HTTP
+        shell: bash
+        run: |
+          set +e
+          (cd delivery/clean-project/game && npm run verify) > delivery/CLEAN_TEST.log 2>&1
+          echo "$?" > delivery/.clean-exit
+          tail -n 15 delivery/CLEAN_TEST.log
+          cd delivery/clean-project
+          node game/serve.cjs 8123 127.0.0.1 > ../HTTP_SERVER.log 2>&1 &
+          PID=$!
+          sleep 2
+          curl -fsS http://127.0.0.1:8123/ -o /tmp/clean-index.html
+          A=$?
+          curl -fsS http://127.0.0.1:8123/assets/models/manifest.json -o /tmp/clean-models.json
+          B=$?
+          kill $PID 2>/dev/null || true
+          if [ "$A" = 0 ] && [ "$B" = 0 ]; then echo 0 > ../.smoke-exit; else echo 1 > ../.smoke-exit; fi
+          exit 0
+      - name: Write test report, finalize and verify ZIP
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile,hashlib,json
+          out=Path('delivery'); project=out/'clean-project'
+          sha='c0f64354debed6e7eb7aed6f6877f270ba5174af'
+          read=lambda name: (out/name).read_text().strip() if (out/name).exists() else 'NOT_RUN'
+          a,b,c=read('.baseline-exit'),read('.clean-exit'),read('.smoke-exit')
+          report='# TEST_REPORT.md — 清理版实际测试\n\n'
+          report+='- main 基准：'+sha+'\n'
+          report+='- baseline npm run verify 退出码：'+a+'（0=通过）\n'
+          report+='- cleaned npm run verify 退出码：'+b+'（0=通过）\n'
+          report+='- cleaned HTTP 首页及模型清单冒烟：'+c+'（0=通过）\n'
+          report+='- 静态项目无 npm build 脚本；因此构建检查为不适用，使用语法/引用/单测及实际 HTTP 服务代替。\n'
+          report+='- 未执行 WebGL 视觉/实体手机 GPU/音频触觉测试，不能把此结果等同视觉或手感验收。\n'
+          report+='- 完整日志见 Actions Artifact 中的 BASELINE_TEST.log / CLEAN_TEST.log / HTTP_SERVER.log。\n'
+          for p in [out/'TEST_REPORT.md',project/'TEST_REPORT.md']: p.write_text(report)
+          info=json.loads((out/'manifest.json').read_text())
+          zipname='BladeForge-main-clean-'+sha[:8]+'.zip'
+          with zipfile.ZipFile(out/zipname,'w',zipfile.ZIP_DEFLATED,compresslevel=6,allowZip64=True) as z:
+              for path in sorted(project.rglob('*')):
+                  if path.is_file():
+                      rel=path.relative_to(project).as_posix()
+                      assert not any(q in rel.split('/') for q in ('.git','node_modules','dist','build','__pycache__','.cache'))
+                      z.write(path,rel)
+          with zipfile.ZipFile(out/zipname) as z:
+              assert z.testzip() is None
+              assert len(z.namelist())==info['retained']+3,(len(z.namelist()),info)
+              assert {'README.md','game/index.html','CHECKLIST.md','CHANGELOG_CLEANUP.md','TEST_REPORT.md'}<=set(z.namelist())
+          digest=hashlib.sha256((out/zipname).read_bytes()).hexdigest()
+          (out/'SHA256SUMS.txt').write_text(digest+'  '+zipname+'\n')
+          print('ZIP',zipname,'SHA256',digest,'baseline',a,'clean',b,'HTTP',c)
+          PY
+      - name: Upload deliverables
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-clean-project-20261102
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            delivery/BladeForge-main-clean-*.zip
+            delivery/CHECKLIST.md
+            delivery/CHANGELOG_CLEANUP.md
+            delivery/TEST_REPORT.md
+            delivery/SHA256SUMS.txt
+            delivery/BASELINE_TEST.log
+            delivery/CLEAN_TEST.log
+            delivery/HTTP_SERVER.log
+      - name: Fail if regression checks failed
+        run: |
+          test "$(cat delivery/.baseline-exit)" = 0
+          test "$(cat delivery/.clean-exit)" = 0
+          test "$(cat delivery/.smoke-exit)" = 0
