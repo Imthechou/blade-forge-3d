@@ -4,7 +4,7 @@ import {
   REFINEMENT_RESULTS, REFINEMENT_FAILURES, fractureRisk, strike, finishForge,
   fitOptions, refreshFittings, signature, signaturePerk, inspectOre, mineralHeritage, oreInspection, oreModelId,
 } from './forge.js';
-import { attachForgeStage, releaseForgeStage } from './sharedStage.js';
+import { attachForgeStage, bindViewReset, releaseForgeStage } from './sharedStage.js';
 import { forgeMarkup } from './forgeMarkup.js';
 import { ForgeSound } from './sound.js';
 import { get as getProgress } from '../core/progress.js';
@@ -47,13 +47,7 @@ export function mountForge(root, { onArena, onCollection }) {
   let toolStone = '';
   let echoTimer;
   const reset = get('reset-view');
-  const resetView = () => { if (!busy) stage?.resetView(); };
-  reset.addEventListener('click', resetView);
-  reset.addEventListener('pointerup', event => {
-    // A touch immediately after a canvas drag may not synthesize a click.
-    if (event.pointerType === 'touch' && event.isPrimary &&
-      document.elementFromPoint(event.clientX, event.clientY) === reset) resetView();
-  });
+  bindViewReset(reset, () => { if (!busy) stage?.resetView(); });
   function showStorageNotice(message) {
     const notice = get('save-notice');
     notice.textContent = message;

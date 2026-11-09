@@ -3921,8 +3921,8 @@
   },
   {
     "file": "src/v19/forgeView.js",
-    "bytes": 32953,
-    "lines": 694,
+    "bytes": 32650,
+    "lines": 688,
     "imports": [
       "src/core/progress.js",
       "src/core/v19Progress.js",
@@ -4011,8 +4011,8 @@
   },
   {
     "file": "src/v19/sharedStage.js",
-    "bytes": 2890,
-    "lines": 82,
+    "bytes": 3276,
+    "lines": 89,
     "imports": [
       "src/platform/index.js",
       "src/ui/dom.js",
@@ -4023,6 +4023,7 @@
     "exports": [
       "attachForgeStage",
       "releaseForgeStage",
+      "bindViewReset",
       "showForgedBlade"
     ],
     "importedBy": [

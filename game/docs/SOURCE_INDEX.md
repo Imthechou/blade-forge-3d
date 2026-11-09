@@ -178,13 +178,13 @@
 | [src/v19/blade-looks.js](../src/v19/blade-looks.js) | 500 | 26698 | lookCodes, bladeLooksGLSL |
 | [src/v19/forge.js](../src/v19/forge.js) | 583 | 32513 | MIN_PRICE, REFRESH_PRICE, WINDOW_PRICE, LOT_SIZE, BATCHES, MARK_WIDTH, MARK_HEIGHT, PHASES, FAMILIES, LOOKS, MODELS, GRADES, ORE_TIERS, RARE_ODDS, rareOdds, fittingPrice, ORE_VARIANTS, ORE_MATERIALS, oreMaterialOf, ORE_TINTS, ORE_EXPOSURES, oreOptics, oreInspection, oreModelId, mineralHeritage, oreSignals, STAT_NAMES, STAT_CAP, FITS, HEAT, REFINEMENT_RESULTS, REFINEMENT_FAILURES, refinementRank, heatBand, rngFor, lookVariant, freshRun, offers, familyOf, stabilityOf, inspectOre, modelCandidates, buyOre, beginRefining, pourRefining, advanceHeat, fractureRisk, SIGNATURES, signaturePerk, signature, strike, finishForge, fitOptions, refreshFittings, appraise |
 | [src/v19/forgeMarkup.js](../src/v19/forgeMarkup.js) | 43 | 2556 | forgeMarkup |
-| [src/v19/forgeView.js](../src/v19/forgeView.js) | 694 | 32953 | mountForge |
+| [src/v19/forgeView.js](../src/v19/forgeView.js) | 688 | 32650 | mountForge |
 | [src/v19/knife-details.js](../src/v19/knife-details.js) | 75 | 4113 | knifeDetails, makeFittingHardware |
 | [src/v19/materials.js](../src/v19/materials.js) | 602 | 29383 | surfaceUniforms, setSurface, makeBladeMaterial, makeOreMaterial, makeMeltMaterial, makeCutMaterial |
 | [src/v19/ore-section.js](../src/v19/ore-section.js) | 42 | 1697 | sectionContour |
 | [src/v19/regions.js](../src/v19/regions.js) | 28 | 1211 | KNIFE_IDS, regionAt |
 | [src/v19/render-budget.js](../src/v19/render-budget.js) | 27 | 1013 | RenderBudget |
-| [src/v19/sharedStage.js](../src/v19/sharedStage.js) | 82 | 2890 | attachForgeStage, releaseForgeStage, showForgedBlade |
+| [src/v19/sharedStage.js](../src/v19/sharedStage.js) | 89 | 3276 | attachForgeStage, releaseForgeStage, bindViewReset, showForgedBlade |
 | [src/v19/sound.js](../src/v19/sound.js) | 137 | 5670 | ForgeSound |
 | [src/v19/stage.js](../src/v19/stage.js) | 1122 | 52241 | ForgeStage |
 | [src/v19/tournament.js](../src/v19/tournament.js) | 221 | 11387 | TARGET_NAMES, GRADIENTS, EVENTS, SCHOOLS, PROJECTS, APEX_GOAL, dayKey, bladeId, bladeCount, roundNames, tournamentState, eligibleBlades, masteryOf, gate, createEntry, courseFor, summarizeRound, settleRound, abandonEntry |

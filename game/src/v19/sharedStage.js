@@ -44,6 +44,15 @@ export function releaseForgeStage(owner) {
   host = null;
 }
 
+export function bindViewReset(button, reset) {
+  button.addEventListener('click', reset);
+  button.addEventListener('pointerup', event => {
+    // A touch immediately after a canvas drag may not synthesize a click.
+    if (event.pointerType === 'touch' && event.isPrimary &&
+      document.elementFromPoint(event.clientX, event.clientY) === button) reset();
+  });
+}
+
 export function showForgedBlade(host, visual, { fractured = false } = {}) {
   const stage = attachForgeStage(host);
   const canvas = stage.canvas;
@@ -61,11 +70,9 @@ export function showForgedBlade(host, visual, { fractured = false } = {}) {
     pointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
   }, { signal });
   canvas.addEventListener('lostpointercapture', () => { pointer = null; }, { signal });
-  const controls = el('div', { class: 'blade-view-controls' }, [
-    el('span', { text: '拖动旋转' }),
-    el('button', { type: 'button', class: 'blade-reset', title: '复位视角', 'aria-label': '复位视角',
-      onclick: () => stage.resetView() }, [icon('refresh')]),
-  ]);
+  const reset = el('button', { type: 'button', class: 'blade-reset', title: '复位视角', 'aria-label': '复位视角' }, [icon('refresh')]);
+  bindViewReset(reset, () => stage.resetView());
+  const controls = el('div', { class: 'blade-view-controls' }, [el('span', { text: '拖动旋转' }), reset]);
   host.dataset.preview = 'blade';
   host.append(controls);
   stage.resetView();

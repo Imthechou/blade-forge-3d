@@ -54,6 +54,15 @@ async function runFlow() {
     await page.waitForFunction(() => window.drawCount > 0);
     await shot('01-home');
     assert.equal(await page.getByRole('navigation', { name: '游戏主导航' }).isVisible(), true);
+    await page.evaluate(async () => {
+      const { attachForgeStage } = await import(new URL('src/v19/sharedStage.js', location.href));
+      const stage = attachForgeStage(document.getElementById('homeStage'));
+      window.heroAngle = () => stage.turnY;
+    });
+    await swipeStage(cdp, await page.locator('#homeStage canvas').boundingBox());
+    assert.notEqual(await page.evaluate(() => window.heroAngle()), 0);
+    await page.getByRole('button', { name: '复位视角' }).tap();
+    await page.waitForFunction(() => window.heroAngle() === 0);
     await page.getByRole('button', { name: '切换到暗色模式' }).tap();
     await page.reload();
     await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark' && window.drawCount > 0);
