@@ -57,8 +57,12 @@ export function defaults() {
   return d;
 }
 
+let observedText;
+
+export const hasExternalChange = () => observedText !== undefined && driver.read() !== observedText;
+
 export function load() {
-  const raw = driver.read();
+  const raw = observedText = driver.read();
   if (!raw) return defaults();
   let data;
   try { data = JSON.parse(raw); } catch (_) { backupCurrent(); return defaults(); }
@@ -86,7 +90,9 @@ export function save(data) {
   try {
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('invalid save');
     data.version = SAVE_VERSION;
-    ok = driver.write(JSON.stringify(data));
+    const text = JSON.stringify(data);
+    ok = driver.write(text);
+    if (ok) observedText = text;
   } catch (_) { /* 序列化与配额异常使用同一失败边界。 */ }
   emit(ok ? EVENTS.SAVED : EVENTS.SAVE_FAILED, { driver: driver.name });
   return ok;
@@ -105,6 +111,7 @@ export function backupCurrent() {
 
 export function reset() {
   driver.remove();
+  observedText = null;
   return defaults();
 }
 

@@ -22,6 +22,7 @@ import { TAGS } from './tags.js';
 import { BASE_TAG_TRAITS, SPECIAL_TAG_TRAITS, HAMMER_TIER_TRAITS, setLegacyTraits, legacyTraits } from './traits.js';
 import { traitsV11 } from './legacy/traitsV11.js';
 import { BRANCHES, GRADIENTS } from './arena/branches.js';
+import { LOOKS, ORE_MATERIALS, SIGNATURES } from '../v19/forge.js';
 import { materials } from './legacy/materials.js';
 import { knifeTypes } from './legacy/knifeTypes.js';
 
@@ -41,6 +42,10 @@ function ensureLegacy() {
 const TEXTURE_NAME = knifeTypes.TEXTURE_PREFIX || {};
 const FINISH_NAME = knifeTypes.FINISH_PREFIX || {};
 
+const newLooks = slot => Object.entries(LOOKS[slot]).filter(([, name]) => name).map(([key, name]) => ({
+  id: 'v19:' + slot + ':' + key, name, group: '新版锻造', hint: '在新版锻打中发现',
+}));
+
 /**
  * 分类定义。
  * `items()` 返回 `[{id, name, desc, hint, group}]`；
@@ -59,33 +64,35 @@ export const CODEX_CATALOG = Object.freeze([
   {
     id: 'material',
     name: '材料',
-    desc: 'S1 原料可选的材料',
-    items: () => (materials.MATERIALS || []).map((m) => ({
+    desc: '选料台的矿石与历代原料',
+    items: () => [...ORE_MATERIALS.map(ore => ({
+      id: 'v19:' + ore.id, name: ore.name, group: '新版矿石', hint: '以此矿石完成一炉',
+    })), ...(materials.MATERIALS || []).map((m) => ({
       id: m.id, name: m.name, desc: m.note || '', group: m.rarity || null,
       hint: `稀有度 ${m.rarity || '未知'} 的原料`,
-    })),
+    }))],
   },
   {
     id: 'texture',
     name: '纹理',
-    desc: 'S2/S3 形成的锻纹',
-    items: () => Object.entries(TEXTURE_NAME)
+    desc: '锻造形成的纹样',
+    items: () => [...newLooks('pattern'), ...Object.entries(TEXTURE_NAME)
       .filter(([, name]) => !!name)
       .map(([id, name]) => ({
         id, name, desc: '', group: null,
         hint: '尚未形成的锻纹',
-      })),
+      }))],
   },
   {
     id: 'finish',
     name: '工艺',
-    desc: 'S5/S6 的热处理与表面工艺',
-    items: () => Object.entries(FINISH_NAME)
+    desc: '钢材、表面膜、常驻特效与历代工艺',
+    items: () => [...['metal', 'film', 'fx'].flatMap(newLooks), ...Object.entries(FINISH_NAME)
       .filter(([, name]) => !!name)
       .map(([id, name]) => ({
         id, name, desc: '', group: null,
         hint: '尚未使用的表面工艺',
-      })),
+      }))],
   },
   {
     id: 'card',
@@ -123,11 +130,13 @@ export const CODEX_CATALOG = Object.freeze([
     id: 'combo',
     name: '隐藏组合',
     desc: '条件隐藏 Combo',
-    items: () => COMBOS.map((c) => ({
+    items: () => [...SIGNATURES.map(({ name }) => ({
+      id: name, name, group: '新版锻造', hint: '将相合的纹理与表面膜或特效留到鉴定',
+    })), ...COMBOS.map((c) => ({
       id: c.id, name: c.name, desc: c.conditions || '', group: c.rarity || null,
       /** 未发现时只给线索，不泄露配方（T12 验收要求） */
       hint: c.hint || '尚未发现触发条件',
-    })),
+    }))],
   },
   {
     id: 'arena',

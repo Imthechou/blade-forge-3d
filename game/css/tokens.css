@@ -275,3 +275,16 @@
 @media (min-width: 560px) {
   :root { --app-max: 430px; }
 }
+
+/* V19 content reads the same glass and typography palette as the game shell. */
+:root {
+  --v19-ink: var(--face);
+  --v19-muted: var(--face-2);
+  --v19-dim: var(--face-3);
+  --v19-accent: var(--accent);
+  --v19-bright: var(--accent-deep);
+  --v19-line: var(--line);
+  --v19-danger: #af493c;
+  --v19-cool: var(--accent-cool-deep);
+  --v19-mono: var(--font-num);
+}

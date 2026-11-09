@@ -6,15 +6,26 @@
 
 data 管内容，core 管规则，app/game.js 管当前会话和流程，ui 管 DOM 与交互。platform 提供存储、事件、音效和动效；render/index.js 是上层访问 3D 的门面。
 
-index.html 先加载两份经典 Three.js 脚本，再加载 bootstrap.js。bootstrap 读取存档、创建页面、挂载共享舞台、注册路由，并完成首帧资源准备。主页、锻造和鉴定复用舞台；工坊预览按生命周期释放。
+index.html 依次加载两份经典 Three.js r169 脚本，随后交给 bootstrap.js。默认路由以原首页、顶栏、设置和工坊为外壳，按页面载入 V19 工作台与切割大厅。首页、新锻造与新版藏刀检视轮流使用同一张 V19 画布，切页时停止其帧循环。旧藏刀按原配方由旧渲染门面重建。URL 参数 `?legacy=1` 启用旧流程诊断，存档中待继续的旧赛程由赛事大厅提供恢复入口。
 
-渲染默认 v2，后端优先级为 URL 参数、浏览器设置、默认值。可用 `?backend=legacy` 对拍与回退，保留现有内核及资源路径。
+| V19 职责 | 位置 |
+| --- | --- |
+| 选料、控温、锻打与装配 | `src/v19/forge.js`、`src/v19/forgeView.js` |
+| 3D 舞台、刀面与配件 | `src/v19/sharedStage.js`、`src/v19/stage.js`、`src/v19/materials.js` |
+| 2.5D 切割、关卡与战报 | `src/v19/arena/`、`src/v19/tournament.js` |
+| 主档事务、成刀与逐轮结算 | `src/core/v19Progress.js`、`src/core/v19Save.js` |
+| 玻璃界面 | `css/tokens.css`、`css/pages/v19.css` |
 
-存档字段定义和赛事共用展示已分别提取至 saveSchema.js、arenaReportParts.js。game.js、赛事页及渲染门面仍按独立职责逐步拆分。
+玩法和原始视觉资源来自 [BladeLab V19](https://github.com/Imthechou/BladeLab/tree/0b95b6778dca9b4a9c747a7cdd23cc9ad6b38cad)。
 
 ## 存档边界
 
 主档 key 为 `bladeforge.save`，版本仍为 1。有效存档的玩法含义不变。
+
+- V19 在 `bladeforge.save` 增加当前炉次、赛事检查点、每日奖励凭据与单刀磨合。CR、工坊 XP、藏刀、旧战报与流派通关记录沿用原字段。
+- 新刀持久化原矿、精炼、刀面四层、锤痕与装配的 V19 配方。六维使用原项目字段，鉴定沿用原评分与稀有度体系，由 V19 的操作成果提供工艺倍率。
+- 正式赛以 V19 实切表现触发原奖励台账。全国赛五轮、巅峰赛三刀三轮逐轮结算。赛中刷新会重新开打尚未提交的一轮。
+- 新炉快照采用原工坊等级。旧专精按 V19 的断率、刃侧、精炼、表面膜及锻打效果生效。备料余裕可免费刷新一次配件。
 
 - saveSchema.js 提供默认值和字段修复，保留有效内容、未知字段和完整历史。
 - progress.js 负责成就、归档、赛事、长期进度及专用字段归一化。
@@ -23,13 +34,13 @@ index.html 先加载两份经典 Three.js 脚本，再加载 bootstrap.js。boot
 - 损坏 JSON 或需要字段修复时，尽量把首次原始文本保存在 `bladeforge.save.recovery`；已有备份不覆盖。配额不足时备份也可能失败。
 - 全国赛连续输入检查点独立使用 `bladeforge.national-checkpoint.v1`，依赖 seq / epoch 与主档协作。
 - localStorage 不可用时仅保留当前页面内存状态，并提示玩家。恢复存储能力后需要重新打开页面。
-- 当前是单页面单写者模型，未实现多标签页之间的写入锁。
+- 当前采用单页面单写者模型。V19 检测到主档在其他标签页更新时会要求刷新。
 
 存档按浏览器源隔离。启动器固定使用 127.0.0.1:8123，不通过换端口处理冲突。
 
 ## 服务与检查
 
-serve.cjs 导出服务器工厂并保留直接运行方式，默认只监听本机地址。提供静态文件、缓存验证和健康检查。
+serve.cjs 导出服务器工厂并保留直接运行方式，默认只监听本机地址。提供静态文件、文本 gzip、缓存验证和健康检查。
 
 tools/launch.cjs 启动并打开系统浏览器；识别同一目录的已有服务后复用。端口被其他程序占用时说明原因，不结束其他程序。
 

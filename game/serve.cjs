@@ -2,18 +2,28 @@ const { createServer } = require('node:http');
 const { createReadStream, stat } = require('node:fs');
 const { extname, relative, resolve, sep } = require('node:path');
 const { createHash } = require('node:crypto');
+const { createGzip, constants } = require('node:zlib');
+const { pipeline } = require('node:stream');
 const { version } = require('./package.json');
 
 const root = __dirname;
 const projectId = createHash('sha256').update(root.toLowerCase()).digest('hex').slice(0, 16);
 const types = {
-  '.css': 'text/css; charset=utf-8', '.glb': 'model/gltf-binary',
+  '.jpg': 'image/jpeg', '.css': 'text/css; charset=utf-8', '.glb': 'model/gltf-binary',
   '.gltf': 'model/gltf+json; charset=utf-8', '.hdr': 'application/octet-stream',
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp',
 };
-const assetTypes = new Set(['.glb', '.hdr', '.png', '.svg', '.webp']);
+const assetTypes = new Set(['.glb', '.hdr', '.jpg', '.png', '.svg', '.webp']);
+const textTypes = new Set(['.css', '.gltf', '.html', '.js', '.json', '.mjs', '.svg']);
+
+function acceptsGzip(value = '') {
+  return value.split(',').some(token => {
+    const [coding, quality] = token.trim().toLowerCase().split(';').map(part => part.trim());
+    return coding === 'gzip' && (quality === undefined || Number(quality.split('=')[1]) > 0);
+  });
+}
 
 function createGameServer() {
   return createServer((req, res) => {
@@ -50,17 +60,21 @@ function createGameServer() {
         'Last-Modified': info.mtime.toUTCString(),
         'X-Content-Type-Options': 'nosniff',
       };
+      // Compress source modules and the text-encoded offline audio bank. Meshopt
+      // GLBs, PNGs and other already-compressed media travel unchanged.
+      const compressible = textTypes.has(extension) && info.size >= 2048;
+      const gzip = compressible && acceptsGzip(req.headers['accept-encoding']);
+      if (compressible) headers.Vary = 'Accept-Encoding';
       // HTML / modules revalidate on each visit; unchanged resources cost no body bytes.
       if ((req.headers['if-none-match'] || '').split(',').map(x => x.trim()).includes(etag)) {
         res.writeHead(304, headers).end(); return;
       }
-      res.writeHead(200, { ...headers, 'Content-Length': info.size,
-        'Content-Type': types[extension] || 'application/octet-stream' });
+      res.writeHead(200, { ...headers, 'Content-Type': types[extension] || 'application/octet-stream',
+        ...(gzip ? { 'Content-Encoding': 'gzip' } : { 'Content-Length': info.size }) });
       if (req.method === 'HEAD') { res.end(); return; }
       const stream = createReadStream(target);
-      stream.on('error', () => res.destroy());
-      res.on('close', () => stream.destroy());
-      stream.pipe(res);
+      const body = gzip ? [stream, createGzip({ level: constants.Z_BEST_SPEED })] : [stream];
+      pipeline(...body, res, () => {});
     });
   });
 }

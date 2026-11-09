@@ -4,6 +4,7 @@ import { CR_START, STAT_KEYS } from '../data/balance.js';
 import * as Daily from './daily.js';
 import { makeQuickRecords } from './quickChallengeRecords.js';
 import { makeWorkshopV41, normalizeWorkshopV41, migrateVerifiedLegacyGrowth } from './arenaV41Growth.js';
+import { normalizeV19 } from './v19Save.js';
 import { makeCareerV41, normalizeCareerV41 } from './arenaCareerV41.js';
 
 /**
@@ -105,6 +106,7 @@ export function makeSave() {
     lastDailyDay: null,
 
     settings: defaultSettings(),
+    v19: normalizeV19(),
   };
 }
 
@@ -139,6 +141,7 @@ export function normalizeSave(raw) {
     out[key] = list(src[key]).filter(item => object(item) && typeof item.id === 'string').map(normalizeBlade);
   }
   out.settings = normalizeSettings(src.settings);
+  out.v19 = normalizeV19(src.v19);
   out.stats = { ...defaults.stats, ...map(src.stats) };
   for (const key of Object.keys(defaults.stats)) out.stats[key] = count(out.stats[key]);
   out.achievements = map(src.achievements);

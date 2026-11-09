@@ -92,7 +92,7 @@ let nationalSave = { state: 'idle', savedAt: null, durability: null, recovered: 
 
 
 export function create() {
-  root = $('.page[data-page="arena"]');
+  root = $('.page[data-page="' + legacyArenaRoute() + '"]');
   if (!root) return;
   root.innerHTML = '';
   body = el('div', { class: 'arena-body' });
@@ -109,18 +109,20 @@ export function leave() {
   stopChallengeFrame();
 }
 
+const legacyArenaRoute = () => new URLSearchParams(location.search).has('legacy') ? 'arena' : 'legacy-arena';
+
 /** Legacy Daily navigation now lands on the arena's fixed-seed quick challenge. */
 export function openDailyChallenge() {
-  if (guardPendingQuickChallenge()) { router.go('arena'); return; }
+  if (guardPendingQuickChallenge()) { router.go(legacyArenaRoute()); return; }
   arenaMode = 'challenge';
   challengeRun = null;
   Game.match = null;
-  router.go('arena');
+  router.go(legacyArenaRoute());
 }
 
 /** 显式 UI 去向，不沿用赛事页上次停留的模式。 */
 export function openQuickChallenge(bladeId = null) {
-  if (guardPendingQuickChallenge()) { router.go('arena'); return; }
+  if (guardPendingQuickChallenge()) { router.go(legacyArenaRoute()); return; }
   if (bladeId) selectedBladeId = bladeId;
   openDailyChallenge();
 }
@@ -136,17 +138,17 @@ export function openCollectionSample(bladeId) {
   arenaMode='challenge';
   challengeRun=made.run;
   Game.match=null;
-  router.go('arena');
+  router.go(legacyArenaRoute());
   return {ok:true};
 }
 
 export function openTournament(bladeId = null) {
-  if (guardPendingQuickChallenge()) { router.go('arena'); return; }
+  if (guardPendingQuickChallenge()) { router.go(legacyArenaRoute()); return; }
   if (bladeId) selectedBladeId = bladeId;
   arenaMode = 'tournament';
   challengeRun = null;
   Game.match = null;
-  router.go('arena');
+  router.go(legacyArenaRoute());
 }
 
 export function render() {

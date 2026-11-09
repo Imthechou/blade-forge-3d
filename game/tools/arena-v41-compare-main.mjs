@@ -3,13 +3,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import assert from 'node:assert/strict';
-import {loadPlaywright,browserExecutable} from './lib/browser.mjs';
+import {loadPlaywright,browserExecutable, legacyUrl } from './lib/browser.mjs';
 import {sampleBlade} from './arena-v3-simulate.mjs';
 const {chromium}=await loadPlaywright();
 const out=path.resolve(process.env.ARENA_QA_OUT||'arena-playtest');
 fs.mkdirSync(out,{recursive:true});
 const oldUrl=process.env.ARENA_BASELINE_URL||'http://127.0.0.1:8124/';
-const newUrl=process.env.FORGE_URL||'http://127.0.0.1:8123/';
+const newUrl=legacyUrl(process.env.FORGE_URL || 'http://127.0.0.1:8123/');
 const browser=await chromium.launch({headless:true,executablePath:browserExecutable(),
   args:['--no-sandbox','--use-angle=swiftshader','--disable-dev-shm-usage']});
 const report={baseline:'88a57c970e1c65150228c196104f46de17203373',

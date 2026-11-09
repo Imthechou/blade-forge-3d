@@ -67,7 +67,7 @@ async function shot(name){
   await page.screenshot({path:path.join(dir,name+'.jpg'),type:'jpeg',quality:87,animations:'disabled',timeout:30000});
   report.shotCount++;
 }
-await page.goto('http://127.0.0.1:8123/',{waitUntil:'domcontentloaded',timeout:40000});
+await page.goto('http://127.0.0.1:8123/?legacy=1',{waitUntil:'domcontentloaded',timeout:40000});
 await page.waitForFunction(()=>window.__FORGE_PREP?.ready && document.querySelector('#boot.is-gone'),null,{timeout:90000});
 await page.waitForTimeout(750);
 await dismiss();

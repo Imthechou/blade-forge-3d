@@ -11,6 +11,11 @@ test('HTTP 首页、模块、健康检查、缓存和访问边界', async () => 
     const home = await fetch(base);
     assert.equal(home.status, 200);
     assert.match(await home.text(), /bootstrap.js/);
+    assert.equal(home.headers.get('content-encoding'), 'gzip');
+    assert.equal(home.headers.get('vary'), 'Accept-Encoding');
+    const identity = await fetch(base, { headers: { 'Accept-Encoding': 'gzip;q=0' } });
+    assert.equal(identity.headers.get('content-encoding'), null);
+    assert.match(await identity.text(), /bootstrap.js/);
     const unchanged = await fetch(base, { headers: { 'If-None-Match': home.headers.get('etag') } });
     assert.equal(unchanged.status, 304);
     const script = await fetch(base + '/src/app/bootstrap.js');

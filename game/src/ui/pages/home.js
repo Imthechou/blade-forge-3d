@@ -2,12 +2,11 @@
 import { el, $, clear, toast } from '../dom.js';
 import { ICONS } from '../components.js';
 import * as Progress from '../../core/progress.js';
-import Game from '../../app/game.js';
 import router from '../router.js';
-import { getStage } from '../../render/index.js';
-import { createStageInspect } from '../stageControls.js';
+import { freshRun, offers } from '../../v19/forge.js';
+import { hasLiveFurnace, openFurnace } from '../../core/v19Progress.js';
 
-let root, body, stageHost;
+let root, body, stageHost, legacy, hero, heroSequence = 0;
 /* ★ 首页鉴赏控制（图标版，与锻造页共用 stageControls 模块）。
    · 默认 **关**：舞台不吃指针、页面可正常滚动、也不持续重绘（性能）；
    · 打开后才允许拖拽/缩放看细节（可玩性）。 */
@@ -18,15 +17,16 @@ const ENTRIES = [
   { label: '工坊', icon: 'workshop', go: () => import('./workshop.js').then(m => m.openTab('bonuses')) },
 ];
 
-export function create() {
+export function create({ legacy: old = null } = {}) {
+  legacy = old;
   root = $('.page[data-page="home"]');
   if (!root) return;
   clear(root);
-  inspectCtl = createStageInspect();
+  inspectCtl = legacy?.createStageInspect() ?? null;
   stageHost = el('div', { class: 'stage home-showcase', id: 'homeStage' }, [
     el('div', { class: 'showcase-label' }, [el('i'), el('span', { text: '待你锻造' })]),
     /* 右下角两个图标：四向箭头（开/关拖动）+ 回转箭头（复原）。 */
-    inspectCtl.bar,
+    inspectCtl?.bar,
   ]);
   body = el('div', { id: 'homeBody', class: 'home-dashboard' });
   root.append(stageHost, body);
@@ -39,7 +39,7 @@ export function render() {
   Progress.rolloverDaily();
   const summary = Progress.homeSummary();
   clear(body);
-  const canResume = !!(Game.run && !Game.run.finished);
+  const canResume = legacy ? !!(legacy.Game.run && !legacy.Game.run.finished) : hasLiveFurnace();
   const label = stageHost.querySelector('.showcase-label span');
   if (label) label.textContent = summary.showcase ? '代表作' : '唐刀 · 待你锻造';
 
@@ -55,8 +55,13 @@ export function render() {
         const title = button.querySelector('.home-start-title');
         if (title) title.textContent = '正在准备工艺…';
         try {
-          if (!canResume) Game.startForge({ mode: 'normal' });
-          await Game.prewarmCandidates();
+          if (legacy) {
+            if (!canResume) legacy.Game.startForge({ mode: 'normal' });
+            await legacy.Game.prewarmCandidates();
+          } else {
+            const result = openFurnace({ restart: true });
+            if (!result.ok) return toast(result.error, 'warn');
+          }
           router.go('forge');
         } catch (error) {
           console.warn('[forge] preparation', error);
@@ -71,7 +76,7 @@ export function render() {
       ICONS.forge(true),
       el('div', { class: 'home-start-copy' }, [
         el('span', { class: 'home-start-title', text: canResume ? '继续锻刀' : '开始锻刀' }),
-        el('small', { text: canResume ? '接续工序 · 保留当前构筑' : '十道工序 · 自由构筑' }),
+        el('small', { text: canResume ? '接续工序 · 保留当前构筑' : legacy ? '十道工序 · 自由构筑' : '选料、精炼、锻打、装配、鉴定' }),
       ]),
       el('b', { text: '→', 'aria-hidden': 'true' }),
     ]),
@@ -89,15 +94,17 @@ export function render() {
     ]),
   );
 
-  if (stageHost) {
-    const stage = getStage();
+  if (!legacy) {
+    void showHero(summary.showcase);
+  } else if (stageHost) {
+    const stage = legacy.getStage();
     stage.attachTo(stageHost);
     stage.resize();
     /* ★ attachTo 会把控件重置回本页默认值（首页默认关），
        按钮必须跟着回读，否则会“亮着但拖不动”。 */
     inspectCtl?.syncFromStage?.();
-    if (summary.showcase) Game.showRecord(summary.showcase);
-    else Game.showDefault();
+    if (summary.showcase) legacy.Game.showRecord(summary.showcase);
+    else legacy.Game.showDefault();
   }
 }
 
@@ -114,4 +121,47 @@ function summaryItem(label, value) {
   return el('div', {}, [el('span', { text: label }), el('b', { text: String(value) })]);
 }
 
-export default { create, render };
+async function showHero(record) {
+  const sequence = ++heroSequence;
+  hero?.close();
+  hero = null;
+  const current = () => router.currentKey() === 'home' && sequence === heroSequence;
+  if (inspectCtl) inspectCtl.bar.hidden = true;
+  stageHost.classList.toggle('v19-ghost', !record);
+  try {
+    if (!record || record.v19Visual) {
+      const { showForgedBlade } = await import('../../v19/sharedStage.js');
+      if (!current()) return;
+      const ghost = freshRun(135);
+      hero = showForgedBlade(stageHost, record?.v19Visual || { ...ghost, model: 'tangdao', ore: offers(ghost)[0] });
+    } else {
+      const [{ default: game }, { getStage }, { createStageInspect }] = await Promise.all([
+        import('../../app/game.js'), import('../../render/index.js'), import('../stageControls.js'),
+      ]);
+      if (!current()) return;
+      const stage = getStage();
+      const mounted = stage.viewer ? { ok: true } : await stage.mount(stageHost);
+      if (!current() || !mounted?.ok) return;
+      stage.attachTo(stageHost);
+      stage.resize();
+      if (!inspectCtl) {
+        inspectCtl = createStageInspect();
+        stageHost.append(inspectCtl.bar);
+      }
+      inspectCtl.bar.hidden = false;
+      inspectCtl.syncFromStage();
+      stage.loadEnvironment();
+      game.showRecord(record);
+    }
+  } catch {
+    if (current()) stageHost.querySelector('.showcase-label span').textContent = '3D 展台暂不可用';
+  }
+}
+
+export function leave() {
+  heroSequence++;
+  hero?.close();
+  hero = null;
+}
+
+export default { create, render, leave };

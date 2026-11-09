@@ -1,6 +1,6 @@
 # 锻刀大赛 · BLADE FORGE
 
-浏览器 3D 锻造与赛事游戏。普通游玩无需账号、无需安装 npm 依赖、无需构建。
+浏览器 3D 锻造与赛事游戏。选料、精炼、锻打、装配和鉴定后，可带藏刀征战斩试场。普通游玩无需账号、无需安装 npm 依赖、无需构建。
 
 ## Windows 双击开玩
 
@@ -40,4 +40,4 @@ macOS / Linux 可使用 `npm start`（本项目没有 .sh 启动脚本，只有�
 
 `docs/SOURCE_INDEX.md` 与 `docs/dependencies.json` 由 `npm run ai:index` 自动生成，不是业务真源。
 
-浏览器自动验收运行 `npm run test:browser`，先保持本地服务运行。只有开发验收需要 Playwright，详见验收文档，玩家无需安装。部分历史设计文档、诊断证据及模型制作源文件不在本包内，历史性能数字不能作为本轮实测结果。
+V19 浏览器验收运行 `npm run test:browser`，先保持本地服务运行。旧工艺卡与赛程的浏览器回归使用 `npm run test:browser:legacy`。只有开发验收需要 Playwright，详见验收文档，玩家无需安装。部分历史设计文档、诊断证据及模型制作源文件不在本包内，历史性能数字不能作为本轮实测结果。

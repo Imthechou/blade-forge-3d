@@ -23,6 +23,7 @@ const TITLES = {
   forge: '锻刀',
   appraise: '鉴定',
   arena: '赛事',
+  'legacy-arena': '旧赛程',
   workshop: '工坊',
   daily: '每日挑战',
 };

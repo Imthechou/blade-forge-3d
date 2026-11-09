@@ -103,7 +103,7 @@ export function bladeCardModel(blade, { kind = 'collection' } = {}) {
       tier: m.tier,
       styleId: m.styleId || null,
       gradient: Number.isFinite(m.gradient) ? m.gradient : null,
-      champion: m?.matchRecord?.champion === true || m?.national?.champion === true,
+      champion: m?.champion === true || m?.matchRecord?.champion === true || m?.national?.champion === true,
       at: m.recordedAt || null,
     }));
 
@@ -112,6 +112,7 @@ export function bladeCardModel(blade, { kind = 'collection' } = {}) {
     name: src.bladeName || src.name || src.id || '未命名',
     kind,
     fractured: src.fractured === true,
+    v19: Boolean(src.v19Visual),
     canEnterArena: src.canEnterArena !== false && src.fractured !== true,
 
     /* 身份 */
@@ -296,10 +297,10 @@ export function bladeCardDetail(model) {
       : el('div', { class: 'muted tiny', text: '还没有分项纪录。参加正式赛会按测试项目记录历史最好成绩。' }),
 
     el('div', { class: 'section-title', text: '工艺与风险' }),
-    line('工艺路线', model.history.length ? model.history.join(' → ') : '未记录'),
-    line('Risk 峰值 / 收尾', `${model.riskPeak} / ${model.riskCurrent}`),
-    line('S4 锻打', `${model.hammerCount} 锤${model.hammerTierName ? ` · ${model.hammerTierName}` : ''}`),
-    line('S7 刃线', edgeView ? `${edgeView.label}（贴合 ${edgeView.fitText} · 锋利 +${edgeView.sharp}）` : '未记录'),
+    ...(model.v19 ? [] : [line('工艺路线', model.history.length ? model.history.join(' → ') : '未记录')]),
+    line(model.v19 ? '实际最高断率' : 'Risk 峰值 / 收尾', model.v19 ? `${model.riskPeak}%` : `${model.riskPeak} / ${model.riskCurrent}`),
+    line('锻打', `${model.hammerCount} 锤${model.hammerTierName ? ` · ${model.hammerTierName}` : ''}`),
+    ...(model.v19 ? [] : [line('S7 刃线', edgeView ? `${edgeView.label}（贴合 ${edgeView.fitText} · 锋利 +${edgeView.sharp}）` : '未记录')]),
 
     el('div', { class: 'section-title', text: '档案' }),
     line('档案编号', model.id),

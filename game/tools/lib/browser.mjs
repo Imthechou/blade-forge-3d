@@ -24,4 +24,9 @@ export function browserExecutable() {
   return candidates.find(file => fs.existsSync(file));
 }
 
-export const baseUrl = process.env.FORGE_URL || 'http://127.0.0.1:8123/';
+export function legacyUrl(value) {
+  const url = new URL(value);
+  url.searchParams.set('legacy', '1');
+  return url.href;
+}
+export const baseUrl = legacyUrl(process.env.FORGE_URL || 'http://127.0.0.1:8123/');

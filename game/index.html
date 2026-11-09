@@ -4,8 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F1F3FC" />
-<meta name="description" content="锻刀大赛：十道工序自由构筑，带上你的刀，角逐竞技赛场。" />
-<meta name="application-version" content="3.0.0" />
+<meta name="description" content="锻刀大赛：选矿锻刀，带上亲手打出的刀征战斩试场。" />
+<meta name="application-version" content="4.0.0" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -29,6 +29,7 @@
 <link rel="stylesheet" href="css/pages/appraise.css" />
 <link rel="stylesheet" href="css/pages/arena.css" />
 <link rel="stylesheet" href="css/pages/workshop.css" />
+<link rel="stylesheet" href="css/pages/v19.css" />
 <!-- 数字等宽：必须在所有页面样式之后加载。
      原因：多处数字规则用 `font:` 简写，简写会把 font-variant-numeric 重置为
      normal；靠“最后加载”覆盖，而不是靠 !important 或改 20 多处简写。 -->
@@ -52,11 +53,12 @@
     <!-- ① 首页：导航 + 状态摘要（★ 导航职责收归首页，故不设底部标签栏） -->
     <section class="page" data-page="home"></section>
     <!-- ② 锻刀 FORGE -->
-    <section class="page" data-page="forge"></section>
+    <section class="page" data-page="forge"><div class="v19-surface" id="v19-forge"></div></section>
     <!-- ③ 鉴定 APPRAISAL（S10，由锻刀页跳转） -->
     <section class="page" data-page="appraise"></section>
     <!-- ④ 赛事 CIRCUIT -->
-    <section class="page" data-page="arena"></section>
+    <section class="page" data-page="arena"><div class="v19-surface" id="v19-arena"></div></section>
+    <section class="page" data-page="legacy-arena"></section>
     <!-- ⑤ 工坊 WORKSHOP（藏刀阁 / 成就 / 锻造加成 / 图鉴） -->
     <section class="page" data-page="workshop"></section>
     <!-- ⑥ 每日挑战 DAILY CHALLENGE -->

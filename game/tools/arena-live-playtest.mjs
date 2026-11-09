@@ -9,12 +9,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import {loadPlaywright,browserExecutable} from './lib/browser.mjs';
+import {loadPlaywright,browserExecutable, legacyUrl } from './lib/browser.mjs';
 const {chromium}=await loadPlaywright();
 
 const out = path.resolve(process.env.ARENA_QA_OUT||'arena-playtest');
 fs.mkdirSync(out, { recursive: true });
-const base = process.env.FORGE_URL || 'http://127.0.0.1:8123/';
+const base = legacyUrl(process.env.FORGE_URL || 'http://127.0.0.1:8123/');
 const browser = await chromium.launch({
   headless: true,
   executablePath: browserExecutable(),

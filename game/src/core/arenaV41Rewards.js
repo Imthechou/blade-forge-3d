@@ -17,7 +17,7 @@ export function effectivePrimary(record){
 }
 export function careerRewardPlan(tier,win,gradient,record,matchId,styleId=null){
  const base={cr:0,xp:0,first:[],reason:'not-v41'};
- if(!isV41Match(record))return base;
+ if(!isV41Match(record) && record?.version !== 'cut-v19')return base;
  const events=[];
  if(tier==='school'){
    const i=clamp(Math.floor(gradient),0,4);

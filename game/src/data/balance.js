@@ -529,7 +529,7 @@ export const CR_REWARD = Object.freeze({
 export const DAILY_TASKS = Object.freeze([
   { id: 'forge', name: '完成 1 次锻造', reward: 40 },
   { id: 'match', name: '参加 1 场赛事', reward: 40 },
-  { id: 'craft', name: '完成 1 次高质量 S7 刃线操作，或获得一项新特性', reward: 50 },
+  { id: 'craft', name: '发现一种新工艺或成刀特性', reward: 50 },
 ]);
 /* ★ 2026-10-24：`DAILY_ALL_BONUS`（全勤 50 CR）已删除。
    用户确认「50 CR 全勤奖励也不必要，删了一起」。
