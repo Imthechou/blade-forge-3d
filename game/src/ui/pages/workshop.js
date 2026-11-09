@@ -14,6 +14,21 @@ import { BladeStage } from '../../render/index.js';
 import { mountCollectionPreview, disconnectCollectionPreviews, releaseCollectionPreviewStage, applyCollectionLighting } from '../../render/collectionPreview.js';
 import * as CodexCatalog from '../../data/codexCatalog.js';
 import router from '../router.js';
+import { bladeMastery, hasLiveFurnace, openFurnace } from '../../core/v19Progress.js';
+import { LEGACY_MODE as legacy } from '../../platform/env.js';
+import { FITS, LOOKS, REFINEMENT_RESULTS, STAT_CAP, fittingPrice, oreMaterialOf, signaturePerk } from '../../v19/forge.js';
+import { workshopPerks } from '../../v19/workshop.js';
+
+const canResumeForge = () => legacy ? Game.run && !Game.run.finished : hasLiveFurnace();
+const bonusDescriptions = {
+  extra_reroll: '装配时免费刷新一次配件',
+  specialty_press: '从第十一锤起，降低断裂概率',
+  specialty_edge: '刃侧有效落锤增加鉴定时的锋利',
+  specialty_precise: '精炼质量为选定属性提供加成',
+  specialty_quench: '增加指定色系表面膜的出现权重',
+  specialty_composite: '两类刀面达到 II 档后，有机会把变化提升为强化',
+  specialty_overload: '首次通过 10% 断率检查后，有机会触发暴发',
+};
 
 const TABS = [
   { id: 'collection', name: '藏刀阁' },
@@ -39,7 +54,7 @@ const SORTS = [
 const FILTERS = [
   { id: 'all', name: '全部' },
   { id: 'arena', name: '有赛事经历' },
-  { id: 'trait', name: '有高阶特性' },
+  { id: 'trait', name: legacy ? '有高阶特性' : '签名 / III 档' },
 ];
 let collectionSort = 'score';
 let collectionFilter = 'all';
@@ -152,7 +167,9 @@ function renderCollection() {
   let shown = list.slice();
   if (collectionFilter === 'arena') shown = shown.filter((b) => (b.arenaHistory || []).length > 0);
   else if (collectionFilter === 'trait') {
-    shown = shown.filter((b) => (b.tagTiers || []).some((t) => (t.effectiveLayers ?? t.layers ?? 0) >= 6)
+    shown = shown.filter((b) => b.v19Visual ? signaturePerk(b.combos?.[0]) ||
+      Object.values(b.v19Visual.skin?.levels || {}).some(tier => tier === 3) :
+      (b.tagTiers || []).some((t) => (t.effectiveLayers ?? t.layers ?? 0) >= 6)
       || (b.traits || []).some((id) => getTrait(id)?.kind === 'SPECIAL_TAG'));
   }
   shown.sort((a, b) => {
@@ -178,8 +195,16 @@ function renderCollection() {
        3D 缩略图仍由 mountCollectionPreview 挂到卡面主视觉位。 */
     const model = bladeCardModel(blade, { kind: 'collection' });
     const art = el('div', { class: 'blade-thumb', 'aria-hidden': 'true' });
-    const visual = Game.resolveVisualState(blade, {}, { modelId: model.modelId, viewPreset: 'forge' });
-    mountCollectionPreview(art, blade, visual);
+    if (blade.v19Visual) {
+      const { skin, ore } = blade.v19Visual;
+      const finish = LOOKS.film[skin.film] || LOOKS.pattern[skin.pattern] || LOOKS.metal[skin.metal];
+      art.classList.add('v19-collection-art');
+      art.style.setProperty('--mineral-color', oreMaterialOf(ore).steel);
+      art.append(icon('forge'), el('span', { text: finish }));
+    } else {
+      const visual = Game.resolveVisualState(blade, {}, { modelId: model.modelId, viewPreset: 'forge' });
+      mountCollectionPreview(art, blade, visual);
+    }
 
     const picked = compareIds.includes(blade.id);
     const card = bladeCard(model, { art, onOpen: () => inspect(blade) });
@@ -299,11 +324,13 @@ function openFractures() {
         line('断裂概率', Number.isFinite(info.chance) ? `${Number((info.chance * 100).toFixed(2))}%` : null),
         ...(info.matchId ? [line('赛事编号', info.matchId)] : []),
       ]),
-      el('div', { class: 'section-title', text: '六维属性' }), statRail(blade.stats || {}, null, true),
+      el('div', { class: 'section-title', text: '六维属性' }), statRail(blade.stats || {}, null, true, blade.v19Visual ? STAT_CAP : undefined),
       line('评分', blade.score), line('品质', blade.qualityName),
-      line('永久特性', (blade.traits || []).map(id => getTrait(id)?.name || id).join('、') || '无'),
-      line('隐藏连携', (blade.combos || []).map(id => COMBOS.find(item => item.id === id)?.name || id).join('、') || '无'),
-      line('工艺路线', (blade.history || []).join(' → ') || '未记录'),
+      ...(blade.v19Visual ? [] : [
+        line('永久特性', (blade.traits || []).map(id => getTrait(id)?.name || id).join('、') || '无'),
+        line('隐藏连携', (blade.combos || []).map(id => COMBOS.find(item => item.id === id)?.name || id).join('、') || '无'),
+        line('工艺路线', (blade.history || []).join(' → ') || '未记录'),
+      ]),
       ...(info.evidence ? [el('details', { class: 'ws-fracture-evidence' }, [
         el('summary', { text: '结构失效记录' }),
         el('pre', { text: JSON.stringify(info.evidence, null, 2) }),
@@ -316,14 +343,15 @@ function openFractures() {
 }
 
 function inspect(blade) {
-  const type = KNIFE_TYPES.find((item) => item.id === blade.knifeTypeId);
+  const recipe = blade.v19Visual;
   const modelId = resolveModelId(blade, blade.knifeTypeId);
-  const visual = Game.resolveVisualState(blade, {}, { modelId, viewPreset: 'forge' });
+  const visual = recipe ? null : Game.resolveVisualState(blade, {}, { modelId, viewPreset: 'forge' });
   const previewHost = el('div', { class: 'blade-detail-stage', role: 'img', 'aria-label': `${blade.bladeName || '成刀'}三维档案外观` });
   const previewStatus = el('div', { class: 'blade-detail-stage-status', text: BladeStage.supported ? '正在载入档案外观…' : '此设备不支持 WebGL，档案外观不可预览' });
   /* ★ rework T13.1：详情也读**同一份**展示模型（含赛事经历、工艺、风险）。
      改造前这里另拼了一套 trait/六维/履历，与卡面、赛报各说一套。 */
   const model = bladeCardModel(blade, { kind: 'collection' });
+  const mastery = legacy ? null : bladeMastery(blade);
   const details = el('div', { class: 'stack' }, [
     el('div', { class: 'blade-detail-hero' }, [previewHost, previewStatus]),
     el('div', { class: 'blade-detail-head' }, [
@@ -333,13 +361,22 @@ function inspect(blade) {
       model.arenaWins > 0 ? el('span', { class: 'chip chip--accent', text: `${model.arenaWins} 胜` }) : null,
     ].filter(Boolean)),
     /* 卡背：六维、特性（标注赛场职责）、连携、赛事经历、工艺与档案 */
+    ...(recipe ? [v19CraftDetails(recipe, signaturePerk(blade.combos?.[0]))] : []),
+    ...(mastery ? [el('div', { class: 'report-line',
+      text: `${mastery.level} · ${mastery.project}专长 +${Math.round(mastery.bonus * 100)}% · 有效 ${mastery.matches} 场` })] : []),
     bladeCardDetail(model),
     el('div', { class: 'blade-detail-actions' }, [
-      el('button',{class:'btn btn--primary',text:'12秒短试刀',onclick:async()=>{
-        const Arena=await import('./arena.js');
-        const result=Arena.openCollectionSample(blade.id);
-        if(!result?.ok){toast(result?.reason||'当前无法试刀','warn');return;}
-        detailSheet.close();
+      el('button',{class:'btn btn--primary',text:'12秒短试刀',disabled:blade.canEnterArena === false,onclick:async()=>{
+        if (legacy) {
+          const Arena = await import('./arena.js');
+          const result = Arena.openCollectionSample(blade.id);
+          if (!result?.ok) return toast(result?.reason || '当前无法试刀', 'warn');
+          detailSheet.close();
+        } else {
+          const { openTournament } = await import('./v19Arena.js');
+          detailSheet.close();
+          openTournament({ bladeId: blade.id, mode: 'practice' });
+        }
       }}),
       el('button', {
         class: 'btn', text: '设为代表作',
@@ -369,11 +406,13 @@ function inspect(blade) {
   ]);
   const sequence = ++detailSequence;
   let detailStage = null;
+  let v19Preview;
   const detailSheet = sheet({
     title: blade.bladeName || blade.id,
     body: details,
     onClose: () => {
       if (detailSequence === sequence) detailSequence++;
+      v19Preview?.close();
       if (detailStage) detailStage._seq++;
       detailStage?.dispose();
       detailStage = null;
@@ -382,6 +421,18 @@ function inspect(blade) {
   detailSheet.panel.classList.add('blade-detail-sheet');
   // 仅调整 UI 层级：操作区离开滚动正文，原按钮及其行为保持不变。
   detailSheet.panel.appendChild(details.querySelector('.blade-detail-actions'));
+  if (recipe) {
+    import('../../v19/sharedStage.js').then(({ showForgedBlade }) => {
+      if (detailSequence !== sequence || !previewHost.isConnected) return;
+      v19Preview = showForgedBlade(previewHost, recipe);
+      return v19Preview.ready.then(ready => {
+        if (detailSequence !== sequence) return;
+        if (ready) previewStatus.remove();
+        else previewStatus.textContent = '档案外观暂不可预览';
+      });
+    }).catch(() => { if (detailSequence === sequence) previewStatus.textContent = '档案外观暂不可预览'; });
+    return;
+  }
   if (!modelId || !visual?.skin) {
     previewStatus.textContent = '档案缺少刀型或视觉数据，无法预览';
     return;
@@ -422,6 +473,24 @@ function inspect(blade) {
 }
 
 /* ── 成就 ─────────────────────────────────────────────── */
+function v19CraftDetails(recipe, perk) {
+  const looks = Object.entries(LOOKS).map(([slot, names]) => {
+    const name = names[recipe.skin[slot]];
+    return name ? `${name} ${['', 'I', 'II', 'III'][recipe.skin.levels[slot]] || ''}` : '';
+  }).filter(Boolean);
+  const fit = FITS.find(item => item.id === recipe.fit);
+  const refined = REFINEMENT_RESULTS[recipe.refinement?.result];
+  return el('div', { class: 'card stack' }, [
+    el('b', { text: '刀面与装配' }),
+    el('div', { class: 'report-line', text: looks.join(' · ') }),
+    perk && el('div', { class: 'report-line', text: `${perk.name} · ${perk.desc}` }),
+    el('div', { class: 'muted tiny', text: [
+      oreMaterialOf(recipe.ore).name, refined && `${refined.label} ${recipe.refinement.quality}`,
+      fit?.name, `${recipe.hits} 锤`,
+    ].filter(Boolean).join(' · ') }),
+  ]);
+}
+
 function renderAchievements() {
   const state = Core.progress.get();
   for (const group of ACHIEVEMENT_GROUPS) {
@@ -444,7 +513,13 @@ function renderAchievements() {
 
 /* ── 锻造加成（rework T11） ───────────────────────────── */
 async function enterForge() {
-  if (!Game.run || Game.run.finished) Game.startForge({mode:'normal'});
+  if (!legacy) {
+    const result = openFurnace({ restart: true });
+    if (!result.ok) return toast(result.error, 'warn');
+    router.go('forge');
+    return;
+  }
+  if (!canResumeForge()) Game.startForge({mode:'normal'});
   try { await Game.prewarmCandidates(); router.go('forge'); }
   catch (_) { toast('工艺准备未完成，请重试','warn'); }
 }
@@ -452,8 +527,8 @@ async function enterForge() {
 function emptyCollection() {
   return el('section', {class:'card ws-empty'}, [
     icon('spark'), el('b',{text:'为第一把刀留个位置'}),
-    el('p',{class:'muted',text:'完成十道工序，作品与工艺会自动保存在这里。'}),
-    el('button',{class:'btn btn--primary',text:Game.run && !Game.run.finished ? '继续锻刀' : '开始锻刀',onclick:enterForge}),
+    el('p',{class:'muted',text:'鉴定完成后，作品与工艺会自动保存在这里。'}),
+    el('button',{class:'btn btn--primary',text:canResumeForge() ? '继续锻刀' : '开始锻刀',onclick:enterForge}),
   ]);
 }
 
@@ -461,18 +536,21 @@ function renderBonuses() {
   const state = Core.progress.get();
   const view = Core.progress.forgeBonusView();
   const growth = Core.arenaV41Growth.workshopSnapshot(state);
+  const perks = workshopPerks(growth.level);
   body.appendChild(el('section',{class:'card stack', 'aria-label':'工坊等级'},[
     el('div',{class:'row row--between'},[
       el('b',{text:'工坊 · Lv.'+growth.level}),
       el('span',{class:'chip',text:growth.nextXp===null?'已满级':growth.xp+' / '+growth.nextXp+' XP'}),
     ]),
-    el('div',{class:'report-line',text:'本次锻造：付费刷新优惠 '+Math.round(growth.discount*100)+'% · 断裂相对减免 '+Math.round(growth.riskReduction*100)+'%'}),
-    el('div',{class:'muted tiny',text:'稀有度加权 '+(growth.rarity==='none'?'未开放':growth.rarity+'档')+' · 仅影响新开锻造；原有成刀属性不变'}),
+    el('div',{class:'report-line',text:legacy ? '付费刷新优惠 '+Math.round(growth.discount*100)+'%' :
+      '配件付费刷新 '+fittingPrice({ workshopLevel: growth.level })+' CR · 稀质矿芯概率 +'+perks.rareBonus+' 个百分点'}),
+    el('div',{class:'muted tiny',text:'单锤断裂概率相对降低 '+Math.round(growth.riskReduction*100)+'% · 新炉生效'}),
   ]));
   body.appendChild(el('header',{class:'ws-heading'},[
     el('span',{class:'ws-eyebrow',text:'开锻准备'}),
     el('h2',{text:'让下一把刀，更多一种可能'}),
-    el('p',{text:'选择一项加成，下一次普通锻造生效。永久解锁，每局可用一次。'}),
+    el('p',{text:legacy ? '选择一项加成，下一次普通锻造生效。永久解锁，每局可用一次。' :
+      '选一项已解锁的加成。下一炉开工时锁定，触发条件见下方。'}),
   ]));
   body.appendChild(el('div',{class:'ws-bonus-list'},view.list.map(b=>{
     const equipped = view.equippedId === b.id;
@@ -488,8 +566,8 @@ function renderBonuses() {
     },[
       el('span',{class:'ws-bonus-icon'},[icon(b.id==='extra_reroll'?'refresh':'spark')]),
       el('span',{class:'ws-bonus-copy'},[
-        el('b',{text:b.name}),el('span',{text:b.desc.replace('开锻前装备：','')}),
-        el('small',{text:b.unlocked?`每局 ${b.usesPerRun} 次 · 已解锁`:`解锁条件：${b.unlockText}`}),
+        el('b',{text:b.name}),el('span',{text:legacy ? b.desc.replace('开锻前装备：','') : bonusDescriptions[b.id]}),
+        el('small',{text:b.unlocked?'已解锁 · 新炉生效':`解锁条件：${b.unlockText}`}),
       ]),
       el('span',{class:'ws-bonus-check','aria-hidden':'true'},[equipped?icon('check'):icon('next')]),
     ]);
@@ -514,13 +592,13 @@ function renderBonuses() {
       const attributes=[['strength','强度'],['toughness','韧性'],['sharpness','锋利'],['craft','工艺'],['design','设计'],['spirit','灵性']];
       settings.push(optionSelect('定向属性',opts.stat,attributes,v=>update({stat:v,stages:[]})));
       const valid=Core.arenaV41Specialties.validStatStages(opts.stat).map(x=>[x,x]);
-      for(let i=0;i<2;i++)settings.push(optionSelect('有效阶段 '+(i+1),opts.stages[i],valid,v=>{
+      for(let i=0;legacy && i<2;i++)settings.push(optionSelect('有效阶段 '+(i+1),opts.stages[i],valid,v=>{
         const stages=[...opts.stages];stages[i]=v;update({stages});
       }));
     }
     if(specialty.id==='quench')settings.push(optionSelect('表面工艺倾向',opts.inclination,
       [['cold','冷相'],['heat','热相'],['oxide','氧化']],v=>update({inclination:v})));
-    if(specialty.id==='composite'){
+    if(legacy && specialty.id==='composite'){
       settings.push(optionSelect('基础标签',opts.tag,
         [['precision','精密'],['stable','稳态'],['flow','流动'],['layer','层叠'],
           ['edge','刃线'],['heat','热相'],['cold','冷相'],['oxide','氧化']],v=>update({tag:v})));
@@ -529,25 +607,25 @@ function renderBonuses() {
     }
     body.appendChild(el('section',{class:'card stack','aria-label':'专精配置'},[
       el('b',{text:'已装备 '+(view.equipped?.name||'专精')+' · Lv.'+specialty.level}),
-      el('p',{class:'muted tiny',text:'本局效果：'+(specialty.id==='edge'?'第二次描线 ×'+specialty.boost:
+      el('p',{class:'muted tiny',text:!legacy ? bonusDescriptions[id] : '本局效果：'+(specialty.id==='edge'?'第二次描线 ×'+specialty.boost:
         ['precise','quench','composite','overload'].includes(specialty.id)
           ?'条件匹配额外 '+Math.round(specialty.boost*100)+'% 权重':
             '第十一锤起额外相对减险 '+Math.round(specialty.boost*100)+'%')}),
       ...settings,
-      el('small',{class:'muted',text:'开锻后锁定。所有决策卡仍可抽取，历史偏好权重保留。'}),
+      el('small',{class:'muted',text:'专精随新炉次锁定。'}),
     ]));
   }
   body.appendChild(el('div',{class:'card ws-bonus-summary'},[
     el('b',{text:view.equipped?`已装备 · ${view.equipped.name}`:'本次未装备加成'}),
-    el('p',{text:'进入 S1 后锁定，本局中途无法更换。已开始的锻造沿用开局选择。'}),
-    el('button',{class:'btn btn--primary btn--block',text:Game.run && !Game.run.finished?'继续当前锻造':'开始锻刀',onclick:enterForge}),
+    el('p',{text:'已开始的炉次沿用开局加成。'}),
+    el('button',{class:'btn btn--primary btn--block',text:canResumeForge()?'继续当前锻造':'开始锻刀',onclick:enterForge}),
   ]));
   body.appendChild(el('details',{class:'codex-group'},[
     el('summary',{text:'已解锁内容'}),
     el('div',{class:'ws-unlocks'},[
-      el('div',{class:'report-line',text:`永久解锁卡牌 ${(state.unlockedCardIds||[]).length} 张`}),
+      legacy && el('div',{class:'report-line',text:`永久解锁卡牌 ${(state.unlockedCardIds||[]).length} 张`}),
       el('div',{class:'report-line',text:`称号 ${(state.unlockedTitles||[]).join('、')||'暂未获得'}`}),
-      el('div',{class:'report-line',text:`刃线外观 ${(state.unlockedEdgeSkins||[]).join('、')||'暂未获得'}`}),
+      legacy && el('div',{class:'report-line',text:`刃线外观 ${(state.unlockedEdgeSkins||[]).join('、')||'暂未获得'}`}),
     ]),
   ]));
 }

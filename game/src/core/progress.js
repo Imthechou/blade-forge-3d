@@ -11,6 +11,7 @@
  */
 
 import * as Storage from '../platform/storage.js';
+import { LEGACY_MODE } from '../platform/env.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { COMBOS } from '../data/combos.js';
 import { CARDS } from '../data/cards.js';
@@ -32,6 +33,7 @@ import { careerRewardPlan, isV41Match } from './arenaV41Rewards.js';
 import * as CodexCatalog from '../data/codexCatalog.js';
 import { COUNTED_CATEGORIES } from '../data/codexCatalog.js';
 import { commitSave } from './saveTransaction.js';
+import { HEAT } from '../v19/forge.js';
 
 import { makeSave, defaultSettings, normalizeSettings, normalizeSave } from './saveSchema.js';
 export { makeSave, defaultSettings, normalizeSettings, normalizeSave } from './saveSchema.js';
@@ -78,7 +80,7 @@ export function spendForgeReroll(cost) {
 
 export function resetAll() {
   const next = makeSave();
-  if (!Storage.save(next)) return false;
+  if (!Storage.save(next, { overwrite: true })) return false;
   cache = next;
   quickSettlementReceipts = new WeakMap();
   archiveReceipts = new WeakMap();
@@ -187,89 +189,99 @@ export const quickChallengeRecords = () => load().quickChallengeRecords;
 export function archive(record, { mode = 'normal' } = {}) {
   const previous = archiveReceipts.get(record);
   if (previous) return { ...previous, duplicate: true };
-  const existing = [...load().collection, ...load().fractured].some(blade => blade.id === record.id);
-  if (existing) return { ok: true, duplicate: true, reward: 0, archived: !record.fractured, fresh: [] };
-  const result = commitSave(load(), s => {
-    s.stats.forgeCount += 1;
-
-    /* ★ 本局"新发现"（V2.1 §14.1「长期去向」要播报的就是这个）。
-       unlockCodex 本来就返回"是不是首次添加"，直接拿它的返回值当真源 —— 不新造规则、
-       不新造字段，重复锻造不会重复播报。顺序即播放顺序：刀型 → 特性 → 组合 → 标签 → 决策卡。 */
-    const fresh = [];
-    const note = (category, id) => { if (unlockCodex(s, category, id)) fresh.push({ category, id }); };
-
-    if (record.fractured) {
-      s.stats.fractureCount += 1;
-      s.fractured.unshift(record);
-      // 断刀册为永久历史：锻造与正式赛事断刀共存，禁止静默裁剪。
-      note('fracture', record.id);
-    } else {
-      s.collection.unshift(record);
-      /* ★ 2026-10-14（用户：首页「有刀的时候展示评分最高的刀」）：
-         原来是 `if (!s.showcaseId) s.showcaseId = record.id` —— 把**第一把**刀永久钉成
-         首页代表作品，之后锻造出再高的分也上不了首页。
-         现在改成"自动跟随最高分"：只要玩家**没手动**指定过代表作（`showcasePinned`
-         为假），`showcaseId` 每次归档后都重新指向当前最高分那把。
-         玩家一旦在藏刀阁点过「设为代表作」，`showcasePinned` 置真 → 尊重玩家的选择。 */
-      if (!s.showcasePinned) {
-        const best = s.collection.reduce((a, b) => ((b.score || 0) > (a.score || 0) ? b : a), s.collection[0]);
-        if (best) s.showcaseId = best.id;
-      }
-      s.stats.bestScore = Math.max(s.stats.bestScore, record.score || 0);
-      s.stats.bestPeakRiskClear = Math.max(s.stats.bestPeakRiskClear, record.riskPeak || 0);
-      note('knife', record.knifeTypeId);
-      for (const id of record.traits) note('trait', id);
-      for (const id of record.combos) note('combo', id);
-      for (const t of Object.keys(record.tags || {})) note('tag', t);
-      for (const cid of record.history) note('card', cid);
-
-      /* ★ rework T12：补齐此前**从未写入**的三类图鉴。
-         改造前只写 knife/trait/combo/tag/card，于是「材料 / 纹理与工艺 /
-         赛事」三个目录永远是空的 —— 分母把它们算进完成度，玩家却永远开不完。
-         这里只记录**已经真实出现过**的东西，不提前解锁。 */
-      const skin = record.pendingSkin || {};
-      if (skin.materialId) note('material', skin.materialId);
-      if (skin.textureId) note('finish', skin.textureId);
-      if (skin.finishId) note('finish', skin.finishId);
-      if (record.knifeType) note('finish', record.knifeType);
-
-      s.stats.comboFound = Object.keys(s.codex.combo).length;
-    }
-
-    // CR 奖励：断刀也给少量（V2.1 §1「失败也有记录」），成刀按稀有度
-    let reward = record.fractured ? 10 : Economy.forgeReward(record.rarity);
-    Economy.addCr(s, reward, 'forge');
-    if (!record.fractured && mode !== 'daily') V41Growth.awardWorkshopXp(s,10,'forge:'+record.id);
-
-    if (mode === 'daily') {
-      // 挑战成绩只进 dailyScores，不入藏刀阁
-      if (!record.fractured) Daily.recordScore(s, record.dayKey || Daily.dayKey(), record.score);
-    }
-
-    /* ★ rework T10.1/T10.2：行为事件在**同一次 commitSave 草稿**里兑现。
-       · 锻造完成 / 断刀 → 每日任务「完成 1 次锻造」；
-       · 本局有新发现 → 「获得一项新特性」口径（craft 任务）。
-       事件 ID 只由 bladeId 推导，重试 / 重进不会二次发放。
-       注意：每日挑战（mode==='daily'）不推普通任务进度，它有自己的成绩口径。 */
-    if (mode !== 'daily') {
-      const eventType = record.fractured ? Events.EVENT.FORGE_FRACTURED : Events.EVENT.FORGE_COMPLETED;
-      const settled = Events.settle(s, eventType, { bladeId: record.id }, {
-        rarity: record.rarity || null, score: record.score || 0,
-      });
-      if (!settled.duplicate) reward += settled.cr;
-      if (fresh.length) {
-        const disc = Events.settle(s, Events.EVENT.DISCOVERY, { bladeId: record.id, itemKey: 'forge' }, {
-          count: fresh.length,
-        });
-        if (!disc.duplicate) reward += disc.cr;
-      }
-    }
-
-    checkAchievements(s);
-    return { ok: true, reward, archived: !record.fractured && mode !== 'daily', fresh };
-  });
-  if (result.ok) archiveReceipts.set(record, result);
+  const result = commitSave(load(), s => archiveInto(s, record, { mode }));
+  if (result.ok && !result.duplicate) archiveReceipts.set(record, result);
   return result;
+}
+
+/** Archive in the caller's save transaction, including discovery and first-forge rewards. */
+export function archiveInto(s, record, { mode = 'normal', discoveries = [] } = {}) {
+  if (s.collection.some(blade => blade.id === record.id) || s.fractured.some(blade => blade.id === record.id)) {
+    return { ok: true, duplicate: true, reward: 0, archived: !record.fractured, fresh: [] };
+  }
+  s.stats.forgeCount += 1;
+
+  /* ★ 本局"新发现"（V2.1 §14.1「长期去向」要播报的就是这个）。
+     unlockCodex 本来就返回"是不是首次添加"，直接拿它的返回值当真源 —— 不新造规则、
+     不新造字段，重复锻造不会重复播报。顺序即播放顺序：刀型 → 特性 → 组合 → 标签 → 决策卡。 */
+  const fresh = [];
+  const note = (category, id) => { if (unlockCodex(s, category, id)) fresh.push({ category, id }); };
+
+  if (record.fractured) {
+    s.stats.fractureCount += 1;
+    s.fractured.unshift(record);
+    // 断刀册为永久历史：锻造与正式赛事断刀共存，禁止静默裁剪。
+    note('fracture', record.id);
+  } else {
+    s.collection.unshift(record);
+    /* ★ 2026-10-14（用户：首页「有刀的时候展示评分最高的刀」）：
+       原来是 `if (!s.showcaseId) s.showcaseId = record.id` —— 把**第一把**刀永久钉成
+       首页代表作品，之后锻造出再高的分也上不了首页。
+       现在改成"自动跟随最高分"：只要玩家**没手动**指定过代表作（`showcasePinned`
+       为假），`showcaseId` 每次归档后都重新指向当前最高分那把。
+       玩家一旦在藏刀阁点过「设为代表作」，`showcasePinned` 置真 → 尊重玩家的选择。 */
+    if (!s.showcasePinned) {
+      const best = s.collection.reduce((a, b) => ((b.score || 0) > (a.score || 0) ? b : a), s.collection[0]);
+      if (best) s.showcaseId = best.id;
+    }
+    s.stats.bestScore = Math.max(s.stats.bestScore, record.score || 0);
+    s.stats.bestPeakRiskClear = Math.max(s.stats.bestPeakRiskClear, record.riskPeak || 0);
+    note('knife', record.knifeTypeId);
+    for (const id of record.traits) note('trait', id);
+    for (const id of record.combos) note('combo', id);
+    for (const t of Object.keys(record.tags || {})) note('tag', t);
+    for (const cid of record.history) note('card', cid);
+
+    /* ★ rework T12：补齐此前**从未写入**的三类图鉴。
+       改造前只写 knife/trait/combo/tag/card，于是「材料 / 纹理与工艺 /
+       赛事」三个目录永远是空的 —— 分母把它们算进完成度，玩家却永远开不完。
+       这里只记录**已经真实出现过**的东西，不提前解锁。 */
+    const skin = record.pendingSkin || {};
+    if (skin.materialId) note('material', skin.materialId);
+    if (skin.textureId) note('finish', skin.textureId);
+    if (skin.finishId) note('finish', skin.finishId);
+    if (record.knifeType && !record.v19Visual) note('finish', record.knifeType);
+    for (const { category, id } of discoveries) note(category, id);
+
+    s.stats.comboFound = CodexCatalog.foundCount(s.codex, 'combo');
+  }
+
+  // CR 奖励：断刀也给少量（V2.1 §1「失败也有记录」），成刀按稀有度
+  let reward = record.fractured ? 10 : Economy.forgeReward(record.rarity);
+  Economy.addCr(s, reward, 'forge');
+  if (!record.fractured && mode !== 'daily') V41Growth.awardWorkshopXp(s,10,'forge:'+record.id);
+
+  if (mode === 'daily') {
+    // 挑战成绩只进 dailyScores，不入藏刀阁
+    if (!record.fractured) Daily.recordScore(s, record.dayKey || Daily.dayKey(), record.score);
+  }
+
+  /* ★ rework T10.1/T10.2：行为事件在**同一次 commitSave 草稿**里兑现。
+     · 锻造完成 / 断刀 → 每日任务「完成 1 次锻造」；
+     · 新版良好精炼并成功成刀 → 工艺任务，图鉴完成后也能继续做。
+     事件 ID 只由 bladeId 推导，重试 / 重进不会二次发放。
+     注意：每日挑战（mode==='daily'）不推普通任务进度，它有自己的成绩口径。 */
+  if (mode !== 'daily') {
+    const eventType = record.fractured ? Events.EVENT.FORGE_FRACTURED : Events.EVENT.FORGE_COMPLETED;
+    const settled = Events.settle(s, eventType, { bladeId: record.id }, {
+      rarity: record.rarity || null, score: record.score || 0,
+    });
+    if (!settled.duplicate) reward += settled.cr;
+    if (fresh.length) {
+      const disc = Events.settle(s, Events.EVENT.DISCOVERY, { bladeId: record.id, itemKey: 'forge' }, {
+        count: fresh.length,
+      });
+      if (!disc.duplicate) reward += disc.cr;
+    }
+    const refinement = record.v19Visual?.refinement;
+    if (!record.fractured && refinement?.quality >= HEAT.good) {
+      const craft = Events.settle(s, Events.EVENT.REFINEMENT_GOOD, { bladeId: record.id }, { quality: refinement.quality });
+      if (!craft.duplicate) reward += craft.cr;
+    }
+  }
+
+  checkAchievements(s);
+  return { ok: true, reward, archived: !record.fractured && mode !== 'daily', fresh };
 }
 
 export const collection = () => load().collection;
@@ -349,12 +361,7 @@ export function unlockCodex(s, category, id) {
  *   分类键（如已不存在的 id）把完成度抬到分母之上。
  *   断裂记录是事件型，计入数量但不进百分比。
  */
-export const codexCount = () => {
-  const s = load();
-  let n = 0;
-  for (const id of COUNTED_CATEGORIES) n += CodexCatalog.foundCount(s.codex, id);
-  return n;
-};
+export const codexCount = () => codexCountOf(load());
 
 /**
  * 图鉴总量（完成度分母）。
@@ -378,7 +385,9 @@ export function checkAchievements(s = load()) {
     if (a.metric === 'forgeCount') hit = m.forgeCount >= a.goal;
     else if (a.metric === 'bestScore') hit = m.bestScore >= a.goal;
     else if (a.metric === 'bestPeakRiskClear') hit = m.bestPeakRiskClear >= a.goal;
-    else if (a.metric === 'comboFound') hit = Object.keys(s.codex.combo).length >= a.goal;
+    else if (a.metric === 'comboFound') hit = CodexCatalog.foundCount(s.codex, 'combo') >= a.goal;
+    else if (a.metric === 'skinTier') hit = s.collection.some(blade =>
+      Object.values(blade.v19Visual?.skin?.levels || {}).some(level => level >= a.goal));
     else if (a.metric === 'matchWins') hit = s.arena.matchWins >= a.goal;
     else if (a.metric === 'bladeCount') hit = s.collection.length >= a.goal;
     else if (a.metric === 'knifeTypeCount') {
@@ -387,17 +396,14 @@ export function checkAchievements(s = load()) {
     else if (a.metric === 'dailyStreak') hit = s.dailyStreak >= a.goal;
     else if (a.id === 'AC_first_forge') hit = m.forgeCount >= 1;
     else if (a.id === 'AC_match_first') hit = (s.arena.matchWins + s.arena.matchLosses) >= 1;
-    else if (a.id === 'AC_rarity_rare') hit = s.collection.some((b) => b.rarity === 'rare');
-    else if (a.id === 'AC_rarity_epic') hit = s.collection.some((b) => b.rarity === 'epic');
-    else if (a.id === 'AC_rarity_legend') hit = s.collection.some((b) => b.rarity === 'legend');
-    else if (a.id === 'AC_rarity_mythic') hit = s.collection.some((b) => b.rarity === 'mythic');
+    else if (a.rarity) hit = s.collection.some((b) => b.rarity === a.rarity);
     else if (a.id === 'AC_trait_master') hit = s.collection.some((b) => (b.tagTiers || []).some((t) => t.effectiveLayers >= 6));
     else if (a.id === 'AC_special_first') hit = s.collection.some((b) => Object.values(b.traitSources || {}).includes('specialTag'));
     else if (a.id === 'AC_combo_first') hit = Object.keys(s.codex.combo).length >= 1;
     else if (a.id === 'AC_branch_clear') hit = Object.values(s.arena.school).some((p) => (p.cleared || []).includes(GRADIENTS.length - 1));
     // national.wins 仍统计单场；全国冠军只认已完成并归档的整届冠军。
-    else if (a.id === 'AC_national_win') hit = s.nationalRuns?.version === 1
-      && Array.isArray(s.nationalRuns.history) && s.nationalRuns.history.some((run) => run?.status === 'champion');
+    else if (a.id === 'AC_national_win') hit = s.arena.history?.some(entry => entry.tier === 'national' && entry.champion === true) ||
+      s.nationalRuns?.history?.some(run => run?.status === 'champion');
     else if (a.id === 'AC_apex_win') hit = s.arena.apex.wins >= 1;
 
     if (hit) {
@@ -411,9 +417,7 @@ export function checkAchievements(s = load()) {
 }
 
 function codexCountOf(s) {
-  let n = 0;
-  for (const k of Object.keys(s.codex)) n += Object.keys(s.codex[k]).length;
-  return n;
+  return COUNTED_CATEGORIES.reduce((sum, id) => sum + CodexCatalog.foundCount(s.codex, id), 0);
 }
 
 function unlockFromAchievement(s, token) {
@@ -503,22 +507,8 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
   // V4.1 CR and XP derive from the SAME ledger of verifiable milestones.
   // Event receipts are stored in the workshop journal and committed atomically.
   const v41=!!matchId&&isV41Match(matchRecord);
-  let v41Cr=0,grantSummary=[];
-  if(v41){
-    const plan=careerRewardPlan(tier,win,gradient,matchRecord,matchId,styleId);
-    for(const evt of plan.events){
-      const receipt=evt.key;
-      if(s.workshopV41?.receipts?.[receipt])continue;
-      if(evt.xp>0){
-        const credited=V41Growth.awardWorkshopXp(s,evt.xp,receipt);
-        if(!credited.credited)continue;
-      }else{
-        s.workshopV41.receipts[receipt]=1;
-      }
-      v41Cr+=evt.cr;
-      grantSummary.push({id:receipt,xp:evt.xp,cr:evt.cr});
-    }
-  }
+  const grantSummary = v41 ? applyCareerGrants(s, careerRewardPlan(tier, win, gradient, matchRecord, matchId, styleId).events) : [];
+  const v41Cr = grantSummary.reduce((sum, grant) => sum + grant.cr, 0);
   if (win) a.matchWins += 1; else a.matchLosses += 1;
 
   if (tier === 'school' && styleId) {
@@ -539,36 +529,7 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
     const entry = JSON.parse(JSON.stringify({ ...matchRecord, id: matchId, bladeId, tier,
       styleId, gradient, win, reward, grants:grantSummary, recordedAt: Date.now() }));
     history.push(entry);
-    if (blade) {
-      (blade.arenaHistory ||= []).push(JSON.parse(JSON.stringify(entry)));
-      /* ★ rework T12：把分项成绩写进**每把刀的个人纪录**。
-
-         要修什么：改造前赛事只知道“整场合成分”，
-         玩家无法回答「我这把刀切割最好打到多少」。
-         任务书 T12 要求「每刀以 bladeId 关联版本化赛事档案、**分项个人纪录**、荣誉」。
-
-         规则：只在新成绩**更高**时覆盖 —— 低分不能刷掉历史最好
-         （T12 验收：个人纪录不会由更低成绩覆盖）。
-         旧刀没有 projectRecords 时自动建空表，不报错。 */
-      const scores = Array.isArray(matchRecord?.projectScores) ? matchRecord.projectScores : [];
-      if (scores.length) {
-        blade.projectRecords ||= {};
-        for (const p of scores) {
-          if (!p || typeof p.kind !== 'string') continue;
-          if (!Number.isFinite(p.score)) continue;
-          const prev = blade.projectRecords[p.kind];
-          if (!prev || p.score > (Number(prev.score) || 0)) {
-            blade.projectRecords[p.kind] = {
-              kind: p.kind,
-              name: p.name || p.kind,
-              score: p.score,
-              at: Date.now(),
-              matchId,
-            };
-          }
-        }
-      }
-    }
+    if (blade) recordBladeMatch(blade, entry, matchRecord?.projectScores);
   }
   if (destroyed && blade) {
     // 原档整体转移：外观配方、锻造过程、荣誉和全部赛事履历不裁剪、不重算。
@@ -594,6 +555,31 @@ function recordMatchInto(s, tier, { win, styleId = null, gradient = 0, score = 0
   }
   checkAchievements(s);
   return { cr: reward, bladeDestroyed: destroyed };
+}
+
+/** Common idempotent career ledger for both rulesets. The caller credits CR in the same draft. */
+export function applyCareerGrants(s, events) {
+  const grants = [];
+  for (const { key, xp, cr } of events) {
+    if (s.workshopV41.receipts[key] || (!xp && !cr)) continue;
+    if (xp) V41Growth.awardWorkshopXp(s, xp, key);
+    else s.workshopV41.receipts[key] = 1;
+    grants.push({ id: key, xp, cr });
+  }
+  return grants;
+}
+
+export function recordBladeMatch(blade, entry, scores = []) {
+  (blade.arenaHistory ||= []).push(structuredClone(entry));
+  if (!Array.isArray(scores) || !scores.length) return;
+  blade.projectRecords ||= {};
+  for (const { kind, name, score } of scores.filter(Boolean)) {
+    if (typeof kind !== 'string' || !Number.isFinite(score)) continue;
+    const prior = blade.projectRecords[kind];
+    if (!prior || score > prior.score) {
+      blade.projectRecords[kind] = { kind, name: name || kind, score, at: entry.recordedAt, matchId: entry.id };
+    }
+  }
 }
 
 export const schoolProgress = (branchId) => {
@@ -910,7 +896,7 @@ export function nextGoal() {
   if (!collection.length) {
     return {
       id: 'first-forge', title: '锻出第一把刀',
-      desc: '十道工序，三选一。第一把不必完美，先把循环跑通。',
+      desc: LEGACY_MODE ? '十道工序，三选一。第一把不必完美，先把循环跑通。' : '选料、控温、锻打、装配，把第一把成刀带回藏刀阁。',
       route: 'forge', action: '去锻刀',
     };
   }

@@ -118,14 +118,14 @@ function statTrend(value) {
   return { label: '强劲', width };
 }
 
-export function statRail(stats, directions = null, showValues = false) {
+export function statRail(stats, directions = null, showValues = false, cap = STAT_SOFT_CAP) {
   return el('div', { class: 'stat-rail' }, STAT_KEYS.map((k) => {
-    const v = Math.max(0, Math.min(STAT_SOFT_CAP, Number(stats?.[k]) || 0));
+    const v = Math.max(0, Math.min(cap, Number(stats?.[k]) || 0));
     const d = directions && directions[k];
     const trend = statTrend(v);
     return el('div', { class: 'stat-row', dataset: { k } }, [
       el('span', { class: 'stat-name', text: STAT_META[k].name }),
-      el('div', { class: 'stat-bar' }, [el('i', { style: { width: (showValues ? v / STAT_SOFT_CAP * 100 : trend.width) + '%' } })]),
+      el('div', { class: 'stat-bar' }, [el('i', { style: { width: (showValues ? v / cap * 100 : trend.width) + '%' } })]),
       showValues
         ? el('span', { class: 'stat-dir mono', text: String(Math.round(v)) })
         : el('span', { class: `stat-dir ${d ? 'dir-' + d.key : 'dir-flat'}`, text: d ? d.label : trend.label }),

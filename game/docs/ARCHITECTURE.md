@@ -6,30 +6,42 @@
 
 data 管内容，core 管规则，app/game.js 管当前会话和流程，ui 管 DOM 与交互。platform 提供存储、事件、音效和动效；render/index.js 是上层访问 3D 的门面。
 
-index.html 先加载两份经典 Three.js 脚本，再加载 bootstrap.js。bootstrap 读取存档、创建页面、挂载共享舞台、注册路由，并完成首帧资源准备。主页、锻造和鉴定复用舞台；工坊预览按生命周期释放。
+index.html 依次加载两份经典 Three.js r169 脚本，随后交给 bootstrap.js。默认路由按页面载入 V19 工作台与切割大厅。首页、新锻造与新版藏刀检视轮流使用同一张 V19 画布，切页时停止其帧循环。URL 参数 `?legacy=1` 进入旧流程与旧档案。
 
-渲染默认 v2，后端优先级为 URL 参数、浏览器设置、默认值。可用 `?backend=legacy` 对拍与回退，保留现有内核及资源路径。
+| V19 职责 | 位置 |
+| --- | --- |
+| 选料、控温、锻打与装配 | `src/v19/forge.js`、`src/v19/forgeView.js` |
+| 3D 舞台、刀面与配件 | `src/v19/sharedStage.js`、`src/v19/stage.js`、`src/v19/materials.js` |
+| 2.5D 切割、关卡与战报 | `src/v19/arena/`、`src/v19/tournament.js` |
+| 主档事务、成刀与逐轮结算 | `src/core/v19Progress.js`、`src/core/v19Save.js` |
+| 玻璃界面 | `css/tokens.css`、`css/pages/v19.css` |
 
-存档字段定义和赛事共用展示已分别提取至 saveSchema.js、arenaReportParts.js。game.js、赛事页及渲染门面仍按独立职责逐步拆分。
+玩法和原始视觉资源来自 [BladeLab V19](https://github.com/Imthechou/BladeLab/tree/0b95b6778dca9b4a9c747a7cdd23cc9ad6b38cad)。
 
 ## 存档边界
 
-主档 key 为 `bladeforge.save`，版本仍为 1。有效存档的玩法含义不变。
+4.0 主档使用 `bladeforge.v4.save`。旧流程继续使用 `bladeforge.save`。两个档案各自从对应页面读写。
+
+- 4.0 主档保存信用点、工坊经验、收藏、炉次、逐轮战报、每日奖励凭据与单刀磨合。
+- 成刀保留原矿、精炼、刀面四层、锤痕与装配配方。品质按六维均值分档，稀有度按工艺加权评分分档，门槛定义在 `src/v19/workshop.js`。
+- 图鉴计入 12 种刀型、12 种矿石、12 种纹理、29 项刀面工艺、6 款刀柄、4 种签名刀皮与 30 个流派阶位。签名刀皮在对应靶具上有切割伤害加成。
+- 全国赛五轮与三刀巅峰赛三轮逐轮结算。巅峰赛要求三轮均达标且总评至少 2700 分。赛中刷新会重新开打尚未提交的一轮。
+- 新炉按开工时的工坊等级和已装备专精结算。等级提高稀质矿芯概率、降低配件刷新价格与断裂概率。每日目标按北京时间刷新，工艺目标可用良好以上精炼并成刀完成。
 
 - saveSchema.js 提供默认值和字段修复，保留有效内容、未知字段和完整历史。
 - progress.js 负责成就、归档、赛事、长期进度及专用字段归一化。
 - saveTransaction.js 在草稿中计算，写盘成功后再发布到当前对象，写入失败不发布草稿。
 - platform/storage.js 负责 JSON 与存储，广播 save:persisted / save:failed，UI 提供提示和关键结算重试。
-- 损坏 JSON 或需要字段修复时，尽量把首次原始文本保存在 `bladeforge.save.recovery`；已有备份不覆盖。配额不足时备份也可能失败。
+- 损坏 JSON 或需要字段修复时，尽量把首次原始文本保存在相应主档的 `.recovery` 键中。配额不足时备份也可能失败。
 - 全国赛连续输入检查点独立使用 `bladeforge.national-checkpoint.v1`，依赖 seq / epoch 与主档协作。
 - localStorage 不可用时仅保留当前页面内存状态，并提示玩家。恢复存储能力后需要重新打开页面。
-- 当前是单页面单写者模型，未实现多标签页之间的写入锁。
+- 读取主档后记住原始文本。写入前发现其他标签页已更新时拒绝写入并提示刷新。
 
 存档按浏览器源隔离。启动器固定使用 127.0.0.1:8123，不通过换端口处理冲突。
 
 ## 服务与检查
 
-serve.cjs 导出服务器工厂并保留直接运行方式，默认只监听本机地址。提供静态文件、缓存验证和健康检查。
+serve.cjs 导出服务器工厂并保留直接运行方式，默认只监听本机地址。提供静态文件、文本 gzip、缓存验证和健康检查。
 
 tools/launch.cjs 启动并打开系统浏览器；识别同一目录的已有服务后复用。端口被其他程序占用时说明原因，不结束其他程序。
 

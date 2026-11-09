@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import {loadPlaywright,browserExecutable} from './lib/browser.mjs';
+import {loadPlaywright,browserExecutable, legacyUrl } from './lib/browser.mjs';
 const {chromium}=await loadPlaywright();
 const browser=await chromium.launch({headless:true,executablePath:browserExecutable(),args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage','--ignore-gpu-blocklist']});
 const results=[];
@@ -11,7 +11,7 @@ try {
   const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
   await context.addInitScript(()=>localStorage.setItem('bladeforge.save',JSON.stringify({version:1,settings:{tutorialSeen:true,sound:false,motion:'reduced'}})));
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(String(e)));
-  await page.goto(url);await page.waitForFunction(()=>window.__FORGE_PREP?.ready&&!document.querySelector('#boot'),null,{timeout:120000});
+  await page.goto(legacyUrl(url));await page.waitForFunction(()=>window.__FORGE_PREP?.ready&&!document.querySelector('#boot'),null,{timeout:120000});
   await page.evaluate(async()=>{const G=(await import('/src/app/game.js')).default;G.startForge({seed:123});await G.prewarmCandidates();(await import('/src/ui/router.js')).go('forge');});
   const samples=[],ids=[];
   for(let i=0;i<18;i++) {

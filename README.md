@@ -1,10 +1,10 @@
 # 锻刀大赛 / Blade Forge 3D
 
-浏览器端 3D 锻造、Roguelike 和竞技赛事游戏。
+浏览器端 3D 锻造和切割赛事游戏。4.0 以 BladeLab V19 为锻造和赛事核心，沿用工坊、藏刀和信用点成长规则，使用独立的新版档案。
 
 ## 仓库结构
 
-- `game/`：**可直接修改的 V3 工程源码**，包含 `index.html`、`src/`、`css/`、`assets/`、`tests/` 和设计文档；日常开发以这里为准。
+- `game/`：**可直接修改的游戏源码**，包含 `index.html`、`src/`、`css/`、`assets/`、`tests/` 和设计文档；日常开发以这里为准。
 - `锻刀大赛_v3.0.zip`：原版发布包备份。编辑 `game/` 后**不需要重新压缩 ZIP**。
 - `.github/workflows/pages.yml`：自动运行检查/测试并把 `game/` 部署到 GitHub Pages。
 - `scripts/prepare_site.py`：旧 ZIP 解压工具，仅用作备用部署路径。

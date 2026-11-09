@@ -13,7 +13,7 @@ const Storage = await import('../src/platform/storage.js');
 const { on, EVENTS } = await import('../src/platform/bus.js');
 const { createRun } = await import('../src/core/forge.js');
 const { appraise } = await import('../src/core/appraise.js');
-const key = 'bladeforge.save';
+const key = Storage.STORAGE_KEY;
 
 function fresh() { failWrites = false; entries.clear(); P.resetAll(); }
 

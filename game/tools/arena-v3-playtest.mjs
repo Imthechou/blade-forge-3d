@@ -4,12 +4,12 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {loadPlaywright,browserExecutable} from './lib/browser.mjs';
+import {loadPlaywright,browserExecutable, legacyUrl } from './lib/browser.mjs';
 import {sampleBlade} from './arena-v3-simulate.mjs';
 const {chromium}=await loadPlaywright();
 const out=path.resolve(process.env.ARENA_QA_OUT || 'arena-playtest');fs.mkdirSync(out,{recursive:true});
 let server=null;
-const base=process.env.FORGE_URL || 'http://127.0.0.1:8123/';
+const base=legacyUrl(process.env.FORGE_URL || 'http://127.0.0.1:8123/');
 if(!process.env.FORGE_URL) {
   const {createGameServer}=createRequire(import.meta.url)('../serve.cjs');server=createGameServer();
   await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(8123,'127.0.0.1',resolve);});

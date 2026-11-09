@@ -35,14 +35,22 @@ export const GUIDE = [
   },
 ];
 
+const V19_GUIDE = [
+  { title: '先看矿，再付信用点', desc: '转动原石、打灯或敲石观察。擦窗花费 3 CR，切开后矿芯会留下自己的颜色和纹样。' },
+  { title: '稳住炉温', desc: '按住鼓风，松手散热。在绿区积累精炼质量。达到成坯线即可浇注，继续控温能换取更干净的刀面。' },
+  { title: '从六锤起可以收手', desc: '刀腹偏纹，刃侧偏膜，刀尖偏特效。锤数增加会提高断率，收锤后试装刀柄。' },
+  { title: '用藏刀打比赛', desc: '鉴定会揭晓六维和评分。成刀自动入藏，可带去快赛、流派试炼与更高阶比赛。' },
+];
+
 /**
  * 打开新手引导抽屉。
  * @param {() => void} [onClose] 关闭后回调（首次启动用来记 tutorialSeen）
  */
 export function guideSheet(onClose) {
+  const guide = new URLSearchParams(location.search).has('legacy') ? GUIDE : V19_GUIDE;
   const body = el('div', { class: 'guide' }, [
     el('div', { class: 'guide-intro', text: '只需要知道这四件事，就可以开始锻第一把刀了。' }),
-    ...GUIDE.map((g, i) => el('div', { class: 'guide-item' }, [
+    ...guide.map((g, i) => el('div', { class: 'guide-item' }, [
       el('div', { class: 'guide-n', text: String(i + 1) }),
       el('div', {}, [
         el('div', { class: 'guide-title', text: g.title }),

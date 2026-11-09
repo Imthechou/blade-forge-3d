@@ -25,6 +25,7 @@ import { getTrait } from '../data/traits.js';
 import { COMBOS } from '../data/combos.js';
 import { resultView as edgeResultView } from '../core/edge.js';
 import { tagName } from '../data/tags.js';
+import { signaturePerk, STAT_CAP } from '../v19/forge.js';
 
 /**
  * 把记录里的 `knifeType` 归一成**真实模型 id**。
@@ -76,6 +77,7 @@ export function bladeCardModel(blade, { kind = 'collection' } = {}) {
 
   const traits = Array.isArray(src.traits) ? src.traits : [];
   const combos = Array.isArray(src.combos) ? src.combos : [];
+  const perk = src.v19Visual ? signaturePerk(combos[0]) : null;
 
   /* 核心特性：最多 3 条，优先“有实际赛场职责”的，避免卡面堆满 LEGACY */
   const traitEntries = traits.map((id) => {
@@ -103,7 +105,7 @@ export function bladeCardModel(blade, { kind = 'collection' } = {}) {
       tier: m.tier,
       styleId: m.styleId || null,
       gradient: Number.isFinite(m.gradient) ? m.gradient : null,
-      champion: m?.matchRecord?.champion === true || m?.national?.champion === true,
+      champion: m?.champion === true || m?.matchRecord?.champion === true || m?.national?.champion === true,
       at: m.recordedAt || null,
     }));
 
@@ -112,6 +114,7 @@ export function bladeCardModel(blade, { kind = 'collection' } = {}) {
     name: src.bladeName || src.name || src.id || '未命名',
     kind,
     fractured: src.fractured === true,
+    v19: Boolean(src.v19Visual),
     canEnterArena: src.canEnterArena !== false && src.fractured !== true,
 
     /* 身份 */
@@ -127,7 +130,7 @@ export function bladeCardModel(blade, { kind = 'collection' } = {}) {
     qualityName: src.qualityName || null,
 
     /* 卡面核心信息 */
-    coreTraits,
+    coreTraits: perk ? [perk] : coreTraits,
     traitCount: traits.length,
     comboCount: combos.length,
 
@@ -232,7 +235,7 @@ export function bladeCard(model, {
          再写一次 `${knifeTypeName} · ${quality}` 就会在卡面重复同名。
          只有刀名里没有刀型词时才补刀型，避免「马来剑 / 马来剑 · B」。 */
       el('div', { class: 'bcv-sub', text: sublineOf(model) }),
-      compact ? null : el('div', { class: 'bcv-traits' }, model.coreTraits.length
+      compact || (model.v19 && !model.coreTraits.length) ? null : el('div', { class: 'bcv-traits' }, model.coreTraits.length
         ? model.coreTraits.map((t) => el('span', { class: 'bcv-trait', text: t.name }))
         : [el('span', { class: 'bcv-trait is-empty', text: '无核心特性' })]),
     ]),
@@ -269,18 +272,19 @@ export function bladeCardDetail(model) {
 
   return el('div', { class: 'bcv-detail' }, [
     el('div', { class: 'section-title', text: `六维（均值 ${model.statMean || '—'}）` }),
-    statRail(model.stats, null, true),
+    statRail(model.stats, null, true, model.v19 ? STAT_CAP : undefined),
 
-    el('div', { class: 'section-title', text: `永久特性 ${model.traitCount}` }),
-    model.allTraits.length
-      ? model.allTraits.map((t) => el('div', { class: 'report-line' }, [
-        el('span', { text: `· ${t.name}` }),
-        el('span', { class: 'muted tiny', text: t.arena ? '赛场生效' : '仅六维' }),
-      ]))
-      : el('div', { class: 'muted tiny', text: '无' }),
-
-    el('div', { class: 'section-title', text: '隐藏连携' }),
-    el('div', { class: 'report-line', text: model.combos.length ? model.combos.map((c) => c.name).join('、') : '无' }),
+    ...(model.v19 ? [] : [
+      el('div', { class: 'section-title', text: `永久特性 ${model.traitCount}` }),
+      model.allTraits.length
+        ? model.allTraits.map((t) => el('div', { class: 'report-line' }, [
+          el('span', { text: `· ${t.name}` }),
+          el('span', { class: 'muted tiny', text: t.arena ? '赛场生效' : '仅六维' }),
+        ]))
+        : el('div', { class: 'muted tiny', text: '无' }),
+      el('div', { class: 'section-title', text: '隐藏连携' }),
+      el('div', { class: 'report-line', text: model.combos.length ? model.combos.map((c) => c.name).join('、') : '无' }),
+    ]),
 
     el('div', { class: 'section-title', text: '赛事经历' }),
     ...honorRows,
@@ -296,10 +300,10 @@ export function bladeCardDetail(model) {
       : el('div', { class: 'muted tiny', text: '还没有分项纪录。参加正式赛会按测试项目记录历史最好成绩。' }),
 
     el('div', { class: 'section-title', text: '工艺与风险' }),
-    line('工艺路线', model.history.length ? model.history.join(' → ') : '未记录'),
-    line('Risk 峰值 / 收尾', `${model.riskPeak} / ${model.riskCurrent}`),
-    line('S4 锻打', `${model.hammerCount} 锤${model.hammerTierName ? ` · ${model.hammerTierName}` : ''}`),
-    line('S7 刃线', edgeView ? `${edgeView.label}（贴合 ${edgeView.fitText} · 锋利 +${edgeView.sharp}）` : '未记录'),
+    ...(model.v19 ? [] : [line('工艺路线', model.history.length ? model.history.join(' → ') : '未记录')]),
+    line(model.v19 ? '实际最高断率' : 'Risk 峰值 / 收尾', model.v19 ? `${model.riskPeak}%` : `${model.riskPeak} / ${model.riskCurrent}`),
+    line('锻打', `${model.hammerCount} 锤${model.hammerTierName ? ` · ${model.hammerTierName}` : ''}`),
+    ...(model.v19 ? [] : [line('S7 刃线', edgeView ? `${edgeView.label}（贴合 ${edgeView.fitText} · 锋利 +${edgeView.sharp}）` : '未记录')]),
 
     el('div', { class: 'section-title', text: '档案' }),
     line('档案编号', model.id),

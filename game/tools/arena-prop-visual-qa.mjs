@@ -1,13 +1,13 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {loadPlaywright,browserExecutable} from './lib/browser.mjs';
+import {loadPlaywright,browserExecutable, legacyUrl } from './lib/browser.mjs';
 const {chromium}=await loadPlaywright();
 const out=path.resolve(process.env.ARENA_QA_OUT||'arena-playtest');await fs.mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:true,executablePath:browserExecutable()});
 const page=await browser.newPage({viewport:{width:1100,height:1150},deviceScaleFactor:1});
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));
 try{
- await page.goto(process.env.FORGE_URL||'http://127.0.0.1:8123/');
+ await page.goto(legacyUrl(process.env.FORGE_URL || 'http://127.0.0.1:8123/'));
  const result=await page.evaluate(async()=>{
    const S=await import('/src/ui/arenaSprites.js');await S.prepareArenaSprites();
    const {targetPose}=await import('/src/ui/arenaImpact.js');

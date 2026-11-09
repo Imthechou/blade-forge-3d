@@ -14,10 +14,14 @@
 
 import { MODIFIERS } from '../data/daily.js';
 import { DAILY_TASKS } from '../data/balance.js';
+import { LEGACY_MODE } from '../platform/env.js';
 import * as RNG from '../platform/rng.js';
+import { HEAT } from '../v19/forge.js';
+import { dayKey as tournamentDayKey } from '../v19/tournament.js';
 
-/** 当日 key（本地日期，YYYY-MM-DD） */
+/** 新版目标与每日赛使用北京时间。 */
 export function dayKey(date = new Date()) {
+  if (!LEGACY_MODE) return tournamentDayKey(date.valueOf());
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
@@ -59,10 +63,15 @@ export function dailyPayload(key = dayKey()) {
 
 /* ── 每日任务（V2.1 §22.2 首页今日目标面板） ───────────────── */
 
+const v19TaskNames = { match: '完成一场有效赛事', craft: `精炼质量达到 ${HEAT.good} 并完成鉴定` };
+export const taskDefinitions = LEGACY_MODE ? DAILY_TASKS : DAILY_TASKS.map(task => ({
+  ...task, name: v19TaskNames[task.id] || task.name,
+}));
+
 export function makeTaskState(key = dayKey()) {
   return {
     dayKey: key,
-    tasks: DAILY_TASKS.map((t) => ({ id: t.id, done: false, claimed: false })),
+    tasks: taskDefinitions.map((t) => ({ id: t.id, done: false, claimed: false })),
     /* ★ 2026-10-24：不再写入 `allBonusClaimed`（全勤奖励已取消）。
        旧存档里残留的这个字段由 saveSchema.normalizeSave 直接丢弃，
        不报错、不影响任何已得权益（那 50 CR 本来就没领过，也不再有）。 */
@@ -78,7 +87,7 @@ export function completeTask(state, taskId) {
   const t = state.tasks.find((x) => x.id === taskId);
   if (!t || t.done) return { ok: false, reason: '任务已完成或不存在' };
   t.done = true;
-  const def = DAILY_TASKS.find((x) => x.id === taskId);
+  const def = taskDefinitions.find((x) => x.id === taskId);
   return { ok: true, reward: def ? def.reward : 0 };
 }
 

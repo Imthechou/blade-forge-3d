@@ -1,8 +1,31 @@
 [
   {
     "file": "src/app/bootstrap.js",
-    "bytes": 15491,
-    "lines": 312,
+    "bytes": 2645,
+    "lines": 78,
+    "imports": [
+      "src/core/progress.js",
+      "src/core/v19Progress.js",
+      "src/platform/env.js",
+      "src/platform/index.js",
+      "src/ui/pages/arena.js",
+      "src/ui/pages/daily.js",
+      "src/ui/pages/home.js",
+      "src/ui/pages/v19Arena.js",
+      "src/ui/pages/v19Forge.js",
+      "src/ui/pages/workshop.js",
+      "src/ui/router.js",
+      "src/ui/shell.js",
+      "src/app/bootstrapLegacy.js",
+      "src/app/settings.js"
+    ],
+    "exports": [],
+    "importedBy": []
+  },
+  {
+    "file": "src/app/bootstrapLegacy.js",
+    "bytes": 16369,
+    "lines": 338,
     "imports": [
       "src/core/progress.js",
       "src/data/knifeTypes.js",
@@ -19,16 +42,20 @@
       "src/ui/pages/workshop.js",
       "src/ui/router.js",
       "src/ui/shell.js",
+      "src/ui/stageControls.js",
       "src/ui/tutorial.js",
+      "src/app/game.js",
       "src/app/settings.js"
     ],
     "exports": [],
-    "importedBy": []
+    "importedBy": [
+      "src/app/bootstrap.js"
+    ]
   },
   {
     "file": "src/app/game.js",
-    "bytes": 65174,
-    "lines": 1437,
+    "bytes": 68251,
+    "lines": 1499,
     "imports": [
       "src/core/index.js",
       "src/data/knifeTypes.js",
@@ -40,6 +67,7 @@
       "Game"
     ],
     "importedBy": [
+      "src/app/bootstrapLegacy.js",
       "src/ui/formalTestStage.js",
       "src/ui/pages/appraise.js",
       "src/ui/pages/arena.js",
@@ -64,6 +92,7 @@
     ],
     "importedBy": [
       "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js",
       "src/ui/settingsSheet.js"
     ]
   },
@@ -94,7 +123,7 @@
   },
   {
     "file": "src/core/arena.js",
-    "bytes": 17011,
+    "bytes": 17061,
     "lines": 386,
     "imports": [
       "src/data/arena/events.js",
@@ -126,14 +155,33 @@
     ]
   },
   {
+    "file": "src/core/arenaCareerV41.js",
+    "bytes": 2057,
+    "lines": 47,
+    "imports": [],
+    "exports": [
+      "CAREER_VERSION",
+      "makeCareerV41",
+      "normalizeCareerV41",
+      "recoverCareerMatch",
+      "validateCareerCheckpoint"
+    ],
+    "importedBy": [
+      "src/core/index.js",
+      "src/core/progress.js",
+      "src/core/saveSchema.js"
+    ]
+  },
+  {
     "file": "src/core/arenaChallenge.js",
-    "bytes": 45839,
-    "lines": 777,
+    "bytes": 50734,
+    "lines": 865,
     "imports": [
       "src/data/arena/buffs.js",
       "src/data/balance.js",
       "src/platform/bus.js",
       "src/core/arenaEncounters.js",
+      "src/core/arenaStructures.js",
       "src/core/bladeAdapter.js",
       "src/core/cutParams.js",
       "src/core/forgeTraitCuts.js"
@@ -142,6 +190,7 @@
       "FORMAL_RISK_TBD",
       "CHALLENGE_SECONDS",
       "MATERIALS",
+      "SAMPLE_MATERIALS",
       "ROUTES",
       "FINALES",
       "createChallenge",
@@ -170,8 +219,8 @@
   },
   {
     "file": "src/core/arenaCutBridge.js",
-    "bytes": 2360,
-    "lines": 48,
+    "bytes": 2468,
+    "lines": 49,
     "imports": [],
     "exports": [
       "advanceArenaClock",
@@ -203,8 +252,8 @@
   },
   {
     "file": "src/core/arenaFormal.js",
-    "bytes": 27817,
-    "lines": 658,
+    "bytes": 30443,
+    "lines": 701,
     "imports": [
       "src/data/arena/branches.js",
       "src/data/arena/formalTests.js",
@@ -227,6 +276,7 @@
       "apexAvailable",
       "apexDispatch",
       "apexSubmit",
+      "apexRetryRound",
       "finishApex",
       "NATIONAL_ROUNDS_FORMAL",
       "createNationalMatch",
@@ -265,7 +315,7 @@
   },
   {
     "file": "src/core/arenaSlice.js",
-    "bytes": 14918,
+    "bytes": 14959,
     "lines": 342,
     "imports": [
       "src/data/arena/buffs.js",
@@ -292,6 +342,23 @@
     ],
     "importedBy": [
       "src/core/index.js"
+    ]
+  },
+  {
+    "file": "src/core/arenaStructures.js",
+    "bytes": 8686,
+    "lines": 153,
+    "imports": [],
+    "exports": [
+      "STRUCTURE_VERSION",
+      "STRUCTURE_TEMPLATES",
+      "createStructure",
+      "updateStructure",
+      "structureScore",
+      "structureSnapshot"
+    ],
+    "importedBy": [
+      "src/core/arenaChallenge.js"
     ]
   },
   {
@@ -342,6 +409,83 @@
     "importedBy": [
       "src/core/index.js",
       "src/core/progress.js"
+    ]
+  },
+  {
+    "file": "src/core/arenaV41Growth.js",
+    "bytes": 5270,
+    "lines": 109,
+    "imports": [],
+    "exports": [
+      "XP_THRESHOLDS",
+      "WORKSHOP_TIERS",
+      "workshopLevel",
+      "workshopSnapshot",
+      "makeWorkshopV41",
+      "normalizeWorkshopV41",
+      "awardWorkshopXp",
+      "rarityMultiplier",
+      "discountedRerollCost",
+      "effectiveRiskScale",
+      "migrateVerifiedLegacyGrowth"
+    ],
+    "importedBy": [
+      "src/core/cards.js",
+      "src/core/forge.js",
+      "src/core/hammer.js",
+      "src/core/index.js",
+      "src/core/progress.js",
+      "src/core/saveSchema.js",
+      "src/core/v19Progress.js",
+      "src/v19/workshop.js"
+    ]
+  },
+  {
+    "file": "src/core/arenaV41Rewards.js",
+    "bytes": 2357,
+    "lines": 50,
+    "imports": [],
+    "exports": [
+      "SCHOOL_CR",
+      "SCHOOL_XP",
+      "SCHOOL_FIRST_CR",
+      "SCHOOL_FIRST_XP",
+      "isV41Match",
+      "effectivePrimary",
+      "careerRewardPlan"
+    ],
+    "importedBy": [
+      "src/core/progress.js",
+      "src/core/v19Progress.js"
+    ]
+  },
+  {
+    "file": "src/core/arenaV41Specialties.js",
+    "bytes": 4834,
+    "lines": 90,
+    "imports": [
+      "src/data/cards.js",
+      "src/data/tags.js"
+    ],
+    "exports": [
+      "SPECIALTIES",
+      "BY_BONUS",
+      "specialtyLevel",
+      "validStatStages",
+      "normalizeSpecialtyOptions",
+      "specialtySnapshot",
+      "matchSpecialtyCard",
+      "activeRollSpecialty",
+      "noteSafeRisk",
+      "specialtyTierExplanation"
+    ],
+    "importedBy": [
+      "src/core/cards.js",
+      "src/core/forge.js",
+      "src/core/hammer.js",
+      "src/core/index.js",
+      "src/core/progress.js",
+      "src/core/v19Progress.js"
     ]
   },
   {
@@ -400,12 +544,14 @@
   },
   {
     "file": "src/core/cards.js",
-    "bytes": 6810,
-    "lines": 163,
+    "bytes": 8197,
+    "lines": 182,
     "imports": [
       "src/data/balance.js",
       "src/data/cards.js",
       "src/platform/rng.js",
+      "src/core/arenaV41Growth.js",
+      "src/core/arenaV41Specialties.js",
       "src/core/attributes.js",
       "src/core/risk.js"
     ],
@@ -468,18 +614,22 @@
   },
   {
     "file": "src/core/daily.js",
-    "bytes": 4001,
-    "lines": 107,
+    "bytes": 4494,
+    "lines": 116,
     "imports": [
       "src/data/balance.js",
       "src/data/daily.js",
-      "src/platform/rng.js"
+      "src/platform/env.js",
+      "src/platform/rng.js",
+      "src/v19/forge.js",
+      "src/v19/tournament.js"
     ],
     "exports": [
       "dayKey",
       "seedOfDay",
       "modifierOfDay",
       "dailyPayload",
+      "taskDefinitions",
       "makeTaskState",
       "completeTask",
       "allDone",
@@ -510,13 +660,14 @@
     "importedBy": [
       "src/core/events.js",
       "src/core/index.js",
-      "src/core/progress.js"
+      "src/core/progress.js",
+      "src/core/v19Progress.js"
     ]
   },
   {
     "file": "src/core/edge.js",
-    "bytes": 16574,
-    "lines": 379,
+    "bytes": 16673,
+    "lines": 380,
     "imports": [
       "src/data/balance.js",
       "src/data/bladeEffects.js",
@@ -548,9 +699,10 @@
   },
   {
     "file": "src/core/events.js",
-    "bytes": 8193,
-    "lines": 213,
+    "bytes": 8338,
+    "lines": 216,
     "imports": [
+      "src/platform/env.js",
       "src/core/daily.js",
       "src/core/economy.js"
     ],
@@ -564,17 +716,20 @@
     ],
     "importedBy": [
       "src/core/index.js",
-      "src/core/progress.js"
+      "src/core/progress.js",
+      "src/core/v19Progress.js"
     ]
   },
   {
     "file": "src/core/forge.js",
-    "bytes": 10093,
-    "lines": 286,
+    "bytes": 10764,
+    "lines": 296,
     "imports": [
       "src/data/balance.js",
       "src/data/stages.js",
       "src/platform/rng.js",
+      "src/core/arenaV41Growth.js",
+      "src/core/arenaV41Specialties.js",
       "src/core/attributes.js",
       "src/core/cards.js",
       "src/core/combos.js",
@@ -600,8 +755,8 @@
   },
   {
     "file": "src/core/forgeBonuses.js",
-    "bytes": 5470,
-    "lines": 152,
+    "bytes": 5686,
+    "lines": 157,
     "imports": [
       "src/data/combos.js",
       "src/data/forgeBonuses.js"
@@ -642,11 +797,13 @@
   },
   {
     "file": "src/core/hammer.js",
-    "bytes": 7386,
-    "lines": 174,
+    "bytes": 7672,
+    "lines": 179,
     "imports": [
       "src/data/balance.js",
       "src/data/traits.js",
+      "src/core/arenaV41Growth.js",
+      "src/core/arenaV41Specialties.js",
       "src/core/attributes.js",
       "src/core/risk.js",
       "src/core/tags.js"
@@ -673,14 +830,17 @@
   },
   {
     "file": "src/core/index.js",
-    "bytes": 2647,
-    "lines": 70,
+    "bytes": 2875,
+    "lines": 73,
     "imports": [
       "src/core/appraise.js",
       "src/core/arena.js",
+      "src/core/arenaCareerV41.js",
       "src/core/arenaFormal.js",
       "src/core/arenaSlice.js",
       "src/core/arenaTeam.js",
+      "src/core/arenaV41Growth.js",
+      "src/core/arenaV41Specialties.js",
       "src/core/attributes.js",
       "src/core/bladeAdapter.js",
       "src/core/cards.js",
@@ -713,8 +873,8 @@
   },
   {
     "file": "src/core/progress.js",
-    "bytes": 78538,
-    "lines": 1447,
+    "bytes": 81028,
+    "lines": 1492,
     "imports": [
       "src/data/achievements.js",
       "src/data/arena/branches.js",
@@ -722,11 +882,17 @@
       "src/data/codexCatalog.js",
       "src/data/combos.js",
       "src/data/knifeTypes.js",
+      "src/platform/env.js",
       "src/platform/rng.js",
       "src/platform/storage.js",
+      "src/v19/forge.js",
       "src/core/arena.js",
+      "src/core/arenaCareerV41.js",
       "src/core/arenaChallenge.js",
       "src/core/arenaTeam.js",
+      "src/core/arenaV41Growth.js",
+      "src/core/arenaV41Rewards.js",
+      "src/core/arenaV41Specialties.js",
       "src/core/daily.js",
       "src/core/economy.js",
       "src/core/events.js",
@@ -744,11 +910,16 @@
       "settleQuickChallenge",
       "quickChallengeRecords",
       "archive",
+      "archiveInto",
       "collection",
       "fracturedList",
       "bladeById",
       "setShowcase",
       "renameBlade",
+      "checkpointCareerV41",
+      "activeCareerV41",
+      "clearCareerV41",
+      "hasNationalCrownV41",
       "unlockCodex",
       "codexCount",
       "codexTotal",
@@ -758,6 +929,8 @@
       "addCr",
       "fractureBlade",
       "recordMatch",
+      "applyCareerGrants",
+      "recordBladeMatch",
       "schoolProgress",
       "isGradientUnlocked",
       "normalizeTeamArena",
@@ -772,6 +945,7 @@
       "rolloverDaily",
       "dailyState",
       "equipForgeBonus",
+      "setSpecialtyOptions",
       "forgeBonusView",
       "updateSettings",
       "nextGoal",
@@ -794,16 +968,20 @@
     ],
     "importedBy": [
       "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js",
       "src/app/settings.js",
       "src/core/index.js",
+      "src/core/v19Progress.js",
       "src/ui/pages/home.js",
+      "src/ui/pages/v19Arena.js",
       "src/ui/shell.js",
-      "src/ui/tutorial.js"
+      "src/ui/tutorial.js",
+      "src/v19/forgeView.js"
     ]
   },
   {
     "file": "src/core/quickChallengeRecords.js",
-    "bytes": 2994,
+    "bytes": 3057,
     "lines": 56,
     "imports": [
       "src/core/arenaChallenge.js"
@@ -840,8 +1018,8 @@
   },
   {
     "file": "src/core/risk.js",
-    "bytes": 3746,
-    "lines": 96,
+    "bytes": 3915,
+    "lines": 99,
     "imports": [
       "src/data/balance.js"
     ],
@@ -867,13 +1045,16 @@
   },
   {
     "file": "src/core/saveSchema.js",
-    "bytes": 9041,
-    "lines": 185,
+    "bytes": 9915,
+    "lines": 197,
     "imports": [
       "src/data/balance.js",
       "src/platform/storage.js",
+      "src/core/arenaCareerV41.js",
+      "src/core/arenaV41Growth.js",
       "src/core/daily.js",
-      "src/core/quickChallengeRecords.js"
+      "src/core/quickChallengeRecords.js",
+      "src/core/v19Save.js"
     ],
     "exports": [
       "defaultSettings",
@@ -896,12 +1077,13 @@
       "commitSave"
     ],
     "importedBy": [
-      "src/core/progress.js"
+      "src/core/progress.js",
+      "src/core/v19Progress.js"
     ]
   },
   {
     "file": "src/core/scoring.js",
-    "bytes": 7077,
+    "bytes": 7092,
     "lines": 169,
     "imports": [
       "src/data/balance.js",
@@ -917,7 +1099,8 @@
     ],
     "importedBy": [
       "src/core/appraise.js",
-      "src/core/index.js"
+      "src/core/index.js",
+      "src/core/v19Progress.js"
     ]
   },
   {
@@ -998,10 +1181,68 @@
     ]
   },
   {
-    "file": "src/data/achievements.js",
-    "bytes": 5443,
-    "lines": 71,
+    "file": "src/core/v19Progress.js",
+    "bytes": 11839,
+    "lines": 257,
+    "imports": [
+      "src/data/balance.js",
+      "src/data/knifeTypes.js",
+      "src/platform/bus.js",
+      "src/platform/storage.js",
+      "src/v19/forge.js",
+      "src/v19/tournament.js",
+      "src/v19/workshop.js",
+      "src/core/arenaV41Growth.js",
+      "src/core/arenaV41Rewards.js",
+      "src/core/arenaV41Specialties.js",
+      "src/core/economy.js",
+      "src/core/events.js",
+      "src/core/progress.js",
+      "src/core/saveTransaction.js",
+      "src/core/scoring.js"
+    ],
+    "exports": [
+      "hasFurnace",
+      "hasLiveFurnace",
+      "openFurnace",
+      "recordVisual",
+      "forgeSession",
+      "commitFurnace",
+      "finishAppraisal",
+      "tournamentView",
+      "bladeMastery",
+      "commitTournament",
+      "hasLegacyCareer"
+    ],
+    "importedBy": [
+      "src/app/bootstrap.js",
+      "src/ui/pages/home.js",
+      "src/ui/pages/v19Arena.js",
+      "src/ui/pages/workshop.js",
+      "src/v19/forgeView.js"
+    ]
+  },
+  {
+    "file": "src/core/v19Save.js",
+    "bytes": 1891,
+    "lines": 30,
     "imports": [],
+    "exports": [
+      "normalizeV19"
+    ],
+    "importedBy": [
+      "src/core/saveSchema.js"
+    ]
+  },
+  {
+    "file": "src/data/achievements.js",
+    "bytes": 7160,
+    "lines": 97,
+    "imports": [
+      "src/platform/env.js",
+      "src/v19/forge.js",
+      "src/v19/workshop.js"
+    ],
     "exports": [
       "ACHIEVEMENTS",
       "ACHIEVEMENT_BY_ID",
@@ -1079,7 +1320,7 @@
   },
   {
     "file": "src/data/arena/formalTests.js",
-    "bytes": 3349,
+    "bytes": 3329,
     "lines": 43,
     "imports": [
       "src/data/balance.js"
@@ -1158,7 +1399,7 @@
   },
   {
     "file": "src/data/balance.js",
-    "bytes": 32067,
+    "bytes": 32049,
     "lines": 591,
     "imports": [],
     "exports": [
@@ -1244,6 +1485,7 @@
       "src/core/scoring.js",
       "src/core/tags.js",
       "src/core/testScoring.js",
+      "src/core/v19Progress.js",
       "src/data/arena/formalTests.js",
       "src/data/arena/opponents.js",
       "src/data/cards.js",
@@ -1255,7 +1497,8 @@
       "src/ui/components.js",
       "src/ui/minigameV4.js",
       "src/ui/pages/arena.js",
-      "src/ui/pages/forge.js"
+      "src/ui/pages/forge.js",
+      "src/v19/workshop.js"
     ]
   },
   {
@@ -1304,6 +1547,7 @@
       "cardCount"
     ],
     "importedBy": [
+      "src/core/arenaV41Specialties.js",
       "src/core/cards.js",
       "src/core/progress.js",
       "src/core/recipe.js",
@@ -1330,9 +1574,12 @@
   },
   {
     "file": "src/data/codexCatalog.js",
-    "bytes": 7971,
-    "lines": 231,
+    "bytes": 10021,
+    "lines": 268,
     "imports": [
+      "src/platform/env.js",
+      "src/v19/forge.js",
+      "src/v19/tournament.js",
       "src/data/arena/branches.js",
       "src/data/cards.js",
       "src/data/combos.js",
@@ -1398,8 +1645,8 @@
   },
   {
     "file": "src/data/forgeBonuses.js",
-    "bytes": 4018,
-    "lines": 93,
+    "bytes": 5044,
+    "lines": 109,
     "imports": [],
     "exports": [
       "BONUS_SLOTS",
@@ -1487,11 +1734,12 @@
       "bladeNameOf"
     ],
     "importedBy": [
-      "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js",
       "src/app/game.js",
       "src/core/appraise.js",
       "src/core/bladeAdapter.js",
       "src/core/progress.js",
+      "src/core/v19Progress.js",
       "src/data/codexCatalog.js",
       "src/data/index.js",
       "src/ui/bladeCard.js",
@@ -1767,6 +2015,7 @@
     ],
     "importedBy": [
       "src/core/appraise.js",
+      "src/core/arenaV41Specialties.js",
       "src/core/bladeAdapter.js",
       "src/core/forgeTraitCuts.js",
       "src/core/tags.js",
@@ -1818,8 +2067,8 @@
   },
   {
     "file": "src/platform/audio.js",
-    "bytes": 6748,
-    "lines": 152,
+    "bytes": 7231,
+    "lines": 162,
     "imports": [
       "src/platform/env.js"
     ],
@@ -1833,7 +2082,8 @@
       "list"
     ],
     "importedBy": [
-      "src/platform/index.js"
+      "src/platform/index.js",
+      "src/ui/minigameV4.js"
     ]
   },
   {
@@ -1850,25 +2100,36 @@
     ],
     "importedBy": [
       "src/core/arenaChallenge.js",
+      "src/core/v19Progress.js",
       "src/platform/index.js",
       "src/platform/storage.js"
     ]
   },
   {
     "file": "src/platform/env.js",
-    "bytes": 2191,
-    "lines": 63,
+    "bytes": 2283,
+    "lines": 65,
     "imports": [],
     "exports": [
+      "LEGACY_MODE",
       "env"
     ],
     "importedBy": [
+      "src/app/bootstrap.js",
+      "src/core/daily.js",
+      "src/core/events.js",
+      "src/core/progress.js",
+      "src/data/achievements.js",
+      "src/data/codexCatalog.js",
       "src/platform/audio.js",
       "src/platform/haptics.js",
       "src/platform/index.js",
       "src/platform/storage.js",
       "src/render/index.js",
-      "src/ui/pages/forge.js"
+      "src/ui/pages/daily.js",
+      "src/ui/pages/forge.js",
+      "src/ui/pages/workshop.js",
+      "src/ui/settingsSheet.js"
     ]
   },
   {
@@ -1906,6 +2167,7 @@
     "exports": [],
     "importedBy": [
       "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js",
       "src/app/game.js",
       "src/app/settings.js",
       "src/ui/dom.js",
@@ -1913,7 +2175,10 @@
       "src/ui/pages/appraise.js",
       "src/ui/pages/arena.js",
       "src/ui/settingsSheet.js",
-      "src/ui/shell.js"
+      "src/ui/shell.js",
+      "src/v19/arena/trial.js",
+      "src/v19/forgeView.js",
+      "src/v19/sharedStage.js"
     ]
   },
   {
@@ -1979,18 +2244,20 @@
   },
   {
     "file": "src/platform/storage.js",
-    "bytes": 7094,
-    "lines": 186,
+    "bytes": 7569,
+    "lines": 199,
     "imports": [
       "src/platform/bus.js",
       "src/platform/env.js"
     ],
     "exports": [
+      "STORAGE_KEY",
       "SAVE_VERSION",
       "driver",
       "registerMigration",
       "setDefaultsFactory",
       "defaults",
+      "hasExternalChange",
       "load",
       "migrate",
       "save",
@@ -2007,13 +2274,14 @@
       "src/core/progress.js",
       "src/core/saveSchema.js",
       "src/core/saveTransaction.js",
+      "src/core/v19Progress.js",
       "src/platform/index.js"
     ]
   },
   {
     "file": "src/render/captureRunner.js",
-    "bytes": 10032,
-    "lines": 244,
+    "bytes": 10510,
+    "lines": 251,
     "imports": [],
     "exports": [
       "captureToDataURL",
@@ -2021,21 +2289,40 @@
       "captureStats"
     ],
     "importedBy": [
-      "src/render/index.js"
+      "src/render/index.js",
+      "src/render/legacy/viewer.js"
+    ]
+  },
+  {
+    "file": "src/render/collectionCache.js",
+    "bytes": 3030,
+    "lines": 88,
+    "imports": [],
+    "exports": [
+      "loadThumbnail",
+      "saveThumbnail",
+      "thumbnailCacheStats"
+    ],
+    "importedBy": [
+      "src/render/collectionPreview.js"
     ]
   },
   {
     "file": "src/render/collectionPreview.js",
-    "bytes": 7174,
-    "lines": 186,
+    "bytes": 9483,
+    "lines": 240,
     "imports": [
+      "src/render/collectionCache.js",
       "src/render/index.js"
     ],
     "exports": [
+      "COLLECTION_EXPOSURE",
+      "applyCollectionLighting",
       "collectionStageStats",
       "mountCollectionPreview",
       "disconnectCollectionPreview",
-      "disconnectCollectionPreviews"
+      "disconnectCollectionPreviews",
+      "releaseCollectionPreviewStage"
     ],
     "importedBy": [
       "src/ui/pages/arena.js",
@@ -2075,7 +2362,7 @@
       "chooseStartupPreload"
     ],
     "importedBy": [
-      "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js",
       "src/app/game.js",
       "src/render/index.js",
       "src/render/legacy/viewer.js"
@@ -2083,8 +2370,8 @@
   },
   {
     "file": "src/render/index.js",
-    "bytes": 95789,
-    "lines": 1803,
+    "bytes": 95729,
+    "lines": 1802,
     "imports": [
       "src/data/legacy/cardEffectRecipes.js",
       "src/data/legacy/cardVisuals.js",
@@ -2132,7 +2419,7 @@
       "listModels"
     ],
     "importedBy": [
-      "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js",
       "src/app/game.js",
       "src/render/collectionPreview.js",
       "src/ui/pages/appraise.js",
@@ -2539,9 +2826,10 @@
   },
   {
     "file": "src/render/legacy/viewer.js",
-    "bytes": 80137,
-    "lines": 1450,
+    "bytes": 80679,
+    "lines": 1457,
     "imports": [
+      "src/render/captureRunner.js",
       "src/render/gpuPreparation.js",
       "src/render/renderVisibility.js",
       "src/render/v2/studioEnv.js",
@@ -2567,8 +2855,8 @@
   },
   {
     "file": "src/render/resourceLedger.js",
-    "bytes": 9542,
-    "lines": 248,
+    "bytes": 9794,
+    "lines": 255,
     "imports": [],
     "exports": [
       "GPU_BUDGET_MIB",
@@ -2577,7 +2865,7 @@
       "gpuLedger"
     ],
     "importedBy": [
-      "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js",
       "src/render/index.js"
     ]
   },
@@ -2723,8 +3011,8 @@
   },
   {
     "file": "src/render/v2/studioEnv.js",
-    "bytes": 14204,
-    "lines": 308,
+    "bytes": 15662,
+    "lines": 337,
     "imports": [],
     "exports": [
       "getStudioEnv",
@@ -2751,8 +3039,23 @@
     ]
   },
   {
+    "file": "src/ui/arenaDoodle.js",
+    "bytes": 3118,
+    "lines": 70,
+    "imports": [],
+    "exports": [
+      "MARK_INKS",
+      "MARK_TYPES",
+      "handmarkMetrics",
+      "drawTargetHandmark"
+    ],
+    "importedBy": [
+      "src/ui/arenaStage.js"
+    ]
+  },
+  {
     "file": "src/ui/arenaImpact.js",
-    "bytes": 3406,
+    "bytes": 3431,
     "lines": 67,
     "imports": [],
     "exports": [
@@ -2812,10 +3115,11 @@
   },
   {
     "file": "src/ui/arenaStage.js",
-    "bytes": 54857,
-    "lines": 1113,
+    "bytes": 64108,
+    "lines": 1286,
     "imports": [
       "src/core/arenaChallenge.js",
+      "src/ui/arenaDoodle.js",
       "src/ui/arenaImpact.js",
       "src/ui/arenaSprites.js"
     ],
@@ -2828,8 +3132,8 @@
   },
   {
     "file": "src/ui/bladeCard.js",
-    "bytes": 15146,
-    "lines": 358,
+    "bytes": 15598,
+    "lines": 362,
     "imports": [
       "src/core/edge.js",
       "src/data/balance.js",
@@ -2837,6 +3141,7 @@
       "src/data/knifeTypes.js",
       "src/data/tags.js",
       "src/data/traits.js",
+      "src/v19/forge.js",
       "src/ui/components.js",
       "src/ui/dom.js"
     ],
@@ -2881,8 +3186,8 @@
   },
   {
     "file": "src/ui/components.js",
-    "bytes": 26191,
-    "lines": 523,
+    "bytes": 26301,
+    "lines": 524,
     "imports": [
       "src/data/balance.js",
       "src/data/cards.js",
@@ -2927,7 +3232,7 @@
       "sheet"
     ],
     "importedBy": [
-      "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js",
       "src/ui/arenaReportParts.js",
       "src/ui/bladeCard.js",
       "src/ui/components.js",
@@ -2945,6 +3250,18 @@
       "src/ui/shell.js",
       "src/ui/stageControls.js",
       "src/ui/tutorial.js"
+    ]
+  },
+  {
+    "file": "src/ui/edgeHoningArtwork.js",
+    "bytes": 6164,
+    "lines": 155,
+    "imports": [],
+    "exports": [
+      "renderHoningArtwork"
+    ],
+    "importedBy": [
+      "src/ui/minigameV4.js"
     ]
   },
   {
@@ -3025,15 +3342,17 @@
   },
   {
     "file": "src/ui/minigameV4.js",
-    "bytes": 13151,
-    "lines": 254,
+    "bytes": 14309,
+    "lines": 294,
     "imports": [
       "src/core/edge.js",
       "src/core/hammer.js",
       "src/core/risk.js",
       "src/data/balance.js",
+      "src/platform/audio.js",
       "src/ui/bladeEdgeProjection.js",
       "src/ui/dom.js",
+      "src/ui/edgeHoningArtwork.js",
       "src/ui/icons.js"
     ],
     "exports": [
@@ -3046,8 +3365,8 @@
   },
   {
     "file": "src/ui/pages/appraise.js",
-    "bytes": 29544,
-    "lines": 649,
+    "bytes": 29576,
+    "lines": 647,
     "imports": [
       "src/app/game.js",
       "src/core/edge.js",
@@ -3073,13 +3392,13 @@
       "leave"
     ],
     "importedBy": [
-      "src/app/bootstrap.js"
+      "src/app/bootstrapLegacy.js"
     ]
   },
   {
     "file": "src/ui/pages/arena.js",
-    "bytes": 175840,
-    "lines": 2673,
+    "bytes": 182088,
+    "lines": 2763,
     "imports": [
       "src/app/game.js",
       "src/core/arenaChallenge.js",
@@ -3109,36 +3428,42 @@
       "leave",
       "openDailyChallenge",
       "openQuickChallenge",
+      "openCollectionSample",
       "openTournament",
       "render"
     ],
     "importedBy": [
       "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js",
       "src/ui/pages/appraise.js",
-      "src/ui/pages/daily.js"
+      "src/ui/pages/daily.js",
+      "src/ui/pages/workshop.js"
     ]
   },
   {
     "file": "src/ui/pages/daily.js",
-    "bytes": 1200,
-    "lines": 34,
+    "bytes": 1756,
+    "lines": 44,
     "imports": [
       "src/core/index.js",
+      "src/platform/env.js",
       "src/ui/dom.js",
-      "src/ui/pages/arena.js"
+      "src/ui/pages/arena.js",
+      "src/ui/pages/v19Arena.js"
     ],
     "exports": [
       "create",
       "render"
     ],
     "importedBy": [
-      "src/app/bootstrap.js"
+      "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js"
     ]
   },
   {
     "file": "src/ui/pages/forge.js",
-    "bytes": 25466,
-    "lines": 528,
+    "bytes": 24656,
+    "lines": 513,
     "imports": [
       "src/app/game.js",
       "src/core/cards.js",
@@ -3168,17 +3493,20 @@
       "leave"
     ],
     "importedBy": [
-      "src/app/bootstrap.js"
+      "src/app/bootstrapLegacy.js"
     ]
   },
   {
     "file": "src/ui/pages/home.js",
-    "bytes": 4920,
-    "lines": 120,
+    "bytes": 6846,
+    "lines": 168,
     "imports": [
       "src/app/game.js",
       "src/core/progress.js",
+      "src/core/v19Progress.js",
       "src/render/index.js",
+      "src/v19/forge.js",
+      "src/v19/sharedStage.js",
       "src/ui/components.js",
       "src/ui/dom.js",
       "src/ui/router.js",
@@ -3188,7 +3516,50 @@
     "exports": [
       "create",
       "render",
-      "syncInspect"
+      "syncInspect",
+      "leave"
+    ],
+    "importedBy": [
+      "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js"
+    ]
+  },
+  {
+    "file": "src/ui/pages/v19Arena.js",
+    "bytes": 765,
+    "lines": 33,
+    "imports": [
+      "src/core/progress.js",
+      "src/core/v19Progress.js",
+      "src/v19/arena/view.js",
+      "src/ui/router.js"
+    ],
+    "exports": [
+      "openTournament",
+      "render",
+      "leave",
+      "pauseForSettings"
+    ],
+    "importedBy": [
+      "src/app/bootstrap.js",
+      "src/ui/pages/daily.js",
+      "src/ui/pages/v19Forge.js",
+      "src/ui/pages/workshop.js"
+    ]
+  },
+  {
+    "file": "src/ui/pages/v19Forge.js",
+    "bytes": 486,
+    "lines": 20,
+    "imports": [
+      "src/v19/forgeView.js",
+      "src/ui/pages/v19Arena.js",
+      "src/ui/pages/workshop.js"
+    ],
+    "exports": [
+      "render",
+      "leave",
+      "pauseForSettings"
     ],
     "importedBy": [
       "src/app/bootstrap.js"
@@ -3196,40 +3567,50 @@
   },
   {
     "file": "src/ui/pages/workshop.js",
-    "bytes": 28309,
-    "lines": 561,
+    "bytes": 37934,
+    "lines": 736,
     "imports": [
       "src/app/game.js",
       "src/core/index.js",
+      "src/core/v19Progress.js",
       "src/data/achievements.js",
       "src/data/codexCatalog.js",
       "src/data/combos.js",
       "src/data/knifeTypes.js",
       "src/data/tags.js",
       "src/data/traits.js",
+      "src/platform/env.js",
       "src/render/collectionPreview.js",
       "src/render/index.js",
+      "src/v19/forge.js",
+      "src/v19/sharedStage.js",
+      "src/v19/workshop.js",
       "src/ui/bladeCard.js",
       "src/ui/components.js",
       "src/ui/dom.js",
       "src/ui/icons.js",
-      "src/ui/router.js"
+      "src/ui/router.js",
+      "src/ui/pages/arena.js",
+      "src/ui/pages/v19Arena.js"
     ],
     "exports": [
       "create",
+      "leave",
       "render",
       "openTab"
     ],
     "importedBy": [
       "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js",
       "src/ui/pages/appraise.js",
-      "src/ui/pages/home.js"
+      "src/ui/pages/home.js",
+      "src/ui/pages/v19Forge.js"
     ]
   },
   {
     "file": "src/ui/router.js",
-    "bytes": 2618,
-    "lines": 77,
+    "bytes": 2846,
+    "lines": 81,
     "imports": [
       "src/ui/dom.js"
     ],
@@ -3243,20 +3624,23 @@
     ],
     "importedBy": [
       "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js",
       "src/ui/pages/appraise.js",
       "src/ui/pages/arena.js",
       "src/ui/pages/forge.js",
       "src/ui/pages/home.js",
+      "src/ui/pages/v19Arena.js",
       "src/ui/pages/workshop.js",
       "src/ui/shell.js"
     ]
   },
   {
     "file": "src/ui/settingsSheet.js",
-    "bytes": 5684,
-    "lines": 137,
+    "bytes": 5783,
+    "lines": 138,
     "imports": [
       "src/app/settings.js",
+      "src/platform/env.js",
       "src/platform/index.js",
       "src/ui/dom.js",
       "src/ui/icons.js",
@@ -3271,8 +3655,8 @@
   },
   {
     "file": "src/ui/shell.js",
-    "bytes": 2244,
-    "lines": 72,
+    "bytes": 2410,
+    "lines": 74,
     "imports": [
       "src/core/progress.js",
       "src/platform/index.js",
@@ -3286,13 +3670,14 @@
       "sync"
     ],
     "importedBy": [
-      "src/app/bootstrap.js"
+      "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js"
     ]
   },
   {
     "file": "src/ui/stageControls.js",
-    "bytes": 4985,
-    "lines": 131,
+    "bytes": 1952,
+    "lines": 53,
     "imports": [
       "src/render/index.js",
       "src/ui/dom.js"
@@ -3301,14 +3686,15 @@
       "createStageInspect"
     ],
     "importedBy": [
+      "src/app/bootstrapLegacy.js",
       "src/ui/pages/forge.js",
       "src/ui/pages/home.js"
     ]
   },
   {
     "file": "src/ui/tutorial.js",
-    "bytes": 3742,
-    "lines": 91,
+    "bytes": 4492,
+    "lines": 99,
     "imports": [
       "src/core/progress.js",
       "src/ui/dom.js"
@@ -3322,8 +3708,373 @@
       "hasSeenHint"
     ],
     "importedBy": [
-      "src/app/bootstrap.js",
+      "src/app/bootstrapLegacy.js",
       "src/ui/settingsSheet.js"
+    ]
+  },
+  {
+    "file": "src/v19/arena/audio_bank.js",
+    "bytes": 1447361,
+    "lines": 3,
+    "imports": [],
+    "exports": [],
+    "importedBy": [
+      "src/v19/arena/audio.js"
+    ]
+  },
+  {
+    "file": "src/v19/arena/audio.js",
+    "bytes": 7619,
+    "lines": 125,
+    "imports": [
+      "src/v19/arena/audio_bank.js"
+    ],
+    "exports": [
+      "BladeAudio"
+    ],
+    "importedBy": [
+      "src/v19/arena/trial.js"
+    ]
+  },
+  {
+    "file": "src/v19/arena/trial.js",
+    "bytes": 44613,
+    "lines": 847,
+    "imports": [
+      "src/platform/index.js",
+      "src/v19/forge.js",
+      "src/v19/tournament.js",
+      "src/v19/arena/audio.js"
+    ],
+    "exports": [
+      "loadTargets",
+      "createTrial"
+    ],
+    "importedBy": [
+      "src/v19/arena/view.js"
+    ]
+  },
+  {
+    "file": "src/v19/arena/view.js",
+    "bytes": 24266,
+    "lines": 423,
+    "imports": [
+      "src/v19/forge.js",
+      "src/v19/tournament.js",
+      "src/v19/arena/trial.js"
+    ],
+    "exports": [
+      "mountTournament"
+    ],
+    "importedBy": [
+      "src/ui/pages/v19Arena.js"
+    ]
+  },
+  {
+    "file": "src/v19/blade-looks.js",
+    "bytes": 26698,
+    "lines": 500,
+    "imports": [
+      "src/v19/forge.js"
+    ],
+    "exports": [
+      "lookCodes",
+      "bladeLooksGLSL"
+    ],
+    "importedBy": [
+      "src/v19/materials.js"
+    ]
+  },
+  {
+    "file": "src/v19/forge.js",
+    "bytes": 32513,
+    "lines": 583,
+    "imports": [
+      "src/v19/workshop.js"
+    ],
+    "exports": [
+      "MIN_PRICE",
+      "REFRESH_PRICE",
+      "WINDOW_PRICE",
+      "LOT_SIZE",
+      "BATCHES",
+      "MARK_WIDTH",
+      "MARK_HEIGHT",
+      "PHASES",
+      "FAMILIES",
+      "LOOKS",
+      "MODELS",
+      "GRADES",
+      "ORE_TIERS",
+      "RARE_ODDS",
+      "rareOdds",
+      "fittingPrice",
+      "ORE_VARIANTS",
+      "ORE_MATERIALS",
+      "oreMaterialOf",
+      "ORE_TINTS",
+      "ORE_EXPOSURES",
+      "oreOptics",
+      "oreInspection",
+      "oreModelId",
+      "mineralHeritage",
+      "oreSignals",
+      "STAT_NAMES",
+      "STAT_CAP",
+      "FITS",
+      "HEAT",
+      "REFINEMENT_RESULTS",
+      "REFINEMENT_FAILURES",
+      "refinementRank",
+      "heatBand",
+      "rngFor",
+      "lookVariant",
+      "freshRun",
+      "offers",
+      "familyOf",
+      "stabilityOf",
+      "inspectOre",
+      "modelCandidates",
+      "buyOre",
+      "beginRefining",
+      "pourRefining",
+      "advanceHeat",
+      "fractureRisk",
+      "SIGNATURES",
+      "signaturePerk",
+      "signature",
+      "strike",
+      "finishForge",
+      "fitOptions",
+      "refreshFittings",
+      "appraise"
+    ],
+    "importedBy": [
+      "src/core/daily.js",
+      "src/core/progress.js",
+      "src/core/v19Progress.js",
+      "src/data/achievements.js",
+      "src/data/codexCatalog.js",
+      "src/ui/bladeCard.js",
+      "src/ui/pages/home.js",
+      "src/ui/pages/workshop.js",
+      "src/v19/arena/trial.js",
+      "src/v19/arena/view.js",
+      "src/v19/blade-looks.js",
+      "src/v19/forgeView.js",
+      "src/v19/materials.js",
+      "src/v19/sharedStage.js",
+      "src/v19/stage.js"
+    ]
+  },
+  {
+    "file": "src/v19/forgeMarkup.js",
+    "bytes": 2853,
+    "lines": 46,
+    "imports": [],
+    "exports": [
+      "forgeMarkup"
+    ],
+    "importedBy": [
+      "src/v19/forgeView.js"
+    ]
+  },
+  {
+    "file": "src/v19/forgeView.js",
+    "bytes": 37688,
+    "lines": 702,
+    "imports": [
+      "src/core/progress.js",
+      "src/core/v19Progress.js",
+      "src/platform/index.js",
+      "src/v19/forge.js",
+      "src/v19/forgeMarkup.js",
+      "src/v19/sharedStage.js",
+      "src/v19/sound.js"
+    ],
+    "exports": [
+      "mountForge"
+    ],
+    "importedBy": [
+      "src/ui/pages/v19Forge.js"
+    ]
+  },
+  {
+    "file": "src/v19/knife-details.js",
+    "bytes": 4113,
+    "lines": 75,
+    "imports": [],
+    "exports": [
+      "knifeDetails",
+      "makeFittingHardware"
+    ],
+    "importedBy": [
+      "src/v19/stage.js"
+    ]
+  },
+  {
+    "file": "src/v19/materials.js",
+    "bytes": 29383,
+    "lines": 602,
+    "imports": [
+      "src/v19/blade-looks.js",
+      "src/v19/forge.js"
+    ],
+    "exports": [
+      "surfaceUniforms",
+      "setSurface",
+      "makeBladeMaterial",
+      "makeOreMaterial",
+      "makeMeltMaterial",
+      "makeCutMaterial"
+    ],
+    "importedBy": [
+      "src/v19/stage.js"
+    ]
+  },
+  {
+    "file": "src/v19/ore-section.js",
+    "bytes": 1697,
+    "lines": 42,
+    "imports": [],
+    "exports": [
+      "sectionContour"
+    ],
+    "importedBy": [
+      "src/v19/stage.js"
+    ]
+  },
+  {
+    "file": "src/v19/regions.js",
+    "bytes": 1211,
+    "lines": 28,
+    "imports": [],
+    "exports": [
+      "KNIFE_IDS",
+      "regionAt"
+    ],
+    "importedBy": [
+      "src/v19/stage.js"
+    ]
+  },
+  {
+    "file": "src/v19/render-budget.js",
+    "bytes": 1013,
+    "lines": 27,
+    "imports": [],
+    "exports": [
+      "RenderBudget"
+    ],
+    "importedBy": [
+      "src/v19/stage.js"
+    ]
+  },
+  {
+    "file": "src/v19/sharedStage.js",
+    "bytes": 2023,
+    "lines": 59,
+    "imports": [
+      "src/platform/index.js",
+      "src/v19/forge.js",
+      "src/v19/stage.js"
+    ],
+    "exports": [
+      "attachForgeStage",
+      "releaseForgeStage",
+      "showForgedBlade"
+    ],
+    "importedBy": [
+      "src/ui/pages/home.js",
+      "src/ui/pages/workshop.js",
+      "src/v19/forgeView.js"
+    ]
+  },
+  {
+    "file": "src/v19/sound.js",
+    "bytes": 5670,
+    "lines": 137,
+    "imports": [],
+    "exports": [
+      "ForgeSound"
+    ],
+    "importedBy": [
+      "src/v19/forgeView.js"
+    ]
+  },
+  {
+    "file": "src/v19/stage.js",
+    "bytes": 51919,
+    "lines": 1111,
+    "imports": [
+      "assets/v19/vendor/meshopt_decoder.module.js",
+      "src/v19/forge.js",
+      "src/v19/knife-details.js",
+      "src/v19/materials.js",
+      "src/v19/ore-section.js",
+      "src/v19/regions.js",
+      "src/v19/render-budget.js"
+    ],
+    "exports": [
+      "ForgeStage"
+    ],
+    "importedBy": [
+      "src/v19/sharedStage.js"
+    ]
+  },
+  {
+    "file": "src/v19/tournament.js",
+    "bytes": 11387,
+    "lines": 221,
+    "imports": [],
+    "exports": [
+      "TARGET_NAMES",
+      "GRADIENTS",
+      "EVENTS",
+      "SCHOOLS",
+      "PROJECTS",
+      "APEX_GOAL",
+      "dayKey",
+      "bladeId",
+      "bladeCount",
+      "roundNames",
+      "tournamentState",
+      "eligibleBlades",
+      "masteryOf",
+      "gate",
+      "createEntry",
+      "courseFor",
+      "summarizeRound",
+      "settleRound",
+      "abandonEntry"
+    ],
+    "importedBy": [
+      "src/core/daily.js",
+      "src/core/v19Progress.js",
+      "src/data/codexCatalog.js",
+      "src/v19/arena/trial.js",
+      "src/v19/arena/view.js"
+    ]
+  },
+  {
+    "file": "src/v19/workshop.js",
+    "bytes": 913,
+    "lines": 18,
+    "imports": [
+      "src/core/arenaV41Growth.js",
+      "src/data/balance.js"
+    ],
+    "exports": [
+      "V19_RARITY_MIN",
+      "V19_RISK_GOALS",
+      "appraisalRarity",
+      "appraisalQuality",
+      "workshopPerks"
+    ],
+    "importedBy": [
+      "src/core/v19Progress.js",
+      "src/data/achievements.js",
+      "src/ui/pages/workshop.js",
+      "src/v19/forge.js"
     ]
   }
 ]

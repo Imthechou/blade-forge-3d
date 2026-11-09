@@ -95,7 +95,7 @@ export function computeScore(input) {
       specialMult *= rw;
       specialParts.push({
         id: 'hammer',
-        name: `S4 锻打 ${input.hammerTierName || ''}`.trim(),
+        name: reward.name || `S4 锻打 ${input.hammerTierName || ''}`.trim(),
         mult: rw, kind: 'HAMMER', source: 'hammerTierReward',
       });
     }

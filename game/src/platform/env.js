@@ -32,6 +32,8 @@ function detectHost() {
   return 'web';
 }
 
+export const LEGACY_MODE = new URLSearchParams(globalThis.location?.search).has('legacy');
+
 export const env = Object.freeze({
   host: detectHost(),
   hasLocalStorage: probeLocalStorage(),

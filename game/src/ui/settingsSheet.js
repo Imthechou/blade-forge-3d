@@ -12,6 +12,7 @@
 import { el, mount, sheet } from './dom.js';
 import { icon } from './icons.js';
 import { env, motion } from '../platform/index.js';
+import { LEGACY_MODE } from '../platform/env.js';
 import * as Settings from '../app/settings.js';
 import * as Tutorial from './tutorial.js';
 
@@ -112,7 +113,7 @@ export function open() {
       el('div', { class: 'set-head' }, [
         el('div', { class: 'set-main' }, [
           el('div', { class: 'set-label', text: '新手说明' }),
-          el('div', { class: 'set-hint', text: '重看选卡构筑、数值预览、自由锻打和鉴定说明' }),
+          el('div', { class: 'set-hint', text: LEGACY_MODE ? '重看选卡构筑、自由锻打和鉴定说明' : '重看选料、控温、锻打和切割说明' }),
         ]),
         el('button', {
           class: 'btn btn--icon', 'aria-label':'重看', title:'重看新手说明',

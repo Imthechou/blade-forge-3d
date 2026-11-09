@@ -9,10 +9,10 @@
  * wx.setStorageSync / 文件存储，只需替换 driver，上层不动）。
  */
 
-import { env } from './env.js';
+import { env, LEGACY_MODE } from './env.js';
 import { emit, EVENTS } from './bus.js';
 
-const STORAGE_KEY = 'bladeforge.save';
+export const STORAGE_KEY = LEGACY_MODE ? 'bladeforge.save' : 'bladeforge.v4.save';
 export const SAVE_VERSION = 1;
 
 const memoryDriver = (() => {
@@ -57,8 +57,16 @@ export function defaults() {
   return d;
 }
 
+let observedText;
+
+export const hasExternalChange = () => observedText !== undefined && driver.read() !== observedText;
+
 export function load() {
-  const raw = driver.read();
+  observedText = driver.read();
+  return parseSave(observedText);
+}
+
+function parseSave(raw) {
   if (!raw) return defaults();
   let data;
   try { data = JSON.parse(raw); } catch (_) { backupCurrent(); return defaults(); }
@@ -81,14 +89,18 @@ export function migrate(data) {
   return out;
 }
 
-export function save(data) {
+export function save(data, { overwrite = false } = {}) {
   let ok = false;
+  let stale = false;
   try {
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('invalid save');
     data.version = SAVE_VERSION;
-    ok = driver.write(JSON.stringify(data));
+    const text = JSON.stringify(data);
+    stale = !overwrite && hasExternalChange();
+    ok = !stale && driver.write(text);
+    if (ok) observedText = text;
   } catch (_) { /* 序列化与配额异常使用同一失败边界。 */ }
-  emit(ok ? EVENTS.SAVED : EVENTS.SAVE_FAILED, { driver: driver.name });
+  emit(ok ? EVENTS.SAVED : EVENTS.SAVE_FAILED, { driver: driver.name, stale });
   return ok;
 }
 
@@ -105,11 +117,12 @@ export function backupCurrent() {
 
 export function reset() {
   driver.remove();
+  observedText = null;
   return defaults();
 }
 
 export function exportJson() {
-  return JSON.stringify(load(), null, 2);
+  return JSON.stringify(parseSave(driver.read()), null, 2);
 }
 
 // 由核心注册的纯导入边界变换；平台仍不理解任何玩法字段。
@@ -122,7 +135,7 @@ export function importJson(text) {
   const parsed = JSON.parse(text);
   const data = importBoundary(migrate(parsed));
   backupCurrent();
-  if (!save(data)) throw new Error('保存失败，导入未生效，请重试');
+  if (!save(data, { overwrite: true })) throw new Error('保存失败，导入未生效，请重试');
   return data;
 }
 

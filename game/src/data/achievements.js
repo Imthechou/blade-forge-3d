@@ -9,18 +9,22 @@
  * 本文件只声明条件与奖励，不含判定流程。
  */
 
-export const ACHIEVEMENTS = Object.freeze([
+import { LEGACY_MODE } from '../platform/env.js';
+import { SIGNATURES } from '../v19/forge.js';
+import { V19_RARITY_MIN, V19_RISK_GOALS } from '../v19/workshop.js';
+
+const legacyAchievements = [
   // ── 锻造 ──
   { id: 'AC_first_forge', group: 'forge', name: '第一把刀', desc: '完成第一次锻造', reward: { cr: 30 } },
   { id: 'AC_forge_10', group: 'forge', name: '熟手', desc: '累计完成 10 次锻造', goal: 10, metric: 'forgeCount', reward: { cr: 80 } },
   { id: 'AC_forge_50', group: 'forge', name: '锻造匠人', desc: '累计完成 50 次锻造', goal: 50, metric: 'forgeCount', reward: { cr: 200, unlock: 'title:匠人' } },
 
   // ── 稀有度 ──（2026-10-14：成刀轴扩到 6 档，补齐第 6 档的成就，保持每档各一条）
-  { id: 'AC_rarity_fine', group: 'rarity', name: '初出茅庐', desc: '锻出第一把精良成刀', reward: { cr: 20 } },
-  { id: 'AC_rarity_rare', group: 'rarity', name: '小有名气', desc: '锻出第一把稀有成刀', reward: { cr: 40 } },
-  { id: 'AC_rarity_epic', group: 'rarity', name: '匠艺显现', desc: '锻出第一把史诗成刀', reward: { cr: 80 } },
-  { id: 'AC_rarity_legend', group: 'rarity', name: '名匠之路', desc: '锻出第一把传说成刀', reward: { cr: 150, unlock: 'title:名匠' } },
-  { id: 'AC_rarity_mythic', group: 'rarity', name: '神话初现', desc: '锻出第一把神话成刀', reward: { cr: 300, unlock: 'title:神话锻者' } },
+  { id: 'AC_rarity_fine', group: 'rarity', name: '初出茅庐', desc: '锻出第一把精良成刀', rarity: 'fine', reward: { cr: 20 } },
+  { id: 'AC_rarity_rare', group: 'rarity', name: '小有名气', desc: '锻出第一把稀有成刀', rarity: 'rare', reward: { cr: 40 } },
+  { id: 'AC_rarity_epic', group: 'rarity', name: '匠艺显现', desc: '锻出第一把史诗成刀', rarity: 'epic', reward: { cr: 80 } },
+  { id: 'AC_rarity_legend', group: 'rarity', name: '名匠之路', desc: '锻出第一把传说成刀', rarity: 'legend', reward: { cr: 150, unlock: 'title:名匠' } },
+  { id: 'AC_rarity_mythic', group: 'rarity', name: '神话初现', desc: '锻出第一把神话成刀', rarity: 'mythic', reward: { cr: 300, unlock: 'title:神话锻者' } },
 
   // ── 分数 ──
   { id: 'AC_score_450', group: 'score', name: '登堂入室', desc: '成刀评分达到 450', goal: 450, metric: 'bestScore', reward: { cr: 120 } },
@@ -49,7 +53,29 @@ export const ACHIEVEMENTS = Object.freeze([
   { id: 'AC_collect_types', group: 'collection', name: '刀型收藏家', desc: '收藏至少 6 种不同刀型', goal: 6, metric: 'knifeTypeCount', reward: { cr: 180 } },
   { id: 'AC_codex_50', group: 'codex', name: '见多识广', desc: '图鉴发现 50 项内容', goal: 50, metric: 'codexCount', reward: { cr: 150 } },
   { id: 'AC_daily_7', group: 'daily', name: '七日不辍', desc: '连续七天完成每日任务目标', goal: 7, metric: 'dailyStreak', reward: { cr: 200, unlock: 'edgeSkin:七日' } },
-]);
+];
+
+const scoreGoal = goal => ({ id: 'AC_score_' + goal, goal, desc: `成刀评分达到 ${goal}` });
+const riskGoal = goal => ({ id: 'AC_risk_' + goal, goal, desc: `在单锤断裂概率达到 ${goal}% 后成功成刀` });
+const v19Changes = {
+  AC_first_forge: { desc: '鉴定并收藏第一把成刀', goal: 1, metric: 'bladeCount' },
+  AC_score_450: scoreGoal(V19_RARITY_MIN.legend),
+  AC_score_700: scoreGoal(V19_RARITY_MIN.mythic),
+  AC_risk_60: riskGoal(V19_RISK_GOALS[0]),
+  AC_risk_90: riskGoal(V19_RISK_GOALS[1]),
+  AC_trait_master: { id: 'AC_skin_iii', name: '高阶工艺', desc: '鉴定一把带有 III 档刀面工艺的成刀', metric: 'skinTier', goal: 3 },
+  AC_special_first: { id: 'AC_skin_ii', name: '锋芒初露', desc: '鉴定一把带有 II 档或更高工艺的成刀', metric: 'skinTier', goal: 2 },
+  AC_combo_first: { desc: '鉴定第一把签名刀皮', metric: 'comboFound', goal: 1 },
+  AC_combo_5: { id: 'AC_combo_2', desc: '发现 2 种签名刀皮', goal: 2 },
+  AC_combo_all: { desc: '发现全部签名刀皮', goal: SIGNATURES.length },
+  AC_match_first: { desc: '完成第一场正式赛事' },
+  AC_win_10: { desc: '赢下 10 场正式赛事' },
+  AC_apex_win: { desc: '赢得三刀巅峰赛冠军' },
+  AC_daily_7: { reward: { cr: 200, unlock: 'title:七日不辍' } },
+};
+
+export const ACHIEVEMENTS = Object.freeze(LEGACY_MODE ? legacyAchievements :
+  legacyAchievements.map(achievement => ({ ...achievement, ...v19Changes[achievement.id] })));
 
 export const ACHIEVEMENT_BY_ID = Object.freeze(Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a])));
 export const achievementsOfGroup = (g) => ACHIEVEMENTS.filter((a) => a.group === g);
