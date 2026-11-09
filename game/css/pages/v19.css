@@ -566,6 +566,9 @@
 .v19-surface :is(.secondary, .quiet):hover:not(:disabled) { background: var(--base-2); }
 .v19-surface #heat-button.heating { background: var(--accent-deep); }
 .v19-surface .v19-stage { border-radius: 17px; color: #f3ece5; }
+/* Keep the changing WebGL canvas and heat readout in their own paint regions. */
+#v19-forge .v19-stage,
+#v19-forge .workspace:has(.v19-stage[data-mode="refine"]) > .panel { contain: paint; }
 .v19-surface .v19-stage .stage-code { color: #d8c6af; }
 .v19-surface :is(.grip-focus, .inspection-tools button, .arena-checkpoint button, .round-pause, .report-actions button) {
   min-height: 44px;
