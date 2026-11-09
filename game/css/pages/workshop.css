@@ -445,6 +445,36 @@ button.blade-card-v2 { cursor: pointer; width: 100%; }
 /* Cabinet and preparation share the forge's glass hierarchy. */
 .page[data-page="workshop"] { padding-bottom:0; }
 .ws-body { flex:0 0 auto; }
+.ws-local-head:not([hidden]) { display: flex; gap: 8px; align-items: center; padding: 10px 12px 0; }
+.ws-local-head h1 { margin: 0; font-size: 22px; line-height: 1.2; }
+.ws-local-head h1:focus { outline: none; }
+.ws-return { border-radius: 50%; }
+.ws-destinations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ws-destination {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 121px;
+  padding: 14px;
+  border: 1px solid var(--stage-frame);
+  border-radius: 19px;
+  background: var(--showcase-surface);
+  color: var(--face);
+  font: 750 15px var(--font);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: var(--shadow-1);
+}
+.ws-destination .hex { grid-column: 1 / -1; width: 42px; height: 42px; }
+.ws-destination .hex .ring { stroke: var(--accent-line); }
+.ws-destination .hex .core { fill: var(--accent); }
+.ws-destination:nth-child(even) .hex .core { fill: var(--accent-cool); }
+.ws-destination .ui-icon { color: var(--face-3); }
+.ws-destination:active { background: var(--surface-glass); transform: translateY(1px); }
+[data-theme] .ws-collection-grid .blade-card-v2 { box-shadow: var(--shadow-1); }
+[data-theme] .ws-collection-grid .bcv-compare-btn { background: var(--control-face); }
 .ws-tabhost { border-radius:var(--r-lg); }
 .ws-tabhost .pill-tab { flex:1 1 0; min-width:0; padding-inline:4px; font-size:12px; }
 .ws-collection-controls { gap:9px; padding:12px; }

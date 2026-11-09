@@ -159,12 +159,12 @@ function bevel(points, depth, size) {
 
 function makeAnvil() {
   const group = new T.Group();
-  const dark = new T.MeshStandardMaterial({ color: 0x333136, metalness: .74, roughness: .52 });
-  const top = new T.MeshStandardMaterial({ color: 0x535358, metalness: .83, roughness: .39 });
+  const dark = new T.MeshStandardMaterial({ color: 0x494f60, metalness: .74, roughness: .50 });
+  const top = new T.MeshStandardMaterial({ color: 0x6d7487, metalness: .78, roughness: .39 });
   const base = new T.Mesh(bevel([[-.67, 0], [.67, 0], [.58, .10], [.29, .17], [.22, .34], [.46, .42], [-.46, .42], [-.22, .34], [-.30, .16], [-.60, .09]], .55, .028), dark);
   const crown = new T.Mesh(bevel([[-1.35, .51], [-.62, .55], [-.53, .59], [.67, .59], [.74, .48], [.59, .38], [-.69, .38], [-.98, .43]], .62, .025), top);
   group.add(base, crown);
-  const foot = new T.Mesh(new T.CylinderGeometry(.72, .81, .12, 20), new T.MeshStandardMaterial({ color: 0x292522, roughness: .78 }));
+  const foot = new T.Mesh(new T.CylinderGeometry(.72, .81, .12, 20), new T.MeshStandardMaterial({ color: 0x414455, roughness: .78 }));
   foot.position.y = -.07;
   group.add(foot);
   for (const x of [-.42, .43]) {
@@ -278,7 +278,7 @@ export class ForgeStage {
     this.anvil = makeAnvil();
     this.crucible = makeCrucible();
     this.hammer = makeHammer();
-    this.hammerHome = new T.Vector3(1.37, .54, .56);
+    this.hammerHome = new T.Vector3(1.17, .54, .56);
     this.sparks = makeSparks();
     const trailGeometry = new T.BufferGeometry();
     trailGeometry.setAttribute('position', new T.BufferAttribute(new Float32Array(6), 3));
@@ -604,7 +604,7 @@ export class ForgeStage {
     if (!width || !height) return;
     this.renderer.setSize(width, height, false);
     this.aspect = width / height;
-    const vertical = Math.max(2.0, 3.85 / this.aspect);
+    const vertical = this.verticalSpan = Math.max(2.0, 3.85 / this.aspect);
     this.camera.left = -vertical * this.aspect / 2;
     this.camera.right = vertical * this.aspect / 2;
     this.camera.top = vertical / 2;
@@ -634,7 +634,7 @@ export class ForgeStage {
     if (previous !== this.mode) {
       this.entered = performance.now();
       this.setGripFocus(false);
-      this.turnX = this.turnY = 0;
+      this.resetView();
       if (this.mode !== 'broken') this.clearPieces();
       if (this.mode !== 'reveal') this.clearOrePieces();
       this.inspection = 'natural';
@@ -821,6 +821,11 @@ export class ForgeStage {
     this.turnY += dx * .016;
     this.turnX = clamp(this.turnX + dy * .012, -.9, .9);
     this.invalidate(180);
+  }
+
+  resetView() {
+    this.turnX = this.turnY = 0;
+    this.invalidate();
   }
 
   setGripFocus(enabled) {
@@ -1016,11 +1021,16 @@ export class ForgeStage {
     const shake = this.reduceMotion ? 0 : impulse * (this.lastImpact?.zone === 'tip' ? .045 : .021) * Math.sin(strikeAge / 21);
     const compression = this.reduceMotion ? 0 : impulse * .035 * (1 - clamp(strikeAge / 105, 0, 1));
     const narrow = this.aspect < 1.3;
-    const angle = stone || melt ? -.18 : inspect ? narrow ? .37 : .25 : narrow ? .48 : .29;
+    const upright = Boolean(this.active?.coords);
     const startTurn = mode === 'appraise' && !this.reduceMotion ? .34 * (1 - clamp(elapsed / 1480, 0, 1)) ** 2 : 0;
     const stoneTurn = mode === 'reveal' ? 0 : .28;
     const tap = !this.reduceMotion ? Math.sin((now-(this.tappedAt ?? -5000))*.08)*Math.exp(-(now-(this.tappedAt ?? -5000))/85)*.016 : 0;
-    this.content.rotation.set(stone || melt ? .18 + this.turnX + tap : .055 + this.turnX, stone || melt ? stoneTurn + this.turnY : -.10 + this.turnY + startTurn, angle + shake);
+    if (upright) {
+      // Roll the model's long axis up before applying pitch and world-space yaw.
+      this.content.rotation.set(-.08 + this.turnX, -.24 + this.turnY + startTurn, Math.PI / 2 + shake, 'YXZ');
+    } else {
+      this.content.rotation.set(.18 + this.turnX + tap, stoneTurn + this.turnY, -.18 + shake, 'XYZ');
+    }
     this.content.position.set(stone || melt ? 0 : -.03, (stone || melt ? .04 : working ? .12 : .21) - compression, .10);
     if (melt) {
       this.meltUniforms.meltClock.value = this.reduceMotion || failedRefining ? 0 : t;
@@ -1030,7 +1040,8 @@ export class ForgeStage {
     }
     this.oreUniforms.oreReveal.value = mode === 'reveal' ? clamp((elapsed - 130) / 590, 0, 1) : 0;
     if (this.active?.uniforms.fClock) {
-      this.mesh.scale.setScalar(inspect ? 2.91 : this.shown === 'blank' ? 2.35 : 2.74);
+      const length = this.mesh.geometry.boundingBox.max.x - this.mesh.geometry.boundingBox.min.x;
+      this.mesh.scale.setScalar((this.verticalSpan ?? 3.85) * (working ? .56 : .74) / length);
       const { uniforms } = this.active;
       uniforms.fClock.value = this.reduceMotion ? 0 : t;
       uniforms.fHeat.value = mode === 'refine' ? this.heat : mode === 'forge' && this.shown === 'blank' ? .15 : 0;
@@ -1041,8 +1052,8 @@ export class ForgeStage {
     this.anvil.visible = working && mode !== 'refine' && !failedRefining;
     this.crucible.visible = mode === 'refine' || failedRefining;
     this.crucible.position.set(0, narrow ? -.83 : -.73, -.12);
-    this.anvil.position.set(.10, (narrow ? -.91 : -.78) - compression * .35, -.42);
-    this.anvil.rotation.z = .11;
+    this.anvil.position.set(.10, -.28 * (this.verticalSpan ?? 3.85) - .34 - compression * .35, -.42);
+    this.anvil.rotation.z = .03;
     this.hammer.visible = mode === 'forge' || !!this.blow;
     const revealFlash = mode === 'reveal' && !this.reduceMotion ? Math.exp(-Math.pow((elapsed - 630) / 185, 2)) : 0;
     this.cutFill.intensity = mode === 'reveal' ? 2.5 + revealFlash * .25 : 0;

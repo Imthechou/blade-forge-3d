@@ -9,7 +9,7 @@ import { targetThumbnail, warmTargets } from './targets.js';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 })[character]);
-const seriesModes = ['school', 'national', 'apex'];
+const seriesModes = { school: '流派试炼', national: '全国赛', apex: '巅峰赛' };
 const practiceStyles = { mix: '混合', row: '连斩', heavy: '重劈' };
 const button = (action, label, kind = 'secondary', attrs = '') =>
   `<button class="${kind}" type="button" data-arena-action="${action}" ${attrs}>${label}</button>`;
@@ -25,7 +25,7 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
   let bout, engine, replay;
 
   const state = () => tournamentState(getSave());
-  const isFormal = () => seriesModes.includes(entry.mode);
+  const isFormal = () => Object.hasOwn(seriesModes, entry.mode);
   const currentBlades = () => eligibleBlades(getSave());
 
   function syncSelection(preferred) {
@@ -90,7 +90,6 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
           <h1 tabindex="-1">斩试场</h1>
         </div>
         <div class="arena-hero-art" aria-hidden="true">${keys.map(key => art(key)).join('')}</div>
-        <p>划过一排靶具，打出连斩</p>
       </header>
       <div class="arena-launch">
         ${!loan ? bladeFields(blades) : ''}
@@ -98,26 +97,40 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
           data.active ? button('loan', '借刀练习') : button('register', '开始快赛', 'primary')}
       </div>
       <nav class="arena-shortcuts" aria-label="更多赛事">
-        ${button('mode', '<b>进阶赛</b><span>流派与冠军</span>', 'arena-shortcut', 'data-value="school"')}
-        ${button('mode', '<b>每日</b><span>固定靶序</span>', 'arena-shortcut', 'data-value="daily"')}
-        ${button('mode', '<b>练习</b><span>自选靶具</span>', 'arena-shortcut', 'data-value="practice"')}
+        ${button('mode', '<b>进阶赛</b><span aria-hidden="true">↗</span>', 'arena-shortcut', 'data-value="series"')}
+        ${button('mode', '<b>每日</b><span aria-hidden="true">↗</span>', 'arena-shortcut', 'data-value="daily"')}
+        ${button('mode', '<b>练习</b><span aria-hidden="true">↗</span>', 'arena-shortcut', 'data-value="practice"')}
       </nav>
       ${hasLegacyCareer() ? button('legacy-career', '继续旧赛程', 'arena-text') : ''}
       ${historyList(data)}
     </section>`;
   }
 
+  function renderSeries() {
+    const artKeys = ['bamboo', 'steel', 'shield'];
+    return `<section class="arena-detail">
+      <header class="arena-detail-head">
+        ${button('mode', '‹ 大厅', 'arena-text', 'data-value="quick"')}
+        <h1 tabindex="-1">进阶赛</h1>
+      </header>
+      <nav class="arena-series" aria-label="进阶赛类型">
+        ${Object.entries(seriesModes).map(([mode, label], index) => button('mode',
+          `${art(artKeys[index])}<b>${label}</b><span aria-hidden="true">›</span>`, 'arena-series-entry', `data-value="${mode}"`)).join('')}
+      </nav>
+    </section>`;
+  }
+
   function seriesOptions(data) {
-    const tabs = `<nav class="arena-choices" aria-label="进阶赛类型">${seriesModes.map((mode, i) =>
-      selectButton('mode', mode, ['流派', '全国', '巅峰'][i], mode === entry.mode)).join('')}</nav>`;
-    if (entry.mode !== 'school') return tabs;
+    if (entry.mode !== 'school') return '';
     const cleared = data.schools[entry.school] ?? 0;
-    return tabs + `<label class="arena-select"><span>流派</span>
+    return `<div class="arena-school-fields"><label class="arena-select"><span>流派</span>
       <select data-arena-choice="school" aria-label="流派">${Object.entries(SCHOOLS).map(([key, school]) =>
-        `<option value="${key}" ${entry.school === key ? 'selected' : ''}>${school.name} · ${school.focus}</option>`).join('')}</select>
+        `<option value="${key}" ${entry.school === key ? 'selected' : ''}>${school.name}</option>`).join('')}</select>
       </label>
-      <div class="arena-choices arena-grades" aria-label="试炼阶位">${GRADIENTS.map((name, grade) =>
-        selectButton('grade', grade, grade < cleared ? name + ' ✓' : name, entry.grade === grade, grade > cleared)).join('')}</div>`;
+      <label class="arena-select"><span>阶位</span>
+        <select data-arena-choice="grade" aria-label="试炼阶位">${GRADIENTS.map((name, grade) =>
+          `<option value="${grade}" ${entry.grade === grade ? 'selected' : ''} ${grade > cleared ? 'disabled' : ''}>${name}${grade < cleared ? ' ✓' : ''}</option>`).join('')}</select>
+      </label></div>`;
   }
 
   function practiceOptions() {
@@ -149,13 +162,13 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
     warmTargets(course.waves[0].targets);
     return `<section class="arena-detail">
       <header class="arena-detail-head">
-        ${button('mode', '‹ 返回', 'arena-text', 'data-value="quick"')}
-        <h1 tabindex="-1">${isFormal() ? '进阶赛事' : EVENTS[entry.mode].name}</h1>
+        ${button('mode', isFormal() ? '‹ 进阶赛' : '‹ 大厅', 'arena-text', `data-value="${isFormal() ? 'series' : 'quick'}"`)}
+        <h1 tabindex="-1">${seriesModes[entry.mode] || EVENTS[entry.mode].name}</h1>
       </header>
       ${isFormal() ? seriesOptions(data) : entry.mode === 'practice' ? practiceOptions() : ''}
       <div class="arena-event">
         <div class="arena-event-title">
-          <div><h2>${entry.mode === 'school' ? course.title : entry.mode === 'practice' ? '12 秒试斩' : entry.mode === 'daily' ? '今日挑战' : EVENTS[entry.mode].name}</h2>
+          <div><h2>${entry.mode === 'school' ? course.title : entry.mode === 'practice' ? '12 秒试斩' : entry.mode === 'daily' ? '今日挑战' : '赛前准备'}</h2>
             ${entry.mode === 'daily' && bestDaily ? `<span>最高 ${bestDaily}</span>` : ''}</div>
           <div class="arena-course-art" aria-hidden="true">${targets.map(key => art(key)).join('')}</div>
         </div>
@@ -173,7 +186,7 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
     const blades = currentBlades();
     root.dataset.screen = entry.mode === 'quick' ? 'lobby' : 'detail';
     root.innerHTML = `${notice ? `<p class="arena-alert" role="status">${esc(notice)}</p>` : ''}
-      ${entry.mode === 'quick' ? renderHome(data, blades) : renderDetail(data, blades)}`;
+      ${entry.mode === 'quick' ? renderHome(data, blades) : entry.mode === 'series' ? renderSeries() : renderDetail(data, blades)}`;
     if (settings().sound !== false && settings().volume > 0) warmTrialAudio();
   }
 
@@ -319,11 +332,12 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
 
   root.addEventListener('change', event => {
     const { bladeSlot, arenaChoice } = event.target.dataset;
-    if (bladeSlot == null && arenaChoice !== 'school') return;
+    if (bladeSlot == null && !['school', 'grade'].includes(arenaChoice)) return;
     if (arenaChoice === 'school') chooseSchool(event.target.value);
+    else if (arenaChoice === 'grade') entry.grade = Number(event.target.value);
     else chosen[Number(bladeSlot)] = event.target.value;
     renderLobby();
-    root.querySelector(arenaChoice === 'school' ? '[data-arena-choice="school"]' : `[data-blade-slot="${bladeSlot}"]`)?.focus({ preventScroll: true });
+    root.querySelector(arenaChoice ? `[data-arena-choice="${arenaChoice}"]` : `[data-blade-slot="${bladeSlot}"]`)?.focus({ preventScroll: true });
   });
 
   root.addEventListener('keydown', event => {
@@ -343,10 +357,9 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
       case 'mode':
         if (value === 'school' && !isFormal()) chooseSchool(entry.school);
         entry.mode = value;
-        syncSelection();
+        if (value !== 'series') syncSelection();
         renderLobby();
         return scrollTop();
-      case 'grade': entry.grade = Number(value); break;
       case 'style': entry.style = value; entry.material = ''; break;
       case 'material': entry.material = value; break;
       case 'continue': {

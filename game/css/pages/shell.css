@@ -12,6 +12,7 @@
   border-bottom: 1px solid var(--glass-border);
 }
 .topbar-back,
+.topbar-theme,
 .topbar-gear {
   display: inline-flex;
   align-items: center;
@@ -28,6 +29,7 @@
 }
 .topbar-back { margin-left: -8px; font-size: 20px; }
 .topbar-back:active,
+.topbar-theme:active,
 .topbar-gear:active { background: var(--base-2); transform: scale(.96); }
 .topbar-back[hidden] { display: none; }
 .topbar-mid { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; }
@@ -210,9 +212,13 @@
 .home-stats span { font-size: 11px; }
 @media (min-width: 560px) { #app { border-inline: 1px solid var(--glass-border); } }
 
-.topbar-back,.topbar-gear { border:1px solid var(--glass-border); background:var(--surface-glass); border-radius:var(--r-pill); }
+.topbar-back,.topbar-theme,.topbar-gear { border:1px solid var(--glass-border); background:var(--surface-glass); border-radius:var(--r-pill); }
 .topbar-title { font-size:17px; letter-spacing:-.02em; }
 .topbar-cr { box-shadow:none; }
+[data-theme] .topbar { background: transparent; border-color: var(--line-2); }
+[data-theme] .topbar-cr { background: var(--control-face); border-color: var(--line-2); }
+[data-theme] .topbar-title { font-weight: 800; }
+#app:has(.page.is-active #v19-arena[data-screen="play"]) :is(.topbar-cr, .topbar-theme) { display: none; }
 .home-start { border-radius:var(--r-lg); }
 .home-entry-btn { transition:transform var(--dur-fast) var(--ease),background var(--dur-fast); }
 .home-entry-btn:active { transform:translateY(2px); }

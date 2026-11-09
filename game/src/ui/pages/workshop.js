@@ -1,7 +1,7 @@
 /** 工坊：藏刀阁、成就、锻造加成与图鉴；保留长期玩法与完整检视信息。 */
 import { el, $, clear, mount, toast, sheet } from '../dom.js';
 import { icon } from '../icons.js';
-import { rarityBadge, statRail } from '../components.js';
+import { ICONS, rarityBadge, statRail } from '../components.js';
 import { bladeCardModel, bladeCard, bladeCardDetail, compareModels } from '../bladeCard.js';
 import * as Core from '../../core/index.js';
 import { ACHIEVEMENTS, ACHIEVEMENT_GROUPS } from '../../data/achievements.js';
@@ -31,16 +31,16 @@ const bonusDescriptions = {
 };
 
 const TABS = [
-  { id: 'collection', name: '藏刀阁' },
-  { id: 'achievements', name: '成就' },
-  { id: 'bonuses', name: '锻造加成' },
-  { id: 'codex', name: '图鉴' },
+  { id: 'collection', name: '藏刀阁', icon: 'collection' },
+  { id: 'achievements', name: '成就', icon: 'arena' },
+  { id: 'bonuses', name: '锻造加成', icon: 'forge' },
+  { id: 'codex', name: '图鉴', icon: 'workshop' },
 ];
 
 let root = null;
 let body = null;
 let tabHost = null;
-let tab = 'collection';
+let tab = legacy ? 'collection' : null;
 let detailSequence = 0;
 
 /* ★ rework T13.4：收藏的筛选/排序/比较多刀。
@@ -74,19 +74,20 @@ export function create() {
   root = $('.page[data-page="workshop"]');
   if (!root) return;
   clear(root);
-  tabHost = el('div', { class: 'pill-tabs ws-tabhost', role: 'tablist', 'aria-label': '工坊分类' });
-  body = el('div', { class: 'ws-body', role: 'tabpanel', id: 'workshopPanel', tabindex: '0' });
+  tabHost = el('div', legacy ? { class: 'pill-tabs ws-tabhost', role: 'tablist', 'aria-label': '工坊分类' } : { class: 'ws-local-head' });
+  body = el('div', { class: 'ws-body', role: legacy ? 'tabpanel' : null, id: 'workshopPanel', tabindex: '0' });
   root.append(tabHost, body);
 }
 
 export function leave() {
   releaseCollectionPreviewStage();
+  if (!legacy) tab = null;
 }
 
 export function render() {
   if (!root) create();
   if (!body) return;
-  mount(tabHost, TABS.map((item) => el('button', {
+  if (legacy) mount(tabHost, TABS.map((item) => el('button', {
     class: 'pill-tab' + (item.id === tab ? ' is-on' : ''),
     type: 'button', role: 'tab',
     'aria-selected': String(item.id === tab), 'aria-controls': 'workshopPanel', id: `workshopTab-${item.id}`, tabindex: item.id === tab ? '0' : '-1',
@@ -99,19 +100,33 @@ export function render() {
     },
     text: item.name,
     onclick: () => { tab = item.id; root.scrollTop = 0; render(); tabHost.querySelector('[aria-selected="true"]')?.focus({ preventScroll: true }); },
-  }))); 
-  body.setAttribute('aria-labelledby', `workshopTab-${tab}`);
+  })));
+  if (legacy) body.setAttribute('aria-labelledby', `workshopTab-${tab}`);
+  else {
+    const current = TABS.find(item => item.id === tab);
+    mount(tabHost, current ? [
+      el('button', { class: 'btn btn--icon ws-return', type: 'button', 'aria-label': '返回工坊', onclick: () => openTab(null) }, [icon('back')]),
+      el('h1', { text: current.name, tabindex: '-1' }),
+    ] : []);
+    tabHost.hidden = !current;
+  }
   disconnectCollectionPreviews();
   // Switching away from the archive inside Workshop also frees its idle GPU
   // renderer; leaving the route is handled by leave().
   if (tab !== 'collection') releaseCollectionPreviewStage();
   clear(body);
+  if (!tab) {
+    mount(body, el('nav', { class: 'ws-destinations', 'aria-label': '工坊分类' }, TABS.map(item => el('button', {
+      class: 'ws-destination', type: 'button', onclick: () => openTab(item.id),
+    }, [ICONS[item.icon](false), el('span', { text: item.name }), icon('next')]))));
+    return;
+  }
   ({ collection: renderCollection, achievements: renderAchievements, bonuses: renderBonuses, codex: renderCodex })[tab]();
 }
 
 /** 首页快捷导航可直接进入指定工坊分类。 */
 export function openTab(id) {
-  if (TABS.some((item) => item.id === id)) {
+  if ((!legacy && id === null) || TABS.some((item) => item.id === id)) {
     if (tab !== id && root) root.scrollTop = 0;
     tab = id;
   }
@@ -346,7 +361,7 @@ function inspect(blade) {
   const recipe = blade.v19Visual;
   const modelId = resolveModelId(blade, blade.knifeTypeId);
   const visual = recipe ? null : Game.resolveVisualState(blade, {}, { modelId, viewPreset: 'forge' });
-  const previewHost = el('div', { class: 'blade-detail-stage', role: 'img', 'aria-label': `${blade.bladeName || '成刀'}三维档案外观` });
+  const previewHost = el('div', { class: 'blade-detail-stage', role: recipe ? 'group' : 'img', 'aria-label': `${blade.bladeName || '成刀'}三维档案外观` });
   const previewStatus = el('div', { class: 'blade-detail-stage-status', text: BladeStage.supported ? '正在载入档案外观…' : '此设备不支持 WebGL，档案外观不可预览' });
   /* ★ rework T13.1：详情也读**同一份**展示模型（含赛事经历、工艺、风险）。
      改造前这里另拼了一套 trait/六维/履历，与卡面、赛报各说一套。 */

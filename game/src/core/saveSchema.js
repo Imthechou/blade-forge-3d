@@ -18,6 +18,7 @@ export function defaultSettings() {
     sound: true,             // 音效开关（§29）
     volume: 0.6,             // 音量 0–1
     haptics: true,           // 震动反馈开关（§29；无震动能力的宿主会自动降级）
+    theme: 'light',
     motion: 'auto',          // 减少动态效果：'auto' 跟随系统 / 'reduced' 减少 / 'full' 完整
     reducedMotion: false,    // ⚠ 旧字段，仅为旧档兼容保留；真实取值一律以 motion 为准
     tutorialSeen: false,     // 是否已看过完整新手引导（看完仍可从设置重看，§27）
@@ -40,6 +41,7 @@ export function normalizeSettings(raw) {
 
   if (typeof out.sound !== 'boolean') out.sound = true;
   if (typeof out.haptics !== 'boolean') out.haptics = true;
+  if (out.theme !== 'dark') out.theme = 'light';
   if (typeof out.tutorialSeen !== 'boolean') out.tutorialSeen = false;
 
   const v = Number(out.volume);
