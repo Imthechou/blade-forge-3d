@@ -334,6 +334,7 @@
   --risk-safe: #82DFB7;
   --risk-warn: #FFD089;
   --risk-danger: #FFAD9C;
+  --v19-danger: var(--risk-danger);
   --shadow-1: 0 3px 12px #0C102739;
   --shadow-2: 0 8px 24px #0B102B55;
   --shadow-3: 0 18px 60px #0A0F2A80;
