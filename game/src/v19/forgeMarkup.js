@@ -1,18 +1,13 @@
 export const forgeMarkup = `
-      <nav class="steps" id="steps" aria-label="锻造进度"></nav>
+    <nav class="steps" id="steps" aria-label="锻造进度"></nav>
     <div class="workspace">
       <section class="v19-stage" id="stage" aria-label="3D 工作台">
 
         <div class="stage-top">
-          <div><span id="stage-code" class="stage-code">STATION 01</span><b id="stage-name">原石检视台</b></div>
-          <span class="live"><i></i><span id="stage-state">实物预览</span></span>
+          <b id="stage-name">原石</b>
+          <span class="live" id="stage-state" hidden></span>
         </div>
         <div class="stage-message" id="stage-message" aria-hidden="true"></div>
-        <div id="ore-nav" hidden>
-          <button class="ore-arrow previous" type="button" data-action="ore-prev" aria-label="上一块原石">‹</button>
-          <button class="ore-arrow next" type="button" data-action="ore-next" aria-label="下一块原石">›</button>
-          <span id="ore-position" aria-live="polite"></span>
-        </div>
         <div id="ore-tools" class="ore-tools" hidden>
           <span id="inspection-note" aria-live="polite">转动原石，寻找露脉</span>
           <div class="inspection-tools">
@@ -25,20 +20,19 @@ export const forgeMarkup = `
         <button type="button" id="grip-focus" class="grip-focus" data-action="focus-grip" aria-pressed="false" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4.5 4.5M8 10.5h5m-2.5-2.5v5"/></svg><span>查看刀柄</span>
         </button>
-        <div class="stage-footer"><span id="stage-hint">拖动旋转检视</span><span class="stage-scale"><i></i> LIVE MODEL</span></div>
+        <div class="stage-footer"><span id="stage-hint"></span></div>
       </section>
 
-      <section id="tray" class="tray" aria-label="工作台选项"></section>
       <section class="panel" id="panel" aria-labelledby="title">
         <div class="panel-top">
-          <div class="eyebrow" id="eyebrow"></div>
-          <h1 id="title"></h1>
+          <div class="forge-heading"><h1 id="title"></h1><span id="bench-meta"></span></div>
           <p id="description"></p>
         </div>
+        <div id="tray" class="tray" aria-label="工作台选项"></div>
         <div id="readout"></div>
-        <div class="action-stack" id="actions"></div>
       </section>
     </div>
+    <div class="action-stack forge-dock" id="actions"></div>
 
     <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
     <button type="button" id="save-notice" class="v19-save-notice" hidden></button>

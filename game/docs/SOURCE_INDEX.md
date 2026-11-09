@@ -171,12 +171,14 @@
 | [src/ui/tutorial.js](../src/ui/tutorial.js) | 99 | 4492 | GUIDE, guideSheet, helpSheet, maybeShowFirstRun, hint, hasSeenHint |
 | [src/v19/arena/audio_bank.js](../src/v19/arena/audio_bank.js) | 3 | 1447361 | — |
 | [src/v19/arena/audio.js](../src/v19/arena/audio.js) | 125 | 7619 | BladeAudio |
-| [src/v19/arena/trial.js](../src/v19/arena/trial.js) | 847 | 44613 | loadTargets, createTrial |
-| [src/v19/arena/view.js](../src/v19/arena/view.js) | 423 | 24266 | mountTournament |
+| [src/v19/arena/targets.js](../src/v19/arena/targets.js) | 45 | 1566 | ART_BOUNDS, targetThumbnail, warmTargets, targetSprite |
+| [src/v19/arena/targetThumbnails.js](../src/v19/arena/targetThumbnails.js) | 13 | 43619 | TARGET_THUMBNAILS |
+| [src/v19/arena/trial.js](../src/v19/arena/trial.js) | 857 | 44185 | warmTrialAudio, createTrial |
+| [src/v19/arena/view.js](../src/v19/arena/view.js) | 400 | 20101 | mountTournament |
 | [src/v19/blade-looks.js](../src/v19/blade-looks.js) | 500 | 26698 | lookCodes, bladeLooksGLSL |
 | [src/v19/forge.js](../src/v19/forge.js) | 583 | 32513 | MIN_PRICE, REFRESH_PRICE, WINDOW_PRICE, LOT_SIZE, BATCHES, MARK_WIDTH, MARK_HEIGHT, PHASES, FAMILIES, LOOKS, MODELS, GRADES, ORE_TIERS, RARE_ODDS, rareOdds, fittingPrice, ORE_VARIANTS, ORE_MATERIALS, oreMaterialOf, ORE_TINTS, ORE_EXPOSURES, oreOptics, oreInspection, oreModelId, mineralHeritage, oreSignals, STAT_NAMES, STAT_CAP, FITS, HEAT, REFINEMENT_RESULTS, REFINEMENT_FAILURES, refinementRank, heatBand, rngFor, lookVariant, freshRun, offers, familyOf, stabilityOf, inspectOre, modelCandidates, buyOre, beginRefining, pourRefining, advanceHeat, fractureRisk, SIGNATURES, signaturePerk, signature, strike, finishForge, fitOptions, refreshFittings, appraise |
-| [src/v19/forgeMarkup.js](../src/v19/forgeMarkup.js) | 46 | 2853 | forgeMarkup |
-| [src/v19/forgeView.js](../src/v19/forgeView.js) | 702 | 37688 | mountForge |
+| [src/v19/forgeMarkup.js](../src/v19/forgeMarkup.js) | 40 | 2337 | forgeMarkup |
+| [src/v19/forgeView.js](../src/v19/forgeView.js) | 675 | 32172 | mountForge |
 | [src/v19/knife-details.js](../src/v19/knife-details.js) | 75 | 4113 | knifeDetails, makeFittingHardware |
 | [src/v19/materials.js](../src/v19/materials.js) | 602 | 29383 | surfaceUniforms, setSurface, makeBladeMaterial, makeOreMaterial, makeMeltMaterial, makeCutMaterial |
 | [src/v19/ore-section.js](../src/v19/ore-section.js) | 42 | 1697 | sectionContour |
