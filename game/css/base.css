@@ -176,7 +176,7 @@ body::after {
 }
 .sheet-body { min-height: 0; padding: 16px 20px 20px; overflow-y: auto; overscroll-behavior: contain; }
 body:has(.sheet-mask) #app { pointer-events: none; }
-@supports not (backdrop-filter: blur(1px)) { .sheet { background: #F7F7FE; } }
+@supports not (backdrop-filter: blur(1px)) { .sheet { background: var(--base-1); } }
 
 :where(button,[role="button"],a):focus-visible { outline: 2px solid var(--accent-cool); outline-offset: 3px; }
 button { -webkit-user-select: none; user-select: none; }
@@ -222,6 +222,9 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 .sheet-x-icon {width:19px;height:19px;display:block;pointer-events:none}
 .sheet-x {background:rgba(255,255,255,.55);transition:background .15s,color .15s}
 .sheet-x:hover {background:rgba(234,236,250,.9);color:var(--accent)}
+[data-theme="dark"] .sheet { box-shadow: var(--shadow-3); }
+[data-theme="dark"] .sheet-x { background: var(--control-face); }
+[data-theme="dark"] .sheet-x:hover { background: var(--base-3); }
 
 /* One toolbar language across navigation, result actions and live play. */
 .ui-icon { display:block; width:20px; height:20px; flex:0 0 auto; pointer-events:none; }

@@ -46,6 +46,14 @@ export function mountForge(root, { onArena, onCollection }) {
   let inspectionMode = 'natural';
   let toolStone = '';
   let echoTimer;
+  const reset = get('reset-view');
+  const resetView = () => { if (!busy) stage?.resetView(); };
+  reset.addEventListener('click', resetView);
+  reset.addEventListener('pointerup', event => {
+    // A touch immediately after a canvas drag may not synthesize a click.
+    if (event.pointerType === 'touch' && event.isPrimary &&
+      document.elementFromPoint(event.clientX, event.clientY) === reset) resetView();
+  });
   function showStorageNotice(message) {
     const notice = get('save-notice');
     notice.textContent = message;
@@ -120,13 +128,15 @@ export function mountForge(root, { onArena, onCollection }) {
     const fit = FITS.find(item => item.id === run.fit);
     stageBox.dataset.mode = phase;
     if (phase !== 'refine') stageBox.dataset.danger = 'false';
-    get('steps').innerHTML = stepNames.map((label, n) => `<div class="step ${n === idx ? 'current' : n < idx ? 'past' : ''}" ${n === idx ? 'aria-current="step"' : ''}><i>${n < idx ? '✓' : n + 1}</i>${label}</div>`).join('');
-    const stageLabels = { ore: '原石', reveal: '矿芯切面', refine: '熔炉', forge: MODELS[run.model], fit: '刀柄试装', appraise: '已入藏', broken: '炉次结束' };
-    get('stage-name').textContent = stageLabels[phase];
+    if (changedPhase) {
+      get('steps').innerHTML = `<span><b>${stepNames[idx]}</b><small>0${idx + 1} / 0${stepNames.length}</small></span>
+        <i aria-hidden="true" style="--step-progress:${(idx + 1) / stepNames.length * 100}%"></i>`;
+    }
     get('stage-state').hidden = !webglError;
     get('stage-state').textContent = webglError ? '3D 暂不可用' : '';
-    const hints = { reveal: '拖动看切面', forge: '轻点刀身落锤', fit: '拖动转刀', appraise: '拖动看刀' };
+    const hints = { reveal: '拖动看切面', forge: '轻点落锤 · 拖动旋转', fit: '拖动旋转', appraise: '拖动旋转' };
     get('stage-hint').textContent = hints[phase] || '';
+    reset.hidden = !stage || !['reveal', 'forge', 'appraise'].includes(phase);
     if (phase === 'ore') {
       title('挑一块原石', '第 ' + (run.batch + 1) + ' / ' + BATCHES + ' 批', ore.price > save.credits ? '余额不足，换一块原石' : '');
       readout.replaceChildren();
@@ -172,7 +182,7 @@ export function mountForge(root, { onArena, onCollection }) {
       drawHeat();
     } else if (phase === 'forge') {
       const risk = fractureRisk(run);
-      title('落锤塑形', '', '刀腹偏纹理 · 刃侧偏光泽 · 刀尖偏特效');
+      title(MODELS[run.model], '', '刀腹塑纹 · 刃侧上色 · 刀尖生光');
       readout.innerHTML = `<div class="forge-meters"><div><span>落锤</span><b id="hit-count">${run.hits}${run.hits < 6 ? ' / 6' : ' 锤'}</b></div>
         <div><span>下一锤断率</span><b class="risk-value ${risk >= .075 ? 'alert' : ''}" id="risk">${fmt(risk)}</b>
           <div class="risk-bar"><span style="width:${risk / .9 * 100}%"></span></div></div></div>${lookChips(run)}`;
@@ -614,22 +624,31 @@ export function mountForge(root, { onArena, onCollection }) {
   });
 
   root.addEventListener('pointerdown', event => {
-    if (event.target !== canvas || !event.isPrimary || !stage) return;
-    if (['ore', 'reveal', 'fit', 'appraise'].includes(save.run.phase)) {
+    if (!active || event.target !== canvas || !event.isPrimary || event.button !== 0 || !stage) return;
+    const phase = save.run.phase;
+    if (['ore', 'reveal', 'forge', 'fit', 'appraise'].includes(phase)) {
       canvas.setPointerCapture(event.pointerId);
-      drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
-    } else if (save.run.phase === 'forge') {
-      const hit = stage.hit(event.clientX, event.clientY);
-      hitBlade(hit);
+      drag = { id: event.pointerId, phase, x: event.clientX, y: event.clientY, turned: false };
     }
   });
   root.addEventListener('pointermove', event => {
     if (drag?.id !== event.pointerId) return;
-    stage.turn(event.clientX - drag.x, event.clientY - drag.y);
+    const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+    if (!drag.turned && Math.hypot(dx, dy) < 7) return;
+    drag.turned = true;
+    if (!busy && save.run.phase === drag.phase) stage.turn(dx, dy);
     drag.x = event.clientX;
     drag.y = event.clientY;
   });
-  root.addEventListener('lostpointercapture', () => { drag = null; });
+  root.addEventListener('pointerup', event => {
+    if (drag?.id !== event.pointerId) return;
+    const tap = !drag.turned && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 7;
+    if (tap && drag.phase === 'forge' && save.run.phase === 'forge') hitBlade(stage.hit(event.clientX, event.clientY));
+    drag = null;
+  });
+  root.addEventListener('lostpointercapture', event => {
+    if (drag?.id === event.pointerId) drag = null;
+  });
 
 
   return {

@@ -70,6 +70,12 @@ export function createTrial(frame, course, blade, { muted, volume, onPause, onFi
   const canvas = frame.querySelector('canvas');
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) throw new Error('浏览器无法开启切割画布');
+  const colors = getComputedStyle(frame);
+  const color = name => colors.getPropertyValue(name).trim();
+  const wall = color('--arena-wall'), horizon = color('--arena-horizon'), floor = color('--arena-floor');
+  const glow = color('--arena-glow'), grid = color('--stage-grid'), shadow = color('--stage-shadow');
+  const label = color('--face-2'), mutedLabel = color('--face-3'), positive = color('--arena-positive');
+  const ink = color('--stage-ink');
   const ui = Object.fromEntries([...frame.querySelectorAll('[data-trial]')].map(node => [node.dataset.trial, node]));
   const input = new AbortController();
   const rng = gameplayRng(course.seed);
@@ -508,41 +514,36 @@ export function createTrial(frame, course, blade, { muted, volume, onPause, onFi
     if(t.cracks.length>22)t.cracks.splice(0,t.cracks.length-22);
   }
 
-  function makeBackdrop(){
-    const b=document.createElement('canvas');b.width=canvas.width;b.height=canvas.height;
-    const c=b.getContext('2d'),r=seeded(86231);
-    c.setTransform(DPR,0,0,DPR,0,0);
-    c.fillStyle=grad(c,0,0,0,H,[[0,'#25221f'],[.45,'#1d2020'],[.72,'#242526'],[1,'#121515']]);c.fillRect(0,0,W,H);
-    c.fillStyle=radial(c,W*.50,H*.36,Math.max(W*.6,H*.75),[[0,'#69503f55'],[.43,'#4a3e3733'],[.77,'#1c1c1c00'],[1,'#12131300']]);c.fillRect(0,0,W,H);
-    const shaft=grad(c,W*.50,0,W*.72,H*.73,[[0,'#f5bc8608'],[.36,'#e1c39d0a'],[1,'#cbbba800']]);
-    c.fillStyle=shaft;c.beginPath();c.moveTo(W*.22,0);c.lineTo(W*.66,0);c.lineTo(W*.92,H*.75);c.lineTo(W*.08,H*.75);c.closePath();c.fill();
-    c.strokeStyle='#c3ad8a0b';c.lineWidth=1;
-    for(let i=0;i<24;i++){
-      const xx=i*W/23;c.beginPath();c.moveTo(xx,0);c.lineTo(xx+W*.12,H*.75);c.stroke();
+  function makeBackdrop() {
+    const buffer = document.createElement('canvas');
+    buffer.width = canvas.width;
+    buffer.height = canvas.height;
+    const c = buffer.getContext('2d');
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.fillStyle = grad(c, 0, 0, 0, H, [[0, wall], [.66, horizon], [1, floor]]);
+    c.fillRect(0, 0, W, H);
+    c.fillStyle = radial(c, W * .50, H * .39, Math.max(W * .63, H * .54), [[0, glow], [1, glow.slice(0, 7) + '00']]);
+    c.fillRect(0, 0, W, H);
+
+    const y = H * .70;
+    const rx = W * .43, ry = Math.min(H * .095, 78);
+    strokeLine(c, [0, y, W, y], grid);
+    for (let i = -4; i <= 4; i++) {
+      strokeLine(c, [W * (.5 + i * .057), y, W * (.5 + i * .21), H], grid);
     }
-    // Workshop wall: subtle architectural seams and light strips.
-    const yH=H*.72;
-    c.strokeStyle='#a78d6d18';for(let j=1;j<=3;j++){c.beginPath();c.moveTo(0,H*j*.17);c.lineTo(W,H*j*.17);c.stroke();}
-    c.strokeStyle='#b9a38b1c';c.lineWidth=2;c.beginPath();c.moveTo(0,yH);c.lineTo(W,yH);c.stroke();
-    c.fillStyle=grad(c,0,yH,0,H,[[0,'#1b2021'],[.5,'#252729'],[1,'#171919']]);c.fillRect(0,yH,W,H-yH);
-    c.strokeStyle='#c5aa8b15';c.lineWidth=1;
-    for(let i=-8;i<=8;i++){
-      const x=W/2+i*W*.065;c.beginPath();c.moveTo(W/2,H*.71);c.lineTo(x,H);c.stroke();
-    }
-    for(let j=1;j<8;j++){const t=j/8,y=lerp(yH,H,t*t);c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke();}
-    // Stage ring, crisp technical markings, a projected platform rather than a flat backdrop.
-    const floorY=H*.715,rx=Math.min(W*.41,360),ry=Math.min(H*.145,95);
-    c.fillStyle=radial(c,W*.5,floorY,rx*1.4,[[0,'#bd8d6417'],[.63,'#73574112'],[1,'#1d1d1d00']]);c.beginPath();c.ellipse(W*.5,floorY,rx*1.55,ry*1.7,0,0,TAU);c.fill();
-    c.fillStyle='#252c2dce';c.beginPath();c.ellipse(W/2,floorY+7,rx+15,ry+10,0,0,TAU);c.fill();
-    c.strokeStyle='#a78d7152';c.lineWidth=1.3;c.beginPath();c.ellipse(W/2,floorY,rx,ry,0,0,TAU);c.stroke();
-    c.strokeStyle='#c1a38c20';c.lineWidth=1;c.beginPath();c.ellipse(W/2,floorY,rx*.89,ry*.84,0,0,TAU);c.stroke();
-    for(let i=0;i<44;i++){const a=i/44*TAU,rr=rx+(i%4===0?11:6);c.strokeStyle=i%4===0?'#b99e7a38':'#98877523';c.beginPath();c.moveTo(W*.5+Math.cos(a)*(rx-2),floorY+Math.sin(a)*ry);c.lineTo(W*.5+Math.cos(a)*rr,floorY+Math.sin(a)*(ry+5));c.stroke();}
-    for(let i=0;i<58;i++){
-      c.globalAlpha=r()*.21;c.fillStyle='#e4c9a6';const x=r()*W,y=r()*H*.72;c.fillRect(x,y,r()*1.6+.3,r()*2+.3);
-    }c.globalAlpha=1;
-    c.fillStyle='#d4ba9b08';c.fillRect(W*.025,H*.23,2,H*.4);c.fillRect(W*.975,H*.23,2,H*.4);
-    c.strokeStyle='#9d8b7830';c.beginPath();c.moveTo(W*.035,H*.31);c.lineTo(W*.035,H*.25);c.lineTo(W*.095,H*.25);c.moveTo(W*.965,H*.31);c.lineTo(W*.965,H*.25);c.lineTo(W*.905,H*.25);c.stroke();
-    return b;
+    c.beginPath();
+    c.ellipse(W / 2, y + 8, rx, ry, 0, 0, TAU);
+    c.fillStyle = shadow;
+    c.fill();
+    c.beginPath();
+    c.ellipse(W / 2, y, rx, ry, 0, 0, TAU);
+    c.fillStyle = grad(c, 0, y - ry, 0, y + ry, [[0, wall], [1, horizon]]);
+    c.fill();
+    c.strokeStyle = grid;
+    c.stroke();
+    strokeLine(c, [W * .08, H * .34, W * .08, H * .28, W * .15, H * .28], grid, 1.4);
+    strokeLine(c, [W * .92, H * .34, W * .92, H * .28, W * .85, H * .28], grid, 1.4);
+    return buffer;
   }
   function renderBackground(){
     if(!backdrop)backdrop=makeBackdrop();
@@ -559,7 +560,7 @@ export function createTrial(frame, course, blade, { muted, volume, onPause, onFi
   function shadowForTarget(t){
     const x=t.x,y=H*.685;const sx=t.heavy?100:66;
     const g=ctx.createRadialGradient(x,y,0,x,y,sx*t.scale);
-    g.addColorStop(0,'#020b12a8');g.addColorStop(.55,'#040c1460');g.addColorStop(1,'#06172200');
+    g.addColorStop(0, shadow);g.addColorStop(1, shadow.slice(0, 7) + '00');
     ctx.save();ctx.fillStyle=g;ctx.translate(x,y);ctx.scale(1,.26);ctx.beginPath();ctx.arc(0,0,sx*t.scale,0,TAU);ctx.fill();ctx.restore();
   }
   function drawCracks(t){
@@ -637,19 +638,19 @@ export function createTrial(frame, course, blade, { muted, volume, onPause, onFi
     // Centered nameplate, integrated with 3D target. Heavy mode also has segmented HP bar.
     const tagY=t.y+108*t.scale;
     c.textAlign='center';c.font=`650 ${clamp(11*unit,10,14)}px system-ui`;
-    if(!t.heavy){c.fillStyle='#b8cfd2';c.fillText(t.m.name,t.x,tagY);}
+    if(!t.heavy){c.fillStyle=label;c.fillText(t.m.name,t.x,tagY);}
     if(!t.heavy && t.strikes.length){
       const penetration=Math.round(t.cutDepth*100);
       c.font=`650 ${clamp(9*unit,9,11)}px system-ui`;
-      c.fillStyle=state.time<t.statusUntil?'#ccf5e6':'#90aab2';
+      c.fillStyle=state.time<t.statusUntil?positive:mutedLabel;
       c.fillText((state.time<t.statusUntil?t.statusText+' · ':'切深 ')+penetration+'%',t.x,tagY+31*unit);
     }
     if(t.heavy){
       const bw=Math.min(W*.44,180*unit),h=Math.max(4,5*unit),py=tagY+5*unit;
-      c.fillStyle='#1f3e49';roundRect(c,t.x-bw/2,py,bw,h,h/2);c.fill();
+      c.fillStyle=grid;roundRect(c,t.x-bw/2,py,bw,h,h/2);c.fill();
       const p=clamp(t.hp/t.maxHp,0,1);
-      if(p>0){c.fillStyle=p<.25?'#e5a275':'#86d5c0';roundRect(c,t.x-bw/2,py,bw*p,h,h/2);c.fill();}
-      c.fillStyle='#93aeb5';c.font=`600 ${clamp(9*unit,9,11)}px system-ui`;c.fillText(state.time<t.statusUntil ? t.statusText+' · '+Math.round((1-p)*100)+'% 切深' : Math.round(p*100)+'% 结构完整度',t.x,py+19*unit);
+      if(p>0){c.fillStyle=p<.25?'#d38964':positive;roundRect(c,t.x-bw/2,py,bw*p,h,h/2);c.fill();}
+      c.fillStyle=mutedLabel;c.font=`600 ${clamp(9*unit,9,11)}px system-ui`;c.fillText(state.time<t.statusUntil ? t.statusText+' · '+Math.round((1-p)*100)+'% 切深' : Math.round(p*100)+'% 结构完整度',t.x,py+19*unit);
     }
   }
   function drawTargetArt(target, sprite) {
@@ -727,9 +728,9 @@ export function createTrial(frame, course, blade, { muted, volume, onPause, onFi
     if(!state.feel)return;
     for(const s of state.slashes){
       const a=clamp(s.life/s.maxLife,0,1),len=s.length*(1.22-.22*a);
-      ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.angle);ctx.globalCompositeOperation='screen';
+      ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.angle);
       ctx.globalAlpha=a*.75;ctx.shadowBlur=(15+8*a)*unit;ctx.shadowColor=s.color;
-      ctx.strokeStyle=s.color;ctx.lineWidth=8*unit*a;ctx.beginPath();ctx.moveTo(-len,0);ctx.quadraticCurveTo(0,-7*unit,len,0);ctx.stroke();
+      ctx.strokeStyle=ink;ctx.lineWidth=6*unit*a;ctx.beginPath();ctx.moveTo(-len,0);ctx.quadraticCurveTo(0,-7*unit,len,0);ctx.stroke();
       ctx.shadowBlur=0;ctx.strokeStyle='#ffffff';ctx.lineWidth=Math.max(.7,2.2*unit*a);ctx.stroke();ctx.restore();
     }
   }
@@ -747,7 +748,7 @@ export function createTrial(frame, course, blade, { muted, volume, onPause, onFi
         const glow=(state.feel?.7:.3)*alpha;
         ctx.save();ctx.lineCap='round';ctx.strokeStyle=`rgba(90,243,219,${glow*.42})`;ctx.lineWidth=16*unit*alpha;ctx.shadowColor='#5cf3e3';ctx.shadowBlur=state.feel?20*unit:3;
         ctx.beginPath();ctx.moveTo(prev.x,prev.y);ctx.lineTo(cur.x,cur.y);ctx.stroke();
-        ctx.shadowBlur=0;ctx.strokeStyle=`rgba(186,255,240,${glow*.93})`;ctx.lineWidth=Math.max(1,5*unit*alpha);ctx.stroke();
+        ctx.shadowBlur=0;ctx.globalAlpha=glow*.85;ctx.strokeStyle=ink;ctx.lineWidth=Math.max(1,5*unit*alpha);ctx.stroke();
         ctx.strokeStyle=`rgba(252,255,250,${glow})`;ctx.lineWidth=Math.max(.7,1.8*unit*alpha);ctx.stroke();ctx.restore();
       }
     }

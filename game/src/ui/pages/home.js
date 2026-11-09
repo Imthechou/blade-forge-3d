@@ -14,7 +14,7 @@ let inspectCtl = null;
 const ENTRIES = [
   { label: '赛事', icon: 'arena', go: () => router.go('arena') },
   { label: '藏刀阁', icon: 'collection', go: () => import('./workshop.js').then(m => m.openTab('collection')) },
-  { label: '工坊', icon: 'workshop', go: () => import('./workshop.js').then(m => m.openTab('bonuses')) },
+  { label: '工坊', icon: 'workshop', go: () => import('./workshop.js').then(m => m.openTab(legacy ? 'bonuses' : null)) },
 ];
 
 export function create({ legacy: old = null } = {}) {
@@ -76,7 +76,7 @@ export function render() {
       ICONS.forge(true),
       el('div', { class: 'home-start-copy' }, [
         el('span', { class: 'home-start-title', text: canResume ? '继续锻刀' : '开始锻刀' }),
-        el('small', { text: canResume ? '接续工序 · 保留当前构筑' : legacy ? '十道工序 · 自由构筑' : '选料、精炼、锻打、装配、鉴定' }),
+        legacy ? el('small', { text: canResume ? '接续工序 · 保留当前构筑' : '十道工序 · 自由构筑' }) : null,
       ]),
       el('b', { text: '→', 'aria-hidden': 'true' }),
     ]),
@@ -86,12 +86,12 @@ export function render() {
       'aria-label': entry.label,
       onclick: entry.go,
     }, [ICONS[entry.icon](false), el('span', { text: entry.label })]))),
-    el('div', { class: 'home-stats', 'aria-label': '长期进度' }, [
+    (legacy || summary.collectionCount || summary.matchWins) ? el('div', { class: 'home-stats', 'aria-label': '长期进度' }, [
       summaryItem('最高评分', summary.bestScore),
       summaryItem('赛事胜场', summary.matchWins),
       summaryItem('藏刀', `${summary.collectionCount} 把`),
       summaryItem('图鉴', `${Math.round(summary.codexProgress * 100)}%`),
-    ]),
+    ]) : document.createDocumentFragment(),
   );
 
   if (!legacy) {

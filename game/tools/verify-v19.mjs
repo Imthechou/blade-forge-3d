@@ -53,8 +53,16 @@ async function runFlow() {
     await page.getByRole('button', { name: '开始锻刀' }).waitFor();
     await page.waitForFunction(() => window.drawCount > 0);
     await shot('01-home');
+    assert.equal(await page.getByRole('navigation', { name: '游戏主导航' }).isVisible(), true);
+    await page.getByRole('button', { name: '切换到暗色模式' }).tap();
+    await page.reload();
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark' && window.drawCount > 0);
+    await shot('01-home-dark');
+    await page.getByRole('button', { name: '切换到浅色模式' }).tap();
     await page.getByRole('button', { name: '开始锻刀' }).tap();
     await page.waitForFunction(() => document.querySelectorAll('.ore-thumbnail.is-loaded').length === 3);
+    assert.equal(await page.getByRole('navigation', { name: '游戏主导航' }).isVisible(), false);
+    assert.match(await page.locator('#steps').textContent(), /选料.*01 \/ 05/);
     await shot('02-ore');
     await forge('inspect-light').tap();
     await forge('window-ore').tap();
@@ -117,7 +125,15 @@ async function runFlow() {
         const hit = stage.keyboardHit();
         return hit && stage.project(hit.world, stage.canvas.getBoundingClientRect());
       };
+      window.bladeView = () => [stage.content.rotation.z, stage.turnY];
     });
+    const forgeCanvas = page.locator('#stage canvas');
+    await page.waitForFunction(() => window.strikePoint() && Math.abs(window.bladeView()[0] - Math.PI / 2) < .05);
+    await swipeStage(cdp, await forgeCanvas.boundingBox());
+    assert.notEqual((await page.evaluate(() => window.bladeView()))[1], 0);
+    assert.equal(await page.locator('#hit-count').textContent(), '0 / 6');
+    await page.getByRole('button', { name: '复位视角' }).tap();
+    await page.waitForFunction(() => window.bladeView()[1] === 0);
     for (let hit = 1; hit <= 6; hit++) {
       await page.waitForFunction(() => window.strikePoint());
       const { x, y } = await page.evaluate(() => window.strikePoint());
@@ -150,7 +166,9 @@ async function runFlow() {
     await page.getByRole('button', { name: '12秒短试刀' }).tap();
     await arena('mode').and(page.locator('[data-value="quick"]')).tap();
     await shot('08-lobby');
+    await arena('mode').and(page.locator('[data-value="series"]')).tap();
     await arena('mode').and(page.locator('[data-value="school"]')).tap();
+    assert.equal(await page.getByRole('navigation', { name: '进阶赛类型' }).count(), 0);
     await shot('08-series');
     assert.equal(await page.locator('[data-blade-slot="0"]').inputValue(), blade.id);
     await arena('register').tap();
@@ -208,13 +226,15 @@ async function runFlow() {
     await page.reload();
     assert.equal((await save()).arena.history.at(-1).v19.report.win, true);
     await page.goto(new URL('#/workshop', base).href);
-    await page.getByRole('tab', { name: '图鉴', exact: true }).tap();
+    await page.getByRole('button', { name: '图鉴', exact: true }).tap();
+    assert.equal(await page.getByRole('navigation', { name: '工坊分类' }).count(), 0);
     await page.getByText(/已发现 \d+ \/ 105 项/).waitFor();
     await shot('12-codex');
-    await page.getByRole('tab', { name: '锻造加成', exact: true }).tap();
+    await page.getByRole('button', { name: '返回工坊' }).tap();
+    await page.getByRole('button', { name: '锻造加成', exact: true }).tap();
     await page.getByText(/稀质矿芯概率/).waitFor();
     await shot('13-growth');
-    console.log('390×844 · 锻造、藏刀、赛事结算、图鉴和成长、独立存档、双标签页、设置暂停与音量通过');
+    console.log('390×844 · 双主题、竖刀拖转、触控落锤、锻造与赛事结算、工坊导航、独立存档与设置通过');
   } finally {
     await context.close();
   }
@@ -237,12 +257,19 @@ async function smallScreens() {
       await page.screenshot({ path: path.join(out, `forge-${width}x${height}.png`) });
       await page.goto(new URL('#/arena', base).href);
       await page.locator('.arena-hero').waitFor();
+      const dark = width === 430;
+      if (dark) await page.getByRole('button', { name: '切换到暗色模式' }).tap();
       assert.equal(await page.locator('.page.is-active').evaluate(node => node.scrollWidth <= node.clientWidth), true);
       await page.waitForFunction(async () => {
         const { targetSprite } = await import(new URL('src/v19/arena/targets.js', location.href));
         return targetSprite('rope')?.naturalWidth === 400;
       });
       await page.locator('[data-arena-action="loan"]').tap();
+      const arenaBrightness = await page.locator('.trial-frame canvas').evaluate(canvas => {
+        const { data } = canvas.getContext('2d').getImageData(Math.floor(canvas.width * .055), Math.floor(canvas.height * .31), 1, 1);
+        return (data[0] + data[1] + data[2]) / 3;
+      });
+      assert.ok(dark ? arenaBrightness < 100 : arenaBrightness > 210, '切割舞台随主题切换');
       const stage = await page.locator('.trial-frame').boundingBox();
       const bottom = await page.locator('.trial-bottom').boundingBox();
       assert.ok(bottom.y >= stage.y && bottom.y + bottom.height < stage.y + stage.height);

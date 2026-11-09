@@ -47,10 +47,22 @@
   --base-2: #EBEDF8;
   --base-3: #DDE1F2;
   /* 浅色摄影棚只改变CSS背景，不改变金属HDR与曝光。 */
-  --showcase-base: #EDF0FF;
+  --showcase-base: #EFF4FF;
   --showcase-ink: #292B4B;
   --showcase-muted: #69718F;
-  --showcase-surface: radial-gradient(ellipse 60% 13% at 50% 82%, #727EC323, transparent 90%), radial-gradient(ellipse at 90% 14%, #FAD7EB66, transparent 56%), radial-gradient(ellipse at 10% 68%, #BEEEF977, transparent 60%), linear-gradient(145deg, #EEEBFB, #F8FAFF 48%, #E4EDF9);
+  --showcase-surface: radial-gradient(ellipse at 52% 34%, #FFFFFF 5%, transparent 68%), linear-gradient(153deg, #F0ECFE, #F7FBFF 51%, #DDEBFA);
+  --stage-warm: radial-gradient(ellipse at 50% 44%, #FFFDF4, transparent 67%), linear-gradient(150deg, #F5EBF3, #FFF5EB 54%, #E7E9F7);
+  --stage-lamp: radial-gradient(ellipse at 55% 43%, #F3FAF6, transparent 65%), linear-gradient(147deg, #E4EDF7, #E1EFEC);
+  --stage-frame: #C7D1E69E;
+  --stage-ink: #7460C4;
+  --stage-grid: #8D9BC52E;
+  --stage-shadow: #465C9629;
+  --stage-flare: #994F25;
+  --arena-wall: #FAF8FF;
+  --arena-horizon: #E3EAFB;
+  --arena-floor: #D2E2F8;
+  --arena-glow: #FFFFFFA6;
+  --arena-positive: #167456;
   --face:   #292B4B;
   --face-2: #4C5275;
   --face-3: #69718F;
@@ -269,6 +281,63 @@
   --r-epic-t:   #6B2E8E;
   --r-legend-t: #8A5E0A;
   --r-myth-t:   #A8411F;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --app-surface: radial-gradient(ellipse at 100% 0%, #30274685, transparent 60%), linear-gradient(160deg, #171A2A, #111625 66%, #151825);
+  --base-0: #141827;
+  --base-1: #202537;
+  --base-2: #282E43;
+  --base-3: #343B52;
+  --paper-0: #181C2D;
+  --paper-1: #1C2437;
+  --face: #F4F2FF;
+  --face-2: #D5D9EF;
+  --face-3: #ABB6D2;
+  --face-4: #97A4C5;
+  --line: #BEC9F02E;
+  --line-2: #BEC9F018;
+  --line-firm: #BEC9F049;
+  --glass-bg: #191E30E8;
+  --glass-border: #BFC9FF2C;
+  --surface-inset: #171C2DD9;
+  --control-face: #262C41F2;
+  --surface-glass: linear-gradient(145deg, #282E45, #1D2235);
+  --dialog-glass: linear-gradient(145deg, #272D43, #1B2033);
+  --dialog-scrim: #080A14B8;
+  --showcase-base: #232942;
+  --showcase-ink: #F3F2FF;
+  --showcase-muted: #B0B9D6;
+  --showcase-surface: radial-gradient(ellipse at 52% 34%, #454968, transparent 70%), linear-gradient(152deg, #2D2844, #252C43 53%, #191F33);
+  --stage-warm: radial-gradient(ellipse at 50% 45%, #554044, transparent 68%), linear-gradient(154deg, #332B40, #262436 57%, #1D2232);
+  --stage-lamp: radial-gradient(ellipse at 56% 44%, #324B4F, transparent 64%), linear-gradient(145deg, #232C3C, #1B2536);
+  --stage-frame: #BEC9F03D;
+  --stage-ink: #C8B9FF;
+  --stage-grid: #B6C4FF38;
+  --stage-shadow: #0B102987;
+  --stage-flare: #FFD1A4;
+  --arena-wall: #30344E;
+  --arena-horizon: #232942;
+  --arena-floor: #1B2034;
+  --arena-glow: #777AAD38;
+  --arena-positive: #A9F0D8;
+  --accent: #A790FF;
+  --accent-deep: #C7B7FF;
+  --accent-soft: #9E83FF25;
+  --accent-line: #AB96FF66;
+  --accent-cool: #79CFEB;
+  --accent-cool-deep: #A2DCF2;
+  --accent-cool-soft: #78D5F323;
+  --accent-cool-line: #78D5F360;
+  --reward: #EBC489;
+  --risk-safe: #82DFB7;
+  --risk-warn: #FFD089;
+  --risk-danger: #FFAD9C;
+  --shadow-1: 0 3px 12px #0C102739;
+  --shadow-2: 0 8px 24px #0B102B55;
+  --shadow-3: 0 18px 60px #0A0F2A80;
+  --shadow-cta: 0 6px 18px #100F3866;
 }
 
 /* 窄屏兜底：字号不缩放，靠断点只放大尺寸 */

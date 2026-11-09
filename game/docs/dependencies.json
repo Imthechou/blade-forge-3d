@@ -78,10 +78,11 @@
   },
   {
     "file": "src/app/settings.js",
-    "bytes": 1916,
-    "lines": 54,
+    "bytes": 2213,
+    "lines": 60,
     "imports": [
       "src/core/progress.js",
+      "src/platform/env.js",
       "src/platform/index.js"
     ],
     "exports": [
@@ -93,7 +94,8 @@
     "importedBy": [
       "src/app/bootstrap.js",
       "src/app/bootstrapLegacy.js",
-      "src/ui/settingsSheet.js"
+      "src/ui/settingsSheet.js",
+      "src/ui/shell.js"
     ]
   },
   {
@@ -1045,8 +1047,8 @@
   },
   {
     "file": "src/core/saveSchema.js",
-    "bytes": 9915,
-    "lines": 197,
+    "bytes": 9984,
+    "lines": 199,
     "imports": [
       "src/data/balance.js",
       "src/platform/storage.js",
@@ -2116,6 +2118,7 @@
     ],
     "importedBy": [
       "src/app/bootstrap.js",
+      "src/app/settings.js",
       "src/core/daily.js",
       "src/core/events.js",
       "src/core/progress.js",
@@ -2129,7 +2132,8 @@
       "src/ui/pages/daily.js",
       "src/ui/pages/forge.js",
       "src/ui/pages/workshop.js",
-      "src/ui/settingsSheet.js"
+      "src/ui/settingsSheet.js",
+      "src/ui/shell.js"
     ]
   },
   {
@@ -3249,7 +3253,8 @@
       "src/ui/settingsSheet.js",
       "src/ui/shell.js",
       "src/ui/stageControls.js",
-      "src/ui/tutorial.js"
+      "src/ui/tutorial.js",
+      "src/v19/sharedStage.js"
     ]
   },
   {
@@ -3323,8 +3328,8 @@
   },
   {
     "file": "src/ui/icons.js",
-    "bytes": 1257,
-    "lines": 25,
+    "bytes": 1446,
+    "lines": 27,
     "imports": [],
     "exports": [
       "icon"
@@ -3337,7 +3342,8 @@
       "src/ui/pages/forge.js",
       "src/ui/pages/workshop.js",
       "src/ui/settingsSheet.js",
-      "src/ui/shell.js"
+      "src/ui/shell.js",
+      "src/v19/sharedStage.js"
     ]
   },
   {
@@ -3498,7 +3504,7 @@
   },
   {
     "file": "src/ui/pages/home.js",
-    "bytes": 6846,
+    "bytes": 6917,
     "lines": 168,
     "imports": [
       "src/app/game.js",
@@ -3567,8 +3573,8 @@
   },
   {
     "file": "src/ui/pages/workshop.js",
-    "bytes": 37934,
-    "lines": 736,
+    "bytes": 38839,
+    "lines": 751,
     "imports": [
       "src/app/game.js",
       "src/core/index.js",
@@ -3655,10 +3661,12 @@
   },
   {
     "file": "src/ui/shell.js",
-    "bytes": 2410,
-    "lines": 74,
+    "bytes": 3101,
+    "lines": 92,
     "imports": [
+      "src/app/settings.js",
       "src/core/progress.js",
+      "src/platform/env.js",
       "src/platform/index.js",
       "src/ui/dom.js",
       "src/ui/icons.js",
@@ -3768,8 +3776,8 @@
   },
   {
     "file": "src/v19/arena/trial.js",
-    "bytes": 44185,
-    "lines": 857,
+    "bytes": 42857,
+    "lines": 858,
     "imports": [
       "src/platform/index.js",
       "src/v19/forge.js",
@@ -3787,8 +3795,8 @@
   },
   {
     "file": "src/v19/arena/view.js",
-    "bytes": 20101,
-    "lines": 400,
+    "bytes": 20809,
+    "lines": 413,
     "imports": [
       "src/v19/forge.js",
       "src/v19/tournament.js",
@@ -3901,8 +3909,8 @@
   },
   {
     "file": "src/v19/forgeMarkup.js",
-    "bytes": 2337,
-    "lines": 40,
+    "bytes": 2556,
+    "lines": 43,
     "imports": [],
     "exports": [
       "forgeMarkup"
@@ -3913,8 +3921,8 @@
   },
   {
     "file": "src/v19/forgeView.js",
-    "bytes": 32172,
-    "lines": 675,
+    "bytes": 32953,
+    "lines": 694,
     "imports": [
       "src/core/progress.js",
       "src/core/v19Progress.js",
@@ -4003,10 +4011,12 @@
   },
   {
     "file": "src/v19/sharedStage.js",
-    "bytes": 2023,
-    "lines": 59,
+    "bytes": 2890,
+    "lines": 82,
     "imports": [
       "src/platform/index.js",
+      "src/ui/dom.js",
+      "src/ui/icons.js",
       "src/v19/forge.js",
       "src/v19/stage.js"
     ],
@@ -4035,8 +4045,8 @@
   },
   {
     "file": "src/v19/stage.js",
-    "bytes": 51919,
-    "lines": 1111,
+    "bytes": 52241,
+    "lines": 1122,
     "imports": [
       "assets/v19/vendor/meshopt_decoder.module.js",
       "src/v19/forge.js",
