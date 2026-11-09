@@ -3,6 +3,7 @@ import { PROJECTS } from '../tournament.js';
 import { signaturePerk } from '../forge.js';
 /* Adapted from Blade Trial v0.19. See LICENSE. */
 import { BladeAudio } from './audio.js';
+import { ART_BOUNDS, targetSprite, warmTargets } from './targets.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -20,39 +21,33 @@ const MATERIALS = {
   steel:  {name:'金属桶',short:'钢桶',eng:'金属',class:'耐久试炼',color:'#a9c6d0',chip:'#aebeca',hardness:1.95,hp:275,heavyHP:820,score:95,wear:4.3,glint:'#f5e0ae',particles:'sparks',sound:'metal'},
   shield: {name:'复合盾牌',short:'盾牌',eng:'盾牌',class:'终极试炼',color:'#a7b6c2',chip:'#abb9c4',hardness:2.55,hp:330,heavyHP:1120,score:132,wear:5.35,glint:'#d6e8ef',particles:'sparks',sound:'shield'}
 };
-// Bounds measured from source PNG alpha, stored inline so file:// also has precise hitboxes.
-const ART_BOUNDS={"wood":[94,22,305,394],"shield":[77,14,323,394],"ice":[75,20,325,390],"gel":[78,22,321,390],"steel":[64,18,336,391],"bamboo":[58,47,342,364],"card":[51,28,349,388],"pineapple":[73,18,326,392],"rope":[87,18,312,392]};
 const FEEL = { hitstop: { hit: 17, fracture: 29, break: 49 }, slowScale: .74 };
 function grad(c,x0,y0,x1,y1,stops){const g=c.createLinearGradient(x0,y0,x1,y1);stops.forEach(a=>g.addColorStop(a[0],a[1]));return g;}
 function radial(c,x,y,r,stops){const g=c.createRadialGradient(x,y,0,x,y,r);stops.forEach(a=>g.addColorStop(a[0],a[1]));return g;}
-function roundRect(c,x,y,w,h,r){c.beginPath();c.roundRect(x,y,w,h,r);}
+function roundRect(c, x, y, w, h, radius) {
+  c.beginPath();
+  if (typeof c.roundRect === 'function') {
+    c.roundRect(x, y, w, h, radius);
+    return;
+  }
+  const r = Math.min(radius, w / 2, h / 2);
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
 function strokeLine(c,coords,color,width=1){c.beginPath();c.moveTo(coords[0],coords[1]);for(let i=2;i<coords.length;i+=2)c.lineTo(coords[i],coords[i+1]);c.strokeStyle=color;c.lineWidth=width;c.stroke();}
 function seeded(i){let a=i|0;return ()=>{a=(a+0x6d2b79f5)|0;let t=Math.imul(a^a>>>15,1|a);t=(t+Math.imul(t^t>>>7,61|t))^t;return((t^t>>>14)>>>0)/4294967296;}}
-
-const spriteLoads = new Map();
-export async function loadTargets(keys, muted) {
-  if (!muted) void audio.preload().catch(() => {});
-  const sprites = await Promise.all([...new Set(keys)].map(key => {
-    if (spriteLoads.has(key)) return spriteLoads.get(key);
-    const load = new Promise((resolve, reject) => {
-      const image = new Image();
-      image.decoding = 'async';
-      image.onload = () => resolve([key, image]);
-      image.onerror = () => reject(new Error('无法载入靶具 ' + key));
-      image.src = new URL('../../../assets/v19/targets/' + key + '.png', import.meta.url);
-    }).catch(error => {
-      spriteLoads.delete(key);
-      throw error;
-    });
-    spriteLoads.set(key, load);
-    return load;
-  }));
-  return Object.fromEntries(sprites);
-}
 
 const audio = new BladeAudio();
 const strength = .9;
 audio.setTone('punchy');
+
+export function warmTrialAudio() {
+  void audio.preload().catch(() => {});
+}
 
 function gameplayRng(seed) {
   let hash = 2166136261;
@@ -71,7 +66,7 @@ function rotatingWaves(waves, rng) {
   return [...waves.slice(0, 2), ...waves.slice(2).map(wave => wave.heavy ? heavyWaves.shift() : rows.shift())];
 }
 
-export function createTrial(frame, course, blade, sprites, { muted, volume, onPause, onFinish }) {
+export function createTrial(frame, course, blade, { muted, volume, onPause, onFinish }) {
   const canvas = frame.querySelector('canvas');
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) throw new Error('浏览器无法开启切割画布');
@@ -146,7 +141,7 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
     const count = state.targets.length;
     const row = count > 1;
     const step = row ? Math.min(W / (count + .25), 192 * unit) : 0;
-    const scale = row ? Math.min(unit * 1.04, step / 152) : Math.min(1.4, Math.max(unit * 1.22, Math.min(W / 246, H / 368)));
+    const scale = row ? Math.min(unit * 1.24, step / 144) : Math.min(1.4, Math.max(unit * 1.22, Math.min(W / 246, H / 368)));
     state.targets.forEach((target, i) => {
       target.x = W / 2 + (i - (count - 1) / 2) * step;
       target.y = H * (row ? .49 : .465);
@@ -173,6 +168,9 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
   function spawnWave() {
     currentWave = waves[state.round % waves.length];
     const { heavy, targets } = currentWave;
+    const nextWave = waves[state.round + 1] ?? (course.timedLoop ? waves[0] : null);
+    warmTargets(targets);
+    if (nextWave) warmTargets(nextWave.targets);
     const project = projects.get(currentWave.project) || { damage: 0, count: 0 };
     project.count += targets.length;
     projects.set(currentWave.project, project);
@@ -190,9 +188,8 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
     state.durability = Math.min(100, state.durability + (state.round > 1 ? 12 : 0));
     layoutTargets();
     ui.wave.textContent = course.timedLoop ? String(state.round).padStart(2, '0') : state.round + ' / ' + waves.length;
-    ui.kind.textContent = heavy ? '单靶重劈' : '横排连斩';
-    ui.target.textContent = heavy ? state.targets[0].m.name : state.targets.map(target => target.m.short).join(' · ');
-    ui.tip.textContent = heavy ? '反复快速划过靶具，切痕会累积' : '横向快速划过一排靶具，打出连斩';
+    ui.target.textContent = heavy ? state.targets[0].m.name : '';
+    ui.tip.textContent = heavy ? '反复劈开重靶' : '横划连斩';
     updateHUD();
   }
 
@@ -283,6 +280,7 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
     const { damage, crit } = damageFor(target, speed);
     const previous = target.hp / target.maxHp;
     if (!target.strikes.length) {
+      target.sprite = targetSprite(target.key);
       state.hits++;
       if (target.heavy) haptics.vibrate(12);
     }
@@ -511,8 +509,9 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
   }
 
   function makeBackdrop(){
-    const b=document.createElement('canvas');b.width=Math.ceil(W);b.height=Math.ceil(H);
+    const b=document.createElement('canvas');b.width=canvas.width;b.height=canvas.height;
     const c=b.getContext('2d'),r=seeded(86231);
+    c.setTransform(DPR,0,0,DPR,0,0);
     c.fillStyle=grad(c,0,0,0,H,[[0,'#25221f'],[.45,'#1d2020'],[.72,'#242526'],[1,'#121515']]);c.fillRect(0,0,W,H);
     c.fillStyle=radial(c,W*.50,H*.36,Math.max(W*.6,H*.75),[[0,'#69503f55'],[.43,'#4a3e3733'],[.77,'#1c1c1c00'],[1,'#12131300']]);c.fillRect(0,0,W,H);
     const shaft=grad(c,W*.50,0,W*.72,H*.73,[[0,'#f5bc8608'],[.36,'#e1c39d0a'],[1,'#cbbba800']]);
@@ -546,7 +545,7 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
     return b;
   }
   function renderBackground(){
-    if(!backdrop||Math.abs(backdrop.width-W)>2||Math.abs(backdrop.height-H)>2)backdrop=makeBackdrop();
+    if(!backdrop)backdrop=makeBackdrop();
     ctx.drawImage(backdrop,0,0,W,H);
     const t=state.time;
     for(let i=0;i<ambientDots.length;i++){
@@ -627,12 +626,12 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
     const squash=1-recoilEase*.035-Math.max(0,spring)*.060;
     c.scale(t.scale*(1+recoilEase*.032+Math.max(0,spring)*.085),t.scale*squash);
     c.globalAlpha=clamp((state.time-t.spawnT)*5.5,0,1);
-    if(sprites[t.key]) c.drawImage(sprites[t.key],-100,-116,200,232);
-    else {c.fillStyle=t.m.color; c.fillRect(-65,-92,130,184);}
+    const sprite = t.strikes.length ? t.sprite : targetSprite(t.key);
+    drawTargetArt(t, sprite);
     drawCracks(t);drawHits(t);
     if(state.feel&&t.hitGlow>.01){
       c.save();c.globalCompositeOperation='screen';c.globalAlpha=t.hitGlow*.28;
-      c.filter='brightness(1.45) saturate(.75)'; if(sprites[t.key]) c.drawImage(sprites[t.key],-100,-116,200,232);c.restore();
+      c.filter='brightness(1.45) saturate(.75)'; if(sprite) c.drawImage(sprite,-100,-116,200,232);c.restore();
     }
     c.restore();
     // Centered nameplate, integrated with 3D target. Heavy mode also has segmented HP bar.
@@ -653,6 +652,17 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
       c.fillStyle='#93aeb5';c.font=`600 ${clamp(9*unit,9,11)}px system-ui`;c.fillText(state.time<t.statusUntil ? t.statusText+' · '+Math.round((1-p)*100)+'% 切深' : Math.round(p*100)+'% 结构完整度',t.x,py+19*unit);
     }
   }
+  function drawTargetArt(target, sprite) {
+    if (sprite) {
+      ctx.drawImage(sprite, -100, -116, 200, 232);
+      return;
+    }
+    const [left, top, right, bottom] = ART_BOUNDS[target.key];
+    ctx.fillStyle = target.m.color;
+    roundRect(ctx, left / 2 - 100, top / 2 - 116, (right - left) / 2, (bottom - top) / 2, 14);
+    ctx.fill();
+  }
+
   function drawPiece(p){
     const t=p.target,age=p.life;
     ctx.save();ctx.globalAlpha=clamp(age*2,0,1);
@@ -663,7 +673,7 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
     ctx.save();ctx.beginPath();
     const ax=-ux*200,ay=-uy*200,bx=ux*200,by=uy*200;
     ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.lineTo(bx+nx*d*300,by+ny*d*300);ctx.lineTo(ax+nx*d*300,ay+ny*d*300);ctx.closePath();ctx.clip();
-    if(sprites[t.key])ctx.drawImage(sprites[t.key],-100,-116,200,232);ctx.restore();
+    drawTargetArt(t, t.sprite);ctx.restore();
     // Subtle exposed material lip: follows the visible cut width, never draws
     // the oversized rectangular bars that previously floated beyond the target.
     const lip=Math.min(49,Math.max(25,(ART_BOUNDS[t.key][2]-ART_BOUNDS[t.key][0])*.15));
@@ -692,7 +702,7 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
       }else if(p.type==='shards'||p.type==='splinters'){
         ctx.fillStyle=p.color;ctx.beginPath();ctx.moveTo(-p.size*.5,-p.size);ctx.lineTo(p.size*.6,-p.size*.2);ctx.lineTo(p.size*.27,p.size);ctx.closePath();ctx.fill();
       }else if(p.type==='paper'){
-        ctx.fillStyle=p.color;ctx.beginPath();ctx.roundRect(-p.size*.8,-p.size*.55,p.size*1.6,p.size*1.1,1.6);ctx.fill();
+        ctx.fillStyle=p.color;roundRect(ctx,-p.size*.8,-p.size*.55,p.size*1.6,p.size*1.1,1.6);ctx.fill();
         ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=.8;ctx.stroke();
       }else if(p.type==='juice'){
         ctx.fillStyle=p.color;ctx.beginPath();ctx.ellipse(0,0,p.size*1.05,p.size*.75,.2,0,TAU);ctx.fill();ctx.fillStyle='rgba(255,245,170,.45)';ctx.beginPath();ctx.arc(p.size*.16,-p.size*.12,Math.max(.6,p.size*.18),0,TAU);ctx.fill();
@@ -754,7 +764,7 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
     ctx.beginPath();ctx.moveTo(x-12,y);ctx.lineTo(x+12,y);ctx.moveTo(x,y-12);ctx.lineTo(x,y+12);ctx.stroke();ctx.restore();
   }
   function render(){
-    ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,H);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
     renderBackground();
     if(state.screen!=='playing'&&state.screen!=='paused')return;
     ctx.save();

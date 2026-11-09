@@ -19,6 +19,17 @@ const audit = page => {
   page.on('response', response => { if (response.status() >= 400) errors.push(response.status() + ' ' + response.url()); });
 };
 
+async function swipeStage(cdp, box, height = .49) {
+  const y = Math.round(box.y + box.height * height);
+  const x0 = Math.round(box.x + 6);
+  const span = Math.round(box.width - 12);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y }] });
+  for (let segment = 1; segment <= 8; segment++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0 + span * segment / 8, y }] });
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+
 async function runFlow() {
   const context = await browser.newContext(mobile);
   const page = await context.newPage();
@@ -99,11 +110,20 @@ async function runFlow() {
     if (blowing) await page.keyboard.up('Space');
     if (await forge('pour-refine').isEnabled()) await forge('pour-refine').tap();
     await page.locator('#stage[data-mode="forge"]').waitFor();
-    await page.locator('#scene').focus();
+    await page.evaluate(async () => {
+      const { attachForgeStage } = await import(new URL('src/v19/sharedStage.js', location.href));
+      const stage = attachForgeStage(document.getElementById('stage'));
+      window.strikePoint = () => {
+        const hit = stage.keyboardHit();
+        return hit && stage.project(hit.world, stage.canvas.getBoundingClientRect());
+      };
+    });
     for (let hit = 1; hit <= 6; hit++) {
-      await page.keyboard.press('Space');
+      await page.waitForFunction(() => window.strikePoint());
+      const { x, y } = await page.evaluate(() => window.strikePoint());
+      await page.touchscreen.tap(x, y);
       await page.waitForFunction(count => parseInt(document.getElementById('hit-count')?.textContent) >= count, hit);
-      await page.waitForTimeout(260);
+      await page.waitForTimeout(330);
     }
     await shot('04-forge');
     await forge('finish').tap();
@@ -128,14 +148,15 @@ async function runFlow() {
     await page.locator('.blade-detail-stage-status').waitFor({ state: 'detached' });
     await shot('07-collection');
     await page.getByRole('button', { name: '12秒短试刀' }).tap();
-    await arena('mode').and(page.locator('[data-value="school"]')).tap();
+    await arena('mode').and(page.locator('[data-value="quick"]')).tap();
     await shot('08-lobby');
+    await arena('mode').and(page.locator('[data-value="school"]')).tap();
+    await shot('08-series');
     assert.equal(await page.locator('[data-blade-slot="0"]').inputValue(), blade.id);
     await arena('register').tap();
+    await arena('pause').waitFor();
     const enrolled = (await save()).v19.arena.active.id;
     await page.reload();
-    await arena('continue').tap();
-    assert.equal((await save()).v19.arena.active.id, enrolled);
     await page.evaluate(async () => {
       const { BladeAudio } = await import(new URL('src/v19/arena/audio.js', location.href));
       for (const method of ['setEnabled', 'setVolume']) {
@@ -151,7 +172,9 @@ async function runFlow() {
         return animate.call(this, keyframes, ...options);
       };
     });
-    await arena('strike-start').tap();
+    await arena('continue').tap();
+    await arena('pause').waitFor();
+    assert.equal((await save()).v19.arena.active.id, enrolled);
     await page.getByRole('button', { name: '设置' }).tap();
     const dialog = page.getByRole('dialog', { name: '设置' });
     const clock = page.locator('[data-trial="time"]');
@@ -169,14 +192,7 @@ async function runFlow() {
     const box = await canvas.boundingBox();
     await shot('09-arena');
     for (let swipe = 0; swipe < 24 && await canvas.isVisible(); swipe++) {
-      const y = Math.round(box.y + box.height * (swipe % 2 ? .466 : .49));
-      const x0 = Math.round(box.x + 6);
-      const span = Math.round(box.width - 12);
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y }] });
-      for (let segment = 1; segment <= 8; segment++) {
-        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0 + span * segment / 8, y }] });
-      }
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await swipeStage(cdp, box, swipe % 2 ? .466 : .49);
       if (swipe === 2) await shot('10-strike');
       await page.waitForTimeout(145);
     }
@@ -210,11 +226,23 @@ async function smallScreens() {
     const page = await context.newPage();
     audit(page);
     try {
+      await page.goto(new URL('#/forge', base).href);
+      const buy = page.locator('[data-action="buy"]');
+      await buy.waitFor();
+      const buyBounds = await buy.boundingBox();
+      assert.ok(buyBounds.y + buyBounds.height <= height, '锻造主按钮位于首屏');
+      await page.locator('[data-action="select-ore"]').nth(1).tap();
+      assert.equal(await page.locator('[data-action="select-ore"]').nth(1).getAttribute('aria-pressed'), 'true');
+      await page.waitForFunction(() => document.querySelectorAll('.ore-thumbnail.is-loaded').length === 3);
+      await page.screenshot({ path: path.join(out, `forge-${width}x${height}.png`) });
       await page.goto(new URL('#/arena', base).href);
       await page.locator('.arena-hero').waitFor();
       assert.equal(await page.locator('.page.is-active').evaluate(node => node.scrollWidth <= node.clientWidth), true);
+      await page.waitForFunction(async () => {
+        const { targetSprite } = await import(new URL('src/v19/arena/targets.js', location.href));
+        return targetSprite('rope')?.naturalWidth === 400;
+      });
       await page.locator('[data-arena-action="loan"]').tap();
-      await page.locator('[data-arena-action="strike-start"]').tap();
       const stage = await page.locator('.trial-frame').boundingBox();
       const bottom = await page.locator('.trial-bottom').boundingBox();
       assert.ok(bottom.y >= stage.y && bottom.y + bottom.height < stage.y + stage.height);
@@ -227,9 +255,41 @@ async function smallScreens() {
   }
 }
 
+async function targetFailures() {
+  const context = await browser.newContext(mobile);
+  try {
+    const page = await context.newPage();
+    page.on('pageerror', error => errors.push(error.message));
+    const failed = new Set();
+    await page.route('**/assets/v19/targets/*.{webp,png}', route => {
+      failed.add(new URL(route.request().url()).pathname.split('/').at(-1));
+      return route.abort();
+    });
+    await page.goto(new URL('#/arena', base).href);
+    await page.locator('[data-arena-action="loan"]').tap();
+    const canvas = page.locator('.trial-frame canvas');
+    await canvas.waitFor();
+    await page.waitForFunction(async () => {
+      const { targetSprite } = await import(new URL('src/v19/arena/targets.js', location.href));
+      return ['card', 'rope', 'bamboo'].every(key => targetSprite(key)?.src.startsWith('data:image/webp'));
+    });
+    assert.ok(failed.has('rope.webp') && failed.has('rope.png'));
+    const cdp = await context.newCDPSession(page);
+    await swipeStage(cdp, await canvas.boundingBox());
+    await page.waitForFunction(() => Number(document.querySelector('[data-trial="hits"]')?.textContent) > 0);
+    await page.screenshot({ path: path.join(out, 'trial-offline-art.png') });
+    await page.locator('[data-arena-action="replay"]').tap({ timeout: 16000 });
+    await canvas.waitFor();
+    console.log('全部靶图请求被阻断时，仍可一键开赛、斩断靶具、结算并重玩');
+  } finally {
+    await context.close();
+  }
+}
+
 try {
   await runFlow();
   await smallScreens();
+  await targetFailures();
   assert.deepEqual(errors, []);
 } finally {
   await browser.close();

@@ -1,6 +1,6 @@
 {
   "name": "blade-forge",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "private": true,
   "description": "锻刀大赛 BLADE FORGE —— 浏览器端 3D 锻造 / Roguelike / 锦标赛（无构建步骤，静态站点 + 诊断探针）",
   "license": "UNLICENSED",

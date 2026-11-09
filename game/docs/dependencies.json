@@ -3737,17 +3737,48 @@
     ]
   },
   {
+    "file": "src/v19/arena/targets.js",
+    "bytes": 1566,
+    "lines": 45,
+    "imports": [
+      "src/v19/arena/targetThumbnails.js"
+    ],
+    "exports": [
+      "ART_BOUNDS",
+      "targetThumbnail",
+      "warmTargets",
+      "targetSprite"
+    ],
+    "importedBy": [
+      "src/v19/arena/trial.js",
+      "src/v19/arena/view.js"
+    ]
+  },
+  {
+    "file": "src/v19/arena/targetThumbnails.js",
+    "bytes": 43619,
+    "lines": 13,
+    "imports": [],
+    "exports": [
+      "TARGET_THUMBNAILS"
+    ],
+    "importedBy": [
+      "src/v19/arena/targets.js"
+    ]
+  },
+  {
     "file": "src/v19/arena/trial.js",
-    "bytes": 44613,
-    "lines": 847,
+    "bytes": 44185,
+    "lines": 857,
     "imports": [
       "src/platform/index.js",
       "src/v19/forge.js",
       "src/v19/tournament.js",
-      "src/v19/arena/audio.js"
+      "src/v19/arena/audio.js",
+      "src/v19/arena/targets.js"
     ],
     "exports": [
-      "loadTargets",
+      "warmTrialAudio",
       "createTrial"
     ],
     "importedBy": [
@@ -3756,11 +3787,12 @@
   },
   {
     "file": "src/v19/arena/view.js",
-    "bytes": 24266,
-    "lines": 423,
+    "bytes": 20101,
+    "lines": 400,
     "imports": [
       "src/v19/forge.js",
       "src/v19/tournament.js",
+      "src/v19/arena/targets.js",
       "src/v19/arena/trial.js"
     ],
     "exports": [
@@ -3869,8 +3901,8 @@
   },
   {
     "file": "src/v19/forgeMarkup.js",
-    "bytes": 2853,
-    "lines": 46,
+    "bytes": 2337,
+    "lines": 40,
     "imports": [],
     "exports": [
       "forgeMarkup"
@@ -3881,8 +3913,8 @@
   },
   {
     "file": "src/v19/forgeView.js",
-    "bytes": 37688,
-    "lines": 702,
+    "bytes": 32172,
+    "lines": 675,
     "imports": [
       "src/core/progress.js",
       "src/core/v19Progress.js",
