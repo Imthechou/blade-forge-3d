@@ -2,7 +2,7 @@ import {
   WINDOW_PRICE, LOT_SIZE, BATCHES, HEAT, fittingPrice, PHASES, GRADES, ORE_TIERS, rareOdds, oreMaterialOf, MODELS, LOOKS, FITS, STAT_NAMES,
   offers, familyOf, stabilityOf, buyOre, beginRefining, advanceHeat, pourRefining, heatBand, refinementRank,
   REFINEMENT_RESULTS, REFINEMENT_FAILURES, fractureRisk, strike, finishForge,
-  fitOptions, refreshFittings, signature, inspectOre, mineralHeritage, oreInspection, oreModelId,
+  fitOptions, refreshFittings, signature, signaturePerk, inspectOre, mineralHeritage, oreInspection, oreModelId,
 } from './forge.js';
 import { attachForgeStage, releaseForgeStage } from './sharedStage.js';
 import { forgeMarkup } from './forgeMarkup.js';
@@ -210,7 +210,10 @@ export function mountForge(root, { onArena, onCollection }) {
         return;
       }
       title('05 / THE REVEAL', record.name, '已收入藏刀阁');
-      readout.innerHTML = info('成刀品质', `<span class="result-grade">${esc(record.grade)}</span> · ${esc(record.score)} 分`, record.refinement?.quality != null ? REFINEMENT_RESULTS[record.refinement.result].label + ' · 精炼质量 ' + record.refinement.quality : '', '+' + record.credit + ' CR') +
+      const perk = signaturePerk(record.signature);
+      readout.innerHTML = info('成刀鉴定', `<span class="result-grade">${esc(record.grade)}</span> · ${esc(record.score)} 分`,
+        ['品质 ' + record.quality, record.refinement?.quality != null && '精炼质量 ' + record.refinement.quality, perk?.desc].filter(Boolean).join(' · '),
+        '+' + record.credit + ' CR') +
         lookChips(record) +
         `<div class="stat-list">${record.stats.map((n, i) => `<div class="stat"><span>${STAT_NAMES[i]}</span><span class="stat-track"><i style="width:${Number(n)}%"></i></span><b>${Number(n)}</b></div>`).join('')}</div>`;
       actions.innerHTML = button('enter-tournament', '带此刀参赛') + button('open-collection', '前往藏刀阁', { kind: 'secondary' }) + button('restart', '再开一炉', { kind: 'secondary' }) +
@@ -657,6 +660,9 @@ export function mountForge(root, { onArena, onCollection }) {
 
 
   return {
+    pause() {
+      if (save?.run.refining?.step !== 'cast') pauseHeat();
+    },
     enter() {
       active = true;
       const result = openFurnace();

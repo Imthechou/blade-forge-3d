@@ -67,7 +67,7 @@ const QUICK_WAVES = [
   heavy('extreme', 'shield'),
 ];
 const TRAINING_BLADE = { id: 'training', name: '工坊试刀', grade: '借用', stats: [69, 77, 73, 65, 64, 60] };
-const APEX_GOAL = 2700;
+export const APEX_GOAL = 2700;
 
 export const dayKey = (time = Date.now()) => new Date(time + 8 * 3600e3).toISOString().slice(0, 10);
 export const bladeId = blade => String(blade.id);
@@ -123,7 +123,8 @@ export function createEntry(save, entry, selectedIds, id, date = dayKey()) {
   if (selected.length !== bladeCount(entry) || selected.some(blade => !blade) ||
       new Set(selectedIds).size !== selectedIds.length) return { error: '请选齐符合要求的参赛刀' };
   const roster = selected.map(blade => ({
-    id: bladeId(blade), name: blade.name, grade: blade.grade, stats: [...blade.stats], mastery: masteryOf(save, blade),
+    id: bladeId(blade), name: blade.name, grade: blade.grade, stats: [...blade.stats],
+    mastery: masteryOf(save, blade), signature: blade.signature,
   }));
   const run = { ...entry, id, date, roster, reports: [], qualified: [] };
   if (!practice) save.tournament = { ...tournamentState(save), active: run };
@@ -201,7 +202,7 @@ export function settleRound(save, id, round, result) {
   const done = !series || run.reports.length >= series || (run.mode === 'national' && !report.win);
   const total = run.reports.reduce((sum, item) => sum + item.performance, 0);
   const champion = done && run.reports.length === series && (run.mode === 'national' ?
-    report.win : run.mode === 'apex' && run.reports.every(item => item.complete) && total >= APEX_GOAL);
+    report.win : run.mode === 'apex' && run.reports.every(item => item.win) && total >= APEX_GOAL);
   const record = {
     id, round, mode: run.mode, title: report.title, date: run.date, blade: blade.name, cr, xp, mastery,
     qualified, paidDaily: Boolean(paidDaily), done, champion, total, report, rounds: run.reports.slice(),

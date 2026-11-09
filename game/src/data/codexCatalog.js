@@ -22,7 +22,9 @@ import { TAGS } from './tags.js';
 import { BASE_TAG_TRAITS, SPECIAL_TAG_TRAITS, HAMMER_TIER_TRAITS, setLegacyTraits, legacyTraits } from './traits.js';
 import { traitsV11 } from './legacy/traitsV11.js';
 import { BRANCHES, GRADIENTS } from './arena/branches.js';
-import { LOOKS, ORE_MATERIALS, SIGNATURES } from '../v19/forge.js';
+import { LEGACY_MODE } from '../platform/env.js';
+import { FITS, LOOKS, ORE_MATERIALS, SIGNATURES } from '../v19/forge.js';
+import { GRADIENTS as V19_GRADIENTS, SCHOOLS } from '../v19/tournament.js';
 import { materials } from './legacy/materials.js';
 import { knifeTypes } from './legacy/knifeTypes.js';
 
@@ -42,8 +44,9 @@ function ensureLegacy() {
 const TEXTURE_NAME = knifeTypes.TEXTURE_PREFIX || {};
 const FINISH_NAME = knifeTypes.FINISH_PREFIX || {};
 
-const newLooks = slot => Object.entries(LOOKS[slot]).filter(([, name]) => name).map(([key, name]) => ({
-  id: 'v19:' + slot + ':' + key, name, group: '新版锻造', hint: '在新版锻打中发现',
+const lookGroups = { metal: '钢材', pattern: '纹理', film: '表面膜', fx: '常驻特效' };
+const newLooks = slot => Object.entries(LOOKS[slot]).filter(([key, name]) => key !== 'raw' && name).map(([key, name]) => ({
+  id: 'v19:' + slot + ':' + key, name, group: lookGroups[slot], hint: '将此' + lookGroups[slot] + '保留至鉴定',
 }));
 
 /**
@@ -51,7 +54,7 @@ const newLooks = slot => Object.entries(LOOKS[slot]).filter(([, name]) => name).
  * `items()` 返回 `[{id, name, desc, hint, group}]`；
  * `total` 为 null 表示事件型分类（无固定分母）。
  */
-export const CODEX_CATALOG = Object.freeze([
+const LEGACY_CATALOG = [
   {
     id: 'knife',
     name: '刀型',
@@ -64,35 +67,33 @@ export const CODEX_CATALOG = Object.freeze([
   {
     id: 'material',
     name: '材料',
-    desc: '选料台的矿石与历代原料',
-    items: () => [...ORE_MATERIALS.map(ore => ({
-      id: 'v19:' + ore.id, name: ore.name, group: '新版矿石', hint: '以此矿石完成一炉',
-    })), ...(materials.MATERIALS || []).map((m) => ({
+    desc: '可用于锻造的原料',
+    items: () => (materials.MATERIALS || []).map((m) => ({
       id: m.id, name: m.name, desc: m.note || '', group: m.rarity || null,
       hint: `稀有度 ${m.rarity || '未知'} 的原料`,
-    }))],
+    })),
   },
   {
     id: 'texture',
     name: '纹理',
     desc: '锻造形成的纹样',
-    items: () => [...newLooks('pattern'), ...Object.entries(TEXTURE_NAME)
+    items: () => Object.entries(TEXTURE_NAME)
       .filter(([, name]) => !!name)
       .map(([id, name]) => ({
         id, name, desc: '', group: null,
         hint: '尚未形成的锻纹',
-      }))],
+      })),
   },
   {
     id: 'finish',
     name: '工艺',
-    desc: '钢材、表面膜、常驻特效与历代工艺',
-    items: () => [...['metal', 'film', 'fx'].flatMap(newLooks), ...Object.entries(FINISH_NAME)
+    desc: '刀身表面工艺',
+    items: () => Object.entries(FINISH_NAME)
       .filter(([, name]) => !!name)
       .map(([id, name]) => ({
         id, name, desc: '', group: null,
         hint: '尚未使用的表面工艺',
-      }))],
+      })),
   },
   {
     id: 'card',
@@ -130,20 +131,18 @@ export const CODEX_CATALOG = Object.freeze([
     id: 'combo',
     name: '隐藏组合',
     desc: '条件隐藏 Combo',
-    items: () => [...SIGNATURES.map(({ name }) => ({
-      id: name, name, group: '新版锻造', hint: '将相合的纹理与表面膜或特效留到鉴定',
-    })), ...COMBOS.map((c) => ({
+    items: () => COMBOS.map((c) => ({
       id: c.id, name: c.name, desc: c.conditions || '', group: c.rarity || null,
       /** 未发现时只给线索，不泄露配方（T12 验收要求） */
       hint: c.hint || '尚未发现触发条件',
-    }))],
+    })),
   },
   {
     id: 'arena',
     name: '赛事',
     desc: '六流派 × 五档',
     items: () => BRANCHES.flatMap((b) => GRADIENTS.map((g) => ({
-      id: `${b.id}:${g.tier}`, name: `${b.name} · ${g.name}`,
+      id: `${b.id}:${g.id}`, name: `${b.name} · ${g.name}`,
       desc: b.desc || '', group: b.name,
       hint: '尚未通关的对阵',
     }))),
@@ -156,7 +155,35 @@ export const CODEX_CATALOG = Object.freeze([
     items: () => [],
     eventOnly: true,
   },
-]);
+];
+
+const shared = id => LEGACY_CATALOG.find(category => category.id === id);
+const V19_CATALOG = [
+  shared('knife'),
+  { id: 'material', name: '矿石', desc: '选料台的十二种矿石',
+    items: () => ORE_MATERIALS.map(ore => ({
+      id: 'v19:' + ore.id, name: ore.name, hint: '以此矿石完成一炉',
+    })) },
+  { id: 'texture', name: '纹理', desc: '锻打形成的刀身纹样', items: () => newLooks('pattern') },
+  { id: 'finish', name: '工艺', desc: '钢材、表面膜与常驻特效',
+    items: () => ['metal', 'film', 'fx'].flatMap(newLooks) },
+  { id: 'fitting', name: '装配', desc: '六款刀柄配件',
+    items: () => FITS.map(({ id, name, parts, role }) => ({
+      id, name, desc: parts, group: role, hint: '使用此刀柄完成鉴定',
+    })) },
+  { id: 'combo', name: '隐藏组合', desc: '拥有对靶专长的签名刀皮',
+    items: () => SIGNATURES.map(({ name, desc }) => ({
+      id: name, name, desc, hint: '将相合的纹理与表面膜或特效保留至鉴定',
+    })) },
+  { id: 'arena', name: '赛事', desc: '六流派 × 五阶',
+    items: () => Object.entries(SCHOOLS).flatMap(([id, school]) => V19_GRADIENTS.map((name, grade) => ({
+      id: id + ':' + grade, name: school.name + ' · ' + name, desc: school.focus,
+      group: school.name, hint: '通关对应流派阶位',
+    }))) },
+  shared('fracture'),
+];
+
+export const CODEX_CATALOG = Object.freeze(LEGACY_MODE ? LEGACY_CATALOG : V19_CATALOG);
 
 export const CATALOG_BY_ID = Object.freeze(
   Object.fromEntries(CODEX_CATALOG.map((c) => [c.id, c])),
@@ -189,8 +216,9 @@ export function catalogTotal() {
 
 /** 某分类已发现数量 */
 export function foundCount(codexState, categoryId) {
-  const bucket = codexState?.[categoryId];
-  return bucket && typeof bucket === 'object' ? Object.keys(bucket).length : 0;
+  const bucket = codexState?.[categoryId] || {};
+  if (CATALOG_BY_ID[categoryId]?.eventOnly) return Object.keys(bucket).length;
+  return itemsOf(categoryId).filter(item => Boolean(bucket[item.id])).length;
 }
 
 /**

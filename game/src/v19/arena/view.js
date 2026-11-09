@@ -1,8 +1,8 @@
 import {
-  TARGET_NAMES, SCHOOLS, GRADIENTS, EVENTS, bladeCount, bladeId, eligibleBlades, gate, roundNames,
+  TARGET_NAMES, SCHOOLS, GRADIENTS, EVENTS, APEX_GOAL, bladeCount, bladeId, eligibleBlades, gate, roundNames,
   masteryOf, tournamentState, createEntry, courseFor, summarizeRound, settleRound, abandonEntry, dayKey,
 } from '../tournament.js';
-import { STAT_NAMES } from '../forge.js';
+import { STAT_NAMES, signaturePerk } from '../forge.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -66,11 +66,12 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
         `<li><i>0${i + 1}</i><b>${name}</b><small>45 秒</small></li>`).join('')}</ol>
         <p class="arena-note">${entry.mode === 'national' ?
           '一把刀出战全程，每轮达成目标即可晋级。失利结束本届，可再次报名。' :
-          '三把成刀按报名顺序各打一轮。三轮靶具全部斩断、总评达到 2700 分即可夺冠。'}</p>`;
+          `三把成刀按报名顺序出战。三轮均须达标，总评至少 ${APEX_GOAL} 分方可夺冠。`}</p>`;
     }
     return `<div class="arena-mode-note"><b>${entry.mode === 'daily' ? dayKey().slice(5).replace('-', '.') + ' · 今日试场' : '45 秒连斩冲分'}</b>
       <p>${entry.mode === 'daily' ? '每日按北京时间换靶序。当天首次有效出战领取奖励，重试可以刷新纪录。' :
-        '横排连切与重靶轮替，挥得越利落，连斩得分越高。打满 45 秒并命中至少 4 个不同靶具即可结算成长。'}</p></div>`;
+        '横排连切与重靶轮替，挥得越利落，连斩得分越高。打满 45 秒并命中至少 4 个不同靶具即可结算成长。'}</p>
+      ${entry.mode === 'daily' ? '<a class="arena-link" href="#/daily">查看今日目标 ↗</a>' : ''}</div>`;
   }
 
   function targetPreview(course) {
@@ -82,7 +83,9 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
     const count = bladeCount(entry);
     const allowsLoan = entry.mode === 'practice';
     if (!blades.length && !allowsLoan) return '<p class="arena-note">鉴定完成后，成刀就会出现在参赛名单中。</p>';
-    return Array.from({ length: count }, (_, index) => `<label class="blade-field"><span>${count === 1 ? '当前出战刀' : '第 ' + (index + 1) + ' 轮'}</span>
+    return Array.from({ length: count }, (_, index) => {
+      const perk = signaturePerk(blades.find(blade => bladeId(blade) === chosen[index])?.signature);
+      return `<label class="blade-field"><span>${count === 1 ? '当前出战刀' : '第 ' + (index + 1) + ' 轮'}</span>
       <select data-blade-slot="${index}" aria-label="${count === 1 ? '当前出战刀' : '第 ' + (index + 1) + ' 轮参赛刀'}">
         ${!chosen[index] ? '<option value="" selected disabled>待选成刀</option>' : ''}
         ${allowsLoan ? `<option value="training"${chosen[index] === 'training' ? ' selected' : ''}>工坊试刀 · 借用</option>` : ''}
@@ -91,7 +94,8 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
           const picked = chosen[index] === id;
           return `<option value="${esc(id)}"${picked ? ' selected' : chosen.includes(id) ? ' disabled' : ''}>${esc(blade.name)} · ${esc(blade.score)} 分</option>`;
         }).join('')}
-      </select></label>`).join('');
+      </select>${perk ? `<small class="arena-note">${esc(perk.name)} · ${esc(perk.desc)}</small>` : ''}</label>`;
+    }).join('');
   }
 
   function renderDeck(data) {
@@ -308,7 +312,7 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
       mode === 'national' ? '本届止步' : mode === 'apex' ? '三刀赛结束' : report.win ? '试炼通过' : '试炼待破';
     const reason = quick ? (mode === 'practice' ? '借刀试斩与材料练习不计入成长。' :
       record.paidDaily ? '今日奖励已领取，本次成绩已记录。' : record.qualified ? '有效出战，奖励已入账。' : '快赛奖励需要命中至少 4 个不同靶具。') :
-      mode === 'apex' && record.done && !record.champion ? '夺冠需要三轮全清、总评达到 2700 分。' :
+      mode === 'apex' && record.done && !record.champion ? `夺冠需要三轮均达标，总评达到 ${APEX_GOAL} 分。` :
       report.win ? '本轮目标已达成。' : report.complete ? '靶具已斩完，本轮连斩尚未达标。' :
       report.reason === 'wear' ? '本轮刀刃耐久耗尽。' : '限时内仍有靶具未斩断。';
     const stats = quick ? [['实斩得分', report.score], ['已斩断', report.cut], ['最高连斩', '×' + report.combo]] :
@@ -319,8 +323,8 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
       <div class="report-stats">${stats.map(([label, value]) => `<div><small>${label}</small><b>${value}</b></div>`).join('')}</div>
       ${mode !== 'practice' ? `<div class="report-rewards"><b>+ ${record.cr} CR</b><b>+ ${record.xp} XP</b><span>${record.mastery ?
         '磨合 +1 · ' + record.mastery.level + ' · ' + record.mastery.project + '专长 +' + pct(record.mastery.bonus) : '本轮磨合未增加'}</span></div>` : ''}
-      ${record.rounds?.length > 1 || ['national', 'apex'].includes(mode) ? `<div class="report-rounds"><div class="arena-label"><b>本届轮次</b><span>总评 ${record.total}${mode === 'apex' ? ' / 2700' : ''}</span></div>
-        ${record.rounds.map(item => `<div><b>${esc(item.title)}</b><span>${esc(item.blade)}</span><strong>${item.performance} 分</strong></div>`).join('')}</div>` : ''}
+      ${record.rounds?.length > 1 || ['national', 'apex'].includes(mode) ? `<div class="report-rounds"><div class="arena-label"><b>本届轮次</b><span>总评 ${record.total}${mode === 'apex' ? ' / ' + APEX_GOAL : ''}</span></div>
+        ${record.rounds.map(item => `<div><b>${esc(item.title)}</b><span>${esc(item.blade)}</span><strong>${item.win ? '' : '未达标 · '}${item.performance} 分</strong></div>`).join('')}</div>` : ''}
       <div class="report-actions">
         ${active?.id === record.id ? button('continue', '准备下一轮', 'primary') :
           mode === 'practice' ? button('retry-practice', '再试一轮', 'primary') : ''}
@@ -389,7 +393,7 @@ export function mountTournament(root, { getSave, commit, settings, onLegacy, has
       case 'strike-start': return begin();
       case 'reload-targets': return prepare(bout.run);
       case 'pause': return engine?.pause();
-      case 'resume': resumeDisplay(); return engine?.resume();
+      case 'resume': resumeDisplay(); return engine?.resume(settings());
       case 'retry-report': return finish(bout, bout.result);
       case 'history': return renderReport(state().history[Number(value)]);
       case 'retry-practice': return prepare({ ...practiceRun, id: eventId() });

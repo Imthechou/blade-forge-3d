@@ -11,6 +11,7 @@
  */
 
 import * as Storage from '../platform/storage.js';
+import { LEGACY_MODE } from '../platform/env.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { COMBOS } from '../data/combos.js';
 import { CARDS } from '../data/cards.js';
@@ -32,6 +33,7 @@ import { careerRewardPlan, isV41Match } from './arenaV41Rewards.js';
 import * as CodexCatalog from '../data/codexCatalog.js';
 import { COUNTED_CATEGORIES } from '../data/codexCatalog.js';
 import { commitSave } from './saveTransaction.js';
+import { HEAT } from '../v19/forge.js';
 
 import { makeSave, defaultSettings, normalizeSettings, normalizeSave } from './saveSchema.js';
 export { makeSave, defaultSettings, normalizeSettings, normalizeSave } from './saveSchema.js';
@@ -78,7 +80,7 @@ export function spendForgeReroll(cost) {
 
 export function resetAll() {
   const next = makeSave();
-  if (!Storage.save(next)) return false;
+  if (!Storage.save(next, { overwrite: true })) return false;
   cache = next;
   quickSettlementReceipts = new WeakMap();
   archiveReceipts = new WeakMap();
@@ -238,10 +240,10 @@ export function archiveInto(s, record, { mode = 'normal', discoveries = [] } = {
     if (skin.materialId) note('material', skin.materialId);
     if (skin.textureId) note('finish', skin.textureId);
     if (skin.finishId) note('finish', skin.finishId);
-    if (record.knifeType) note('finish', record.knifeType);
+    if (record.knifeType && !record.v19Visual) note('finish', record.knifeType);
     for (const { category, id } of discoveries) note(category, id);
 
-    s.stats.comboFound = Object.keys(s.codex.combo).length;
+    s.stats.comboFound = CodexCatalog.foundCount(s.codex, 'combo');
   }
 
   // CR 奖励：断刀也给少量（V2.1 §1「失败也有记录」），成刀按稀有度
@@ -256,7 +258,7 @@ export function archiveInto(s, record, { mode = 'normal', discoveries = [] } = {
 
   /* ★ rework T10.1/T10.2：行为事件在**同一次 commitSave 草稿**里兑现。
      · 锻造完成 / 断刀 → 每日任务「完成 1 次锻造」；
-     · 本局有新发现 → 「获得一项新特性」口径（craft 任务）。
+     · 新版良好精炼并成功成刀 → 工艺任务，图鉴完成后也能继续做。
      事件 ID 只由 bladeId 推导，重试 / 重进不会二次发放。
      注意：每日挑战（mode==='daily'）不推普通任务进度，它有自己的成绩口径。 */
   if (mode !== 'daily') {
@@ -270,6 +272,11 @@ export function archiveInto(s, record, { mode = 'normal', discoveries = [] } = {
         count: fresh.length,
       });
       if (!disc.duplicate) reward += disc.cr;
+    }
+    const refinement = record.v19Visual?.refinement;
+    if (!record.fractured && refinement?.quality >= HEAT.good) {
+      const craft = Events.settle(s, Events.EVENT.REFINEMENT_GOOD, { bladeId: record.id }, { quality: refinement.quality });
+      if (!craft.duplicate) reward += craft.cr;
     }
   }
 
@@ -354,12 +361,7 @@ export function unlockCodex(s, category, id) {
  *   分类键（如已不存在的 id）把完成度抬到分母之上。
  *   断裂记录是事件型，计入数量但不进百分比。
  */
-export const codexCount = () => {
-  const s = load();
-  let n = 0;
-  for (const id of COUNTED_CATEGORIES) n += CodexCatalog.foundCount(s.codex, id);
-  return n;
-};
+export const codexCount = () => codexCountOf(load());
 
 /**
  * 图鉴总量（完成度分母）。
@@ -383,7 +385,9 @@ export function checkAchievements(s = load()) {
     if (a.metric === 'forgeCount') hit = m.forgeCount >= a.goal;
     else if (a.metric === 'bestScore') hit = m.bestScore >= a.goal;
     else if (a.metric === 'bestPeakRiskClear') hit = m.bestPeakRiskClear >= a.goal;
-    else if (a.metric === 'comboFound') hit = Object.keys(s.codex.combo).length >= a.goal;
+    else if (a.metric === 'comboFound') hit = CodexCatalog.foundCount(s.codex, 'combo') >= a.goal;
+    else if (a.metric === 'skinTier') hit = s.collection.some(blade =>
+      Object.values(blade.v19Visual?.skin?.levels || {}).some(level => level >= a.goal));
     else if (a.metric === 'matchWins') hit = s.arena.matchWins >= a.goal;
     else if (a.metric === 'bladeCount') hit = s.collection.length >= a.goal;
     else if (a.metric === 'knifeTypeCount') {
@@ -392,10 +396,7 @@ export function checkAchievements(s = load()) {
     else if (a.metric === 'dailyStreak') hit = s.dailyStreak >= a.goal;
     else if (a.id === 'AC_first_forge') hit = m.forgeCount >= 1;
     else if (a.id === 'AC_match_first') hit = (s.arena.matchWins + s.arena.matchLosses) >= 1;
-    else if (a.id === 'AC_rarity_rare') hit = s.collection.some((b) => b.rarity === 'rare');
-    else if (a.id === 'AC_rarity_epic') hit = s.collection.some((b) => b.rarity === 'epic');
-    else if (a.id === 'AC_rarity_legend') hit = s.collection.some((b) => b.rarity === 'legend');
-    else if (a.id === 'AC_rarity_mythic') hit = s.collection.some((b) => b.rarity === 'mythic');
+    else if (a.rarity) hit = s.collection.some((b) => b.rarity === a.rarity);
     else if (a.id === 'AC_trait_master') hit = s.collection.some((b) => (b.tagTiers || []).some((t) => t.effectiveLayers >= 6));
     else if (a.id === 'AC_special_first') hit = s.collection.some((b) => Object.values(b.traitSources || {}).includes('specialTag'));
     else if (a.id === 'AC_combo_first') hit = Object.keys(s.codex.combo).length >= 1;
@@ -416,9 +417,7 @@ export function checkAchievements(s = load()) {
 }
 
 function codexCountOf(s) {
-  let n = 0;
-  for (const k of Object.keys(s.codex)) n += Object.keys(s.codex[k]).length;
-  return n;
+  return COUNTED_CATEGORIES.reduce((sum, id) => sum + CodexCatalog.foundCount(s.codex, id), 0);
 }
 
 function unlockFromAchievement(s, token) {
@@ -897,7 +896,7 @@ export function nextGoal() {
   if (!collection.length) {
     return {
       id: 'first-forge', title: '锻出第一把刀',
-      desc: '十道工序，三选一。第一把不必完美，先把循环跑通。',
+      desc: LEGACY_MODE ? '十道工序，三选一。第一把不必完美，先把循环跑通。' : '选料、控温、锻打、装配，把第一把成刀带回藏刀阁。',
       route: 'forge', action: '去锻刀',
     };
   }

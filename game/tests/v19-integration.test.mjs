@@ -3,11 +3,13 @@ import test from 'node:test';
 import * as Progress from '../src/core/progress.js';
 import * as Storage from '../src/platform/storage.js';
 import { STAT_KEYS } from '../src/data/balance.js';
+import { codexProgressView, itemsOf } from '../src/data/codexCatalog.js';
 import {
   commitFurnace, commitTournament, finishAppraisal, forgeSession, hasLegacyCareer, openFurnace, tournamentView,
 } from '../src/core/v19Progress.js';
-import { advanceHeat, beginRefining, buyOre, finishForge, fitOptions, offers, strike } from '../src/v19/forge.js';
-import { abandonEntry, courseFor, createEntry, gate, settleRound } from '../src/v19/tournament.js';
+import { advanceHeat, beginRefining, buyOre, finishForge, fitOptions, offers, SIGNATURES, strike } from '../src/v19/forge.js';
+import { abandonEntry, APEX_GOAL, courseFor, createEntry, gate, settleRound } from '../src/v19/tournament.js';
+import { appraisalQuality, appraisalRarity } from '../src/v19/workshop.js';
 
 const blade = (id, value = 105) => ({
   id, bladeName: id, knifeType: 'knife_tangdao', knifeTypeId: 'tangdao',
@@ -57,6 +59,8 @@ test('V19 uses one wallet and archives the exact appearance with original reward
     // simulation and the real forge rules. Browser QA drives the heating UI.
     Object.assign(run, { phase: 'forge', purity: 86, stability: 80, refinement: { quality: 86, result: 'excellent', bonus: 8 } });
     for (let i = 0; i < 6; i++) strike(run, 'belly');
+    Object.assign(run.skin, { pattern: 'damascus', film: 'oxide' });
+    Object.assign(run.skin.levels, { pattern: 3, film: 1 });
     assert.equal(finishForge(run), true);
     run.fit = fitOptions(run)[0].id;
     return true;
@@ -79,10 +83,31 @@ test('V19 uses one wallet and archives the exact appearance with original reward
   assert.deepEqual(oldBlade.stats, old.stats);
   assert.equal(newBlade.id, run.resultId);
   assert.equal(run.record.score, newBlade.score);
+  assert.equal(run.record.quality, appraisalQuality(newBlade.statMean));
+  assert.equal(newBlade.rarity, appraisalRarity(newBlade.score).id);
+  assert.ok(save.codex.fitting[run.fit]);
+  assert.ok(save.codex.combo[SIGNATURES[0].name]);
+  assert.ok(save.achievements.AC_skin_iii);
+  assert.ok(save.daily.tasks.find(task => task.id === 'craft').done);
+  assert.equal(createEntry(tournamentView(), { mode: 'quick' }, [newBlade.id], 'signature-test').run.roster[0].signature, SIGNATURES[0].name);
   assert.equal(run.record.credit, save.cr - before);
   assert.equal(commit(finishAppraisal).ok, false);
   assert.equal(save.collection.length, 2);
   assert.deepEqual(Progress.normalizeSave(Storage.load()).collection[0].v19Visual, newBlade.v19Visual);
+});
+
+test('V19 quality and rarity cover every tier and codex counts only obtainable items', () => {
+  assert.deepEqual([60, 68, 76, 86, 95].map(appraisalQuality), ['D', 'C', 'B', 'A', 'S']);
+  assert.deepEqual([139, 140, 200, 265, 350, 430].map(score => appraisalRarity(score).id),
+    ['common', 'fine', 'rare', 'epic', 'legend', 'mythic']);
+  const save = install({ codex: { card: { MAT01: 1 }, finish: { 'v19:metal:raw': 1 }, fracture: { blade: 1 } } });
+  assert.equal(Progress.codexCount(), 0);
+  const groups = codexProgressView(save.codex).groups.filter(group => !group.eventOnly);
+  for (const { id } of groups) for (const item of itemsOf(id)) Progress.unlockCodex(save, id, item.id);
+  assert.equal(Progress.codexCount(), 105);
+  assert.equal(Progress.codexProgress(), 1);
+  assert.equal(codexProgressView(save.codex).percent, 100);
+  assert.ok(Progress.checkAchievements(save).some(achievement => achievement.id === 'AC_combo_all'));
 });
 
 test('refining failure creates a single fracture record and a new forge remains affordable', () => {
@@ -97,6 +122,7 @@ test('refining failure creates a single fracture record and a new forge remains 
   assert.equal(save.fractured[0].fractureInfo.stageName, '精炼');
   assert.equal(save.collection.length, 0);
   assert.equal(save.workshopV41.xp, 0);
+  assert.equal(save.achievements.AC_first_forge, undefined);
   assert.equal(commit(() => true).ok, true);
   assert.equal(save.fractured.length, 1);
   assert.equal(openFurnace({ restart: true, seed: 12346 }).ok, true);
@@ -158,6 +184,23 @@ test('national and three-blade series settle rounds once, preserve resume state 
   assert.ok(save.collection.every(record => !record.fractured));
 });
 
+test('an apex series above the score goal still needs the opening combo', () => {
+  const save = install({ collection: ['a', 'b', 'c'].map(id => blade(id)),
+    arena: { history: [{ tier: 'national', champion: true }] } });
+  assert.ok(commitTournament(view => createEntry(view, { mode: 'apex' }, ['a', 'b', 'c'], 'apex-no-combo')).run);
+  let record;
+  for (let round = 0; round < 3; round++) {
+    ({ record } = commitTournament(view => settleRound(view, 'apex-no-combo', round, {
+      ...clearRound(courseFor(view.tournament.active)), combo: round === 0 ? 1 : 3,
+    })));
+  }
+  assert.ok(record.total >= APEX_GOAL && record.rounds.every(item => item.complete));
+  assert.equal(record.champion, false);
+  assert.equal(save.arena.apex.wins, 0);
+  assert.equal(save.achievements.AC_apex_win, undefined);
+  assert.equal(save.workshopV41.receipts['first:apex:champion'], undefined);
+});
+
 test('daily reward is paid once and stale tabs cannot overwrite a newer main save', () => {
   const save = install({ collection: [blade('daily-blade')] });
   const date = '2026-11-09';
@@ -180,6 +223,9 @@ test('daily reward is paid once and stale tabs cannot overwrite a newer main sav
   try {
     Storage.driver.write(JSON.stringify({ ...save, cr: 901 }));
     assert.match(openFurnace().error, /另一标签页/);
+    assert.equal(JSON.parse(Storage.exportJson()).cr, 901);
+    assert.equal(Progress.updateSettings({ sound: false }).sound, true);
+    assert.equal(Progress.renameBlade('daily-blade', 'stale'), false);
     assert.equal(Storage.load().cr, 901);
   } finally {
     Storage.driver.write(current);

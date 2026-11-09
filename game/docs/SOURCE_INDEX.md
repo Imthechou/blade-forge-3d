@@ -4,7 +4,7 @@
 
 | 文件 | 行数 | 字节 | 具名导出声明 |
 | --- | ---: | ---: | --- |
-| [src/app/bootstrap.js](../src/app/bootstrap.js) | 69 | 2357 | — |
+| [src/app/bootstrap.js](../src/app/bootstrap.js) | 78 | 2645 | — |
 | [src/app/bootstrapLegacy.js](../src/app/bootstrapLegacy.js) | 338 | 16369 | — |
 | [src/app/game.js](../src/app/game.js) | 1499 | 68251 | Game |
 | [src/app/settings.js](../src/app/settings.js) | 54 | 1916 | applyAll, update, get, preview |
@@ -28,28 +28,28 @@
 | [src/core/cards.js](../src/core/cards.js) | 182 | 8197 | CANDIDATE_COUNT, UNLOCKED_WEIGHT_BOOST, rollCandidates, reroll, nextRerollCost, previewPick, commit |
 | [src/core/combos.js](../src/core/combos.js) | 69 | 2650 | evaluate, discovered, hintOf |
 | [src/core/cutParams.js](../src/core/cutParams.js) | 157 | 6712 | foldBuffMods, deriveCutParams, deriveCutParamsForBlade, describeParams |
-| [src/core/daily.js](../src/core/daily.js) | 107 | 4001 | dayKey, seedOfDay, modifierOfDay, dailyPayload, makeTaskState, completeTask, allDone, recordScore |
+| [src/core/daily.js](../src/core/daily.js) | 116 | 4494 | dayKey, seedOfDay, modifierOfDay, dailyPayload, taskDefinitions, makeTaskState, completeTask, allDone, recordScore |
 | [src/core/economy.js](../src/core/economy.js) | 38 | 1372 | startCr, addCr, canAfford, forgeReward, matchReward, rerollPrice |
 | [src/core/edge.js](../src/core/edge.js) | 380 | 16673 | shapeOf, baseline, makeTask, normalizeSamples, evaluate, accuracy, projectedQuality, tierOf, contourPreview, resultView, submit, autoPlay |
-| [src/core/events.js](../src/core/events.js) | 213 | 8193 | EVENT, makeEventLedger, eventIdOf, settle, bumpDailyStreak, applyUnlockToken |
+| [src/core/events.js](../src/core/events.js) | 216 | 8338 | EVENT, makeEventLedger, eventIdOf, settle, bumpDailyStreak, applyUnlockToken |
 | [src/core/forge.js](../src/core/forge.js) | 296 | 10764 | PHASE, createRun, stageDef, confirmCard, hammerStrike, endHammer, submitEdge, snapshot |
 | [src/core/forgeBonuses.js](../src/core/forgeBonuses.js) | 157 | 5686 | makeRunBonus, unlockStateOf, bonusListFor, equipBonus, lockBonus, canUse, use, effectOf, snapshot |
 | [src/core/forgeTraitCuts.js](../src/core/forgeTraitCuts.js) | 126 | 4987 | CUT_TRAIT_STYLES, resolveForgeCutTraits, applyForgeCutTraits |
 | [src/core/hammer.js](../src/core/hammer.js) | 179 | 7672 | makeState, statGainOf, progressOf, nextRiskDelta, strike, end, traitFor, tierReward, tierName, toNextTier |
 | [src/core/index.js](../src/core/index.js) | 73 | 2875 | playRun |
-| [src/core/progress.js](../src/core/progress.js) | 1493 | 80740 | load, get, persist, spendForgeReroll, resetAll, settleQuickChallenge, quickChallengeRecords, archive, archiveInto, collection, fracturedList, bladeById, setShowcase, renameBlade, checkpointCareerV41, activeCareerV41, clearCareerV41, hasNationalCrownV41, unlockCodex, codexCount, codexTotal, codexProgress, checkAchievements, takeUnlockOut, addCr, fractureBlade, recordMatch, applyCareerGrants, recordBladeMatch, schoolProgress, isGradientUnlocked, normalizeTeamArena, activeTeamMatch, isTeamApexUnlocked, startTeamMatch, dispatchTeamBlade, updateTeamRound, completeTeamRound, forfeitUnavailableTeamBlade, settleTeamMatch, rolloverDaily, dailyState, equipForgeBonus, setSpecialtyOptions, forgeBonusView, updateSettings, nextGoal, homeSummary, NATIONAL_RUN_POLICY, normalizeNationalRuns, activeNationalRun, nationalRunById, startNationalRun, abandonNationalRun, hasLegacyNationalActive, beginNationalRound, NATIONAL_CHECKPOINT_POLICY, validateNationalCheckpoint, checkpointNationalRound, restoreNationalRound, flushNationalRound, updateNationalRound, completeNationalRound |
+| [src/core/progress.js](../src/core/progress.js) | 1492 | 81028 | load, get, persist, spendForgeReroll, resetAll, settleQuickChallenge, quickChallengeRecords, archive, archiveInto, collection, fracturedList, bladeById, setShowcase, renameBlade, checkpointCareerV41, activeCareerV41, clearCareerV41, hasNationalCrownV41, unlockCodex, codexCount, codexTotal, codexProgress, checkAchievements, takeUnlockOut, addCr, fractureBlade, recordMatch, applyCareerGrants, recordBladeMatch, schoolProgress, isGradientUnlocked, normalizeTeamArena, activeTeamMatch, isTeamApexUnlocked, startTeamMatch, dispatchTeamBlade, updateTeamRound, completeTeamRound, forfeitUnavailableTeamBlade, settleTeamMatch, rolloverDaily, dailyState, equipForgeBonus, setSpecialtyOptions, forgeBonusView, updateSettings, nextGoal, homeSummary, NATIONAL_RUN_POLICY, normalizeNationalRuns, activeNationalRun, nationalRunById, startNationalRun, abandonNationalRun, hasLegacyNationalActive, beginNationalRound, NATIONAL_CHECKPOINT_POLICY, validateNationalCheckpoint, checkpointNationalRound, restoreNationalRound, flushNationalRound, updateNationalRound, completeNationalRound |
 | [src/core/quickChallengeRecords.js](../src/core/quickChallengeRecords.js) | 56 | 3057 | makeQuickRecords, normalizeQuickRecords, quickChallengeKey, updateQuickRecord |
 | [src/core/recipe.js](../src/core/recipe.js) | 429 | 22944 | DEFAULT_SKIN, visualCardOf, deriveSkinState, applyCardIdentity, deriveHandleMask |
 | [src/core/risk.js](../src/core/risk.js) | 99 | 3915 | clamp, make, apply, after, breakChance, breakPercent, check, band, ladder |
-| [src/core/saveSchema.js](../src/core/saveSchema.js) | 197 | 9889 | defaultSettings, normalizeSettings, makeSave, normalizeSave |
+| [src/core/saveSchema.js](../src/core/saveSchema.js) | 197 | 9915 | defaultSettings, normalizeSettings, makeSave, normalizeSave |
 | [src/core/saveTransaction.js](../src/core/saveTransaction.js) | 14 | 608 | commitSave |
-| [src/core/scoring.js](../src/core/scoring.js) | 169 | 7077 | computeScore, peakBandOf, resolveRarity, qualityOf, statProfile |
+| [src/core/scoring.js](../src/core/scoring.js) | 169 | 7092 | computeScore, peakBandOf, resolveRarity, qualityOf, statProfile |
 | [src/core/tags.js](../src/core/tags.js) | 108 | 3591 | makeLedger, record, undo, counts, stageSpread, baseTagTiers, specialTags, dominantBaseTag |
 | [src/core/testScoring.js](../src/core/testScoring.js) | 238 | 9771 | TEST_SCORING_VERSION, createTestSession, currentTest, settleTest, advance, allComplete, aggregate, judge, targetScoreOf |
 | [src/core/traits.js](../src/core/traits.js) | 191 | 6956 | registerLegacyTraits, isHighTrait, hasSameTagTrait, grant, pendingBaseTraits, settleBaseTraits, settleSpecialTags, evaluateConditional |
-| [src/core/v19Progress.js](../src/core/v19Progress.js) | 253 | 11573 | hasFurnace, hasLiveFurnace, openFurnace, recordVisual, forgeSession, commitFurnace, finishAppraisal, tournamentView, bladeMastery, commitTournament, hasLegacyCareer |
+| [src/core/v19Progress.js](../src/core/v19Progress.js) | 257 | 11839 | hasFurnace, hasLiveFurnace, openFurnace, recordVisual, forgeSession, commitFurnace, finishAppraisal, tournamentView, bladeMastery, commitTournament, hasLegacyCareer |
 | [src/core/v19Save.js](../src/core/v19Save.js) | 30 | 1891 | normalizeV19 |
-| [src/data/achievements.js](../src/data/achievements.js) | 71 | 5443 | ACHIEVEMENTS, ACHIEVEMENT_BY_ID, achievementsOfGroup, ACHIEVEMENT_GROUPS |
+| [src/data/achievements.js](../src/data/achievements.js) | 97 | 7160 | ACHIEVEMENTS, ACHIEVEMENT_BY_ID, achievementsOfGroup, ACHIEVEMENT_GROUPS |
 | [src/data/arena/branches.js](../src/data/arena/branches.js) | 67 | 2294 | GRADIENTS, BRANCHES, branchById, gradientAt, SCHOOL_RULES |
 | [src/data/arena/buffs.js](../src/data/arena/buffs.js) | 131 | 8724 | BUFF_TIERS, BUFF_FAMILIES, BUFFS, BUILD_TAGS, resonanceOf, BUFF_BY_ID, rollBuffChoices |
 | [src/data/arena/events.js](../src/data/arena/events.js) | 95 | 3708 | CHOICE_KINDS, EVENTS, EVENT_BY_ID, getEvent, pickEvents |
@@ -57,11 +57,11 @@
 | [src/data/arena/opponents.js](../src/data/arena/opponents.js) | 120 | 4697 | TENDENCIES, tendencyById, tendencyOfStats, makeBranchOpponent, makeTournamentOpponent, faceScores |
 | [src/data/arena/team.js](../src/data/arena/team.js) | 12 | 329 | TEAM_POLICY |
 | [src/data/arena/tournaments.js](../src/data/arena/tournaments.js) | 61 | 2115 | NATIONAL_ROUNDS, TIERS, tierById, THEMES, themeById, rollTheme |
-| [src/data/balance.js](../src/data/balance.js) | 591 | 32039 | STAT_KEYS, STAT_META, STAT_SOFT_CAP, ARENA_V3, ARENA_STAT_CEILING, arenaStat, arenaGrowth, ARENA_POWER, ARENA_MATERIALS, STAT_CURVE, applyStatCurve, STAT_CURVE_CEILING, TEST_PROJECTS, TEST_REF, TEST_SCORE, testScoreOfRatio, TEST_WEIGHTS_DEFAULT, ARENA_TARGET_SCALE, CARD_STAT_SCALE, LEGACY_OPPONENT_SCALE, OPPONENT_STAT_SCALE, RISK_MAX, RISK_BANDS, BREAK_ANCHORS, HAMMER_RISK_STEPS, hammerRiskDelta, HAMMER_PROGRESS, HAMMER_TIERS, HAMMER_GAIN_SCALE, HAMMER_TIER_REWARD, EDGE_TIERS, EDGE_SHARP_CAP, CONTOUR_SAMPLES, CONTOUR_ATTEMPT_MULTIPLIERS, EDGE_TOLERANCE, EDGE_SAMPLES, EDGE_COVERAGE_MIN, EDGE_STABILITY_TOLERANCE, TAG_TIERS, TAG_MAX_EFFECTIVE_LAYERS, PEAK_RISK_MULT, RARITY_THRESHOLDS, COMBO_SCORE_MULT, QUALITY_THRESHOLDS, FACES, FACE_REF, MATCH_WEIGHTS, MOMENTUM, ARENA_EVENT_COUNT, FIELD_TESTS, FIELD_TEST_MAX_INFLUENCE, FIELD_TEST_MOMENTUM, ARENA_CAN_DESTROY_BLADE, CR_START, rerollCost, CR_REWARD, DAILY_TASKS, bandOfRisk, peakRiskMult, rarityOfScore, qualityOfMean, tagTierOf, hammerTierOf |
+| [src/data/balance.js](../src/data/balance.js) | 591 | 32049 | STAT_KEYS, STAT_META, STAT_SOFT_CAP, ARENA_V3, ARENA_STAT_CEILING, arenaStat, arenaGrowth, ARENA_POWER, ARENA_MATERIALS, STAT_CURVE, applyStatCurve, STAT_CURVE_CEILING, TEST_PROJECTS, TEST_REF, TEST_SCORE, testScoreOfRatio, TEST_WEIGHTS_DEFAULT, ARENA_TARGET_SCALE, CARD_STAT_SCALE, LEGACY_OPPONENT_SCALE, OPPONENT_STAT_SCALE, RISK_MAX, RISK_BANDS, BREAK_ANCHORS, HAMMER_RISK_STEPS, hammerRiskDelta, HAMMER_PROGRESS, HAMMER_TIERS, HAMMER_GAIN_SCALE, HAMMER_TIER_REWARD, EDGE_TIERS, EDGE_SHARP_CAP, CONTOUR_SAMPLES, CONTOUR_ATTEMPT_MULTIPLIERS, EDGE_TOLERANCE, EDGE_SAMPLES, EDGE_COVERAGE_MIN, EDGE_STABILITY_TOLERANCE, TAG_TIERS, TAG_MAX_EFFECTIVE_LAYERS, PEAK_RISK_MULT, RARITY_THRESHOLDS, COMBO_SCORE_MULT, QUALITY_THRESHOLDS, FACES, FACE_REF, MATCH_WEIGHTS, MOMENTUM, ARENA_EVENT_COUNT, FIELD_TESTS, FIELD_TEST_MAX_INFLUENCE, FIELD_TEST_MOMENTUM, ARENA_CAN_DESTROY_BLADE, CR_START, rerollCost, CR_REWARD, DAILY_TASKS, bandOfRisk, peakRiskMult, rarityOfScore, qualityOfMean, tagTierOf, hammerTierOf |
 | [src/data/bladeEffects.js](../src/data/bladeEffects.js) | 158 | 10589 | ADAPTER_VERSION, EFFECT_VERSION, NO_TEST_EFFECT, KNIFE_PROFILES, KNIFE_PROFILE_FALLBACK, TRAIT_TEST_MODS, LEGACY_TEST_MODS, TEST_MOD_CLAMP, EDGE_SHAPES, EDGE_SHAPE_FALLBACK |
 | [src/data/cards.js](../src/data/cards.js) | 140 | 5972 | RARITY_CN, directionOf, CARDS, CARD_BY_ID, BY_STAGE, RARITY_WEIGHT, STAGE_ORDER, stageRankOf, getCard, cardsOfStage, cardCount |
 | [src/data/codex.js](../src/data/codex.js) | 42 | 2040 | CODEX_CATEGORIES, CODEX_BY_ID, CODEX_REWARDS, HINT_LEVELS |
-| [src/data/codexCatalog.js](../src/data/codexCatalog.js) | 240 | 8649 | CODEX_CATALOG, CATALOG_BY_ID, itemsOf, totalOf, COUNTED_CATEGORIES, catalogTotal, foundCount, codexProgressView |
+| [src/data/codexCatalog.js](../src/data/codexCatalog.js) | 268 | 10021 | CODEX_CATALOG, CATALOG_BY_ID, itemsOf, totalOf, COUNTED_CATEGORIES, catalogTotal, foundCount, codexProgressView |
 | [src/data/combos.js](../src/data/combos.js) | 44 | 1850 | COMBOS, COMBO_BY_ID, getCombo |
 | [src/data/daily.js](../src/data/daily.js) | 28 | 1844 | MODIFIERS, MODIFIER_BY_ID, getModifier |
 | [src/data/forgeBonuses.js](../src/data/forgeBonuses.js) | 109 | 5044 | BONUS_SLOTS, BONUS_TIMING, FORGE_BONUSES, BONUS_BY_ID, RESERVED, bonusById, availableBonuses |
@@ -90,13 +90,13 @@
 | [src/data/traits.js](../src/data/traits.js) | 261 | 11931 | BASE_TAG_TRAITS, baseTagTraitId, SPECIAL_TAG_TRAITS, HAMMER_TRAITS, hammerTraitId, HAMMER_DIRECTION_VECTORS, hammerDirectionVector, HAMMER_TIER_TRAITS, hammerTierTraitId, legacyTraits, setLegacyTraits, getTrait, traitName, traitRarityFloor |
 | [src/platform/audio.js](../src/platform/audio.js) | 162 | 7231 | unlock, setEnabled, setVolume, settings, playCutImpact, play, list |
 | [src/platform/bus.js](../src/platform/bus.js) | 63 | 1945 | on, off, emit, clear, EVENTS |
-| [src/platform/env.js](../src/platform/env.js) | 63 | 2191 | env |
+| [src/platform/env.js](../src/platform/env.js) | 65 | 2283 | LEGACY_MODE, env |
 | [src/platform/haptics.js](../src/platform/haptics.js) | 37 | 924 | setEnabled, isEnabled, vibrate, HAPTIC, feedback |
 | [src/platform/index.js](../src/platform/index.js) | 22 | 671 | — |
 | [src/platform/motion.js](../src/platform/motion.js) | 87 | 3011 | systemReduced, reduced, hasOverride, mode, setMode, syncFromSettings, subscribe, watchSystem |
 | [src/platform/net.js](../src/platform/net.js) | 23 | 818 | isOnline, get, post, upload |
 | [src/platform/rng.js](../src/platform/rng.js) | 96 | 2978 | hashSeed, makeRng, stream, randInt, pickOne, pickWeighted, shuffle, readableSeed |
-| [src/platform/storage.js](../src/platform/storage.js) | 193 | 7309 | SAVE_VERSION, driver, registerMigration, setDefaultsFactory, defaults, hasExternalChange, load, migrate, save, backupCurrent, reset, exportJson, setImportBoundary, importJson, readNationalCheckpoint, writeNationalCheckpoint, clearNationalCheckpoint |
+| [src/platform/storage.js](../src/platform/storage.js) | 199 | 7569 | STORAGE_KEY, SAVE_VERSION, driver, registerMigration, setDefaultsFactory, defaults, hasExternalChange, load, migrate, save, backupCurrent, reset, exportJson, setImportBoundary, importJson, readNationalCheckpoint, writeNationalCheckpoint, clearNationalCheckpoint |
 | [src/render/captureRunner.js](../src/render/captureRunner.js) | 251 | 10510 | captureToDataURL, invalidateCaptureTargets, captureStats |
 | [src/render/collectionCache.js](../src/render/collectionCache.js) | 88 | 3030 | loadThumbnail, saveThumbnail, thumbnailCacheStats |
 | [src/render/collectionPreview.js](../src/render/collectionPreview.js) | 240 | 9483 | COLLECTION_EXPOSURE, applyCollectionLighting, collectionStageStats, mountCollectionPreview, disconnectCollectionPreview, disconnectCollectionPreviews, releaseCollectionPreviewStage |
@@ -145,10 +145,10 @@
 | [src/ui/arenaReportParts.js](../src/ui/arenaReportParts.js) | 117 | 4353 | momentumChip, momentumLadder, momentumHint, momentumTrail, FACE_CN, STAT_CN, FACE_STATS, faceOfStat, faceCompareRow |
 | [src/ui/arenaSprites.js](../src/ui/arenaSprites.js) | 136 | 5988 | TYPES, STATES, CELL, spriteStatus, prepareArenaSprites, spriteReady, drawWholeSprite, drawSplitSprite, drawShardSprite, drawFlashSprite |
 | [src/ui/arenaStage.js](../src/ui/arenaStage.js) | 1286 | 64108 | drawArenaStage |
-| [src/ui/bladeCard.js](../src/ui/bladeCard.js) | 359 | 15318 | bladeCardModel, bladeCard, bladeCardDetail, compareModels |
+| [src/ui/bladeCard.js](../src/ui/bladeCard.js) | 362 | 15598 | bladeCardModel, bladeCard, bladeCardDetail, compareModels |
 | [src/ui/bladeEdgeProjection.js](../src/ui/bladeEdgeProjection.js) | 79 | 3844 | bladeEdgeProjection, bladeContourProjection |
 | [src/ui/cardDoodles.js](../src/ui/cardDoodles.js) | 353 | 19290 | doodleSpec, cardDoodle |
-| [src/ui/components.js](../src/ui/components.js) | 524 | 26300 | ICONS, riskBar, riskChip, statRail, statGrid, rarityBadge, qualitySeal, decisionCard, traitItem |
+| [src/ui/components.js](../src/ui/components.js) | 524 | 26301 | ICONS, riskBar, riskChip, statRail, statGrid, rarityBadge, qualitySeal, decisionCard, traitItem |
 | [src/ui/dom.js](../src/ui/dom.js) | 152 | 6730 | el, clear, mount, on, countUp, toast, sheet |
 | [src/ui/edgeHoningArtwork.js](../src/ui/edgeHoningArtwork.js) | 155 | 6164 | renderHoningArtwork |
 | [src/ui/forgeKnifeStickers.js](../src/ui/forgeKnifeStickers.js) | 177 | 7125 | knifeFormOf, isKnifeGlow, KNIFE_FORM_COUNT, paintS4Knife |
@@ -158,25 +158,25 @@
 | [src/ui/minigameV4.js](../src/ui/minigameV4.js) | 294 | 14309 | renderHammerV4, renderEdgeV4 |
 | [src/ui/pages/appraise.js](../src/ui/pages/appraise.js) | 647 | 29576 | create, render, enter, leave |
 | [src/ui/pages/arena.js](../src/ui/pages/arena.js) | 2763 | 182088 | create, leave, openDailyChallenge, openQuickChallenge, openCollectionSample, openTournament, render |
-| [src/ui/pages/daily.js](../src/ui/pages/daily.js) | 37 | 1359 | create, render |
+| [src/ui/pages/daily.js](../src/ui/pages/daily.js) | 44 | 1756 | create, render |
 | [src/ui/pages/forge.js](../src/ui/pages/forge.js) | 513 | 24656 | create, render, syncInspect, leave |
 | [src/ui/pages/home.js](../src/ui/pages/home.js) | 168 | 6846 | create, render, syncInspect, leave |
-| [src/ui/pages/v19Arena.js](../src/ui/pages/v19Arena.js) | 29 | 708 | openTournament, render, leave |
-| [src/ui/pages/v19Forge.js](../src/ui/pages/v19Forge.js) | 16 | 429 | render, leave |
-| [src/ui/pages/workshop.js](../src/ui/pages/workshop.js) | 727 | 37285 | create, leave, render, openTab |
+| [src/ui/pages/v19Arena.js](../src/ui/pages/v19Arena.js) | 33 | 765 | openTournament, render, leave, pauseForSettings |
+| [src/ui/pages/v19Forge.js](../src/ui/pages/v19Forge.js) | 20 | 486 | render, leave, pauseForSettings |
+| [src/ui/pages/workshop.js](../src/ui/pages/workshop.js) | 736 | 37934 | create, leave, render, openTab |
 | [src/ui/router.js](../src/ui/router.js) | 81 | 2846 | PAGES, register, onNavigate, go, currentKey, start |
-| [src/ui/settingsSheet.js](../src/ui/settingsSheet.js) | 137 | 5684 | open |
-| [src/ui/shell.js](../src/ui/shell.js) | 73 | 2275 | create, sync |
+| [src/ui/settingsSheet.js](../src/ui/settingsSheet.js) | 138 | 5783 | open |
+| [src/ui/shell.js](../src/ui/shell.js) | 74 | 2410 | create, sync |
 | [src/ui/stageControls.js](../src/ui/stageControls.js) | 53 | 1952 | createStageInspect |
 | [src/ui/tutorial.js](../src/ui/tutorial.js) | 99 | 4492 | GUIDE, guideSheet, helpSheet, maybeShowFirstRun, hint, hasSeenHint |
 | [src/v19/arena/audio_bank.js](../src/v19/arena/audio_bank.js) | 3 | 1447361 | — |
 | [src/v19/arena/audio.js](../src/v19/arena/audio.js) | 125 | 7619 | BladeAudio |
-| [src/v19/arena/trial.js](../src/v19/arena/trial.js) | 843 | 44343 | loadTargets, createTrial |
-| [src/v19/arena/view.js](../src/v19/arena/view.js) | 419 | 23864 | mountTournament |
+| [src/v19/arena/trial.js](../src/v19/arena/trial.js) | 847 | 44613 | loadTargets, createTrial |
+| [src/v19/arena/view.js](../src/v19/arena/view.js) | 423 | 24266 | mountTournament |
 | [src/v19/blade-looks.js](../src/v19/blade-looks.js) | 500 | 26698 | lookCodes, bladeLooksGLSL |
-| [src/v19/forge.js](../src/v19/forge.js) | 580 | 32025 | MIN_PRICE, REFRESH_PRICE, WINDOW_PRICE, LOT_SIZE, BATCHES, MARK_WIDTH, MARK_HEIGHT, PHASES, FAMILIES, LOOKS, MODELS, GRADES, ORE_TIERS, RARE_ODDS, rareOdds, fittingPrice, ORE_VARIANTS, ORE_MATERIALS, oreMaterialOf, ORE_TINTS, ORE_EXPOSURES, oreOptics, oreInspection, oreModelId, mineralHeritage, oreSignals, STAT_NAMES, FITS, HEAT, REFINEMENT_RESULTS, REFINEMENT_FAILURES, refinementRank, heatBand, rngFor, lookVariant, freshRun, offers, familyOf, stabilityOf, inspectOre, modelCandidates, buyOre, beginRefining, pourRefining, advanceHeat, fractureRisk, SIGNATURES, signature, strike, finishForge, fitOptions, refreshFittings, appraise |
+| [src/v19/forge.js](../src/v19/forge.js) | 583 | 32513 | MIN_PRICE, REFRESH_PRICE, WINDOW_PRICE, LOT_SIZE, BATCHES, MARK_WIDTH, MARK_HEIGHT, PHASES, FAMILIES, LOOKS, MODELS, GRADES, ORE_TIERS, RARE_ODDS, rareOdds, fittingPrice, ORE_VARIANTS, ORE_MATERIALS, oreMaterialOf, ORE_TINTS, ORE_EXPOSURES, oreOptics, oreInspection, oreModelId, mineralHeritage, oreSignals, STAT_NAMES, STAT_CAP, FITS, HEAT, REFINEMENT_RESULTS, REFINEMENT_FAILURES, refinementRank, heatBand, rngFor, lookVariant, freshRun, offers, familyOf, stabilityOf, inspectOre, modelCandidates, buyOre, beginRefining, pourRefining, advanceHeat, fractureRisk, SIGNATURES, signaturePerk, signature, strike, finishForge, fitOptions, refreshFittings, appraise |
 | [src/v19/forgeMarkup.js](../src/v19/forgeMarkup.js) | 46 | 2853 | forgeMarkup |
-| [src/v19/forgeView.js](../src/v19/forgeView.js) | 696 | 37514 | mountForge |
+| [src/v19/forgeView.js](../src/v19/forgeView.js) | 702 | 37688 | mountForge |
 | [src/v19/knife-details.js](../src/v19/knife-details.js) | 75 | 4113 | knifeDetails, makeFittingHardware |
 | [src/v19/materials.js](../src/v19/materials.js) | 602 | 29383 | surfaceUniforms, setSurface, makeBladeMaterial, makeOreMaterial, makeMeltMaterial, makeCutMaterial |
 | [src/v19/ore-section.js](../src/v19/ore-section.js) | 42 | 1697 | sectionContour |
@@ -185,5 +185,5 @@
 | [src/v19/sharedStage.js](../src/v19/sharedStage.js) | 59 | 2023 | attachForgeStage, releaseForgeStage, showForgedBlade |
 | [src/v19/sound.js](../src/v19/sound.js) | 137 | 5670 | ForgeSound |
 | [src/v19/stage.js](../src/v19/stage.js) | 1111 | 51919 | ForgeStage |
-| [src/v19/tournament.js](../src/v19/tournament.js) | 220 | 11353 | TARGET_NAMES, GRADIENTS, EVENTS, SCHOOLS, PROJECTS, dayKey, bladeId, bladeCount, roundNames, tournamentState, eligibleBlades, masteryOf, gate, createEntry, courseFor, summarizeRound, settleRound, abandonEntry |
-| [src/v19/workshop.js](../src/v19/workshop.js) | 9 | 316 | workshopPerks |
+| [src/v19/tournament.js](../src/v19/tournament.js) | 221 | 11387 | TARGET_NAMES, GRADIENTS, EVENTS, SCHOOLS, PROJECTS, APEX_GOAL, dayKey, bladeId, bladeCount, roundNames, tournamentState, eligibleBlades, masteryOf, gate, createEntry, courseFor, summarizeRound, settleRound, abandonEntry |
+| [src/v19/workshop.js](../src/v19/workshop.js) | 18 | 913 | V19_RARITY_MIN, V19_RISK_GOALS, appraisalRarity, appraisalQuality, workshopPerks |

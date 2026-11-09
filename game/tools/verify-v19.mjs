@@ -25,6 +25,7 @@ async function runFlow() {
   audit(page);
   const cdp = await context.newCDPSession(page);
   await page.addInitScript(() => {
+    if (!localStorage.getItem('bladeforge.save')) localStorage.setItem('bladeforge.save', '{"version":1,"cr":987}');
     window.drawCount = 0;
     const draw = WebGL2RenderingContext.prototype.drawElements;
     WebGL2RenderingContext.prototype.drawElements = function (...args) {
@@ -35,7 +36,7 @@ async function runFlow() {
   const shot = name => page.screenshot({ path: path.join(out, name + '.png') });
   const forge = name => page.locator(`[data-action="${name}"]`);
   const arena = name => page.locator(`[data-arena-action="${name}"]`);
-  const save = () => page.evaluate(() => JSON.parse(localStorage.getItem('bladeforge.save')));
+  const save = () => page.evaluate(() => JSON.parse(localStorage.getItem('bladeforge.v4.save')));
   try {
     await page.goto(base);
     await page.getByRole('button', { name: '开始锻刀' }).waitFor();
@@ -46,7 +47,20 @@ async function runFlow() {
     await shot('02-ore');
     await forge('inspect-light').tap();
     await forge('window-ore').tap();
+    const stale = await context.newPage();
+    await stale.goto(base);
+    await stale.getByRole('button', { name: '继续锻刀' }).waitFor();
+    await page.bringToFront();
     await forge('buy').tap();
+    const bought = await save();
+    await stale.bringToFront();
+    await stale.getByRole('button', { name: '设置' }).tap();
+    await stale.getByRole('switch', { name: '音效' }).tap();
+    await stale.getByText('另一标签页更新了存档。请刷新后继续。').waitFor();
+    assert.deepEqual(await save(), bought);
+    await stale.close();
+    await page.bringToFront();
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('bladeforge.save')).cr), 987);
     await forge('to-refine').tap();
     const heat = page.locator('#heat-button');
     const bounds = await heat.boundingBox();
@@ -56,6 +70,8 @@ async function runFlow() {
     await page.waitForFunction(() => parseInt(document.getElementById('heat-number')?.textContent) >= 64);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await page.waitForFunction(() => document.getElementById('heat-step')?.textContent === '熔球稳温');
+    await page.getByRole('button', { name: '设置' }).tap();
+    await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).tap();
     await shot('03-refine');
     await page.reload();
     await heat.focus();
@@ -103,6 +119,8 @@ async function runFlow() {
     assert.equal(forged.collection.length, 1);
     assert.equal(forged.workshopV41.xp, 10);
     const blade = forged.collection[0];
+    assert.ok(forged.codex.fitting[blade.v19Visual.fit]);
+    assert.match(await page.locator('#readout').textContent(), new RegExp('品质 ' + blade.qualityName));
     await page.reload();
     await forge('open-collection').tap();
     await page.locator('.blade-card-v2').first().tap();
@@ -118,9 +136,35 @@ async function runFlow() {
     await page.reload();
     await arena('continue').tap();
     assert.equal((await save()).v19.arena.active.id, enrolled);
+    await page.evaluate(async () => {
+      const { BladeAudio } = await import(new URL('src/v19/arena/audio.js', location.href));
+      for (const method of ['setEnabled', 'setVolume']) {
+        const original = BladeAudio.prototype[method];
+        BladeAudio.prototype[method] = function (value) {
+          window[method] = value;
+          return original.call(this, value);
+        };
+      }
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (keyframes, ...options) {
+        if (this.dataset?.trial === 'verdict') window.verdictMotion = keyframes[0].transform;
+        return animate.call(this, keyframes, ...options);
+      };
+    });
     await arena('strike-start').tap();
-    await arena('pause').tap();
+    await page.getByRole('button', { name: '设置' }).tap();
+    const dialog = page.getByRole('dialog', { name: '设置' });
+    const clock = page.locator('[data-trial="time"]');
+    const beforePause = await clock.textContent();
+    await dialog.getByRole('switch', { name: '音效' }).tap();
+    await dialog.getByRole('slider', { name: '音量' }).press('Home');
+    await dialog.getByRole('button', { name: '完整', exact: true }).tap();
+    await page.waitForTimeout(2200);
+    assert.equal(await clock.textContent(), beforePause);
+    await dialog.getByRole('button', { name: '关闭' }).tap();
+    await shot('09-paused');
     await arena('resume').tap();
+    assert.deepEqual(await page.evaluate(() => [window.setEnabled, window.setVolume]), [false, 0]);
     const canvas = page.locator('.trial-frame canvas');
     const box = await canvas.boundingBox();
     await shot('09-arena');
@@ -143,10 +187,18 @@ async function runFlow() {
     assert.equal(after.arena.history.at(-1).v19.report.win, true);
     assert.ok(after.cr > forged.cr && after.workshopV41.xp > forged.workshopV41.xp);
     assert.ok(after.collection[0].projectRecords.cutting.score > 0);
+    assert.match(await page.evaluate(() => window.verdictMotion), /translateY/);
     await shot('11-result');
     await page.reload();
     assert.equal((await save()).arena.history.at(-1).v19.report.win, true);
-    console.log('390×844 · 选料、控温续炼、锻打、鉴定、藏刀、触控赛事、结算刷新通过');
+    await page.goto(new URL('#/workshop', base).href);
+    await page.getByRole('tab', { name: '图鉴', exact: true }).tap();
+    await page.getByText(/已发现 \d+ \/ 105 项/).waitFor();
+    await shot('12-codex');
+    await page.getByRole('tab', { name: '锻造加成', exact: true }).tap();
+    await page.getByText(/稀质矿芯概率/).waitFor();
+    await shot('13-growth');
+    console.log('390×844 · 锻造、藏刀、赛事结算、图鉴和成长、独立存档、双标签页、设置暂停与音量通过');
   } finally {
     await context.close();
   }

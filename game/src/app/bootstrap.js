@@ -1,4 +1,5 @@
 import { audio, bus, EVENTS } from '../platform/index.js';
+import { LEGACY_MODE } from '../platform/env.js';
 import * as Progress from '../core/progress.js';
 import { hasLegacyCareer } from '../core/v19Progress.js';
 import * as Settings from './settings.js';
@@ -30,6 +31,7 @@ function lazyPage(load) {
       }).finally(() => host.removeAttribute('aria-busy'));
     },
     leave() { page?.leave?.(); },
+    pauseForSettings() { page?.pauseForSettings?.(); },
   };
 }
 
@@ -39,10 +41,17 @@ function start() {
   Settings.applyAll();
   globalThis.addEventListener('pointerdown', () => audio.unlock(), { once: true });
   Home.create();
-  Shell.create(document.getElementById('topbar'));
+  const forge = lazyPage(() => import('../ui/pages/v19Forge.js'));
+  const arena = lazyPage(() => import('../ui/pages/v19Arena.js'));
+  Shell.create(document.getElementById('topbar'), {
+    beforeSettings() {
+      if (router.currentKey() === 'forge') forge.pauseForSettings();
+      if (router.currentKey() === 'arena') arena.pauseForSettings();
+    },
+  });
   router.register('home', Home);
-  router.register('forge', lazyPage(() => import('../ui/pages/v19Forge.js')));
-  router.register('arena', lazyPage(() => import('../ui/pages/v19Arena.js')));
+  router.register('forge', forge);
+  router.register('arena', arena);
   router.register('legacy-arena', {
     ...lazyPage(() => import('../ui/pages/arena.js')), canEnter: hasLegacyCareer,
   });
@@ -55,7 +64,7 @@ function start() {
 }
 
 export default async function main() {
-  if (new URLSearchParams(location.search).has('legacy')) {
+  if (LEGACY_MODE) {
     await import('./bootstrapLegacy.js');
   } else {
     start();

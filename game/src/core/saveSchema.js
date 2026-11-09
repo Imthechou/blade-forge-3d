@@ -81,7 +81,7 @@ export function makeSave() {
     forgeBonus: { unlocked: [], equippedId: null, usesTotal: 0, specialtyOptions: {}, knowledgeMigrated: false },
     codex: {               // 图鉴发现
       material: {}, card: {}, tag: {}, trait: {}, combo: {},
-      knife: {}, finish: {}, arena: {}, fracture: {},
+      knife: {}, finish: {}, texture: {}, fitting: {}, arena: {}, fracture: {},
       bonus: {}, traitTest: {}, fractureCause: {},
     },
     unlockedCardIds: [],   // 内容解锁（V2.1 §26）

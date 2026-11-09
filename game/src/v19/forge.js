@@ -139,6 +139,7 @@ export const oreSignals = ore => {
   };
 };
 export const STAT_NAMES = ['强度', '韧性', '锋利', '工艺', '设计', '灵性'];
+export const STAT_CAP = 100;
 export const FITS = [
   { id: 'walnut', role: '沉稳', name: '赤木束柄', parts: '胡桃木 · 铜色端箍', color: '#673424', accent: '#bc8555', grip: 1, delta: [0, 5, 0, 3, 2, 0] },
   { id: 'night', role: '轻巧', name: '夜行纤维', parts: '黑纤维 · 枪灰端箍', color: '#252c32', accent: '#687988', grip: 2, delta: [1, 0, 5, 3, 0, 0] },
@@ -442,11 +443,13 @@ function mutate(run, slot, type, roll, guaranteed = false) {
 }
 
 export const SIGNATURES = [
-  { name: '霜潮层钢', pattern: 'damascus', film: 'oxide' },
-  { name: '极光晶刃', pattern: 'crystal', film: 'rainbow' },
-  { name: '深空星砂', pattern: 'nebula', film: 'doppler' },
-  { name: '炉脉余烬', pattern: 'ember', fx: 'ember' },
+  { name: '霜潮层钢', pattern: 'damascus', film: 'oxide', targets: ['ice', 'wood'], bonus: .08, desc: '对冰块和硬木的切割伤害 +8%' },
+  { name: '极光晶刃', pattern: 'crystal', film: 'rainbow', targets: ['gel', 'pineapple'], bonus: .08, desc: '对凝胶和菠萝的切割伤害 +8%' },
+  { name: '深空星砂', pattern: 'nebula', film: 'doppler', targets: ['steel', 'shield'], bonus: .08, desc: '对金属桶和复合盾牌的切割伤害 +8%' },
+  { name: '炉脉余烬', pattern: 'ember', fx: 'ember', targets: ['rope', 'bamboo'], bonus: .08, desc: '对绳束和竹节的切割伤害 +8%' },
 ];
+
+export const signaturePerk = name => SIGNATURES.find(item => item.name === name);
 
 export function signature(skin) {
   const match = SIGNATURES.find(({ pattern, film, fx }) =>
@@ -566,12 +569,12 @@ export function appraise(run) {
   if (run.phase !== 'fit' || !fit) return null;
   const roll = rngFor(run.seed, 'review');
   const base = 41 + run.ore.grade * 5 + run.purity * .19 + run.work * .94 - run.cracks * 2.9 + (run.refinement?.bonus || 0);
-  const stats = fit.delta.map((delta, index) => clamp(Math.round(base + delta + (roll() - .5) * 12 + (index > 3 ? run.skin.levels.fx * 2 : 0)), 20, 100));
+  const stats = fit.delta.map((delta, index) => clamp(Math.round(base + delta + (roll() - .5) * 12 + (index > 3 ? run.skin.levels.fx * 2 : 0)), 20, STAT_CAP));
   const specialist = run.specialist;
-  if (specialist?.id === 'edge') stats[2] = clamp(stats[2] + Math.round(Math.min(6, run.edgeHits || 0) * specialist.boost), 20, 100);
+  if (specialist?.id === 'edge') stats[2] = clamp(stats[2] + Math.round(Math.min(6, run.edgeHits || 0) * specialist.boost), 20, STAT_CAP);
   if (specialist?.id === 'precise') {
     const index = ['strength', 'toughness', 'sharpness', 'craft', 'design', 'spirit'].indexOf(specialist.options.stat);
-    if (index >= 0) stats[index] = clamp(stats[index] + Math.round((run.refinement?.quality || 0) * specialist.boost * .35), 20, 100);
+    if (index >= 0) stats[index] = clamp(stats[index] + Math.round((run.refinement?.quality || 0) * specialist.boost * .35), 20, STAT_CAP);
   }
   const trait = signature(run.skin) || LOOKS.fx[run.skin.fx] || LOOKS.pattern[run.skin.pattern] || '原钢锻面';
   run.phase = 'appraise';

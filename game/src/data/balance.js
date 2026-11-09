@@ -515,7 +515,7 @@ export function rerollCost(stageRerollCount) {
 
 /** 鉴定与赛事的 CR 奖励（V2.1 §25.1） */
 export const CR_REWARD = Object.freeze({
-  forgeFinish: (rarity) => ({ common: 20, rare: 35, epic: 60, legend: 100, mythic: 160 }[rarity] ?? 20),
+  forgeFinish: (rarity) => ({ common: 20, fine: 27, rare: 35, epic: 60, legend: 100, mythic: 160 }[rarity] ?? 20),
   matchWin: (tier) => [40, 70, 120][tier] ?? 40,
   matchLose: (tier) => [12, 20, 30][tier] ?? 12,
   dailyTask: 40,

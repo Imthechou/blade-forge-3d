@@ -1,11 +1,12 @@
 [
   {
     "file": "src/app/bootstrap.js",
-    "bytes": 2357,
-    "lines": 69,
+    "bytes": 2645,
+    "lines": 78,
     "imports": [
       "src/core/progress.js",
       "src/core/v19Progress.js",
+      "src/platform/env.js",
       "src/platform/index.js",
       "src/ui/pages/arena.js",
       "src/ui/pages/daily.js",
@@ -613,18 +614,22 @@
   },
   {
     "file": "src/core/daily.js",
-    "bytes": 4001,
-    "lines": 107,
+    "bytes": 4494,
+    "lines": 116,
     "imports": [
       "src/data/balance.js",
       "src/data/daily.js",
-      "src/platform/rng.js"
+      "src/platform/env.js",
+      "src/platform/rng.js",
+      "src/v19/forge.js",
+      "src/v19/tournament.js"
     ],
     "exports": [
       "dayKey",
       "seedOfDay",
       "modifierOfDay",
       "dailyPayload",
+      "taskDefinitions",
       "makeTaskState",
       "completeTask",
       "allDone",
@@ -694,9 +699,10 @@
   },
   {
     "file": "src/core/events.js",
-    "bytes": 8193,
-    "lines": 213,
+    "bytes": 8338,
+    "lines": 216,
     "imports": [
+      "src/platform/env.js",
       "src/core/daily.js",
       "src/core/economy.js"
     ],
@@ -867,8 +873,8 @@
   },
   {
     "file": "src/core/progress.js",
-    "bytes": 80740,
-    "lines": 1493,
+    "bytes": 81028,
+    "lines": 1492,
     "imports": [
       "src/data/achievements.js",
       "src/data/arena/branches.js",
@@ -876,8 +882,10 @@
       "src/data/codexCatalog.js",
       "src/data/combos.js",
       "src/data/knifeTypes.js",
+      "src/platform/env.js",
       "src/platform/rng.js",
       "src/platform/storage.js",
+      "src/v19/forge.js",
       "src/core/arena.js",
       "src/core/arenaCareerV41.js",
       "src/core/arenaChallenge.js",
@@ -1037,7 +1045,7 @@
   },
   {
     "file": "src/core/saveSchema.js",
-    "bytes": 9889,
+    "bytes": 9915,
     "lines": 197,
     "imports": [
       "src/data/balance.js",
@@ -1075,7 +1083,7 @@
   },
   {
     "file": "src/core/scoring.js",
-    "bytes": 7077,
+    "bytes": 7092,
     "lines": 169,
     "imports": [
       "src/data/balance.js",
@@ -1174,8 +1182,8 @@
   },
   {
     "file": "src/core/v19Progress.js",
-    "bytes": 11573,
-    "lines": 253,
+    "bytes": 11839,
+    "lines": 257,
     "imports": [
       "src/data/balance.js",
       "src/data/knifeTypes.js",
@@ -1183,6 +1191,7 @@
       "src/platform/storage.js",
       "src/v19/forge.js",
       "src/v19/tournament.js",
+      "src/v19/workshop.js",
       "src/core/arenaV41Growth.js",
       "src/core/arenaV41Rewards.js",
       "src/core/arenaV41Specialties.js",
@@ -1227,9 +1236,13 @@
   },
   {
     "file": "src/data/achievements.js",
-    "bytes": 5443,
-    "lines": 71,
-    "imports": [],
+    "bytes": 7160,
+    "lines": 97,
+    "imports": [
+      "src/platform/env.js",
+      "src/v19/forge.js",
+      "src/v19/workshop.js"
+    ],
     "exports": [
       "ACHIEVEMENTS",
       "ACHIEVEMENT_BY_ID",
@@ -1386,7 +1399,7 @@
   },
   {
     "file": "src/data/balance.js",
-    "bytes": 32039,
+    "bytes": 32049,
     "lines": 591,
     "imports": [],
     "exports": [
@@ -1484,7 +1497,8 @@
       "src/ui/components.js",
       "src/ui/minigameV4.js",
       "src/ui/pages/arena.js",
-      "src/ui/pages/forge.js"
+      "src/ui/pages/forge.js",
+      "src/v19/workshop.js"
     ]
   },
   {
@@ -1560,10 +1574,12 @@
   },
   {
     "file": "src/data/codexCatalog.js",
-    "bytes": 8649,
-    "lines": 240,
+    "bytes": 10021,
+    "lines": 268,
     "imports": [
+      "src/platform/env.js",
       "src/v19/forge.js",
+      "src/v19/tournament.js",
       "src/data/arena/branches.js",
       "src/data/cards.js",
       "src/data/combos.js",
@@ -2091,19 +2107,29 @@
   },
   {
     "file": "src/platform/env.js",
-    "bytes": 2191,
-    "lines": 63,
+    "bytes": 2283,
+    "lines": 65,
     "imports": [],
     "exports": [
+      "LEGACY_MODE",
       "env"
     ],
     "importedBy": [
+      "src/app/bootstrap.js",
+      "src/core/daily.js",
+      "src/core/events.js",
+      "src/core/progress.js",
+      "src/data/achievements.js",
+      "src/data/codexCatalog.js",
       "src/platform/audio.js",
       "src/platform/haptics.js",
       "src/platform/index.js",
       "src/platform/storage.js",
       "src/render/index.js",
-      "src/ui/pages/forge.js"
+      "src/ui/pages/daily.js",
+      "src/ui/pages/forge.js",
+      "src/ui/pages/workshop.js",
+      "src/ui/settingsSheet.js"
     ]
   },
   {
@@ -2218,13 +2244,14 @@
   },
   {
     "file": "src/platform/storage.js",
-    "bytes": 7309,
-    "lines": 193,
+    "bytes": 7569,
+    "lines": 199,
     "imports": [
       "src/platform/bus.js",
       "src/platform/env.js"
     ],
     "exports": [
+      "STORAGE_KEY",
       "SAVE_VERSION",
       "driver",
       "registerMigration",
@@ -3105,8 +3132,8 @@
   },
   {
     "file": "src/ui/bladeCard.js",
-    "bytes": 15318,
-    "lines": 359,
+    "bytes": 15598,
+    "lines": 362,
     "imports": [
       "src/core/edge.js",
       "src/data/balance.js",
@@ -3114,6 +3141,7 @@
       "src/data/knifeTypes.js",
       "src/data/tags.js",
       "src/data/traits.js",
+      "src/v19/forge.js",
       "src/ui/components.js",
       "src/ui/dom.js"
     ],
@@ -3158,7 +3186,7 @@
   },
   {
     "file": "src/ui/components.js",
-    "bytes": 26300,
+    "bytes": 26301,
     "lines": 524,
     "imports": [
       "src/data/balance.js",
@@ -3414,10 +3442,11 @@
   },
   {
     "file": "src/ui/pages/daily.js",
-    "bytes": 1359,
-    "lines": 37,
+    "bytes": 1756,
+    "lines": 44,
     "imports": [
       "src/core/index.js",
+      "src/platform/env.js",
       "src/ui/dom.js",
       "src/ui/pages/arena.js",
       "src/ui/pages/v19Arena.js"
@@ -3497,8 +3526,8 @@
   },
   {
     "file": "src/ui/pages/v19Arena.js",
-    "bytes": 708,
-    "lines": 29,
+    "bytes": 765,
+    "lines": 33,
     "imports": [
       "src/core/progress.js",
       "src/core/v19Progress.js",
@@ -3508,7 +3537,8 @@
     "exports": [
       "openTournament",
       "render",
-      "leave"
+      "leave",
+      "pauseForSettings"
     ],
     "importedBy": [
       "src/app/bootstrap.js",
@@ -3519,8 +3549,8 @@
   },
   {
     "file": "src/ui/pages/v19Forge.js",
-    "bytes": 429,
-    "lines": 16,
+    "bytes": 486,
+    "lines": 20,
     "imports": [
       "src/v19/forgeView.js",
       "src/ui/pages/v19Arena.js",
@@ -3528,7 +3558,8 @@
     ],
     "exports": [
       "render",
-      "leave"
+      "leave",
+      "pauseForSettings"
     ],
     "importedBy": [
       "src/app/bootstrap.js"
@@ -3536,8 +3567,8 @@
   },
   {
     "file": "src/ui/pages/workshop.js",
-    "bytes": 37285,
-    "lines": 727,
+    "bytes": 37934,
+    "lines": 736,
     "imports": [
       "src/app/game.js",
       "src/core/index.js",
@@ -3548,10 +3579,12 @@
       "src/data/knifeTypes.js",
       "src/data/tags.js",
       "src/data/traits.js",
+      "src/platform/env.js",
       "src/render/collectionPreview.js",
       "src/render/index.js",
       "src/v19/forge.js",
       "src/v19/sharedStage.js",
+      "src/v19/workshop.js",
       "src/ui/bladeCard.js",
       "src/ui/components.js",
       "src/ui/dom.js",
@@ -3603,10 +3636,11 @@
   },
   {
     "file": "src/ui/settingsSheet.js",
-    "bytes": 5684,
-    "lines": 137,
+    "bytes": 5783,
+    "lines": 138,
     "imports": [
       "src/app/settings.js",
+      "src/platform/env.js",
       "src/platform/index.js",
       "src/ui/dom.js",
       "src/ui/icons.js",
@@ -3621,8 +3655,8 @@
   },
   {
     "file": "src/ui/shell.js",
-    "bytes": 2275,
-    "lines": 73,
+    "bytes": 2410,
+    "lines": 74,
     "imports": [
       "src/core/progress.js",
       "src/platform/index.js",
@@ -3704,10 +3738,11 @@
   },
   {
     "file": "src/v19/arena/trial.js",
-    "bytes": 44343,
-    "lines": 843,
+    "bytes": 44613,
+    "lines": 847,
     "imports": [
       "src/platform/index.js",
+      "src/v19/forge.js",
       "src/v19/tournament.js",
       "src/v19/arena/audio.js"
     ],
@@ -3721,8 +3756,8 @@
   },
   {
     "file": "src/v19/arena/view.js",
-    "bytes": 23864,
-    "lines": 419,
+    "bytes": 24266,
+    "lines": 423,
     "imports": [
       "src/v19/forge.js",
       "src/v19/tournament.js",
@@ -3752,8 +3787,8 @@
   },
   {
     "file": "src/v19/forge.js",
-    "bytes": 32025,
-    "lines": 580,
+    "bytes": 32513,
+    "lines": 583,
     "imports": [
       "src/v19/workshop.js"
     ],
@@ -3785,6 +3820,7 @@
       "mineralHeritage",
       "oreSignals",
       "STAT_NAMES",
+      "STAT_CAP",
       "FITS",
       "HEAT",
       "REFINEMENT_RESULTS",
@@ -3805,6 +3841,7 @@
       "advanceHeat",
       "fractureRisk",
       "SIGNATURES",
+      "signaturePerk",
       "signature",
       "strike",
       "finishForge",
@@ -3813,10 +3850,15 @@
       "appraise"
     ],
     "importedBy": [
+      "src/core/daily.js",
+      "src/core/progress.js",
       "src/core/v19Progress.js",
+      "src/data/achievements.js",
       "src/data/codexCatalog.js",
+      "src/ui/bladeCard.js",
       "src/ui/pages/home.js",
       "src/ui/pages/workshop.js",
+      "src/v19/arena/trial.js",
       "src/v19/arena/view.js",
       "src/v19/blade-looks.js",
       "src/v19/forgeView.js",
@@ -3839,8 +3881,8 @@
   },
   {
     "file": "src/v19/forgeView.js",
-    "bytes": 37514,
-    "lines": 696,
+    "bytes": 37688,
+    "lines": 702,
     "imports": [
       "src/core/progress.js",
       "src/core/v19Progress.js",
@@ -3981,8 +4023,8 @@
   },
   {
     "file": "src/v19/tournament.js",
-    "bytes": 11353,
-    "lines": 220,
+    "bytes": 11387,
+    "lines": 221,
     "imports": [],
     "exports": [
       "TARGET_NAMES",
@@ -3990,6 +4032,7 @@
       "EVENTS",
       "SCHOOLS",
       "PROJECTS",
+      "APEX_GOAL",
       "dayKey",
       "bladeId",
       "bladeCount",
@@ -4005,22 +4048,32 @@
       "abandonEntry"
     ],
     "importedBy": [
+      "src/core/daily.js",
       "src/core/v19Progress.js",
+      "src/data/codexCatalog.js",
       "src/v19/arena/trial.js",
       "src/v19/arena/view.js"
     ]
   },
   {
     "file": "src/v19/workshop.js",
-    "bytes": 316,
-    "lines": 9,
+    "bytes": 913,
+    "lines": 18,
     "imports": [
-      "src/core/arenaV41Growth.js"
+      "src/core/arenaV41Growth.js",
+      "src/data/balance.js"
     ],
     "exports": [
+      "V19_RARITY_MIN",
+      "V19_RISK_GOALS",
+      "appraisalRarity",
+      "appraisalQuality",
       "workshopPerks"
     ],
     "importedBy": [
+      "src/core/v19Progress.js",
+      "src/data/achievements.js",
+      "src/ui/pages/workshop.js",
       "src/v19/forge.js"
     ]
   }

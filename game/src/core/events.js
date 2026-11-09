@@ -21,12 +21,14 @@
 
 import * as Daily from './daily.js';
 import * as Economy from './economy.js';
+import { LEGACY_MODE } from '../platform/env.js';
 
 /** 事件类型（T10.1 的推荐命名，可按业务调整） */
 export const EVENT = Object.freeze({
   FORGE_COMPLETED: 'forge_completed',
   FORGE_FRACTURED: 'forge_fractured',
   DISCOVERY: 'discovery',
+  REFINEMENT_GOOD: 'refinement_good',
   QUICK_COMPLETED: 'quick_completed',
   FORMAL_COMPLETED: 'formal_completed',
   HONOR_EARNED: 'honor_earned',
@@ -36,7 +38,8 @@ export const EVENT = Object.freeze({
 const TASK_OF_EVENT = Object.freeze({
   [EVENT.FORGE_COMPLETED]: 'forge',
   [EVENT.FORGE_FRACTURED]: 'forge',
-  [EVENT.DISCOVERY]: 'craft',
+  [EVENT.DISCOVERY]: LEGACY_MODE ? 'craft' : null,
+  [EVENT.REFINEMENT_GOOD]: 'craft',
   [EVENT.QUICK_COMPLETED]: 'match',
   [EVENT.FORMAL_COMPLETED]: 'match',
 });

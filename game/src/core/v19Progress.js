@@ -5,13 +5,14 @@ import { emit, EVENTS } from '../platform/bus.js';
 import { STAT_KEYS } from '../data/balance.js';
 import { KNIFE_BY_MODEL } from '../data/knifeTypes.js';
 import { addCr } from './economy.js';
-import { computeScore, resolveRarity, qualityOf } from './scoring.js';
+import { computeScore } from './scoring.js';
 import { workshopSnapshot } from './arenaV41Growth.js';
 import { careerRewardPlan } from './arenaV41Rewards.js';
 import { specialtySnapshot } from './arenaV41Specialties.js';
 import { settle, EVENT } from './events.js';
-import { appraise, freshRun, LOOKS, MIN_PRICE, MODELS, signature } from '../v19/forge.js';
+import { appraise, freshRun, LOOKS, MIN_PRICE, MODELS, signature, signaturePerk } from '../v19/forge.js';
 import { SCHOOLS, masteryOf } from '../v19/tournament.js';
+import { appraisalQuality, appraisalRarity } from '../v19/workshop.js';
 
 function transact(change) {
   const save = get();
@@ -54,6 +55,7 @@ function forgeView(save) {
     const blade = save.collection.find(item => item.id === run.resultId);
     if (blade) run.record = {
       ...blade.v19Visual, id: blade.id, name: blade.bladeName, grade: blade.rarityName,
+      quality: blade.qualityName, signature: blade.combos?.[0],
       score: blade.score, stats: STAT_KEYS.map(key => blade.stats[key]), credit: run.reward,
     };
   }
@@ -72,10 +74,10 @@ function archiveFurnace(save, run, appraisal) {
   const finishMultiplier = 1 + Math.max(0, run.work) * .028 + tiers * .13 +
     (run.refinement?.quality || 0) * .004 + run.hits * .008;
   const scoreDetail = computeScore({
-    stats, combos, peakRisk: riskPeak, hammerTier: 1, hammerTierName: '工艺完成度',
-    hammerTierReward: { scoreMult: finishMultiplier },
+    stats, combos, peakRisk: riskPeak, hammerTier: 1,
+    hammerTierReward: { scoreMult: finishMultiplier, name: '锻造工艺完成度' },
   });
-  const rarity = resolveRarity(scoreDetail.score);
+  const rarity = appraisalRarity(scoreDetail.score);
   const model = run.model === 'blank' ? 'straight' : run.model;
   const knifeType = 'knife_' + model;
   const record = {
@@ -83,7 +85,7 @@ function archiveFurnace(save, run, appraisal) {
     bladeName: appraisal?.name || (run.last?.type === 'refine-fail' ? '精炼废炉' : MODELS[run.model] + ' · 锻打断裂'),
     knifeType, knifeTypeId: KNIFE_BY_MODEL[knifeType]?.id ?? model,
     stats, score: scoreDetail.score, scoreDetail, statMean: scoreDetail.mean,
-    rarity: rarity.id, rarityName: rarity.name, qualityName: qualityOf(scoreDetail.mean).name,
+    rarity: rarity.id, rarityName: rarity.name, qualityName: appraisalQuality(scoreDetail.mean),
     riskPeak, riskCurrent: riskPeak, hammerCount: run.hits,
     fractured, canEnterArena: !fractured,
     traits: [], combos, history: [], tags: {},
@@ -95,7 +97,8 @@ function archiveFurnace(save, run, appraisal) {
   };
   const discoveries = [
     { category: 'material', id: run.ore?.material && 'v19:' + run.ore.material },
-    ...Object.entries(LOOKS).filter(([slot, names]) => names[run.skin[slot]]).map(([slot]) => ({
+    { category: 'fitting', id: run.fit },
+    ...Object.entries(LOOKS).filter(([slot, names]) => run.skin[slot] !== 'raw' && names[run.skin[slot]]).map(([slot]) => ({
       category: slot === 'pattern' ? 'texture' : 'finish', id: 'v19:' + slot + ':' + run.skin[slot],
     })),
   ];
@@ -138,6 +141,7 @@ function toContestBlade(blade) {
   return {
     id: blade.id, name: blade.bladeName || blade.name || '成刀', grade: blade.rarityName,
     score: blade.score, stats, fractured: blade.fractured || blade.canEnterArena === false,
+    signature: blade.v19Visual ? signaturePerk(blade.combos?.[0])?.name : undefined,
   };
 }
 
@@ -222,7 +226,7 @@ function settleTournament(save, run, record) {
       tally.best = Math.max(tally.best, Math.round(record.total / record.rounds.length));
     }
   }
-  if (official || (record.qualified && !record.paidDaily)) {
+  if (record.qualified && !record.paidDaily) {
     settle(save, official ? EVENT.FORMAL_COMPLETED : EVENT.QUICK_COMPLETED, { matchId: id, tier: mode });
   }
   if (win) settle(save, EVENT.HONOR_EARNED, { matchId: id, tier: mode, itemKey: 'win' });

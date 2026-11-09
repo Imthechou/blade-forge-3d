@@ -26,3 +26,7 @@ export function render() {
 export function leave() {
   page?.leave();
 }
+
+export function pauseForSettings() {
+  page?.pause();
+}

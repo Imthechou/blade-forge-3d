@@ -7,11 +7,12 @@ import * as SettingsSheet from './settingsSheet.js';
 import { motion, bus, EVENTS, env } from '../platform/index.js';
 
 let lastSaveWarning = 0;
-bus.on(EVENTS.SAVE_FAILED, () => {
+bus.on(EVENTS.SAVE_FAILED, ({ stale } = {}) => {
   const now = Date.now();
   if (now - lastSaveWarning < 2000) return;
   lastSaveWarning = now;
-  toast('保存失败，本次操作未保存。请检查浏览器存储空间后重试。', 'warn', 6000);
+  toast(stale ? '另一标签页更新了存档。请刷新后继续。' :
+    '保存失败，本次操作未保存。请检查浏览器存储空间后重试。', 'warn', 6000);
 });
 
 const syncMotion = reduced => { document.documentElement.dataset.motion = reduced ? 'reduced' : 'full'; };
@@ -32,7 +33,7 @@ let titleEl = null;
 let crEl = null;
 let backEl = null;
 
-export function create(host) {
+export function create(host, { beforeSettings } = {}) {
   if (!env.hasLocalStorage) toast('当前浏览器无法持久保存，进度仅在本次页面有效。请允许本地存储后重新打开。', 'warn', 8000);
   backEl = el('button', {
     class: 'topbar-back',
@@ -54,7 +55,7 @@ export function create(host) {
     el('button', {
       class: 'topbar-gear',
       title: '设置', 'aria-label': '设置',
-      onclick: () => SettingsSheet.open(),
+      onclick: () => { beforeSettings?.(); SettingsSheet.open(); },
     }, [icon('settings')]),
   ]);
 }

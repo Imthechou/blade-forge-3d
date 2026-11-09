@@ -1,5 +1,6 @@
 import { haptics, motion } from '../../platform/index.js';
 import { PROJECTS } from '../tournament.js';
+import { signaturePerk } from '../forge.js';
 /* Adapted from Blade Trial v0.19. See LICENSE. */
 import { BladeAudio } from './audio.js';
 
@@ -83,8 +84,8 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
     return normalized / 150;
   });
   const projects = new Map();
-  const reduced = motion.reduced();
   audio.setVolume(volume);
+  const perk = signaturePerk(blade.signature);
   const [power, toughness, edge, craft, design, spirit] = stats;
   const derived = {
     penetration: .65 + edge * .92, force: .67 + power * .85, stability: .77 + craft * .25,
@@ -94,7 +95,7 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
     screen: 'ready', score: 0, bestCombo: 0, durability: 100, time: 0,
     round: 0, waves: 0, cut: 0, hits: 0, damage: 0, targets: [], pieces: [], particles: [], rings: [],
     slashes: [], trails: [], pointer: { down: false, points: [], hitTargets: new Set() },
-    feel: true, intensity: strength, reducedMotion: reduced, hitstop: 0, slowRemaining: 0,
+    feel: true, intensity: strength, reducedMotion: motion.reduced(), hitstop: 0, slowRemaining: 0,
     shakeX: 0, shakeY: 0, shakeVX: 0, shakeVY: 0, flash: 0, nextWaveAt: -1,
   };
   let W = 1, H = 1, DPR = 1, unit = 1, ambientDots = [];
@@ -131,14 +132,14 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
     lastVerdictAt = now;
     ui.verdict.className = 'cut-callout ' + kind;
     ui.verdict.textContent = label;
-    if (!motion) {
-      ui.verdict.getAnimations().forEach(animation => animation.cancel());
-      ui.verdict.animate([
-        { opacity: 0, transform: 'translateY(8px) scale(.92)' },
-        { opacity: 1, transform: 'translateY(0) scale(1)', offset: .16 },
-        { opacity: 1, offset: .54 }, { opacity: 0, transform: 'translateY(-6px)' },
-      ], { duration: 640 });
-    }
+    ui.verdict.getAnimations().forEach(animation => animation.cancel());
+    ui.verdict.animate(state.reducedMotion ? [
+      { opacity: 1 }, { opacity: 1, offset: .8 }, { opacity: 0 },
+    ] : [
+      { opacity: 0, transform: 'translateY(8px) scale(.92)' },
+      { opacity: 1, transform: 'translateY(0) scale(1)', offset: .16 },
+      { opacity: 1, offset: .54 }, { opacity: 0, transform: 'translateY(-6px)' },
+    ], { duration: 640 });
   }
 
   function layoutTargets() {
@@ -222,8 +223,11 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
     return true;
   }
 
-  function resume() {
+  function resume(settings) {
     if (state.screen !== 'paused') return;
+    muted = settings.sound === false;
+    state.reducedMotion = motion.reduced();
+    audio.setVolume(settings.volume);
     audio.setEnabled(!muted);
     state.screen = 'playing';
     lastTick = performance.now();
@@ -249,12 +253,13 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
   function damageFor(target, speed) {
     const mastery = blade.mastery;
     const multiplier = mastery.specialty === currentWave.project ? 1 + mastery.bonus : 1;
+    const signatureBoost = perk?.targets.includes(target.key) ? 1 + perk.bonus : 1;
     const skill = clamp(.80 + speed / 1450, .87, 1.30);
     const degraded = state.durability < 18 ? .68 : state.durability < 35 ? .84 : 1;
     const variation = 1 + (rng() - .5) * .24 * (1.15 - derived.stability);
     const crit = rng() < derived.critChance;
     const damage = 110 * derived.penetration * derived.force / target.m.hardness *
-      skill * degraded * variation * multiplier * (crit ? 1.34 : 1);
+      skill * degraded * variation * multiplier * signatureBoost * (crit ? 1.34 : 1);
     return { damage: Math.max(10, damage), crit };
   }
 
@@ -300,7 +305,7 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
     makeCrack(target, dx, dy, damage);
     const wear = target.m.wear * (target.heavy ? 1.9 : 1.15) * (.6 + damage / 200) / derived.wearMitigation;
     state.durability = Math.max(0, state.durability - wear * course.wearScale);
-    if (!motion) {
+    if (!state.reducedMotion) {
       state.hitstop = Math.max(state.hitstop, FEEL.hitstop[phase] * (target.heavy ? 1 : .82));
       state.slowRemaining = Math.max(state.slowRemaining, broken ? 50 : 35);
       state.flash = Math.max(state.flash, broken ? .15 : fracture ? .11 : .065);
@@ -829,7 +834,6 @@ export function createTrial(frame, course, blade, sprites, { muted, volume, onPa
 
   return {
     start, pause, resume,
-    setMuted(value) { muted = value; if (state.screen === 'playing') audio.setEnabled(!muted); },
     destroy() {
       input.abort();
       observer.disconnect();
