@@ -19,13 +19,27 @@ const audit = page => {
   page.on('response', response => { if (response.status() >= 400) errors.push(response.status() + ' ' + response.url()); });
 };
 
-async function swipeStage(cdp, box, height = .49) {
-  const y = Math.round(box.y + box.height * height);
-  const x0 = Math.round(box.x + 6);
-  const span = Math.round(box.width - 12);
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y }] });
+async function touchDrag(cdp, from, to) {
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
   for (let segment = 1; segment <= 8; segment++) {
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0 + span * segment / 8, y }] });
+    const x = from.x + (to.x - from.x) * segment / 8;
+    const y = from.y + (to.y - from.y) * segment / 8;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] });
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+
+function swipeStage(cdp, box, height = .49) {
+  const y = Math.round(box.y + box.height * height);
+  return touchDrag(cdp, { x: box.x + 6, y }, { x: box.x + box.width - 6, y });
+}
+
+async function pinchStage(cdp, box, from, to) {
+  const x = Math.round(box.x + box.width / 2), y = Math.round(box.y + box.height * .49);
+  const points = radius => [{ x: x - radius, y, id: 1 }, { x: x + radius, y, id: 2 }];
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: points(from) });
+  for (let segment = 1; segment <= 8; segment++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: points(from + (to - from) * segment / 8) });
   }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
@@ -37,6 +51,7 @@ async function runFlow() {
   const cdp = await context.newCDPSession(page);
   await page.addInitScript(() => {
     if (!localStorage.getItem('bladeforge.save')) localStorage.setItem('bladeforge.save', '{"version":1,"cr":987}');
+    if (!localStorage.getItem('bladeforge.v4.save')) localStorage.setItem('bladeforge.v4.save', '{"version":1,"settings":{"theme":"light"}}');
     window.drawCount = 0;
     const draw = WebGL2RenderingContext.prototype.drawElements;
     WebGL2RenderingContext.prototype.drawElements = function (...args) {
@@ -52,22 +67,38 @@ async function runFlow() {
     await page.goto(base);
     await page.getByRole('button', { name: '开始锻刀' }).waitFor();
     await page.waitForFunction(() => window.drawCount > 0);
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+    assert.equal(await page.getByRole('button', { name: /切换到.+色模式/ }).count(), 0);
     await shot('01-home');
     assert.equal(await page.getByRole('navigation', { name: '游戏主导航' }).isVisible(), true);
     await page.evaluate(async () => {
       const { attachForgeStage } = await import(new URL('src/v19/sharedStage.js', location.href));
       const stage = attachForgeStage(document.getElementById('homeStage'));
-      window.heroAngle = () => stage.turnY;
+      window.heroView = () => ({ yaw: stage.turnY, pitch: stage.content.rotation.x, zoom: stage.camera.zoom });
     });
-    await swipeStage(cdp, await page.locator('#homeStage canvas').boundingBox());
-    assert.notEqual(await page.evaluate(() => window.heroAngle()), 0);
+    const heroCanvas = page.locator('#homeStage canvas');
+    const heroBounds = await heroCanvas.boundingBox();
+    const midX = heroBounds.x + heroBounds.width / 2;
+    await touchDrag(cdp, { x: midX, y: heroBounds.y + heroBounds.height * .25 }, { x: midX, y: heroBounds.y + heroBounds.height * .68 });
+    assert.deepEqual(await page.evaluate(() => window.heroView()), { yaw: 0, pitch: 0, zoom: 1 });
+    await swipeStage(cdp, heroBounds);
+    assert.notEqual((await page.evaluate(() => window.heroView())).yaw, 0);
+    await pinchStage(cdp, heroBounds, 26, 58);
+    const expanded = (await page.evaluate(() => window.heroView())).zoom;
+    assert.ok(expanded > 1.5, '双指外扩放大刀具');
+    await pinchStage(cdp, heroBounds, 58, 26);
+    assert.ok((await page.evaluate(() => window.heroView())).zoom < expanded, '双指内捏缩小刀具');
     await page.getByRole('button', { name: '复位视角' }).tap();
-    await page.waitForFunction(() => window.heroAngle() === 0);
-    await page.getByRole('button', { name: '切换到暗色模式' }).tap();
-    await page.reload();
-    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark' && window.drawCount > 0);
-    await shot('01-home-dark');
-    await page.getByRole('button', { name: '切换到浅色模式' }).tap();
+    await page.waitForFunction(() => window.heroView().yaw === 0 && window.heroView().zoom === 1);
+    await page.getByRole('button', { name: '放大刀具' }).tap();
+    assert.equal((await page.evaluate(() => window.heroView())).zoom, 1.2);
+    await page.getByRole('button', { name: '缩小刀具' }).tap();
+    assert.equal((await page.evaluate(() => window.heroView())).zoom, 1);
+    await page.mouse.move(midX, heroBounds.y + heroBounds.height / 2);
+    await page.mouse.wheel(0, -120);
+    await page.waitForFunction(() => window.heroView().zoom > 1);
+    await heroCanvas.press('Home');
+    await page.waitForFunction(() => window.heroView().zoom === 1);
     await page.getByRole('button', { name: '开始锻刀' }).tap();
     await page.waitForFunction(() => document.querySelectorAll('.ore-thumbnail.is-loaded').length === 3);
     assert.equal(await page.getByRole('navigation', { name: '游戏主导航' }).isVisible(), false);
@@ -134,15 +165,18 @@ async function runFlow() {
         const hit = stage.keyboardHit();
         return hit && stage.project(hit.world, stage.canvas.getBoundingClientRect());
       };
-      window.bladeView = () => [stage.content.rotation.z, stage.turnY];
+      window.bladeView = () => [stage.content.rotation.z, stage.turnY, stage.camera.zoom];
     });
     const forgeCanvas = page.locator('#stage canvas');
     await page.waitForFunction(() => window.strikePoint() && Math.abs(window.bladeView()[0] - Math.PI / 2) < .05);
     await swipeStage(cdp, await forgeCanvas.boundingBox());
     assert.notEqual((await page.evaluate(() => window.bladeView()))[1], 0);
+    await pinchStage(cdp, await forgeCanvas.boundingBox(), 26, 48);
+    assert.ok((await page.evaluate(() => window.bladeView()))[2] > 1);
     assert.equal(await page.locator('#hit-count').textContent(), '0 / 6');
     await page.getByRole('button', { name: '复位视角' }).tap();
-    await page.waitForFunction(() => window.bladeView()[1] === 0);
+    await page.waitForFunction(() => window.bladeView()[1] === 0 && window.bladeView()[2] === 1);
+    await page.getByRole('button', { name: '放大刀具' }).tap();
     for (let hit = 1; hit <= 6; hit++) {
       await page.waitForFunction(() => window.strikePoint());
       const { x, y } = await page.evaluate(() => window.strikePoint());
@@ -243,7 +277,7 @@ async function runFlow() {
     await page.getByRole('button', { name: '锻造加成', exact: true }).tap();
     await page.getByText(/稀质矿芯概率/).waitFor();
     await shot('13-growth');
-    console.log('390×844 · 双主题、竖刀拖转、触控落锤、锻造与赛事结算、工坊导航、独立存档与设置通过');
+    console.log('390×844 · 固定暗色、竖刀单轴、捏合与滚轮缩放、触控落锤、锻造与赛事结算通过');
   } finally {
     await context.close();
   }
@@ -266,8 +300,6 @@ async function smallScreens() {
       await page.screenshot({ path: path.join(out, `forge-${width}x${height}.png`) });
       await page.goto(new URL('#/arena', base).href);
       await page.locator('.arena-hero').waitFor();
-      const dark = width === 430;
-      if (dark) await page.getByRole('button', { name: '切换到暗色模式' }).tap();
       assert.equal(await page.locator('.page.is-active').evaluate(node => node.scrollWidth <= node.clientWidth), true);
       await page.waitForFunction(async () => {
         const { targetSprite } = await import(new URL('src/v19/arena/targets.js', location.href));
@@ -278,7 +310,7 @@ async function smallScreens() {
         const { data } = canvas.getContext('2d').getImageData(Math.floor(canvas.width * .055), Math.floor(canvas.height * .31), 1, 1);
         return (data[0] + data[1] + data[2]) / 3;
       });
-      assert.ok(dark ? arenaBrightness < 100 : arenaBrightness > 210, '切割舞台随主题切换');
+      assert.ok(arenaBrightness < 100, '切割舞台固定使用暗色');
       const stage = await page.locator('.trial-frame').boundingBox();
       const bottom = await page.locator('.trial-bottom').boundingBox();
       assert.ok(bottom.y >= stage.y && bottom.y + bottom.height < stage.y + stage.height);

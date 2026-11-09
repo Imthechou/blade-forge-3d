@@ -1,8 +1,8 @@
 [
   {
     "file": "src/app/bootstrap.js",
-    "bytes": 2645,
-    "lines": 78,
+    "bytes": 2788,
+    "lines": 80,
     "imports": [
       "src/core/progress.js",
       "src/core/v19Progress.js",
@@ -78,11 +78,10 @@
   },
   {
     "file": "src/app/settings.js",
-    "bytes": 2213,
-    "lines": 60,
+    "bytes": 1916,
+    "lines": 54,
     "imports": [
       "src/core/progress.js",
-      "src/platform/env.js",
       "src/platform/index.js"
     ],
     "exports": [
@@ -94,8 +93,7 @@
     "importedBy": [
       "src/app/bootstrap.js",
       "src/app/bootstrapLegacy.js",
-      "src/ui/settingsSheet.js",
-      "src/ui/shell.js"
+      "src/ui/settingsSheet.js"
     ]
   },
   {
@@ -1047,8 +1045,8 @@
   },
   {
     "file": "src/core/saveSchema.js",
-    "bytes": 9984,
-    "lines": 199,
+    "bytes": 9915,
+    "lines": 197,
     "imports": [
       "src/data/balance.js",
       "src/platform/storage.js",
@@ -2118,7 +2116,6 @@
     ],
     "importedBy": [
       "src/app/bootstrap.js",
-      "src/app/settings.js",
       "src/core/daily.js",
       "src/core/events.js",
       "src/core/progress.js",
@@ -3328,7 +3325,7 @@
   },
   {
     "file": "src/ui/icons.js",
-    "bytes": 1446,
+    "bytes": 1310,
     "lines": 27,
     "imports": [],
     "exports": [
@@ -3661,10 +3658,9 @@
   },
   {
     "file": "src/ui/shell.js",
-    "bytes": 3101,
-    "lines": 92,
+    "bytes": 2484,
+    "lines": 74,
     "imports": [
-      "src/app/settings.js",
       "src/core/progress.js",
       "src/platform/env.js",
       "src/platform/index.js",
@@ -3909,8 +3905,8 @@
   },
   {
     "file": "src/v19/forgeMarkup.js",
-    "bytes": 2556,
-    "lines": 43,
+    "bytes": 2306,
+    "lines": 39,
     "imports": [],
     "exports": [
       "forgeMarkup"
@@ -3921,8 +3917,8 @@
   },
   {
     "file": "src/v19/forgeView.js",
-    "bytes": 32650,
-    "lines": 688,
+    "bytes": 32173,
+    "lines": 681,
     "imports": [
       "src/core/progress.js",
       "src/core/v19Progress.js",
@@ -4011,8 +4007,8 @@
   },
   {
     "file": "src/v19/sharedStage.js",
-    "bytes": 3276,
-    "lines": 89,
+    "bytes": 5736,
+    "lines": 152,
     "imports": [
       "src/platform/index.js",
       "src/ui/dom.js",
@@ -4023,7 +4019,8 @@
     "exports": [
       "attachForgeStage",
       "releaseForgeStage",
-      "bindViewReset",
+      "createBladeTools",
+      "bindStageInput",
       "showForgedBlade"
     ],
     "importedBy": [
@@ -4046,8 +4043,8 @@
   },
   {
     "file": "src/v19/stage.js",
-    "bytes": 52241,
-    "lines": 1122,
+    "bytes": 52671,
+    "lines": 1137,
     "imports": [
       "assets/v19/vendor/meshopt_decoder.module.js",
       "src/v19/forge.js",

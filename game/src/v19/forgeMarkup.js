@@ -5,6 +5,9 @@ export const forgeMarkup = `
         <div class="stage-top">
           <div class="forge-progress" id="steps" role="status"></div>
           <span class="live" id="stage-state" hidden></span>
+          <button type="button" id="grip-focus" class="grip-focus" data-action="focus-grip" aria-pressed="false" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4.5 4.5M8 10.5h5m-2.5-2.5v5"/></svg><span>查看刀柄</span>
+          </button>
         </div>
         <div class="stage-message" id="stage-message" aria-hidden="true"></div>
         <div id="ore-tools" class="ore-tools" hidden>
@@ -16,14 +19,7 @@ export const forgeMarkup = `
           </div>
         </div>
         <div class="ore-echo" id="ore-echo" aria-hidden="true"></div>
-        <button type="button" id="grip-focus" class="grip-focus" data-action="focus-grip" aria-pressed="false" hidden>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4.5 4.5M8 10.5h5m-2.5-2.5v5"/></svg><span>查看刀柄</span>
-        </button>
-        <div class="stage-footer"><span id="stage-hint"></span>
-          <button type="button" class="blade-reset" id="reset-view" aria-label="复位视角" title="复位视角" hidden>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8a8 8 0 1 0 0 8M20 3v5h-5"/></svg>
-          </button>
-        </div>
+        <div class="stage-footer"><span id="stage-hint"></span></div>
       </section>
 
       <section class="panel" id="panel" aria-labelledby="title">

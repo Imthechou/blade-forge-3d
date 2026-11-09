@@ -65,6 +65,8 @@ function start() {
 
 export default async function main() {
   if (LEGACY_MODE) {
+    delete document.documentElement.dataset.theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#F1F3FC');
     await import('./bootstrapLegacy.js');
   } else {
     start();
