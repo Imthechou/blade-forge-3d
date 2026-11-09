@@ -4,7 +4,7 @@ import {
   REFINEMENT_RESULTS, REFINEMENT_FAILURES, fractureRisk, strike, finishForge,
   fitOptions, refreshFittings, signature, signaturePerk, inspectOre, mineralHeritage, oreInspection, oreModelId,
 } from './forge.js';
-import { attachForgeStage, bindViewReset, releaseForgeStage } from './sharedStage.js';
+import { attachForgeStage, bindStageInput, createBladeTools, releaseForgeStage } from './sharedStage.js';
 import { forgeMarkup } from './forgeMarkup.js';
 import { ForgeSound } from './sound.js';
 import { get as getProgress } from '../core/progress.js';
@@ -27,7 +27,7 @@ export function mountForge(root, { onArena, onCollection }) {
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   let save;
   let active = false;
-  let canvas;
+  let stageInput;
   let frameId;
   let revealTimer;
   let pendingCheckpoint = false;
@@ -40,14 +40,22 @@ export function mountForge(root, { onArena, onCollection }) {
   let heatInput;
   let heatHud;
   let saveTask;
-  let drag;
   let trayKey;
   let webglError = false;
   let inspectionMode = 'natural';
   let toolStone = '';
   let echoTimer;
-  const reset = get('reset-view');
-  bindViewReset(reset, () => { if (!busy) stage?.resetView(); });
+  const resetView = () => {
+    if (!stage || busy) return;
+    stage.resetView();
+    renderGripFocus();
+  };
+  const viewTools = createBladeTools({
+    zoom: factor => { if (!busy) stage?.zoomBy(factor); },
+    reset: resetView,
+  });
+  viewTools.hidden = true;
+  get('stage-hint').after(viewTools);
   function showStorageNotice(message) {
     const notice = get('save-notice');
     notice.textContent = message;
@@ -128,9 +136,8 @@ export function mountForge(root, { onArena, onCollection }) {
     }
     get('stage-state').hidden = !webglError;
     get('stage-state').textContent = webglError ? '3D 暂不可用' : '';
-    const hints = { reveal: '拖动看切面', forge: '轻点落锤 · 拖动旋转', fit: '拖动旋转', appraise: '拖动旋转' };
+    const hints = { reveal: '拖动看切面', forge: '点刀落锤', fit: '横拖旋转', appraise: '横拖旋转' };
     get('stage-hint').textContent = hints[phase] || '';
-    reset.hidden = !stage || !['reveal', 'forge', 'appraise'].includes(phase);
     if (phase === 'ore') {
       title('挑一块原石', '第 ' + (run.batch + 1) + ' / ' + BATCHES + ' 批', ore.price > save.credits ? '余额不足，换一块原石' : '');
       readout.replaceChildren();
@@ -208,6 +215,8 @@ export function mountForge(root, { onArena, onCollection }) {
       actions.innerHTML = button('restart', '再开一炉');
     }
     stage?.sync(run, ore, fit);
+    viewTools.hidden = !stage || !['reveal', 'forge', 'fit', 'appraise'].includes(phase);
+    viewTools.dataset.zoom = String(Boolean(stage?.canZoom));
     renderGripFocus();
     renderTools(run, ore);
     renderTray(run, fit);
@@ -242,7 +251,8 @@ export function mountForge(root, { onArena, onCollection }) {
     const preview = stage?.toggleMineralPreview();
     control.setAttribute('aria-pressed', String(Boolean(preview)));
     control.querySelector('strong').textContent = preview ? '看切面 ›' : '看刀纹 ›';
-    get('stage-hint').textContent = preview ? '矿芯纹样预览' : '拖动看切面';
+    get('stage-hint').textContent = preview ? '横拖旋转' : '拖动看切面';
+    viewTools.dataset.zoom = String(Boolean(preview));
   }
 
   function renderTray(run, fit) {
@@ -617,34 +627,6 @@ export function mountForge(root, { onArena, onCollection }) {
     if ([' ', 'Enter'].includes(event.key) && heatInput && event.target.id === 'heat-button') releaseHeat();
   });
 
-  root.addEventListener('pointerdown', event => {
-    if (!active || event.target !== canvas || !event.isPrimary || event.button !== 0 || !stage) return;
-    const phase = save.run.phase;
-    if (['ore', 'reveal', 'forge', 'fit', 'appraise'].includes(phase)) {
-      canvas.setPointerCapture(event.pointerId);
-      drag = { id: event.pointerId, phase, x: event.clientX, y: event.clientY, turned: false };
-    }
-  });
-  root.addEventListener('pointermove', event => {
-    if (drag?.id !== event.pointerId) return;
-    const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
-    if (!drag.turned && Math.hypot(dx, dy) < 7) return;
-    drag.turned = true;
-    if (!busy && save.run.phase === drag.phase) stage.turn(dx, dy);
-    drag.x = event.clientX;
-    drag.y = event.clientY;
-  });
-  root.addEventListener('pointerup', event => {
-    if (drag?.id !== event.pointerId) return;
-    const tap = !drag.turned && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 7;
-    if (tap && drag.phase === 'forge' && save.run.phase === 'forge') hitBlade(stage.hit(event.clientX, event.clientY));
-    drag = null;
-  });
-  root.addEventListener('lostpointercapture', event => {
-    if (drag?.id === event.pointerId) drag = null;
-  });
-
-
   return {
     pause() {
       if (save?.run.refining?.step !== 'cast') pauseHeat();
@@ -659,11 +641,21 @@ export function mountForge(root, { onArena, onCollection }) {
         showStorageNotice('');
       }
       sound.configure(getProgress().settings);
+      stageInput?.abort();
       try {
         const stones = save.run.phase === 'ore' ? offers(save.run) : [];
         const models = stones.length ? [stones[save.run.selected], ...stones].map(oreModelId) : [];
         stage = attachForgeStage(stageBox, models);
-        canvas = stage.canvas;
+        stageInput = new AbortController();
+        bindStageInput(stage, {
+          signal: stageInput.signal,
+          enabled: () => active && ['ore', 'reveal', 'forge', 'fit', 'appraise'].includes(save.run.phase),
+          canAdjust: () => !busy,
+          reset: resetView,
+          onTap: event => {
+            if (save.run.phase === 'forge') hitBlade(stage.hit(event.clientX, event.clientY));
+          },
+        });
         webglError = false;
       } catch {
         stage = null;
@@ -679,7 +671,8 @@ export function mountForge(root, { onArena, onCollection }) {
       clearTimeout(revealTimer);
       clearTimeout(echoTimer);
       revealPending = busy = resultPause = queuedStop = false;
-      queuedHit = drag = undefined;
+      queuedHit = undefined;
+      stageInput?.abort();
       releaseForgeStage(stageBox);
       active = false;
     },

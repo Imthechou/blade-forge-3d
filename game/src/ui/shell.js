@@ -6,7 +6,6 @@ import { icon } from './icons.js';
 import * as SettingsSheet from './settingsSheet.js';
 import { motion, bus, EVENTS, env } from '../platform/index.js';
 import { LEGACY_MODE } from '../platform/env.js';
-import * as Settings from '../app/settings.js';
 
 let lastSaveWarning = 0;
 bus.on(EVENTS.SAVE_FAILED, ({ stale } = {}) => {
@@ -49,27 +48,10 @@ export function create(host, { beforeSettings } = {}) {
     el('span', { class: 'muted', text: 'CR' }),
     el('b', { text: '0' }),
   ]);
-  const theme = LEGACY_MODE ? null : el('button', { class: 'topbar-theme', type: 'button' });
-  if (theme) {
-    const paint = () => {
-      const dark = Settings.get().theme === 'dark';
-      const label = dark ? '切换到浅色模式' : '切换到暗色模式';
-      theme.setAttribute('aria-label', label);
-      theme.title = label;
-      theme.replaceChildren(icon(dark ? 'sun' : 'moon'));
-    };
-    theme.onclick = () => {
-      Settings.update({ theme: Settings.get().theme === 'dark' ? 'light' : 'dark' });
-      paint();
-    };
-    paint();
-  }
-
   mount(host, [
     backEl,
     el('div', { class: 'topbar-mid' }, [titleEl]),
     crEl,
-    theme,
     el('button', {
       class: 'topbar-gear',
       title: '设置', 'aria-label': '设置',

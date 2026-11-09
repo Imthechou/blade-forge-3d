@@ -633,7 +633,6 @@ export class ForgeStage {
     this.invalidate(300);
     if (previous !== this.mode) {
       this.entered = performance.now();
-      this.setGripFocus(false);
       this.resetView();
       if (this.mode !== 'broken') this.clearPieces();
       if (this.mode !== 'reveal') this.clearOrePieces();
@@ -806,7 +805,7 @@ export class ForgeStage {
   toggleMineralPreview() {
     if(this.mode!=='reveal')return;
     this.previewSteel=!this.previewSteel;
-    this.turnX=this.turnY=0;
+    this.resetView();
     this.clearOrePieces();
     this.sync(this.run,this.inspectedOre,this.fit);
     return this.previewSteel;
@@ -816,21 +815,37 @@ export class ForgeStage {
     if(this.mode==='ore'){this.tappedAt=performance.now();this.invalidate(700);}
   }
 
+  get canZoom() {
+    return ['forge', 'fit', 'appraise'].includes(this.mode) ||
+      (this.mode === 'reveal' && this.previewSteel) ||
+      (this.mode === 'broken' && this.run?.last?.type !== 'refine-fail');
+  }
+
   turn(dx, dy) {
+    const blade = this.canZoom;
+    if (blade && !dx) return;
     this.touched=true;
     this.turnY += dx * .016;
-    this.turnX = clamp(this.turnX + dy * .012, -.9, .9);
+    if (!blade) this.turnX = clamp(this.turnX + dy * .012, -.9, .9);
     this.invalidate(180);
   }
 
   resetView() {
     this.turnX = this.turnY = 0;
-    this.invalidate();
+    this.setGripFocus(false);
   }
 
   setGripFocus(enabled) {
     this.gripFocus = enabled && this.mode === 'fit';
-    this.camera.zoom = this.gripFocus ? 2.35 : 1;
+    this.setZoom(this.gripFocus ? 2.35 : 1);
+  }
+
+  zoomBy(factor) {
+    if (this.canZoom && Number.isFinite(factor) && factor > 0) this.setZoom(this.camera.zoom * factor);
+  }
+
+  setZoom(value) {
+    this.camera.zoom = clamp(value, .68, 2.6);
     this.camera.updateProjectionMatrix();
     this.invalidate(220);
   }
@@ -1026,8 +1041,8 @@ export class ForgeStage {
     const stoneTurn = mode === 'reveal' ? 0 : .28;
     const tap = !this.reduceMotion ? Math.sin((now-(this.tappedAt ?? -5000))*.08)*Math.exp(-(now-(this.tappedAt ?? -5000))/85)*.016 : 0;
     if (upright) {
-      // Roll the model's long axis up before applying pitch and world-space yaw.
-      this.content.rotation.set(-.08 + this.turnX, -.24 + this.turnY + startTurn, Math.PI / 2 + shake, 'YXZ');
+      // Roll the model upright, then spin around the world's vertical axis.
+      this.content.rotation.set(0, -.24 + this.turnY + startTurn, Math.PI / 2 + shake, 'YXZ');
     } else {
       this.content.rotation.set(.18 + this.turnX + tap, stoneTurn + this.turnY, -.18 + shake, 'XYZ');
     }

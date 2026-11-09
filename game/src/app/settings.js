@@ -11,7 +11,6 @@
  */
 
 import { audio, haptics, motion } from '../platform/index.js';
-import { LEGACY_MODE } from '../platform/env.js';
 import * as Progress from '../core/progress.js';
 
 /** 把当前存档设置施加到各平台服务（启动时调一次，之后每次改动后调） */
@@ -23,11 +22,6 @@ export function applyAll() {
   haptics.setEnabled(s.haptics !== false);
   // 动效三态交给 motion 单一真源；它会通知渲染门面把结果推给 viewer
   motion.syncFromSettings(s);
-  if (!LEGACY_MODE) {
-    document.documentElement.dataset.theme = s.theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',
-      getComputedStyle(document.documentElement).getPropertyValue('--base-0').trim());
-  }
 
   return s;
 }

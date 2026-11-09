@@ -4,10 +4,10 @@
 
 | 文件 | 行数 | 字节 | 具名导出声明 |
 | --- | ---: | ---: | --- |
-| [src/app/bootstrap.js](../src/app/bootstrap.js) | 78 | 2645 | — |
+| [src/app/bootstrap.js](../src/app/bootstrap.js) | 80 | 2788 | — |
 | [src/app/bootstrapLegacy.js](../src/app/bootstrapLegacy.js) | 338 | 16369 | — |
 | [src/app/game.js](../src/app/game.js) | 1499 | 68251 | Game |
-| [src/app/settings.js](../src/app/settings.js) | 60 | 2213 | applyAll, update, get, preview |
+| [src/app/settings.js](../src/app/settings.js) | 54 | 1916 | applyAll, update, get, preview |
 | [src/core/appraise.js](../src/core/appraise.js) | 205 | 7823 | appraise, revealSteps |
 | [src/core/arena.js](../src/core/arena.js) | 386 | 17061 | baseFaces, createMatch, currentEvent, choose, fieldTestTask, submitFieldTest, submitFieldTestChallenge, skipFieldTest, finalFaces, momentumName |
 | [src/core/arenaCareerV41.js](../src/core/arenaCareerV41.js) | 47 | 2057 | CAREER_VERSION, makeCareerV41, normalizeCareerV41, recoverCareerMatch, validateCareerCheckpoint |
@@ -41,7 +41,7 @@
 | [src/core/quickChallengeRecords.js](../src/core/quickChallengeRecords.js) | 56 | 3057 | makeQuickRecords, normalizeQuickRecords, quickChallengeKey, updateQuickRecord |
 | [src/core/recipe.js](../src/core/recipe.js) | 429 | 22944 | DEFAULT_SKIN, visualCardOf, deriveSkinState, applyCardIdentity, deriveHandleMask |
 | [src/core/risk.js](../src/core/risk.js) | 99 | 3915 | clamp, make, apply, after, breakChance, breakPercent, check, band, ladder |
-| [src/core/saveSchema.js](../src/core/saveSchema.js) | 199 | 9984 | defaultSettings, normalizeSettings, makeSave, normalizeSave |
+| [src/core/saveSchema.js](../src/core/saveSchema.js) | 197 | 9915 | defaultSettings, normalizeSettings, makeSave, normalizeSave |
 | [src/core/saveTransaction.js](../src/core/saveTransaction.js) | 14 | 608 | commitSave |
 | [src/core/scoring.js](../src/core/scoring.js) | 169 | 7092 | computeScore, peakBandOf, resolveRarity, qualityOf, statProfile |
 | [src/core/tags.js](../src/core/tags.js) | 108 | 3591 | makeLedger, record, undo, counts, stageSpread, baseTagTiers, specialTags, dominantBaseTag |
@@ -154,7 +154,7 @@
 | [src/ui/forgeKnifeStickers.js](../src/ui/forgeKnifeStickers.js) | 177 | 7125 | knifeFormOf, isKnifeGlow, KNIFE_FORM_COUNT, paintS4Knife |
 | [src/ui/formalPerformance.js](../src/ui/formalPerformance.js) | 285 | 23126 | disposeFormalStage, pauseFormalStage, renderFormalSuite, completeFormalCut, abandonFormalSuite, drawFormalCutGuides, noteCutStroke, renderSuiteDiagnostics |
 | [src/ui/formalTestStage.js](../src/ui/formalTestStage.js) | 571 | 24166 | disposeFormalTestStage, renderFormalTest |
-| [src/ui/icons.js](../src/ui/icons.js) | 27 | 1446 | icon |
+| [src/ui/icons.js](../src/ui/icons.js) | 27 | 1310 | icon |
 | [src/ui/minigameV4.js](../src/ui/minigameV4.js) | 294 | 14309 | renderHammerV4, renderEdgeV4 |
 | [src/ui/pages/appraise.js](../src/ui/pages/appraise.js) | 647 | 29576 | create, render, enter, leave |
 | [src/ui/pages/arena.js](../src/ui/pages/arena.js) | 2763 | 182088 | create, leave, openDailyChallenge, openQuickChallenge, openCollectionSample, openTournament, render |
@@ -166,7 +166,7 @@
 | [src/ui/pages/workshop.js](../src/ui/pages/workshop.js) | 751 | 38839 | create, leave, render, openTab |
 | [src/ui/router.js](../src/ui/router.js) | 81 | 2846 | PAGES, register, onNavigate, go, currentKey, start |
 | [src/ui/settingsSheet.js](../src/ui/settingsSheet.js) | 138 | 5783 | open |
-| [src/ui/shell.js](../src/ui/shell.js) | 92 | 3101 | create, sync |
+| [src/ui/shell.js](../src/ui/shell.js) | 74 | 2484 | create, sync |
 | [src/ui/stageControls.js](../src/ui/stageControls.js) | 53 | 1952 | createStageInspect |
 | [src/ui/tutorial.js](../src/ui/tutorial.js) | 99 | 4492 | GUIDE, guideSheet, helpSheet, maybeShowFirstRun, hint, hasSeenHint |
 | [src/v19/arena/audio_bank.js](../src/v19/arena/audio_bank.js) | 3 | 1447361 | — |
@@ -177,15 +177,15 @@
 | [src/v19/arena/view.js](../src/v19/arena/view.js) | 413 | 20809 | mountTournament |
 | [src/v19/blade-looks.js](../src/v19/blade-looks.js) | 500 | 26698 | lookCodes, bladeLooksGLSL |
 | [src/v19/forge.js](../src/v19/forge.js) | 583 | 32513 | MIN_PRICE, REFRESH_PRICE, WINDOW_PRICE, LOT_SIZE, BATCHES, MARK_WIDTH, MARK_HEIGHT, PHASES, FAMILIES, LOOKS, MODELS, GRADES, ORE_TIERS, RARE_ODDS, rareOdds, fittingPrice, ORE_VARIANTS, ORE_MATERIALS, oreMaterialOf, ORE_TINTS, ORE_EXPOSURES, oreOptics, oreInspection, oreModelId, mineralHeritage, oreSignals, STAT_NAMES, STAT_CAP, FITS, HEAT, REFINEMENT_RESULTS, REFINEMENT_FAILURES, refinementRank, heatBand, rngFor, lookVariant, freshRun, offers, familyOf, stabilityOf, inspectOre, modelCandidates, buyOre, beginRefining, pourRefining, advanceHeat, fractureRisk, SIGNATURES, signaturePerk, signature, strike, finishForge, fitOptions, refreshFittings, appraise |
-| [src/v19/forgeMarkup.js](../src/v19/forgeMarkup.js) | 43 | 2556 | forgeMarkup |
-| [src/v19/forgeView.js](../src/v19/forgeView.js) | 688 | 32650 | mountForge |
+| [src/v19/forgeMarkup.js](../src/v19/forgeMarkup.js) | 39 | 2306 | forgeMarkup |
+| [src/v19/forgeView.js](../src/v19/forgeView.js) | 681 | 32173 | mountForge |
 | [src/v19/knife-details.js](../src/v19/knife-details.js) | 75 | 4113 | knifeDetails, makeFittingHardware |
 | [src/v19/materials.js](../src/v19/materials.js) | 602 | 29383 | surfaceUniforms, setSurface, makeBladeMaterial, makeOreMaterial, makeMeltMaterial, makeCutMaterial |
 | [src/v19/ore-section.js](../src/v19/ore-section.js) | 42 | 1697 | sectionContour |
 | [src/v19/regions.js](../src/v19/regions.js) | 28 | 1211 | KNIFE_IDS, regionAt |
 | [src/v19/render-budget.js](../src/v19/render-budget.js) | 27 | 1013 | RenderBudget |
-| [src/v19/sharedStage.js](../src/v19/sharedStage.js) | 89 | 3276 | attachForgeStage, releaseForgeStage, bindViewReset, showForgedBlade |
+| [src/v19/sharedStage.js](../src/v19/sharedStage.js) | 152 | 5736 | attachForgeStage, releaseForgeStage, createBladeTools, bindStageInput, showForgedBlade |
 | [src/v19/sound.js](../src/v19/sound.js) | 137 | 5670 | ForgeSound |
-| [src/v19/stage.js](../src/v19/stage.js) | 1122 | 52241 | ForgeStage |
+| [src/v19/stage.js](../src/v19/stage.js) | 1137 | 52671 | ForgeStage |
 | [src/v19/tournament.js](../src/v19/tournament.js) | 221 | 11387 | TARGET_NAMES, GRADIENTS, EVENTS, SCHOOLS, PROJECTS, APEX_GOAL, dayKey, bladeId, bladeCount, roundNames, tournamentState, eligibleBlades, masteryOf, gate, createEntry, courseFor, summarizeRound, settleRound, abandonEntry |
 | [src/v19/workshop.js](../src/v19/workshop.js) | 18 | 913 | V19_RARITY_MIN, V19_RISK_GOALS, appraisalRarity, appraisalQuality, workshopPerks |
